@@ -144,19 +144,23 @@ fn main() {
 
     let s0: Plot = Plot::new(hz).point_style(
         PointStyle::new() 
-            .colour("#DD3355"),
+            .colour("#DD3355")
+            .size(3.),
     ); 
     let s1: Plot = Plot::new(htrue).point_style(
         PointStyle::new()
-            .colour("#0000ff"),
+            .colour("#0000ff")
+            .size(3.),
     ); 
     let s2: Plot = Plot::new(hdr).point_style(
         PointStyle::new() 
-            .colour("#FFFF00"),
+            .colour("#FFFF00")
+            .size(3.),
     ); 
     let s3: Plot = Plot::new(hest).point_style(
         PointStyle::new() 
-            .colour("#35C788"),
+            .colour("#35C788")
+            .size(3.),
     ); 
 
     let v = ContinuousView::new()
