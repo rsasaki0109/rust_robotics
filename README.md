@@ -15,8 +15,47 @@ Run (Example)
 cargo run --bin ekf
 ```
 
-## Localization
-### Extended Kalman Filter localization
+# Table of Contents
+   * [Localization](#localization)
+      * [Extended Kalman Filter localization](#extended-kalman-filter-localization)
+      * Particle filter localization
+      * Histogram filter localization
+   * [SLAM](#slam)
+      * Iterative Closest Point 
+      * FastSLAM 1.0
+   * [Path Planning](#path-planning)
+      * Dynamic Window Approach
+      * Dijkstra algorithm
+      * A* algorithm
+      * Potential Field algorithm
+      * State Lattice Planner
+      * Rapidly-Exploring Random Trees (RRT)
+   * [Path Tracking](#path-tracking)
+      * [Pure Pursuit](#pure-pursuit)
+      * Linear–quadratic regulator (LQR) speed and steering control
+      * Nonlinear Model predictive control with C-GMRES
+
+# Localization
+## Extended Kalman Filter localization
 <img src="./img/ekf.svg" width="640px">   
 
 Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
+
+## Particle Filter localization
+
+# SLAM
+## FastSLAM 1.0
+
+
+# Path Planning
+## Dynamic Window Approach
+
+# Path Tracking
+## Pure Pursuit
+
+<img src="./img/pure_pursuit.svg" width="640px">  
+
+Brack:Planned path, Green Pure pursuit
+## Linear–quadratic regulator (LQR) speed and steering control
+
+
