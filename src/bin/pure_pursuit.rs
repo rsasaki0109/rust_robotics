@@ -193,7 +193,7 @@ fn main() {
     let v = ContinuousView::new()
         .add(s0)
         .add(s1)
-        .x_range(-25., 75.)
+        .x_range( 0., 50.)
         .y_range(-50., 50.)
         .x_label("x [m]")
         .y_label("y [m]");
