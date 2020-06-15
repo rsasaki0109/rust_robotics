@@ -19,14 +19,12 @@ cargo run --bin ekf
    * [Localization](#localization)
       * [Extended Kalman Filter localization](#extended-kalman-filter-localization)
       * Particle filter localization
-      * Histogram filter localization
    * [SLAM](#slam)
       * Iterative Closest Point 
       * FastSLAM 1.0
    * [Path Planning](#path-planning)
-      * Dynamic Window Approach
+      * [Dynamic Window Approach](#dynamic-window-approach)
       * Dijkstra algorithm
-      * A* algorithm
       * Potential Field algorithm
       * State Lattice Planner
       * Rapidly-Exploring Random Trees (RRT)
@@ -50,12 +48,15 @@ Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
 # Path Planning
 ## Dynamic Window Approach
 
+<img src="./img/dwa.svg" width="640px">  
+
+Brack: Obstacles, Green: Trajectry, Yellow: Predected trajectry
 # Path Tracking
 ## Pure Pursuit
 
 <img src="./img/pure_pursuit.svg" width="640px">  
 
-Brack:Planned path, Green Pure pursuit
+Brack: Planned path, Green: Tracked path
 ## Linear–quadratic regulator (LQR) speed and steering control
 
 
