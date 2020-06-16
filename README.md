@@ -24,6 +24,7 @@ cargo run --bin ekf
       * FastSLAM 1.0
    * [Path Planning](#path-planning)
       * [Begier Path](#bezier-path)
+      * [Cubic Spline](#cubic-spline)
       * [Dynamic Window Approach](#dynamic-window-approach)
       * Dijkstra algorithm
       * Potential Field algorithm
@@ -68,6 +69,20 @@ Brack:Control points, Green: Path, Red: Start and Goal
 ```
 cargo run --bin bezier_path
 ```
+
+## Cubic Spline
+
+
+<img src="./img/cubic_spline_planner.svg" width="640px">  
+
+Brack:Control points, Green: Path
+
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/cubic_spline_planner.rs)
+
+```
+cargo run --bin cubic_spline_planner
+```
+
 
 ## Dynamic Window Approach
 
