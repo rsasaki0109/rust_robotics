@@ -10,4 +10,3 @@ edition = "2018"
 nalgebra = "0.21"
 plotlib = "0.5"
 rand = "0.7.3"
-
