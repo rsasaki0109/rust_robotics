@@ -33,6 +33,7 @@ cargo run --bin ekf
    * [Path Tracking](#path-tracking)
       * [Move to Pose](#move-to-pose)
       * [Pure Pursuit](#pure-pursuit)
+      * [Stanley Control](#stanly-control)
       * Linear–quadratic regulator (LQR) speed and steering control
       * Nonlinear Model predictive control with C-GMRES
 
@@ -73,14 +74,14 @@ cargo run --bin bezier_path
 ## Cubic Spline
 
 
-<img src="./img/cubic_spline_planner.svg" width="640px">  
+<img src="./img/csp.svg" width="640px">  
 
 Brack:Control points, Green: Path
 
-- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/cubic_spline_planner.rs)
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/cubic_spline_planner.rs)
 
 ```
-cargo run --bin cubic_spline_planner
+cargo run --bin csp
 ```
 
 
@@ -95,6 +96,12 @@ Brack: Obstacles, Green: Trajectry, Yellow: Predected trajectry
 ```
 cargo run --bin dwa
 ```
+
+## Dijkstra algorithm
+## Potential Field algorithm
+## State Lattice Planner
+## Rapidly-Exploring Random Trees
+
 # Path Tracking
 ## Move to Pose 
 <img src="./img/move_to_pose.svg" width="640px">  
@@ -106,6 +113,9 @@ Green: Path, Red: Start and Goal
 ```
 cargo run --bin move_to_pose
 ```
+
+
+
 
 ## Pure Pursuit
 
@@ -120,12 +130,20 @@ Brack: Planned path, Green: Tracked path
 cargo run --bin pure_pursuit
 ```
 
-## Dijkstra algorithm
-## Potential Field algorithm
-## State Lattice Planner
-## Rapidly-Exploring Random Trees
+## Stanly Control 
 
-# Path Planning
+<img src="./img/stanley_control.svg" width="640px">  
+
+Brack: Planned path, Green: Tracked path 
+
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/stanley_controller.rs)
+
+
+```
+cargo run --bin stanley_control
+```
+
+
 ## Linear–quadratic regulator (LQR) speed and steering control
 ## Nonlinear Model predictive control with C-GMRES
 

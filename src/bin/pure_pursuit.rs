@@ -107,7 +107,7 @@ impl TargetCourse {
       ind += 1;
     }
     (ind as i32, lf)
-  }    
+  }
 }
 
 fn pure_pursuit_steer_control(_state: State, _trajectory: &mut TargetCourse, pind: i32)
