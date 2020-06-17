@@ -11,50 +11,50 @@ use plotlib::style::{PointMarker, PointStyle};
 
 use rand::distributions::{Normal, Distribution};
 
-fn motion_model(x: nalgebra::Vector4<f64>, _u: nalgebra::Vector2<f64>, dt: f64)
+fn motion_model(x: nalgebra::Vector4<f64>, u: nalgebra::Vector2<f64>, dt: f64)
 -> nalgebra::Vector4<f64>
 {
-    let _yaw = x[2];
-    let _f = nalgebra::Matrix4::new(
+    let yaw = x[2];
+    let f = nalgebra::Matrix4::new(
         1., 0., 0., 0.,
         0., 1., 0., 0.,
         0., 0., 1., 0.,
         0., 0., 0., 1.);
-    let _b = nalgebra::Matrix4x2::new(
-        dt * (_yaw).cos(), 0.,
-        dt * (_yaw).sin(), 0.,
+    let b = nalgebra::Matrix4x2::new(
+        dt * (yaw).cos(), 0.,
+        dt * (yaw).sin(), 0.,
         0., dt,
         1., 0.);
-    _f * x + _b * _u
+    f * x + b * u
 }
 
 fn jacob_f(x: nalgebra::Vector4<f64>, _u: nalgebra::Vector2<f64>, dt: f64) -> nalgebra::Matrix4<f64>
 {
-    let _yaw = x[2];
-    let _v = _u[0];
-    let _jf = nalgebra::Matrix4::new(
-        1., 0., -dt * _v * (_yaw).sin(), dt * (_yaw).cos(),
-        0., 1., dt * _v * (_yaw).cos(), dt * (_yaw).sin(),
+    let yaw = x[2];
+    let v = _u[0];
+    let jf = nalgebra::Matrix4::new(
+        1., 0., -dt * v * (yaw).sin(), dt * (yaw).cos(),
+        0., 1., dt * v * (yaw).cos(), dt * (yaw).sin(),
         0., 0., 1., 0.,
         0., 0., 0., 1.);
-    _jf
+    jf
 }
 
 
 fn observation_model(x: nalgebra::Vector4<f64>) -> nalgebra::Vector2<f64>
 {
-    let _h = nalgebra::Matrix2x4::new(
+    let h = nalgebra::Matrix2x4::new(
         1., 0., 0., 0.,
         0., 1., 0., 0.);
-    _h * x
+    h * x
 }
 
 fn jacob_h() -> nalgebra::Matrix2x4<f64>
 {
-    let _jh = nalgebra::Matrix2x4::new(
+    let jh = nalgebra::Matrix2x4::new(
         1., 0., 0., 0.,
         0., 1., 0., 0.);
-    _jh
+    jh
 }
 
 
