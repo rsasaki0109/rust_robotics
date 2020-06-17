@@ -88,7 +88,7 @@ fn calc_target_index(c: &Vec<(f64, f64)>, state: &State) -> (usize, f64){
     let error_front_axle = - (state.yaw + 0.5 * std::f64::consts::PI).cos() * diff_x.0 - 
         (state.yaw + 0.5 * std::f64::consts::PI).sin() * diff_x.1;
     (ind_min, error_front_axle)
-  }
+}
 
 fn main() {
     let k = 0.5; // control gain
@@ -147,7 +147,7 @@ fn main() {
     let s1: Plot = Plot::new(states).line_style(
         LineStyle::new() 
             .colour("#35C788"),
-      );
+    );
 
     let v = ContinuousView::new()
         .add(s0)
@@ -157,5 +157,5 @@ fn main() {
         .x_label("x [m]")
         .y_label("y [m]");
 
-        Page::single(&v).save("./img/stanley_control.svg").unwrap();
+    Page::single(&v).save("./img/stanley_control.svg").unwrap();
 }
