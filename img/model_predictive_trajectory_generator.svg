@@ -1,0 +1,65 @@
+<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(72, 364)">
+<g>
+<g>
+<path d="M0,-85 L0,-85 L8.008213,-85 L16.016426,-85 L24.02464,-85.00202 L32.032852,-85.00837 L40.041054,-85.02161 L48.04924,-85.0446 L56.05738,-85.08046 L64.065445,-85.13261 L72.07337,-85.204704 L80.08107,-85.30072 L88.08843,-85.42489 L96.09528,-85.58171 L104.10141,-85.77598 L112.10652,-86.012764 L120.11025,-86.29739 L128.11215,-86.63549 L136.11162,-87.03295 L144.10797,-87.49594 L152.10034,-88.03089 L160.08769,-88.64452 L168.06882,-89.34382 L176.04225,-90.13602 L184.00627,-91.02861 L191.95891,-92.02937 L199.89783,-93.1463 L207.82036,-94.387634 L215.72343,-95.761826 L223.60356,-97.27756 L231.45674,-98.94369 L239.27847,-100.76924 L247.06363,-102.76341 L254.80652,-104.93549 L262.5007,-107.29485 L270.13904,-109.850914 L277.71353,-112.61309 L285.2154,-115.59072 L292.6348,-118.79303 L299.961,-122.229034 L307.1822,-125.90748 L314.2854,-129.83672 L321.25647,-134.02463 L328.07996,-138.47844 L334.73914,-143.20468 L341.2159,-148.20892 L347.4907,-153.4957 L353.5425,-159.0682 L359.34882,-164.92819 L364.88562,-171.07559 L370.12735,-177.50838 L375.04703,-184.2222 L379.61615,-191.21007 L383.805,-198.46198 L387.58252,-205.9646 L390.91666,-213.7008 L393.77463,-221.64925 L396.12302,-229.78389 L397.9284,-238.07358 L399.15762,-246.48146 L399.77856,-254.96458" fill="none" stroke="#35C788" stroke-linejoin="round" stroke-width="2"/>
+</g>
+</g>
+<g>
+<g>
+<line stroke="black" stroke-width="1" x1="0" x2="0" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="160" x2="160" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="320" x2="320" y1="0" y2="10"/>
+<line stroke="black" stroke-width="1" x1="480" x2="480" y1="0" y2="10"/>
+</g>
+<line stroke="black" stroke-width="1" x1="0" x2="480" y1="0" y2="0"/>
+<g>
+<text font-size="12" text-anchor="middle" x="0" y="20">
+0
+</text>
+<text font-size="12" text-anchor="middle" x="160" y="20">
+2
+</text>
+<text font-size="12" text-anchor="middle" x="320" y="20">
+4
+</text>
+<text font-size="12" text-anchor="middle" x="480" y="20">
+6
+</text>
+</g>
+<text font-size="12" text-anchor="middle" x="240" y="30">
+x [m]
+</text>
+</g>
+<g>
+<g>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="0" y2="0"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-85" y2="-85"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-170" y2="-170"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-255" y2="-255"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-340" y2="-340"/>
+</g>
+<line stroke="black" stroke-width="1" x1="0" x2="0" y1="0" y2="-340"/>
+<g>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="0">
+-1
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-85">
+0
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-170">
+1
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-255">
+2
+</text>
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-340">
+3
+</text>
+</g>
+<text font-size="12" text-anchor="middle" transform="rotate(-90 -24 -170)" x="-24" y="-182">
+y [m]
+</text>
+</g>
+</g>
+</svg>
