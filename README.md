@@ -34,7 +34,7 @@ cargo run --bin ekf
       * [Move to Pose](#move-to-pose)
       * [Pure Pursuit](#pure-pursuit)
       * [Stanley Control](#stanly-control)
-      * Linear–quadratic regulator (LQR) speed and steering control
+      * [LQR steer control](#lqr-steer-control)
       * Nonlinear Model predictive control with C-GMRES
 
 # Localization
@@ -114,9 +114,6 @@ Green: Path, Red: Start and Goal
 cargo run --bin move_to_pose
 ```
 
-
-
-
 ## Pure Pursuit
 
 <img src="./img/pure_pursuit.svg" width="640px">  
@@ -144,7 +141,19 @@ cargo run --bin stanley_control
 ```
 
 
-## Linear–quadratic regulator (LQR) speed and steering control
+## LQR steer control
+
+<img src="./img/lqr_steer_control.svg" width="640px">  
+
+Brack: Planned path, Green: Tracked path 
+
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/lqr_steer_controller.rs)
+
+
+```
+cargo run --bin lqr_steer_control
+```
+
 ## Nonlinear Model predictive control with C-GMRES
 
 
