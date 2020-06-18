@@ -66,7 +66,7 @@ impl TargetCourse {
       lfc: lfc
     }
   }
-  fn search_target_index(&mut self, _state: State) -> (i32, f64){
+  fn search_target_index(&mut self, state: State) -> (i32, f64){
     let mut ind = 0;
     if self.old_nearest_point_index == -1 {
       let mut d_min = std::f64::MAX;
@@ -82,10 +82,10 @@ impl TargetCourse {
       ind = ind_min;
     } else {
       ind = self.old_nearest_point_index as usize;
-      let mut distance_this_index = _state.calc_distance(self.cx[ind],
+      let mut distance_this_index = state.calc_distance(self.cx[ind],
         self.cy[ind]);
       loop {
-        let distance_next_index = _state.calc_distance(self.cx[ind + 1],
+        let distance_next_index = state.calc_distance(self.cx[ind + 1],
           self.cy[ind + 1]);
         if distance_this_index < distance_next_index {
           break
@@ -99,8 +99,8 @@ impl TargetCourse {
       }
       self.old_nearest_point_index = ind as i32;
     }
-    let lf = self.k * _state.v + self.lfc;
-    while lf > _state.calc_distance(self.cx[ind], self.cy[ind]) {
+    let lf = self.k * state.v + self.lfc;
+    while lf > state.calc_distance(self.cx[ind], self.cy[ind]) {
       if ind + 1 > self.cx.len() {
         break
       }
@@ -110,10 +110,10 @@ impl TargetCourse {
   }
 }
 
-fn pure_pursuit_steer_control(_state: State, _trajectory: &mut TargetCourse, pind: i32)
+fn pure_pursuit_steer_control(state: State, trajectory: &mut TargetCourse, pind: i32)
 -> (f64, i32)
 {
-    let pair = _trajectory.search_target_index(_state);
+    let pair = trajectory.search_target_index(state);
     let mut ind = pair.0;
     let lf = pair.1;
     if pind > ind {
@@ -122,39 +122,39 @@ fn pure_pursuit_steer_control(_state: State, _trajectory: &mut TargetCourse, pin
     
     let tx: f64;
     let ty: f64;
-    let traj_len = _trajectory.cx.len();
+    let traj_len = trajectory.cx.len();
     if ind < traj_len as i32 {
-      tx = _trajectory.cx[ind as usize];
-      ty = _trajectory.cy[ind as usize];
+      tx = trajectory.cx[ind as usize];
+      ty = trajectory.cy[ind as usize];
     } else {
-      tx = _trajectory.cx[traj_len - 1];
-      ty = _trajectory.cy[traj_len - 1];
+      tx = trajectory.cx[traj_len - 1];
+      ty = trajectory.cy[traj_len - 1];
       ind = traj_len as i32 - 1
     }
 
-    let alpha = (ty - _state.rear_y).atan2(tx - _state.rear_x) - _state.yaw;
-    let delta = (2.0 * _state.wb * alpha.sin() / lf).atan2(1.0);
+    let alpha = (ty - state.rear_y).atan2(tx - state.rear_x) - state.yaw;
+    let delta = (2.0 * state.wb * alpha.sin() / lf).atan2(1.0);
     (delta, ind) 
 }
 
 fn main() {
     // Parameters
-    let _k = 0.1;  // look forward gain
-    let _lfc = 2.0; // [m] look-ahead distance
-    let _kp = 1.0;  // speed proportional gain
-    let _dt = 0.1;  // [s] time tick
+    let k = 0.1;  // look forward gain
+    let lfc = 2.0; // [m] look-ahead distance
+    let kp = 1.0;  // speed proportional gain
+    let dt = 0.1;  // [s] time tick
     let wb = 2.9;  // [m] wheel base of vehicle
 
-    let _target_speed = 10.0 / 3.6; // [m/s]
-    let _t_max = 100.0;  // max simulation time
+    let target_speed = 10.0 / 3.6; // [m/s]
+    let t_max = 100.0;  // max simulation time
 
     // target course
     let mut cx = Vec::<f64>::new();
     let mut cy = Vec::<f64>::new();
     let mut c = vec![(0., 0.)];
     let dx = 0.5;
-    let _length = (50. /dx) as usize;
-    for i in 0.._length - 1 {
+    let length = (50. /dx) as usize;
+    for i in 0..length - 1 {
       cx.push(0.5 * i as f64);
       cy.push((i as f64)/2. * (i as f64/5.).sin());
       c.push((cx[i],cy[i]));
@@ -164,18 +164,18 @@ fn main() {
     let init_x = (0., -3., 0., 0.); // [x, y, yaw, v] 
     let mut state: State = State::new(init_x, wb);
     let mut states = vec![(state.x, state.y)];
-    let mut _time = 0.;
-    let mut target_course = TargetCourse::new((cx, cy), _k, _lfc);
+    let mut time = 0.;
+    let mut target_course = TargetCourse::new((cx, cy), k, lfc);
     let pair = target_course.search_target_index(state);
     let target_ind = pair.0;
 
-    while _t_max > _time {
-      let ai = proportional_control(_target_speed, state.v, _kp);
+    while t_max > time {
+      let ai = proportional_control(target_speed, state.v, kp);
       let tmp = pure_pursuit_steer_control(state, &mut target_course, target_ind);
       // &mut is a variable reference
       let di = tmp.0;
-      state.update(ai, di, _dt);
-      _time += _dt;
+      state.update(ai, di, dt);
+      time += dt;
 
       states.push((state.x, state.y));
     }
