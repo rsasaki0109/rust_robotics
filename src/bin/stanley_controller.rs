@@ -121,8 +121,8 @@ fn main() {
     let max_simulation_time = 100.0;
 
 
-    let init_x = (0., 5., 20./180. * std::f64::consts::PI, 0.); // [x, y, yaw, v] 
-    let mut state: State = State::new(init_x, l);
+    let end_x = (0., 5., 20./180. * std::f64::consts::PI, 0.); // [x, y, yaw, v] 
+    let mut state: State = State::new(end_x, l);
     let mut states = vec![(state.x, state.y)];
     let last_idx = c.len() - 1;
     let mut time = 0.;

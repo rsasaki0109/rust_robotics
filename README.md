@@ -23,9 +23,10 @@ cargo run --bin ekf
       * Iterative Closest Point 
       * FastSLAM 1.0
    * [Path Planning](#path-planning)
-      * [Begier Path](#bezier-path)
+      * [Bezier Path](#bezier-path)
       * [Cubic Spline](#cubic-spline)
       * [Dynamic Window Approach](#dynamic-window-approach)
+      * [Model Predictive Trajectory Generator](#model-predictive-trajectory-generator)
       * Dijkstra algorithm
       * Potential Field algorithm
       * State Lattice Planner
@@ -97,6 +98,19 @@ Brack: Obstacles, Green: Trajectry, Yellow: Predected trajectry
 cargo run --bin dwa
 ```
 
+## Model Predictive Trajectory Generator
+
+<img src="./img/model_predictive_trajectory_generator.svg" width="640px">  
+
+Green: Path 
+
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/model_predictive_trajectory_generator.rs)
+
+
+```
+cargo run --bin model_predictive_trajectory_generator
+```
+
 ## Dijkstra algorithm
 ## Potential Field algorithm
 ## State Lattice Planner
@@ -147,7 +161,7 @@ cargo run --bin stanley_control
 
 Brack: Planned path, Green: Tracked path 
 
-- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/lqr_steer_controller.rs)
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/lqr_steer_control.rs)
 
 
 ```
