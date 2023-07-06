@@ -1,0 +1,26 @@
+{
+	"name": "RustRobotics",
+	"image": "mcr.microsoft.com/devcontainers/rust:0-1-bullseye",
+    "features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"username": "vscode",
+			"userUid": "1000",
+			"userGid": "1000"
+		},
+		// For default password, see https://github.com/microsoft/vscode-dev-containers/blob/main/script-library/docs/desktop-lite.md
+		"ghcr.io/devcontainers/features/desktop-lite:1": {
+			"webPort": 6080
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"settings": {},
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"streetsidesoftware.code-spell-checker",
+				"vitaliymaz.vscode-svg-previewer"
+			]
+		}
+	},
+	"remoteUser": "vscode"
+}
