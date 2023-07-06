@@ -16,7 +16,6 @@
 		"vscode": {
 			"settings": {},
 			"extensions": [
-				"rust-lang.rust-analyzer",
 				"streetsidesoftware.code-spell-checker",
 				"vitaliymaz.vscode-svg-previewer"
 			]
