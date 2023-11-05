@@ -1,5 +1,5 @@
 [package]
-name = "RustRobotics"
+name = "rust_robotics"
 version = "0.1.0"
 authors = ["ryohei sasaki <rsasaki0109@gmail.com>"]
 edition = "2018"
