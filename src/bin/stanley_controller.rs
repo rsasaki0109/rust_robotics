@@ -7,7 +7,7 @@
 //     - [Stanley: The robot that won the DARPA grand challenge](http://isl.ecst.csuchico.edu/DOCS/darpa2005/DARPA%202005%20Stanley.pdf)
 //    - [Autonomous Automobile Path Tracking](https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomous_Automobile_Path_Tracking.pdf)
 
-use RustRobotics::cubic_spline_planner;
+use rust_robotics::cubic_spline_planner;
 
 use plotlib::page::Page;
 use plotlib::repr::Plot;
