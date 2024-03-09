@@ -20,7 +20,7 @@ cargo run --bin ekf
       * [Extended kalman filter localization](#extended-kalman-filter-localization)
       * Particle filter localization
    * [SLAM](#slam)
-      * Iterative Closest Point 
+      * Iterative Closest Point
       * FastSLAM 1.0
    * [Path Planning](#path-planning)
       * [Bezier Path](#bezier-path)
@@ -41,7 +41,7 @@ cargo run --bin ekf
 # Localization
 ## Extended Kalman Filter Localization
 
-<img src="./img/ekf.svg" width="640px"> 
+<img src="./img/ekf.svg" width="640px">
 
 
 Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
@@ -62,7 +62,7 @@ cargo run --bin ekf
 # Path Planning
 ## Bezier Path
 
-<img src="./img/bezier_path.svg" width="640px"> 
+<img src="./img/bezier_path.svg" width="640px">
 
 Brack:Control points, Green: Path, Red: Start and Goal
 
@@ -75,7 +75,7 @@ cargo run --bin bezier_path
 ## Cubic Spline
 
 
-<img src="./img/csp.svg" width="640px">  
+<img src="./img/csp.svg" width="640px">
 
 Brack:Control points, Green: Path
 
@@ -88,7 +88,7 @@ cargo run --bin csp
 
 ## Dynamic Window Approach
 
-<img src="./img/dwa.svg" width="640px">  
+<img src="./img/dwa.svg" width="640px">
 
 Brack: Obstacles, Green: Trajectry, Yellow: Predected trajectry
 
@@ -100,9 +100,9 @@ cargo run --bin dwa
 
 ## Model Predictive Trajectory Generator
 
-<img src="./img/model_predictive_trajectory_generator.svg" width="640px">  
+<img src="./img/model_predictive_trajectory_generator.svg" width="640px">
 
-Green: Path 
+Green: Path
 
 - [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/model_predictive_trajectory_generator.rs)
 
@@ -117,8 +117,8 @@ cargo run --bin model_predictive_trajectory_generator
 ## Rapidly-Exploring Random Trees
 
 # Path Tracking
-## Move to Pose 
-<img src="./img/move_to_pose.svg" width="640px">  
+## Move to Pose
+<img src="./img/move_to_pose.svg" width="640px">
 
 Green: Path, Red: Start and Goal
 
@@ -130,9 +130,9 @@ cargo run --bin move_to_pose
 
 ## Pure Pursuit
 
-<img src="./img/pure_pursuit.svg" width="640px">  
+<img src="./img/pure_pursuit.svg" width="640px">
 
-Brack: Planned path, Green: Tracked path 
+Brack: Planned path, Green: Tracked path
 
 - [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/pure_pursuit.rs)
 
@@ -141,25 +141,25 @@ Brack: Planned path, Green: Tracked path
 cargo run --bin pure_pursuit
 ```
 
-## Stanly Control 
+## Stanly Control
 
-<img src="./img/stanley_control.svg" width="640px">  
+<img src="./img/stanley_control.svg" width="640px">
 
-Brack: Planned path, Green: Tracked path 
+Brack: Planned path, Green: Tracked path
 
 - [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/stanley_controller.rs)
 
 
 ```
-cargo run --bin stanley_control
+cargo run --bin stanley_controller
 ```
 
 
 ## LQR steer control
 
-<img src="./img/lqr_steer_control.svg" width="640px">  
+<img src="./img/lqr_steer_control.svg" width="640px">
 
-Brack: Planned path, Green: Tracked path 
+Brack: Planned path, Green: Tracked path
 
 - [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/lqr_steer_control.rs)
 
