@@ -46,7 +46,7 @@ x [m]
 </g>
 <g>
 <g>
-<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="0" y2="0"/>
+<line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-0" y2="-0"/>
 <line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-85" y2="-85"/>
 <line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-170" y2="-170"/>
 <line stroke="black" stroke-width="1" x1="0" x2="-10" y1="-255" y2="-255"/>
@@ -54,7 +54,7 @@ x [m]
 </g>
 <line stroke="black" stroke-width="1" x1="0" x2="0" y1="0" y2="-340"/>
 <g>
-<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="0">
+<text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-0">
 -40
 </text>
 <text dominant-baseline="middle" font-size="12" text-anchor="end" x="-15" y="-85">
