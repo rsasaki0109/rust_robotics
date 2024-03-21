@@ -27,7 +27,7 @@ cargo run --bin ekf
       * [Cubic Spline](#cubic-spline)
       * [Dynamic Window Approach](#dynamic-window-approach)
       * [Model Predictive Trajectory Generator](#model-predictive-trajectory-generator)
-      * Dijkstra algorithm
+      * [Dijkstra algorithm](#dijkstra-algorithm)
       * Potential Field algorithm
       * State Lattice Planner
       * Rapidly-Exploring Random Trees (RRT)
@@ -112,6 +112,11 @@ cargo run --bin model_predictive_trajectory_generator
 ```
 
 ## Dijkstra algorithm
+
+<img src="./media/dijkstra-motion-planner.gif" width="640px">
+
+- [src](./src/bin/dijkstra.rs)
+
 ## Potential Field algorithm
 ## State Lattice Planner
 ## Rapidly-Exploring Random Trees

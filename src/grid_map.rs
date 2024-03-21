@@ -4,8 +4,8 @@
 use std::ops::Deref;
 extern crate nalgebra as na;
 
-pub struct Map{
-    _grid: na::DMatrix<i32>
+pub struct Map {
+    grid: na::DMatrix<i32>,
 }
 
 impl Map {
@@ -13,8 +13,8 @@ impl Map {
         if scale < 1 {
             return Err("scale must be >= 1");
         }
-        let _grid = original_matrix.kronecker(&na::DMatrix::<i32>::repeat(scale, scale, 1));
-        Ok(Self {_grid})
+        let grid = original_matrix.kronecker(&na::DMatrix::<i32>::repeat(scale, scale, 1));
+        Ok(Self { grid })
     }
 }
 
@@ -22,6 +22,6 @@ impl Deref for Map {
     type Target = na::DMatrix<i32>;
 
     fn deref(&self) -> &Self::Target {
-        &self._grid
+        &self.grid
     }
 }
