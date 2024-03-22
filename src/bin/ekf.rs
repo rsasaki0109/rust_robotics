@@ -9,7 +9,9 @@ use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;
 use plotlib::style::{PointMarker, PointStyle};
 
-use rand::distributions::{Normal, Distribution};
+
+use rand_distr::{Normal, Distribution};
+//use rand::distributions::{Normal, Distribution};
 
 fn motion_model(x: nalgebra::Vector4<f64>, u: nalgebra::Vector2<f64>, dt: f64)
 -> nalgebra::Vector4<f64>
@@ -75,11 +77,11 @@ fn ekf_estimation(
     let j_h = jacob_h();
     let z_pred = observation_model(x_pred);
     let y = z - z_pred;
-    let s = j_h * p_pred * j_h.transpose() + r; 
+    let s = j_h * p_pred * j_h.transpose() + r;
     let k = p_pred * j_h.transpose() * s.try_inverse().unwrap();
     let new_x_est = x_pred + k * y;
     let new_p_est = (nalgebra::Matrix4::identity() - k * j_h) * p_pred;
-    
+
     (new_x_est , new_p_est)
 }
 
@@ -100,7 +102,7 @@ fn main() {
         0., (30.0/180.0 * std::f64::consts::PI).powi(2i32));
     let r_sim = nalgebra::Matrix2::<f64>::identity();
 
-    
+
     let u = nalgebra::Vector2::new(1.0, 0.1);
     let mut ud = nalgebra::Vector2::new(0., 0.);
     let mut x_dr = nalgebra::Vector4::new(0., 0. , 0., 0.);
@@ -111,13 +113,13 @@ fn main() {
 
     let mut z = nalgebra::Vector2::new(0., 0.);
 
-    let normal = Normal::new(0., 1.); // mean 0., standard deviation 1.
+    let normal = Normal::new(0., 1.).unwrap(); // mean 0., standard deviation 1.
 
     let mut hz = vec![(0., 0.)];
     let mut htrue  = vec![(0., 0.)];
     let mut hdr  = vec![(0., 0.)];
     let mut hest  = vec![(0., 0.)];
-    
+
 
     while time < sim_time {
         time += dt;
@@ -138,30 +140,30 @@ fn main() {
         htrue.push((x_true[0], x_true[1]));
         hdr.push((x_dr[0], x_dr[1]));
         hest.push((x_est[0], x_est[1]));
-        
+
     }
-    
+
 
     let s0: Plot = Plot::new(hz).point_style(
-        PointStyle::new() 
+        PointStyle::new()
             .colour("#DD3355")
             .size(3.),
-    ); 
+    );
     let s1: Plot = Plot::new(htrue).point_style(
         PointStyle::new()
             .colour("#0000ff")
             .size(3.),
-    ); 
+    );
     let s2: Plot = Plot::new(hdr).point_style(
-        PointStyle::new() 
+        PointStyle::new()
             .colour("#FFFF00")
             .size(3.),
-    ); 
+    );
     let s3: Plot = Plot::new(hest).point_style(
-        PointStyle::new() 
+        PointStyle::new()
             .colour("#35C788")
             .size(3.),
-    ); 
+    );
 
     let v = ContinuousView::new()
         .add(s0)
