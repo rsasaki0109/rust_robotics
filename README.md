@@ -19,6 +19,8 @@ cargo run --bin ekf
    * [Localization](#localization)
       * [Extended kalman filter localization](#extended-kalman-filter-localization)
       * Particle filter localization
+   * [Mapping](#mapping)
+      * NDT Map
    * [SLAM](#slam)
       * Iterative Closest Point
       * FastSLAM 1.0
@@ -53,6 +55,17 @@ cargo run --bin ekf
 ```
 
 ## Particle Filter Localization
+
+# Mapping
+## Ndt Map
+
+<img src="./img/ndt.svg" width="640px">
+
+- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/ndt.rs)
+
+```
+cargo run --bin ndt
+```
 
 # SLAM
 ## Iterative Closest Point
