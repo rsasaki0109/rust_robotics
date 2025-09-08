@@ -11,6 +11,8 @@ pub mod rrt_star;
 pub mod potential_field;
 pub mod informed_rrt_star;
 pub mod quintic_polynomials;
+pub mod reeds_shepp_path;
+pub mod bezier_path_planning;
 
 pub use dijkstra::*;
 pub use a_star::*;
