@@ -4,6 +4,7 @@
 // author: Atsushi Sakai(@Atsushi_twi)
 //         Ryohei Sasaki(@rsasaki0109)
 
+use crate::path_planning::cubic_spline_planner;
 use plotlib::page::Page;
 use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;

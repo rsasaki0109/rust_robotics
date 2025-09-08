@@ -2,16 +2,12 @@
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 
-extern crate nalgebra;
-
+use nalgebra::{Vector4, Vector2, Matrix4, Matrix2x4, Matrix4x2, Matrix2};
+use rand_distr::{Normal, Distribution};
 use plotlib::page::Page;
 use plotlib::repr::Plot;
 use plotlib::view::ContinuousView;
 use plotlib::style::{PointMarker, PointStyle};
-
-
-use rand_distr::{Normal, Distribution};
-//use rand::distributions::{Normal, Distribution};
 
 fn motion_model(x: nalgebra::Vector4<f64>, u: nalgebra::Vector2<f64>, dt: f64)
 -> nalgebra::Vector4<f64>

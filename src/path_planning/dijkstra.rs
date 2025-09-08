@@ -14,7 +14,7 @@ use std::collections::BinaryHeap;
 
 use na::DMatrix;
 extern crate nalgebra as na;
-use rust_robotics::grid_map;
+use crate::utils::grid_map;
 
 // The neighbors function returns adjacent cell coordinates for a given cell in a grid
 // while excluding out-of-bound and the cell itself.
