@@ -14,3 +14,35 @@ rand_distr = "0.4"
 itertools = "0.13"
 gnuplot = "0.0.43"
 ordered-float = "4.2"
+
+[[bin]]
+name = "a_star"
+path = "src/path_planning/a_star.rs"
+
+[[bin]]
+name = "rrt"
+path = "src/path_planning/rrt.rs"
+
+[[bin]]
+name = "particle_filter"
+path = "src/localization/particle_filter.rs"
+
+[[bin]]
+name = "rrt_star"
+path = "src/path_planning/rrt_star.rs"
+
+[[bin]]
+name = "potential_field"
+path = "src/path_planning/potential_field.rs"
+
+[[bin]]
+name = "informed_rrt_star"
+path = "src/path_planning/informed_rrt_star.rs"
+
+[[bin]]
+name = "quintic_polynomials"
+path = "src/path_planning/quintic_polynomials.rs"
+
+[[bin]]
+name = "cubic_spline"
+path = "src/path_planning/cubic_spline_planner.rs"
