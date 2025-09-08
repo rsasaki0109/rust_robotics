@@ -1,3 +1,5 @@
 // Arm Navigation algorithms module
 
-// TODO: Add arm navigation implementations
+pub mod two_joint_arm_control;
+
+pub use two_joint_arm_control::*;
