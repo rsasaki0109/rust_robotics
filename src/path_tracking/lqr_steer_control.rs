@@ -6,7 +6,7 @@
 //
 extern crate nalgebra;
 
-use rust_robotics::cubic_spline_planner;
+use crate::path_planning::cubic_spline_planner;
 
 use plotlib::page::Page;
 use plotlib::repr::Plot;
