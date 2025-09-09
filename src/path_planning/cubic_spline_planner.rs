@@ -7,6 +7,8 @@
 //         Ryohei Sasaki(@rsasaki0109)
 
 extern crate nalgebra as na;
+use gnuplot::{Figure, Caption, Color, AxesCommon};
+use std::f64::consts::PI;
 
 #[derive(Debug, Clone)] 
 struct Spline {
@@ -216,4 +218,117 @@ pub fn calc_spline_course(x: Vec<f64>, y: Vec<f64>, ds: f64) ->
         s.push(is);
     }
     (r, ryaw, rk, s)
+}
+
+pub struct CubicSplinePlanner {
+    pub path: Vec<(f64, f64)>,
+    pub yaw: Vec<f64>,
+    pub curvature: Vec<f64>,
+    pub s: Vec<f64>,
+}
+
+impl CubicSplinePlanner {
+    pub fn new() -> Self {
+        CubicSplinePlanner {
+            path: Vec::new(),
+            yaw: Vec::new(),
+            curvature: Vec::new(),
+            s: Vec::new(),
+        }
+    }
+
+    pub fn planning(&mut self, waypoints_x: Vec<f64>, waypoints_y: Vec<f64>, ds: f64) -> bool {
+        if waypoints_x.len() != waypoints_y.len() || waypoints_x.len() < 2 {
+            println!("Invalid waypoints: need at least 2 points and x,y must have same length");
+            return false;
+        }
+
+        let (path, yaw, curvature, s) = calc_spline_course(waypoints_x, waypoints_y, ds);
+        
+        self.path = path;
+        self.yaw = yaw;
+        self.curvature = curvature;
+        self.s = s;
+
+        println!("Cubic spline path generated with {} points", self.path.len());
+        true
+    }
+
+    pub fn visualize_path(&self, waypoints_x: &[f64], waypoints_y: &[f64]) {
+        if self.path.is_empty() {
+            println!("No path to visualize");
+            return;
+        }
+
+        let mut fg = Figure::new();
+        let axes = fg.axes2d();
+
+        // Plot waypoints
+        axes.points(waypoints_x, waypoints_y, &[Caption("Waypoints"), Color("red")]);
+
+        // Plot spline path
+        let path_x: Vec<f64> = self.path.iter().map(|p| p.0).collect();
+        let path_y: Vec<f64> = self.path.iter().map(|p| p.1).collect();
+        axes.lines(&path_x, &path_y, &[Caption("Cubic Spline Path"), Color("blue")]);
+
+        axes.set_title("Cubic Spline Path Planning", &[])
+            .set_x_label("X [m]", &[])
+            .set_y_label("Y [m]", &[])
+            .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
+
+        // Save to file
+        let output_path = "img/path_planning/cubic_spline_result.png";
+        fg.save_to_png(output_path, 800, 600).unwrap();
+        println!("Plot saved to: {}", output_path);
+
+        fg.show().unwrap();
+    }
+
+    pub fn visualize_profiles(&self) {
+        if self.s.is_empty() {
+            return;
+        }
+
+        // Yaw profile
+        let mut fg = Figure::new();
+        let axes = fg.axes2d();
+        let yaw_deg: Vec<f64> = self.yaw.iter().map(|y| y * 180.0 / PI).collect();
+        axes.lines(&self.s, &yaw_deg, &[Caption("Yaw"), Color("red")]);
+        axes.set_title("Yaw Profile", &[])
+            .set_x_label("Distance [m]", &[])
+            .set_y_label("Yaw [deg]", &[]);
+        fg.save_to_png("img/path_planning/cubic_spline_yaw_profile.png", 800, 600).unwrap();
+
+        // Curvature profile
+        let mut fg = Figure::new();
+        let axes = fg.axes2d();
+        axes.lines(&self.s, &self.curvature, &[Caption("Curvature"), Color("red")]);
+        axes.set_title("Curvature Profile", &[])
+            .set_x_label("Distance [m]", &[])
+            .set_y_label("Curvature [1/m]", &[]);
+        fg.save_to_png("img/path_planning/cubic_spline_curvature_profile.png", 800, 600).unwrap();
+
+        println!("Profile plots saved to img/path_planning/");
+    }
+}
+
+fn main() {
+    println!("Cubic Spline Path Planning start!!");
+
+    // Define waypoints
+    let waypoints_x = vec![0.0, 10.0, 20.5, 30.0, 40.5, 50.0];
+    let waypoints_y = vec![0.0, -6.0, 5.0, 6.5, 0.0, -4.0];
+    let ds = 0.1; // distance step [m]
+
+    let mut planner = CubicSplinePlanner::new();
+
+    if planner.planning(waypoints_x.clone(), waypoints_y.clone(), ds) {
+        println!("Path generated successfully!");
+        planner.visualize_path(&waypoints_x, &waypoints_y);
+        planner.visualize_profiles();
+    } else {
+        println!("Failed to generate path");
+    }
+
+    println!("Cubic Spline Path Planning finish!!");
 }
