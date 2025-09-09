@@ -6,4 +6,5 @@ pub mod inverted_pendulum;
 pub mod slam;
 pub mod arm_navigation;
 pub mod aerial_navigation;
+pub mod mission_planning;
 pub mod utils;
