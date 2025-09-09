@@ -30,7 +30,6 @@ cargo run --bin two_joint_arm_control
       * FastSLAM 1.0
    * [Path Planning](#path-planning)
       * [A* Algorithm](#a-algorithm)
-      * [Bezier Path](#bezier-path)
       * [Bezier Path Planning](#bezier-path-planning)
       * [Cubic Spline](#cubic-spline)
       * [Dynamic Window Approach](#dynamic-window-approach)
@@ -51,7 +50,6 @@ cargo run --bin two_joint_arm_control
       * Nonlinear Model predictive control with C-GMRES
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
-      * [MPC Control](#mpc-control)
    * [Arm Navigation](#arm-navigation)
       * [Two Joint Arm Control](#two-joint-arm-control)
 
@@ -133,18 +131,6 @@ Blue: Start, Red: Goal, Green: Path, Gray: Obstacles
 
 ```
 cargo run --bin a_star
-```
-
-## Bezier Path
-
-<img src="./img/path_planning/bezier_path.svg" width="640px">
-
-Black: Control points, Green: Path, Red: Start and Goal
-
-- [src](./src/path_planning/bezier_path.rs)
-
-```
-cargo run --bin bezier_path
 ```
 
 ## Bezier Path Planning
@@ -343,18 +329,6 @@ Blue: Position, Red: Angle
 
 ```
 cargo run --bin inverted_pendulum_lqr
-```
-
-## MPC Control
-
-<img src="./img/inverted_pendulum/mpc/mpc_summary.png" width="640px">
-
-Blue: Position, Red: Angle with MPC prediction
-
-- [src](./src/inverted_pendulum/mpc_control.rs)
-
-```
-cargo run --bin inverted_pendulum_mpc
 ```
 
 # Arm Navigation
