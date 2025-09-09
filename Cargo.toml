@@ -46,3 +46,39 @@ path = "src/path_planning/quintic_polynomials.rs"
 [[bin]]
 name = "cubic_spline"
 path = "src/path_planning/cubic_spline_planner.rs"
+
+[[bin]]
+name = "reeds_shepp"
+path = "src/path_planning/reeds_shepp_path.rs"
+
+[[bin]]
+name = "bezier_planning"
+path = "src/path_planning/bezier_path_planning.rs"
+
+[[bin]]
+name = "lqr_steer_control"
+path = "src/path_tracking/lqr_steer_control.rs"
+
+[[bin]]
+name = "pure_pursuit"
+path = "src/path_tracking/pure_pursuit.rs"
+
+[[bin]]
+name = "stanley_controller"
+path = "src/path_tracking/stanley_controller.rs"
+
+[[bin]]
+name = "move_to_pose"
+path = "src/path_tracking/move_to_pose.rs"
+
+[[bin]]
+name = "inverted_pendulum_lqr"
+path = "src/inverted_pendulum/lqr_control.rs"
+
+[[bin]]
+name = "inverted_pendulum_mpc"
+path = "src/inverted_pendulum/mpc_control.rs"
+
+[[bin]]
+name = "two_joint_arm_control"
+path = "src/arm_navigation/two_joint_arm_control.rs"
