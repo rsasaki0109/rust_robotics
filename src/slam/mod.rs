@@ -1,3 +1,3 @@
 // SLAM algorithms module
 
-// TODO: Add SLAM implementations
+pub mod icp_matching;

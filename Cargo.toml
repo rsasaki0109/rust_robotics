@@ -82,3 +82,15 @@ path = "src/inverted_pendulum/mpc_control.rs"
 [[bin]]
 name = "two_joint_arm_control"
 path = "src/arm_navigation/two_joint_arm_control.rs"
+
+[[bin]]
+name = "icp_matching"
+path = "src/slam/icp_matching.rs"
+
+[[bin]]
+name = "state_machine"
+path = "src/mission_planning/state_machine.rs"
+
+[[bin]]
+name = "unscented_kalman_filter"
+path = "src/localization/unscented_kalman_filter.rs"
