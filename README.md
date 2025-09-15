@@ -32,6 +32,7 @@ cargo run --bin two_joint_arm_control
       * [A* Algorithm](#a-algorithm)
       * [Bezier Path Planning](#bezier-path-planning)
       * [Cubic Spline](#cubic-spline)
+      * [D* Lite](#d-lite)
       * [Dynamic Window Approach](#dynamic-window-approach)
       * [Dijkstra Algorithm](#dijkstra-algorithm)
       * [Informed RRT*](#informed-rrt)
@@ -56,7 +57,7 @@ cargo run --bin two_joint_arm_control
 # Localization
 ## Extended Kalman Filter Localization
 
-<img src="./img/ekf.svg" width="640px">
+<img src="./img/localization/ekf.svg" width="640px">
 
 
 Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
@@ -169,6 +170,20 @@ Black: Obstacles, Green: Trajectory, Yellow: Predicted trajectory
 cargo run --bin dwa
 ```
 
+## D* Lite
+
+<img src="./img/path_planning/d_star_lite_result.png" width="640">
+
+Blue: Start, Red: Goal, Green: Path, Black: Obstacles
+
+- [src](./src/path_planning/d_star_lite.rs)
+
+```bash
+cargo run --bin d_star_lite
+```
+
+D* Lite is an incremental heuristic search algorithm for path planning in dynamic environments. It's particularly efficient for replanning when the environment changes.
+
 ## Dijkstra Algorithm
 
 <img src="./media/dijkstra-motion-planner.gif" width="640px">
@@ -229,7 +244,7 @@ cargo run --bin quintic_polynomials
 
 ## Rapidly-Exploring Random Trees (RRT)
 
-<img src="./img/path_planning/rrt_result.png" width="640px">
+<img src="./img/path_planning/rrt_star_result.png" width="640px">
 
 Blue: Start, Red: Goal, Green: Path, Black: Tree
 
