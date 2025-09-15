@@ -48,6 +48,10 @@ name = "cubic_spline"
 path = "src/path_planning/cubic_spline_planner.rs"
 
 [[bin]]
+name = "d_star_lite"
+path = "src/path_planning/d_star_lite.rs"
+
+[[bin]]
 name = "reeds_shepp"
 path = "src/path_planning/reeds_shepp_path.rs"
 
