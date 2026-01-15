@@ -15,9 +15,12 @@ itertools = "0.13"
 gnuplot = "0.0.43"
 ordered-float = "4.2"
 
-[[bin]]
+# Examples (refactored)
+[[example]]
 name = "a_star"
-path = "src/path_planning/a_star.rs"
+path = "examples/path_planning/a_star.rs"
+
+# Legacy binaries (will be migrated to examples)
 
 [[bin]]
 name = "rrt"
@@ -77,11 +80,11 @@ path = "src/path_tracking/move_to_pose.rs"
 
 [[bin]]
 name = "inverted_pendulum_lqr"
-path = "src/inverted_pendulum/lqr_control.rs"
+path = "src/control/lqr_control.rs"
 
 [[bin]]
 name = "inverted_pendulum_mpc"
-path = "src/inverted_pendulum/mpc_control.rs"
+path = "src/control/mpc_control.rs"
 
 [[bin]]
 name = "two_joint_arm_control"

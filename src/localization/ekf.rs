@@ -1,175 +1,284 @@
-// Extended kalman filter (EKF) localization sample
-// author: Atsushi Sakai (@Atsushi_twi)
-//         Ryohei Sasaki (@rsasaki0109)
+//! Extended Kalman Filter (EKF) localization
+//!
+//! Implements state estimation using the Extended Kalman Filter algorithm
+//! for robot localization with nonlinear motion and observation models.
 
-use nalgebra::{Vector4, Vector2, Matrix4, Matrix2x4, Matrix4x2, Matrix2};
-use rand_distr::{Normal, Distribution};
-use plotlib::page::Page;
-use plotlib::repr::Plot;
-use plotlib::view::ContinuousView;
-use plotlib::style::{PointMarker, PointStyle};
+use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
+use crate::common::{StateEstimator, RoboticsError};
 
-fn motion_model(x: nalgebra::Vector4<f64>, u: nalgebra::Vector2<f64>, dt: f64)
--> nalgebra::Vector4<f64>
-{
-    let yaw = x[2];
-    let f = nalgebra::Matrix4::new(
-        1., 0., 0., 0.,
-        0., 1., 0., 0.,
-        0., 0., 1., 0.,
-        0., 0., 0., 1.);
-    let b = nalgebra::Matrix4x2::new(
-        dt * (yaw).cos(), 0.,
-        dt * (yaw).sin(), 0.,
-        0., dt,
-        1., 0.);
-    f * x + b * u
+/// State representation for EKF (x, y, yaw, velocity)
+pub type EKFState = Vector4<f64>;
+
+/// Measurement representation (x, y position)
+pub type EKFMeasurement = Vector2<f64>;
+
+/// Control input (velocity, yaw rate)
+pub type EKFControl = Vector2<f64>;
+
+/// Configuration for EKF
+#[derive(Debug, Clone)]
+pub struct EKFConfig {
+    /// Process noise covariance matrix
+    pub q: Matrix4<f64>,
+    /// Measurement noise covariance matrix
+    pub r: Matrix2<f64>,
 }
 
-fn jacob_f(x: nalgebra::Vector4<f64>, _u: nalgebra::Vector2<f64>, dt: f64) -> nalgebra::Matrix4<f64>
-{
-    let yaw = x[2];
-    let v = _u[0];
-    let jf = nalgebra::Matrix4::new(
-        1., 0., -dt * v * (yaw).sin(), dt * (yaw).cos(),
-        0., 1., dt * v * (yaw).cos(), dt * (yaw).sin(),
-        0., 0., 1., 0.,
-        0., 0., 0., 1.);
-    jf
+impl Default for EKFConfig {
+    fn default() -> Self {
+        let mut q = Matrix4::<f64>::identity();
+        q[(0, 0)] = 0.1_f64.powi(2);
+        q[(1, 1)] = (1.0_f64.to_radians()).powi(2);
+        q[(2, 2)] = 0.1_f64.powi(2);
+        q[(3, 3)] = 0.1_f64.powi(2);
+
+        let r = Matrix2::<f64>::identity();
+
+        Self { q, r }
+    }
 }
 
-
-fn observation_model(x: nalgebra::Vector4<f64>) -> nalgebra::Vector2<f64>
-{
-    let h = nalgebra::Matrix2x4::new(
-        1., 0., 0., 0.,
-        0., 1., 0., 0.);
-    h * x
+/// Extended Kalman Filter for robot localization
+pub struct EKFLocalizer {
+    /// Current state estimate [x, y, yaw, v]
+    state: EKFState,
+    /// State covariance matrix
+    covariance: Matrix4<f64>,
+    /// Configuration
+    config: EKFConfig,
 }
 
-fn jacob_h() -> nalgebra::Matrix2x4<f64>
-{
-    let jh = nalgebra::Matrix2x4::new(
-        1., 0., 0., 0.,
-        0., 1., 0., 0.);
-    jh
-}
-
-
-fn ekf_estimation(
-    x_est: nalgebra::Vector4<f64>,
-    p_est: nalgebra::Matrix4<f64>,
-    z: nalgebra::Vector2<f64>,
-    u: nalgebra::Vector2<f64>,
-    q: nalgebra::Matrix4<f64>,
-    r: nalgebra::Matrix2<f64>,
-    dt: f64
-) -> (nalgebra::Vector4<f64>, nalgebra::Matrix4<f64>)
-{
-    let x_pred = motion_model(x_est, u, dt);
-    let j_f = jacob_f(x_pred, u, dt);
-    let p_pred = j_f * p_est * j_f.transpose() + q;
-
-    let j_h = jacob_h();
-    let z_pred = observation_model(x_pred);
-    let y = z - z_pred;
-    let s = j_h * p_pred * j_h.transpose() + r;
-    let k = p_pred * j_h.transpose() * s.try_inverse().unwrap();
-    let new_x_est = x_pred + k * y;
-    let new_p_est = (nalgebra::Matrix4::identity() - k * j_h) * p_pred;
-
-    (new_x_est , new_p_est)
-}
-
-fn main() {
-    let sim_time = 50.0;
-    let dt = 0.1;
-    let mut time = 0.;
-
-    let mut q = nalgebra::Matrix4::<f64>::identity();
-    q[(0, 0)] = (0.1_f64).powi(2i32);
-    q[(1, 1)] = (1.0/180.0 * std::f64::consts::PI).powi(2i32);
-    q[(2, 2)] = (0.1_f64).powi(2i32);
-    q[(3, 3)] = (0.1_f64).powi(2i32);
-    let r = nalgebra::Matrix2::<f64>::identity();
-
-    let q_sim = nalgebra::Matrix2::new(
-        1., 0.,
-        0., (30.0/180.0 * std::f64::consts::PI).powi(2i32));
-    let r_sim = nalgebra::Matrix2::<f64>::identity();
-
-
-    let u = nalgebra::Vector2::new(1.0, 0.1);
-    let mut ud = nalgebra::Vector2::new(0., 0.);
-    let mut x_dr = nalgebra::Vector4::new(0., 0. , 0., 0.);
-    let mut x_true = nalgebra::Vector4::new(0., 0. , 0., 0.);
-
-    let mut x_est = nalgebra::Vector4::new(0., 0. , 0., 0.);
-    let mut p_est = nalgebra::Matrix4::<f64>::identity();
-
-    let mut z = nalgebra::Vector2::new(0., 0.);
-
-    let normal = Normal::new(0., 1.).unwrap(); // mean 0., standard deviation 1.
-
-    let mut hz = vec![(0., 0.)];
-    let mut htrue  = vec![(0., 0.)];
-    let mut hdr  = vec![(0., 0.)];
-    let mut hest  = vec![(0., 0.)];
-
-
-    while time < sim_time {
-        time += dt;
-        ud[0] = u[0] + normal.sample(&mut rand::thread_rng()) * q_sim[(0, 0)];
-        ud[1] = u[1] + normal.sample(&mut rand::thread_rng()) * q_sim[(1, 1)];
-
-        x_true = motion_model(x_true, u, dt);
-        x_dr = motion_model(x_dr, ud, dt);
-
-        z[0] = x_true[0] + normal.sample(&mut rand::thread_rng()) * r_sim[(0, 0)];
-        z[1] = x_true[1] + normal.sample(&mut rand::thread_rng()) * r_sim[(1, 1)];
-
-        let pair = ekf_estimation(x_est, p_est, z, ud, q, r, dt);
-        x_est = pair.0;
-        p_est = pair.1;
-
-        hz.push((z[0], z[1]));
-        htrue.push((x_true[0], x_true[1]));
-        hdr.push((x_dr[0], x_dr[1]));
-        hest.push((x_est[0], x_est[1]));
-
+impl EKFLocalizer {
+    /// Create a new EKF localizer
+    pub fn new(config: EKFConfig) -> Self {
+        EKFLocalizer {
+            state: EKFState::zeros(),
+            covariance: Matrix4::identity(),
+            config,
+        }
     }
 
+    /// Create with default configuration
+    pub fn with_defaults() -> Self {
+        Self::new(EKFConfig::default())
+    }
 
-    let s0: Plot = Plot::new(hz).point_style(
-        PointStyle::new()
-            .colour("#DD3355")
-            .size(3.),
-    );
-    let s1: Plot = Plot::new(htrue).point_style(
-        PointStyle::new()
-            .colour("#0000ff")
-            .size(3.),
-    );
-    let s2: Plot = Plot::new(hdr).point_style(
-        PointStyle::new()
-            .colour("#FFFF00")
-            .size(3.),
-    );
-    let s3: Plot = Plot::new(hest).point_style(
-        PointStyle::new()
-            .colour("#35C788")
-            .size(3.),
-    );
+    /// Create with initial state
+    pub fn with_initial_state(initial_state: EKFState, config: EKFConfig) -> Self {
+        EKFLocalizer {
+            state: initial_state,
+            covariance: Matrix4::identity(),
+            config,
+        }
+    }
 
-    let v = ContinuousView::new()
-        .add(s0)
-        .add(s1)
-        .add(s2)
-        .add(s3)
-        .x_range(-15., 15.)
-        .y_range(-5., 25.)
-        .x_label("x")
-        .y_label("y");
+    /// Get reference to state covariance
+    pub fn get_covariance_matrix(&self) -> &Matrix4<f64> {
+        &self.covariance
+    }
 
-    Page::single(&v).save("./img/ekf.svg").unwrap();
+    /// Set process noise covariance
+    pub fn set_process_noise(&mut self, q: Matrix4<f64>) {
+        self.config.q = q;
+    }
+
+    /// Set measurement noise covariance
+    pub fn set_measurement_noise(&mut self, r: Matrix2<f64>) {
+        self.config.r = r;
+    }
+
+    /// Motion model: predict state based on control input
+    fn motion_model(x: &EKFState, u: &EKFControl, dt: f64) -> EKFState {
+        let yaw = x[2];
+        let f = Matrix4::new(
+            1., 0., 0., 0.,
+            0., 1., 0., 0.,
+            0., 0., 1., 0.,
+            0., 0., 0., 1.,
+        );
+        let b = Matrix4x2::new(
+            dt * yaw.cos(), 0.,
+            dt * yaw.sin(), 0.,
+            0., dt,
+            1., 0.,
+        );
+        f * x + b * u
+    }
+
+    /// Jacobian of motion model with respect to state
+    fn jacobian_f(x: &EKFState, u: &EKFControl, dt: f64) -> Matrix4<f64> {
+        let yaw = x[2];
+        let v = u[0];
+        Matrix4::new(
+            1., 0., -dt * v * yaw.sin(), dt * yaw.cos(),
+            0., 1., dt * v * yaw.cos(), dt * yaw.sin(),
+            0., 0., 1., 0.,
+            0., 0., 0., 1.,
+        )
+    }
+
+    /// Observation model: predict measurement from state
+    fn observation_model(x: &EKFState) -> EKFMeasurement {
+        let h = Matrix2x4::new(
+            1., 0., 0., 0.,
+            0., 1., 0., 0.,
+        );
+        h * x
+    }
+
+    /// Jacobian of observation model
+    fn jacobian_h() -> Matrix2x4<f64> {
+        Matrix2x4::new(
+            1., 0., 0., 0.,
+            0., 1., 0., 0.,
+        )
+    }
+
+    /// Full EKF estimation step (predict + update)
+    pub fn estimate(
+        &mut self,
+        measurement: &EKFMeasurement,
+        control: &EKFControl,
+        dt: f64,
+    ) -> Result<&EKFState, RoboticsError> {
+        // Predict
+        let x_pred = Self::motion_model(&self.state, control, dt);
+        let j_f = Self::jacobian_f(&x_pred, control, dt);
+        let p_pred = j_f * self.covariance * j_f.transpose() + self.config.q;
+
+        // Update
+        let j_h = Self::jacobian_h();
+        let z_pred = Self::observation_model(&x_pred);
+        let y = measurement - z_pred;
+        let s = j_h * p_pred * j_h.transpose() + self.config.r;
+
+        let s_inv = s.try_inverse()
+            .ok_or_else(|| RoboticsError::NumericalError("Failed to invert S matrix".to_string()))?;
+
+        let k = p_pred * j_h.transpose() * s_inv;
+        self.state = x_pred + k * y;
+        self.covariance = (Matrix4::identity() - k * j_h) * p_pred;
+
+        Ok(&self.state)
+    }
+
+    /// Legacy interface for EKF estimation (standalone function style)
+    pub fn ekf_estimation(
+        x_est: EKFState,
+        p_est: Matrix4<f64>,
+        z: EKFMeasurement,
+        u: EKFControl,
+        q: Matrix4<f64>,
+        r: Matrix2<f64>,
+        dt: f64,
+    ) -> (EKFState, Matrix4<f64>) {
+        let x_pred = Self::motion_model(&x_est, &u, dt);
+        let j_f = Self::jacobian_f(&x_pred, &u, dt);
+        let p_pred = j_f * p_est * j_f.transpose() + q;
+
+        let j_h = Self::jacobian_h();
+        let z_pred = Self::observation_model(&x_pred);
+        let y = z - z_pred;
+        let s = j_h * p_pred * j_h.transpose() + r;
+        let k = p_pred * j_h.transpose() * s.try_inverse().unwrap();
+        let new_x_est = x_pred + k * y;
+        let new_p_est = (Matrix4::identity() - k * j_h) * p_pred;
+
+        (new_x_est, new_p_est)
+    }
+}
+
+impl StateEstimator for EKFLocalizer {
+    type State = EKFState;
+    type Measurement = EKFMeasurement;
+    type Control = EKFControl;
+
+    fn predict(&mut self, control: &Self::Control, dt: f64) {
+        let x_pred = Self::motion_model(&self.state, control, dt);
+        let j_f = Self::jacobian_f(&x_pred, control, dt);
+        self.covariance = j_f * self.covariance * j_f.transpose() + self.config.q;
+        self.state = x_pred;
+    }
+
+    fn update(&mut self, measurement: &Self::Measurement) {
+        let j_h = Self::jacobian_h();
+        let z_pred = Self::observation_model(&self.state);
+        let y = measurement - z_pred;
+        let s = j_h * self.covariance * j_h.transpose() + self.config.r;
+
+        if let Some(s_inv) = s.try_inverse() {
+            let k = self.covariance * j_h.transpose() * s_inv;
+            self.state = self.state + k * y;
+            self.covariance = (Matrix4::identity() - k * j_h) * self.covariance;
+        }
+    }
+
+    fn get_state(&self) -> &Self::State {
+        &self.state
+    }
+
+    fn get_covariance(&self) -> Option<&nalgebra::DMatrix<f64>> {
+        // Note: We use fixed-size matrix internally, so we don't implement this
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ekf_creation() {
+        let ekf = EKFLocalizer::with_defaults();
+        let state = ekf.get_state();
+        assert_eq!(state[0], 0.0);
+        assert_eq!(state[1], 0.0);
+    }
+
+    #[test]
+    fn test_ekf_predict() {
+        let mut ekf = EKFLocalizer::with_defaults();
+        let control = EKFControl::new(1.0, 0.0); // move forward at 1 m/s
+        ekf.predict(&control, 0.1);
+        let state = ekf.get_state();
+        // Should move in x direction (yaw is 0)
+        assert!(state[0] > 0.0);
+        assert!(state[1].abs() < 0.001);
+    }
+
+    #[test]
+    fn test_ekf_update() {
+        let mut ekf = EKFLocalizer::with_defaults();
+        let measurement = EKFMeasurement::new(1.0, 1.0);
+        ekf.update(&measurement);
+        let state = ekf.get_state();
+        // State should move towards measurement
+        assert!(state[0] > 0.0);
+        assert!(state[1] > 0.0);
+    }
+
+    #[test]
+    fn test_ekf_estimate() {
+        let mut ekf = EKFLocalizer::with_defaults();
+        let control = EKFControl::new(1.0, 0.1);
+        let measurement = EKFMeasurement::new(0.1, 0.01);
+
+        let result = ekf.estimate(&measurement, &control, 0.1);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ekf_legacy_interface() {
+        let x_est = EKFState::zeros();
+        let p_est = Matrix4::identity();
+        let z = EKFMeasurement::new(0.1, 0.0);
+        let u = EKFControl::new(1.0, 0.0);
+        let q = EKFConfig::default().q;
+        let r = EKFConfig::default().r;
+
+        let (new_x, new_p) = EKFLocalizer::ekf_estimation(x_est, p_est, z, u, q, r, 0.1);
+
+        assert!(new_x[0] > 0.0);
+        assert!(new_p[(0, 0)] > 0.0);
+    }
 }
