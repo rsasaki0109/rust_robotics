@@ -1,33 +1,37 @@
-// Path Planning algorithms module
+//! Path Planning algorithms module
+//!
+//! This module contains various path planning algorithms including:
+//! - Grid-based: A*, Dijkstra, D* Lite
+//! - Sampling-based: RRT, RRT*, Informed RRT*, PRM
+//! - Potential field methods
+//! - Curve-based: Bezier, Cubic Spline, Quintic Polynomials, Reeds-Shepp
 
-pub mod dijkstra;
+// Grid-based planners
 pub mod a_star;
-pub mod dwa;
-pub mod bezier_path;
-pub mod csp;
-pub mod cubic_spline_planner;
+pub mod dijkstra;
+pub mod d_star_lite;
+
+// Sampling-based planners
 pub mod rrt;
 pub mod rrt_star;
-pub mod potential_field;
 pub mod informed_rrt_star;
-pub mod quintic_polynomials;
-pub mod reeds_shepp_path;
-pub mod bezier_path_planning;
-pub mod d_star_lite;
 pub mod prm;
 pub mod voronoi_road_map;
+
+// Other planners
+pub mod dwa;
+pub mod potential_field;
 pub mod frenet_optimal_trajectory;
 
-pub use dijkstra::*;
-pub use prm::*;
-pub use a_star::*;
-pub use dwa::*;
-pub use bezier_path::*;
-pub use csp::*;
-pub use cubic_spline_planner::*;
-pub use rrt::*;
-pub use rrt_star::*;
-pub use potential_field::*;
-pub use informed_rrt_star::*;
-pub use quintic_polynomials::*;
-pub use d_star_lite::*;
+// Curve generation
+pub mod bezier_path;
+pub mod bezier_path_planning;
+pub mod csp;
+pub mod cubic_spline_planner;
+pub mod quintic_polynomials;
+pub mod reeds_shepp_path;
+
+// Re-exports for convenience
+pub use a_star::{AStarPlanner, AStarConfig};
+pub use rrt::{RRTPlanner, RRTConfig, RRTNode, CircleObstacle, AreaBounds};
+pub use dwa::{DWAPlanner, DWAConfig, DWAState, DWAControl, Trajectory as DWATrajectory};
