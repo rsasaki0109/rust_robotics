@@ -14,8 +14,12 @@ pub mod quintic_polynomials;
 pub mod reeds_shepp_path;
 pub mod bezier_path_planning;
 pub mod d_star_lite;
+pub mod prm;
+pub mod voronoi_road_map;
+pub mod frenet_optimal_trajectory;
 
 pub use dijkstra::*;
+pub use prm::*;
 pub use a_star::*;
 pub use dwa::*;
 pub use bezier_path::*;
