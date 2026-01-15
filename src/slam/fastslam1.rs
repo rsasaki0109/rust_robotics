@@ -19,8 +19,9 @@ const N_PARTICLE: usize = 100; // number of particles
 const NTH: f64 = N_PARTICLE as f64 / 1.5; // resampling threshold
 
 // Noise parameters
-const Q_SIM: [[f64; 2]; 2] = [[0.3, 0.0], [0.0, (10.0 * PI / 180.0).powi(2) as f64]]; // simulation noise
-const R_SIM: [[f64; 2]; 2] = [[0.5, 0.0], [0.0, (10.0 * PI / 180.0).powi(2) as f64]]; // observation noise
+// (10.0 * PI / 180.0)^2 ≈ 0.0305
+const Q_SIM: [[f64; 2]; 2] = [[0.3, 0.0], [0.0, 0.0305]]; // simulation noise
+const R_SIM: [[f64; 2]; 2] = [[0.5, 0.0], [0.0, 0.0305]]; // observation noise
 
 const SHOW_ANIMATION: bool = true;
 
