@@ -87,8 +87,14 @@ fn main() {
             vis.plot_path(&path, &PathStyle::default());
 
             // Save and show
-            let _ = vis.save_png("img/path_planning/jps_result.png", 800, 600);
-            println!("\nPlot saved to: img/path_planning/jps_result.png");
+            match vis.save_png("img/path_planning/jps_result.png", 800, 600) {
+                Ok(_) => println!("\nPNG saved to: img/path_planning/jps_result.png"),
+                Err(e) => println!("\nFailed to save PNG: {}", e),
+            }
+            match vis.save_svg("img/path_planning/jps_result.svg", 800, 600) {
+                Ok(_) => println!("SVG saved to: img/path_planning/jps_result.svg"),
+                Err(e) => println!("Failed to save SVG: {}", e),
+            }
             let _ = vis.show();
         }
         Err(e) => {
