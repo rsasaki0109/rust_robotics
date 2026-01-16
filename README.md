@@ -31,8 +31,12 @@ cargo run --bin two_joint_arm_control
    * [SLAM](#slam)
       * [Iterative Closest Point](#iterative-closest-point-icp-matching)
       * [FastSLAM 1.0](#fastslam-10)
+      * [EKF SLAM](#ekf-slam)
+      * [Graph-Based SLAM](#graph-based-slam)
    * [Path Planning](#path-planning)
       * [A* Algorithm](#a-algorithm)
+      * [Theta* Algorithm](#theta-algorithm)
+      * [Jump Point Search (JPS)](#jump-point-search-jps)
       * [Bezier Path Planning](#bezier-path-planning)
       * [Cubic Spline](#cubic-spline)
       * [D* Lite](#d-lite)
@@ -48,6 +52,7 @@ cargo run --bin two_joint_arm_control
       * [PRM (Probabilistic Road-Map)](#prm-probabilistic-road-map)
       * [Voronoi Road-Map](#voronoi-road-map)
       * [Frenet Optimal Trajectory](#frenet-optimal-trajectory)
+      * [State Lattice Planner](#state-lattice-planner)
    * [Path Tracking](#path-tracking)
       * [LQR Steer Control](#lqr-steer-control)
       * [Move to Pose](#move-to-pose)
@@ -55,6 +60,7 @@ cargo run --bin two_joint_arm_control
       * [Stanley Control](#stanley-control)
       * [Rear Wheel Feedback Control](#rear-wheel-feedback-control)
       * [MPC (Model Predictive Control)](#mpc-model-predictive-control)
+      * [C-GMRES NMPC](#c-gmres-nmpc)
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
@@ -175,6 +181,26 @@ Blue: True path, Yellow: Dead Reckoning, Green: FastSLAM estimate, Black: True l
 cargo run --bin fastslam1
 ```
 
+## EKF SLAM
+
+Extended Kalman Filter based SLAM. Maintains a joint state vector of robot pose and landmark positions with full covariance matrix.
+
+- [src](./src/slam/ekf_slam.rs)
+
+```
+cargo run --bin ekf_slam
+```
+
+## Graph-Based SLAM
+
+Pose graph optimization for SLAM. Constructs a graph of robot poses connected by odometry and observation constraints, then optimizes the graph using iterative methods.
+
+- [src](./src/slam/graph_based_slam.rs)
+
+```
+cargo run --bin graph_based_slam
+```
+
 # Path Planning
 
 ## A* Algorithm
@@ -186,7 +212,27 @@ Blue: Start, Red: Goal, Green: Path, Gray: Obstacles
 - [src](./src/path_planning/a_star.rs)
 
 ```
-cargo run --bin a_star
+cargo run --example a_star
+```
+
+## Theta* Algorithm
+
+Any-angle path planning algorithm. Unlike A* which restricts movement to grid edges, Theta* allows paths at any angle by checking line-of-sight between nodes.
+
+- [src](./src/path_planning/theta_star.rs)
+
+```
+cargo run --example theta_star
+```
+
+## Jump Point Search (JPS)
+
+Optimized pathfinding algorithm for uniform-cost grids. Reduces the number of nodes to explore by identifying and jumping to key "jump points" instead of examining all neighbors.
+
+- [src](./src/path_planning/jps.rs)
+
+```
+cargo run --example jps
 ```
 
 ## Bezier Path Planning
@@ -333,8 +379,6 @@ Blue: Start, Red: Goal, Green: Path
 cargo run --bin reeds_shepp_path
 ```
 
-## State Lattice Planner
-
 ## PRM (Probabilistic Road-Map)
 
 <img src="./img/path_planning/prm.svg" width="640px">
@@ -375,6 +419,16 @@ Gray: Reference path, Green: Optimal trajectory, Black: Obstacles, Red: Vehicle
 
 ```
 cargo run --bin frenet_optimal_trajectory
+```
+
+## State Lattice Planner
+
+Lattice-based motion planning that searches over a pre-computed set of motion primitives. Generates smooth, dynamically feasible trajectories by connecting state lattice primitives.
+
+- [src](./src/path_planning/state_lattice/)
+
+```
+cargo run --example state_lattice
 ```
 
 # Path Tracking
@@ -441,8 +495,6 @@ Blue: Reference path, Red: Vehicle trajectory, Green: Waypoints
 cargo run --example rear_wheel_feedback
 ```
 
-## Nonlinear Model predictive control with C-GMRES
-
 ## MPC (Model Predictive Control)
 
 <img src="./img/path_tracking/mpc.svg" width="640px">
@@ -455,6 +507,16 @@ Gray: Reference path, Blue: Tracked trajectory, Green: Prediction horizon, Red: 
 
 ```
 cargo run --bin mpc
+```
+
+## C-GMRES NMPC
+
+Continuation/GMRES-based Nonlinear Model Predictive Control. Uses the C/GMRES method to solve the optimal control problem in real-time without discretizing the horizon.
+
+- [src](./src/path_tracking/cgmres_nmpc.rs)
+
+```
+cargo run --bin cgmres_nmpc
 ```
 
 # Inverted Pendulum
