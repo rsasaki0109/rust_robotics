@@ -10,6 +10,8 @@ use nalgebra::{Matrix3, Vector3, DMatrix, DVector};
 use rand_distr::{Distribution, Normal};
 use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
 use std::f64::consts::PI;
+use std::fs::File;
+use std::io::Write;
 
 // Simulation parameters
 const DT: f64 = 2.0; // time step [s]
@@ -381,6 +383,167 @@ fn observation(
     (x_true_new, z_opt, xd_new, ud)
 }
 
+/// Save SVG plot directly without gnuplot dependency
+fn save_svg(
+    path: &str,
+    true_x: &[f64], true_y: &[f64],
+    dr_x: &[f64], dr_y: &[f64],
+    opt_x: &[f64], opt_y: &[f64],
+    lm_x: &[f64], lm_y: &[f64],
+) {
+    let width = 640;
+    let height = 480;
+    let margin = 60.0;
+
+    // Calculate bounds
+    let all_x: Vec<f64> = true_x.iter()
+        .chain(dr_x.iter())
+        .chain(opt_x.iter())
+        .chain(lm_x.iter())
+        .copied()
+        .collect();
+    let all_y: Vec<f64> = true_y.iter()
+        .chain(dr_y.iter())
+        .chain(opt_y.iter())
+        .chain(lm_y.iter())
+        .copied()
+        .collect();
+
+    let x_min = all_x.iter().cloned().fold(f64::INFINITY, f64::min);
+    let x_max = all_x.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let y_min = all_y.iter().cloned().fold(f64::INFINITY, f64::min);
+    let y_max = all_y.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+
+    let x_range = (x_max - x_min).max(1.0);
+    let y_range = (y_max - y_min).max(1.0);
+    let range = x_range.max(y_range) * 1.1;
+
+    let x_center = (x_min + x_max) / 2.0;
+    let y_center = (y_min + y_max) / 2.0;
+
+    let plot_width = width as f64 - 2.0 * margin;
+    let plot_height = height as f64 - 2.0 * margin;
+    let scale = plot_width.min(plot_height) / range;
+
+    let transform_x = |x: f64| -> f64 {
+        margin + plot_width / 2.0 + (x - x_center) * scale
+    };
+    let transform_y = |y: f64| -> f64 {
+        margin + plot_height / 2.0 - (y - y_center) * scale
+    };
+
+    let mut svg = String::new();
+    svg.push_str(&format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">
+<rect width="100%" height="100%" fill="white"/>
+<text x="{}" y="30" text-anchor="middle" font-size="16" font-family="sans-serif">Graph-based SLAM</text>
+"#,
+        width, height, width, height,
+        width / 2
+    ));
+
+    // Draw grid
+    svg.push_str("<g stroke=\"#dddddd\" stroke-width=\"0.5\">");
+    for i in 0..=10 {
+        let x = margin + (i as f64 / 10.0) * plot_width;
+        let y = margin + (i as f64 / 10.0) * plot_height;
+        svg.push_str(&format!(
+            r#"<line x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
+            x, margin, x, margin + plot_height
+        ));
+        svg.push_str(&format!(
+            r#"<line x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
+            margin, y, margin + plot_width, y
+        ));
+    }
+    svg.push_str("</g>\n");
+
+    // Draw dead reckoning trajectory (black)
+    if dr_x.len() > 1 {
+        svg.push_str("<polyline fill=\"none\" stroke=\"#333\" stroke-width=\"1.5\" points=\"");
+        for (x, y) in dr_x.iter().zip(dr_y.iter()) {
+            svg.push_str(&format!("{:.1},{:.1} ", transform_x(*x), transform_y(*y)));
+        }
+        svg.push_str("\"/>\n");
+    }
+
+    // Draw true trajectory (blue)
+    if true_x.len() > 1 {
+        svg.push_str("<polyline fill=\"none\" stroke=\"blue\" stroke-width=\"2\" points=\"");
+        for (x, y) in true_x.iter().zip(true_y.iter()) {
+            svg.push_str(&format!("{:.1},{:.1} ", transform_x(*x), transform_y(*y)));
+        }
+        svg.push_str("\"/>\n");
+    }
+
+    // Draw optimized trajectory (red)
+    if opt_x.len() > 1 {
+        svg.push_str("<polyline fill=\"none\" stroke=\"red\" stroke-width=\"2\" points=\"");
+        for (x, y) in opt_x.iter().zip(opt_y.iter()) {
+            svg.push_str(&format!("{:.1},{:.1} ", transform_x(*x), transform_y(*y)));
+        }
+        svg.push_str("\"/>\n");
+    }
+
+    // Draw landmarks (black stars)
+    for (x, y) in lm_x.iter().zip(lm_y.iter()) {
+        let cx = transform_x(*x);
+        let cy = transform_y(*y);
+        // Draw a star shape
+        svg.push_str(&format!(
+            r#"<polygon fill="black" points="{},{} {},{} {},{} {},{} {},{} {},{} {},{} {},{} {},{} {},{}"/>"#,
+            cx, cy - 8.0,
+            cx + 2.5, cy - 2.5,
+            cx + 8.0, cy - 2.5,
+            cx + 4.0, cy + 2.0,
+            cx + 5.5, cy + 8.0,
+            cx, cy + 4.5,
+            cx - 5.5, cy + 8.0,
+            cx - 4.0, cy + 2.0,
+            cx - 8.0, cy - 2.5,
+            cx - 2.5, cy - 2.5
+        ));
+    }
+
+    // Legend
+    let legend_x = width as f64 - 150.0;
+    let legend_y = 50.0;
+    svg.push_str(&format!(
+        "<rect x=\"{}\" y=\"{}\" width=\"140\" height=\"80\" fill=\"white\" stroke=\"#ccc\"/>",
+        legend_x, legend_y
+    ));
+    svg.push_str(&format!(
+        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"blue\" stroke-width=\"2\"/>",
+        legend_x + 10.0, legend_y + 20.0, legend_x + 40.0, legend_y + 20.0
+    ));
+    svg.push_str(&format!(
+        "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">True</text>",
+        legend_x + 50.0, legend_y + 24.0
+    ));
+    svg.push_str(&format!(
+        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#333\" stroke-width=\"1.5\"/>",
+        legend_x + 10.0, legend_y + 40.0, legend_x + 40.0, legend_y + 40.0
+    ));
+    svg.push_str(&format!(
+        "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">Dead Reckoning</text>",
+        legend_x + 50.0, legend_y + 44.0
+    ));
+    svg.push_str(&format!(
+        "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"red\" stroke-width=\"2\"/>",
+        legend_x + 10.0, legend_y + 60.0, legend_x + 40.0, legend_y + 60.0
+    ));
+    svg.push_str(&format!(
+        "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">Graph SLAM</text>",
+        legend_x + 50.0, legend_y + 64.0
+    ));
+
+    svg.push_str("</svg>\n");
+
+    let mut file = File::create(path).expect("Failed to create SVG file");
+    file.write_all(svg.as_bytes()).expect("Failed to write SVG");
+}
+
 fn main() {
     println!("Graph-based SLAM start!");
 
@@ -511,8 +674,10 @@ fn main() {
         .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("black")])
         .lines(&opt_x, &opt_y, &[Caption("Graph SLAM"), Color("red")]);
 
-    fig.save_to_svg("./img/slam/graph_based_slam.svg", 640, 480).unwrap();
-    println!("Plot saved to ./img/slam/graph_based_slam.svg");
+    // Save SVG directly without gnuplot dependency
+    let svg_path = "./img/slam/graph_based_slam.svg";
+    save_svg(svg_path, &true_x, &true_y, &dr_x, &dr_y, &opt_x, &opt_y, &lm_x, &lm_y);
+    println!("Plot saved to {}", svg_path);
 
     // Print final error
     let true_final = h_x_true.last().unwrap();
