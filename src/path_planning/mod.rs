@@ -10,6 +10,8 @@
 pub mod a_star;
 pub mod dijkstra;
 pub mod d_star_lite;
+pub mod jps;
+pub mod theta_star;
 
 // Sampling-based planners
 pub mod rrt;
@@ -33,5 +35,7 @@ pub mod reeds_shepp_path;
 
 // Re-exports for convenience
 pub use a_star::{AStarPlanner, AStarConfig};
+pub use jps::{JPSPlanner, JPSConfig};
+pub use theta_star::{ThetaStarPlanner, ThetaStarConfig};
 pub use rrt::{RRTPlanner, RRTConfig, RRTNode, CircleObstacle, AreaBounds};
 pub use dwa::{DWAPlanner, DWAConfig, DWAState, DWAControl, Trajectory as DWATrajectory};
