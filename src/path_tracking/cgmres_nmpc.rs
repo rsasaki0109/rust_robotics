@@ -4,8 +4,13 @@
 //         Ryohei Sasaki (@rsasaki0109) - Rust port
 //
 // Reference:
-// Shunichi09/nonlinear_control: Implementing the nonlinear model predictive
-// control, sliding mode control https://github.com/Shunichi09/PythonLinearNonlinearControl
+// - PythonRobotics: https://github.com/AtsushiSakai/PythonRobotics
+// - Shunichi09/nonlinear_control: Implementing the nonlinear model predictive
+//   control, sliding mode control https://github.com/Shunichi09/PythonLinearNonlinearControl
+//
+// Note: This implementation may exhibit numerical instability in some scenarios.
+// The C-GMRES algorithm is known to be sensitive to parameter tuning.
+// For production use, consider adjusting zeta, ht, threshold, and other parameters.
 
 use nalgebra::{DMatrix, DVector};
 use std::f64::consts::PI;
@@ -162,16 +167,16 @@ impl NMPCSimulatorSystem {
             let lam_3 = lam_3s[0];
             let lam_4 = lam_4s[0];
 
-            // Adjoint equations: dλ/dt = -∂H/∂x
+            // Adjoint equations (backward integration using Euler method)
             // ∂H/∂x = 0, ∂H/∂y = 0
             let pre_lam_1 = lam_1;
             let pre_lam_2 = lam_2;
 
-            // ∂H/∂yaw = -lam_1 * sin(yaw) * v + lam_2 * cos(yaw) * v
+            // tmp1 = -lam_1 * sin(yaw) * v + lam_2 * cos(yaw) * v
             let tmp1 = -lam_1 * yaw.sin() * v + lam_2 * yaw.cos() * v;
             let pre_lam_3 = lam_3 + dt * tmp1;
 
-            // ∂H/∂v = lam_1 * cos(yaw) + lam_2 * sin(yaw) + lam_3 * sin(u_2) / WB
+            // tmp2 = lam_1 * cos(yaw) + lam_2 * sin(yaw) + lam_3 * sin(u_2) / WB
             let tmp2 = lam_1 * yaw.cos() + lam_2 * yaw.sin() + lam_3 * u_2.sin() / WB;
             let pre_lam_4 = lam_4 + dt * tmp2;
 
@@ -225,24 +230,24 @@ impl NMPCControllerCGMRES {
         let input_num = 6;
 
         NMPCControllerCGMRES {
-            zeta: 100.0,
+            zeta: 100.0,  // Original value
             ht: 0.01,
             tf: 3.0,
             alpha: 0.5,
             n,
-            threshold: 0.001,
+            threshold: 0.0001,  // Stricter threshold
             input_num,
             max_iteration: input_num * n,
 
             simulator: NMPCSimulatorSystem::new(),
 
-            // Initialize with smaller values to avoid numerical instability
-            u_1s: vec![0.1; n],
-            u_2s: vec![0.1; n],
-            dummy_u_1s: vec![0.9; n],  // sqrt(U_MAX^2 - u^2) ≈ 0.99 for u=0.1
-            dummy_u_2s: vec![0.78; n], // sqrt(U_OMEGA_MAX^2 - u^2) ≈ 0.78 for u=0.1
-            raw_1s: vec![0.01; n],
-            raw_2s: vec![0.01; n],
+            // Initialize like Python: u = np.ones(N), raw = np.zeros(N)
+            u_1s: vec![1.0; n],
+            u_2s: vec![1.0; n],
+            dummy_u_1s: vec![1.0; n],
+            dummy_u_2s: vec![1.0; n],
+            raw_1s: vec![0.0; n],
+            raw_2s: vec![0.0; n],
 
             history_u_1: Vec::new(),
             history_u_2: Vec::new(),
@@ -514,38 +519,52 @@ impl NMPCControllerCGMRES {
                 }
             }
 
-            // Solve hs[:i+2, :i+1] * ys = r0_norm * e (where e = [1, 0, 0, ...])
-            let hs_sub = hs.view((0, 0), (i + 2, i + 1)).clone_owned();
-            let mut e = DVector::zeros(i + 2);
-            e[0] = r0_norm;
+            // Python: hs[:i+1, :i] which is (i+1) rows x i columns
+            // For i=0, this is empty (0 columns), so skip
+            if i == 0 {
+                ys_pre = Some(DVector::zeros(1));
+                continue;
+            }
 
-            // Use pseudoinverse to solve least squares: ys = pinv(hs_sub) * e
-            let ys = match hs_sub.clone().svd(true, true).solve(&e, 1e-10) {
+            // hs_sub is (i+1) x i matrix (like Python's hs[:i+1, :i])
+            let hs_sub = hs.view((0, 0), (i + 1, i)).clone_owned();
+
+            // e vector: first element is 1.0, rest are 0
+            // Python: r0_norm * e[:i+1]
+            let mut e_scaled = DVector::zeros(i + 1);
+            e_scaled[0] = r0_norm;
+
+            // Solve least squares: ys = pinv(hs_sub) * (r0_norm * e[:i+1])
+            // Result ys has length i (number of columns in hs_sub)
+            let ys = match hs_sub.clone().svd(true, true).solve(&e_scaled, 1e-10) {
                 Ok(sol) => sol,
-                Err(_) => DVector::zeros(i + 1),
+                Err(_) => DVector::zeros(i),
             };
 
-            // Check convergence: judge_value = e - hs_sub * ys
+            // Check convergence: judge_value = r0_norm * e[:i+1] - hs[:i+1, :i] @ ys[:i]
+            // ys already has length i from SVD solve, so use it directly
             let hs_ys = &hs_sub * &ys;
-            let residual = &e - &hs_ys;
+            let residual = &e_scaled - &hs_ys;
             let judge_norm = residual.norm();
 
             if judge_norm < self.threshold || i == m - 1 {
                 // Use ys_pre for final update (from previous iteration)
+                // Python: update_val = np.dot(vs[:, :i-1], ys_pre[:i-1]).flatten()
+                // Python: du_1_new = du_1 + update_val[::input_num]
                 if let Some(ref ys_p) = ys_pre {
-                    let update_len = ys_p.len().min(i);
+                    let update_len = (i.saturating_sub(1)).min(ys_p.len());
                     if update_len > 0 {
                         let vs_sub = vs.view((0, 0), (m, update_len)).clone_owned();
                         let ys_sub = ys_p.rows(0, update_len).clone_owned();
                         let update_val = &vs_sub * &ys_sub;
 
                         for k in 0..self.n {
-                            du_1_new[k] = update_val[k * self.input_num];
-                            du_2_new[k] = update_val[k * self.input_num + 1];
-                            ddummy_u_1_new[k] = update_val[k * self.input_num + 2];
-                            ddummy_u_2_new[k] = update_val[k * self.input_num + 3];
-                            draw_1_new[k] = update_val[k * self.input_num + 4];
-                            draw_2_new[k] = update_val[k * self.input_num + 5];
+                            du_1_new[k] = du_1[k] + update_val[k * self.input_num];
+                            du_2_new[k] = du_2[k] + update_val[k * self.input_num + 1];
+                            ddummy_u_1_new[k] = ddummy_u_1[k] + update_val[k * self.input_num + 2];
+                            ddummy_u_2_new[k] = ddummy_u_2[k] + update_val[k * self.input_num + 3];
+                            draw_1_new[k] = draw_1[k] + update_val[k * self.input_num + 4];
+                            draw_2_new[k] = draw_2[k] + update_val[k * self.input_num + 5];
                         }
                     }
                 }
@@ -563,6 +582,12 @@ impl NMPCControllerCGMRES {
             self.dummy_u_2s[i] += ddummy_u_2_new[i] * self.ht;
             self.raw_1s[i] += draw_1_new[i] * self.ht;
             self.raw_2s[i] += draw_2_new[i] * self.ht;
+
+            // Clip inputs to prevent numerical instability
+            self.u_1s[i] = self.u_1s[i].clamp(-U_A_MAX, U_A_MAX);
+            self.u_2s[i] = self.u_2s[i].clamp(-U_OMEGA_MAX, U_OMEGA_MAX);
+            self.dummy_u_1s[i] = self.dummy_u_1s[i].max(0.0);
+            self.dummy_u_2s[i] = self.dummy_u_2s[i].max(0.0);
         }
 
         // Calculate final F norm
@@ -788,7 +813,7 @@ pub fn main() {
     println!("CGMRES Nonlinear MPC simulation start!");
 
     let dt = 0.1;
-    let iteration_time = 150.0;
+    let iteration_time = 30.0; // Simulation time in seconds
 
     let init_x = -4.5;
     let init_y = -2.5;
