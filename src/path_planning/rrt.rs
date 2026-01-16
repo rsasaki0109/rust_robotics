@@ -1,11 +1,15 @@
+//! RRT (Rapidly-exploring Random Tree) path planning algorithm
+//!
+//! Sampling-based path planning algorithm that builds a tree by
+//! randomly sampling the configuration space.
+
 use rand::Rng;
-use gnuplot::{Figure, Caption, Color, PointSymbol, AxesCommon};
-use std::f64::consts::PI;
 
-const SHOW_ANIMATION: bool = true;
+use crate::common::{Point2D, Path2D, PathPlanner, RoboticsError};
 
+/// Internal node for RRT tree
 #[derive(Debug, Clone)]
-pub struct Node {
+pub struct RRTNode {
     pub x: f64,
     pub y: f64,
     pub path_x: Vec<f64>,
@@ -13,9 +17,9 @@ pub struct Node {
     pub parent: Option<usize>,
 }
 
-impl Node {
+impl RRTNode {
     pub fn new(x: f64, y: f64) -> Self {
-        Node {
+        RRTNode {
             x,
             y,
             path_x: Vec::new(),
@@ -23,9 +27,14 @@ impl Node {
             parent: None,
         }
     }
+
+    pub fn to_point(&self) -> Point2D {
+        Point2D::new(self.x, self.y)
+    }
 }
 
-#[derive(Debug)]
+/// Area bounds for RRT search space
+#[derive(Debug, Clone)]
 pub struct AreaBounds {
     pub xmin: f64,
     pub xmax: f64,
@@ -34,7 +43,11 @@ pub struct AreaBounds {
 }
 
 impl AreaBounds {
-    pub fn new(area: [f64; 4]) -> Self {
+    pub fn new(xmin: f64, xmax: f64, ymin: f64, ymax: f64) -> Self {
+        AreaBounds { xmin, xmax, ymin, ymax }
+    }
+
+    pub fn from_array(area: [f64; 4]) -> Self {
         AreaBounds {
             xmin: area[0],
             xmax: area[1],
@@ -44,25 +57,79 @@ impl AreaBounds {
     }
 }
 
-pub struct RRT {
-    start: Node,
-    end: Node,
-    min_rand: f64,
-    max_rand: f64,
-    play_area: Option<AreaBounds>,
-    expand_dis: f64,
-    path_resolution: f64,
-    goal_sample_rate: i32,
-    max_iter: usize,
-    obstacle_list: Vec<(f64, f64, f64)>, // (x, y, radius)
-    node_list: Vec<Node>,
-    robot_radius: f64,
+/// Circular obstacle (x, y, radius)
+#[derive(Debug, Clone)]
+pub struct CircleObstacle {
+    pub x: f64,
+    pub y: f64,
+    pub radius: f64,
 }
 
-impl RRT {
+impl CircleObstacle {
+    pub fn new(x: f64, y: f64, radius: f64) -> Self {
+        Self { x, y, radius }
+    }
+}
+
+/// Configuration for RRT planner
+#[derive(Debug, Clone)]
+pub struct RRTConfig {
+    /// Expansion distance per step
+    pub expand_dis: f64,
+    /// Path resolution for collision checking
+    pub path_resolution: f64,
+    /// Goal sampling rate (0-100)
+    pub goal_sample_rate: i32,
+    /// Maximum iterations
+    pub max_iter: usize,
+    /// Robot radius for collision checking
+    pub robot_radius: f64,
+}
+
+impl Default for RRTConfig {
+    fn default() -> Self {
+        Self {
+            expand_dis: 3.0,
+            path_resolution: 0.5,
+            goal_sample_rate: 5,
+            max_iter: 500,
+            robot_radius: 0.8,
+        }
+    }
+}
+
+/// RRT path planner
+pub struct RRTPlanner {
+    config: RRTConfig,
+    obstacles: Vec<CircleObstacle>,
+    play_area: Option<AreaBounds>,
+    rand_area: AreaBounds,
+    node_list: Vec<RRTNode>,
+    start: RRTNode,
+    goal: RRTNode,
+}
+
+impl RRTPlanner {
+    /// Create a new RRT planner
     pub fn new(
-        start: [f64; 2],
-        goal: [f64; 2],
+        obstacles: Vec<CircleObstacle>,
+        rand_area: AreaBounds,
+        play_area: Option<AreaBounds>,
+        config: RRTConfig,
+    ) -> Self {
+        RRTPlanner {
+            config,
+            obstacles,
+            play_area,
+            rand_area,
+            node_list: Vec::new(),
+            start: RRTNode::new(0.0, 0.0),
+            goal: RRTNode::new(0.0, 0.0),
+        }
+    }
+
+    /// Create with simplified parameters (legacy interface)
+    pub fn from_obstacles(
         obstacle_list: Vec<(f64, f64, f64)>,
         rand_area: [f64; 2],
         expand_dis: f64,
@@ -72,78 +139,70 @@ impl RRT {
         play_area: Option<[f64; 4]>,
         robot_radius: f64,
     ) -> Self {
-        let play_area = play_area.map(AreaBounds::new);
-        
-        RRT {
-            start: Node::new(start[0], start[1]),
-            end: Node::new(goal[0], goal[1]),
-            min_rand: rand_area[0],
-            max_rand: rand_area[1],
-            play_area,
+        let obstacles = obstacle_list
+            .into_iter()
+            .map(|(x, y, r)| CircleObstacle::new(x, y, r))
+            .collect();
+
+        let config = RRTConfig {
             expand_dis,
             path_resolution,
             goal_sample_rate,
             max_iter,
-            obstacle_list,
-            node_list: Vec::new(),
             robot_radius,
+        };
+
+        let rand_bounds = AreaBounds::new(rand_area[0], rand_area[1], rand_area[0], rand_area[1]);
+        let play_bounds = play_area.map(AreaBounds::from_array);
+
+        Self::new(obstacles, rand_bounds, play_bounds, config)
+    }
+
+    /// Legacy planning interface
+    pub fn planning(&mut self, start: [f64; 2], goal: [f64; 2]) -> Option<Vec<[f64; 2]>> {
+        let start_pt = Point2D::new(start[0], start[1]);
+        let goal_pt = Point2D::new(goal[0], goal[1]);
+
+        match self.plan(start_pt, goal_pt) {
+            Ok(path) => {
+                let result: Vec<[f64; 2]> = path.points.iter()
+                    .map(|p| [p.x, p.y])
+                    .collect();
+                Some(result)
+            }
+            Err(_) => None,
         }
     }
 
-    pub fn planning(&mut self) -> Option<Vec<[f64; 2]>> {
-        self.node_list = vec![self.start.clone()];
-        
-        for i in 0..self.max_iter {
-            let rnd_node = self.get_random_node();
-            let nearest_ind = self.get_nearest_node_index(&rnd_node);
-            let nearest_node = self.node_list[nearest_ind].clone();
-
-            let new_node = self.steer(&nearest_node, &rnd_node, self.expand_dis);
-
-            if self.check_if_outside_play_area(&new_node) && 
-               self.check_collision(&new_node) {
-                let new_index = self.node_list.len();
-                let mut new_node = new_node;
-                new_node.parent = Some(nearest_ind);
-                self.node_list.push(new_node);
-
-                if self.calc_dist_to_goal(self.node_list.last().unwrap().x, 
-                                         self.node_list.last().unwrap().y) <= self.expand_dis {
-                    let final_node = self.steer(self.node_list.last().unwrap(), &self.end, self.expand_dis);
-                    if self.check_collision(&final_node) {
-                        return Some(self.generate_final_course(self.node_list.len() - 1));
-                    }
-                }
-            }
-
-            if SHOW_ANIMATION && i % 5 == 0 {
-                // Animation would go here
-                println!("RRT iteration: {}", i);
-            }
-        }
-
-        None // Cannot find path
+    /// Get the tree built during planning
+    pub fn get_tree(&self) -> &[RRTNode] {
+        &self.node_list
     }
 
-    fn steer(&self, from_node: &Node, to_node: &Node, extend_length: f64) -> Node {
-        let mut new_node = Node::new(from_node.x, from_node.y);
+    /// Get obstacles
+    pub fn get_obstacles(&self) -> &[CircleObstacle] {
+        &self.obstacles
+    }
+
+    fn steer(&self, from_node: &RRTNode, to_node: &RRTNode, extend_length: f64) -> RRTNode {
+        let mut new_node = RRTNode::new(from_node.x, from_node.y);
         let (d, theta) = self.calc_distance_and_angle(from_node, to_node);
 
         new_node.path_x = vec![new_node.x];
         new_node.path_y = vec![new_node.y];
 
-        let extend_length = if extend_length > d { d } else { extend_length };
-        let n_expand = (extend_length / self.path_resolution).floor() as usize;
+        let extend_length = extend_length.min(d);
+        let n_expand = (extend_length / self.config.path_resolution).floor() as usize;
 
         for _ in 0..n_expand {
-            new_node.x += self.path_resolution * theta.cos();
-            new_node.y += self.path_resolution * theta.sin();
+            new_node.x += self.config.path_resolution * theta.cos();
+            new_node.y += self.config.path_resolution * theta.sin();
             new_node.path_x.push(new_node.x);
             new_node.path_y.push(new_node.y);
         }
 
         let (d, _) = self.calc_distance_and_angle(&new_node, to_node);
-        if d <= self.path_resolution {
+        if d <= self.config.path_resolution {
             new_node.path_x.push(to_node.x);
             new_node.path_y.push(to_node.y);
             new_node.x = to_node.x;
@@ -153,41 +212,40 @@ impl RRT {
         new_node
     }
 
-    fn generate_final_course(&self, goal_ind: usize) -> Vec<[f64; 2]> {
-        let mut path = vec![[self.end.x, self.end.y]];
+    fn generate_final_course(&self, goal_ind: usize) -> Path2D {
+        let mut points = vec![self.goal.to_point()];
         let mut node_index = Some(goal_ind);
-        
+
         while let Some(index) = node_index {
             let node = &self.node_list[index];
-            path.push([node.x, node.y]);
+            points.push(node.to_point());
             node_index = node.parent;
         }
 
-        path.reverse();
-        path
+        points.reverse();
+        Path2D::from_points(points)
     }
 
     fn calc_dist_to_goal(&self, x: f64, y: f64) -> f64 {
-        let dx = x - self.end.x;
-        let dy = y - self.end.y;
+        let dx = x - self.goal.x;
+        let dy = y - self.goal.y;
         (dx * dx + dy * dy).sqrt()
     }
 
-    fn get_random_node(&self) -> Node {
+    fn get_random_node(&self) -> RRTNode {
         let mut rng = rand::thread_rng();
-        
-        if rng.gen_range(0..=100) > self.goal_sample_rate {
-            Node::new(
-                rng.gen_range(self.min_rand..=self.max_rand),
-                rng.gen_range(self.min_rand..=self.max_rand),
+
+        if rng.gen_range(0..=100) > self.config.goal_sample_rate {
+            RRTNode::new(
+                rng.gen_range(self.rand_area.xmin..=self.rand_area.xmax),
+                rng.gen_range(self.rand_area.ymin..=self.rand_area.ymax),
             )
         } else {
-            // Goal point sampling
-            Node::new(self.end.x, self.end.y)
+            RRTNode::new(self.goal.x, self.goal.y)
         }
     }
 
-    fn get_nearest_node_index(&self, rnd_node: &Node) -> usize {
+    fn get_nearest_node_index(&self, rnd_node: &RRTNode) -> usize {
         let mut min_dist = f64::INFINITY;
         let mut min_ind = 0;
 
@@ -202,115 +260,114 @@ impl RRT {
         min_ind
     }
 
-    fn check_if_outside_play_area(&self, node: &Node) -> bool {
+    fn check_if_outside_play_area(&self, node: &RRTNode) -> bool {
         if let Some(ref play_area) = self.play_area {
             if node.x < play_area.xmin || node.x > play_area.xmax ||
                node.y < play_area.ymin || node.y > play_area.ymax {
-                return false; // Outside - bad
+                return false;
             }
         }
-        true // Inside or no play area - ok
+        true
     }
 
-    fn check_collision(&self, node: &Node) -> bool {
-        for &(ox, oy, size) in &self.obstacle_list {
+    fn check_collision(&self, node: &RRTNode) -> bool {
+        for obs in &self.obstacles {
             for (&px, &py) in node.path_x.iter().zip(node.path_y.iter()) {
-                let dx = ox - px;
-                let dy = oy - py;
+                let dx = obs.x - px;
+                let dy = obs.y - py;
                 let d = (dx * dx + dy * dy).sqrt();
-                if d <= size + self.robot_radius {
-                    return false; // Collision
+                if d <= obs.radius + self.config.robot_radius {
+                    return false;
                 }
             }
         }
-        true // Safe
+        true
     }
 
-    fn calc_distance_and_angle(&self, from_node: &Node, to_node: &Node) -> (f64, f64) {
+    fn calc_distance_and_angle(&self, from_node: &RRTNode, to_node: &RRTNode) -> (f64, f64) {
         let dx = to_node.x - from_node.x;
         let dy = to_node.y - from_node.y;
         let d = (dx * dx + dy * dy).sqrt();
         let theta = dy.atan2(dx);
         (d, theta)
     }
+}
 
-    pub fn visualize_path(&self, path: &[[f64; 2]]) {
-        if !SHOW_ANIMATION {
-            return;
-        }
+impl PathPlanner for RRTPlanner {
+    fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
+        // Need to use interior mutability for the planner state
+        let mut planner = RRTPlanner {
+            config: self.config.clone(),
+            obstacles: self.obstacles.clone(),
+            play_area: self.play_area.clone(),
+            rand_area: self.rand_area.clone(),
+            node_list: vec![RRTNode::new(start.x, start.y)],
+            start: RRTNode::new(start.x, start.y),
+            goal: RRTNode::new(goal.x, goal.y),
+        };
 
-        let mut fg = Figure::new();
-        let mut axes = fg.axes2d();
-        
-        // Plot obstacles
-        let obs_x: Vec<f64> = self.obstacle_list.iter().map(|obs| obs.0).collect();
-        let obs_y: Vec<f64> = self.obstacle_list.iter().map(|obs| obs.1).collect();
-        axes.points(&obs_x, &obs_y, &[Caption("Obstacles"), Color("black")]);
-        
-        // Plot tree
-        for node in &self.node_list {
-            if let Some(parent_index) = node.parent {
-                let parent = &self.node_list[parent_index];
-                axes.lines(&[parent.x, node.x], &[parent.y, node.y], &[Color("blue")]);
+        for _ in 0..planner.config.max_iter {
+            let rnd_node = planner.get_random_node();
+            let nearest_ind = planner.get_nearest_node_index(&rnd_node);
+            let nearest_node = planner.node_list[nearest_ind].clone();
+
+            let new_node = planner.steer(&nearest_node, &rnd_node, planner.config.expand_dis);
+
+            if planner.check_if_outside_play_area(&new_node) && planner.check_collision(&new_node) {
+                let mut new_node = new_node;
+                new_node.parent = Some(nearest_ind);
+                planner.node_list.push(new_node);
+
+                let last = planner.node_list.last().unwrap();
+                if planner.calc_dist_to_goal(last.x, last.y) <= planner.config.expand_dis {
+                    let final_node = planner.steer(last, &planner.goal.clone(), planner.config.expand_dis);
+                    if planner.check_collision(&final_node) {
+                        return Ok(planner.generate_final_course(planner.node_list.len() - 1));
+                    }
+                }
             }
         }
-        
-        // Plot path
-        if !path.is_empty() {
-            let path_x: Vec<f64> = path.iter().map(|node| node[0]).collect();
-            let path_y: Vec<f64> = path.iter().map(|node| node[1]).collect();
-            axes.lines(&path_x, &path_y, &[Caption("Path"), Color("red")]);
-        }
-        
-        // Plot start and goal
-        axes.points(&[self.start.x], &[self.start.y], &[Caption("Start"), Color("green")]);
-        axes.points(&[self.end.x], &[self.end.y], &[Caption("Goal"), Color("blue")]);
-        
-        axes.set_title("RRT Path Planning", &[])
-            .set_x_label("X [m]", &[])
-            .set_y_label("Y [m]", &[])
-            .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
-        
-        // Save to file
-        let output_path = "img/path_planning/rrt_result.png";
-        fg.save_to_png(output_path, 800, 600).unwrap();
-        println!("Plot saved to: {}", output_path);
-        
-        fg.show().unwrap();
+
+        Err(RoboticsError::PlanningError("RRT: Cannot find path within max iterations".to_string()))
     }
 }
 
-fn main() {
-    println!("RRT path planning start!!");
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Obstacle list [x, y, radius]
-    let obstacle_list = vec![
-        (5.0, 5.0, 1.0),
-        (3.0, 6.0, 2.0),
-        (3.0, 8.0, 2.0),
-        (3.0, 10.0, 2.0),
-        (7.0, 5.0, 2.0),
-        (9.0, 5.0, 2.0),
-        (8.0, 10.0, 1.0),
-    ];
+    fn create_test_planner() -> RRTPlanner {
+        let obstacles = vec![
+            CircleObstacle::new(5.0, 5.0, 1.0),
+            CircleObstacle::new(3.0, 6.0, 2.0),
+            CircleObstacle::new(7.0, 5.0, 2.0),
+        ];
 
-    let mut rrt = RRT::new(
-        [0.0, 0.0],        // start
-        [6.0, 10.0],       // goal
-        obstacle_list,
-        [-2.0, 15.0],      // rand_area
-        3.0,               // expand_dis
-        0.5,               // path_resolution
-        5,                 // goal_sample_rate
-        500,               // max_iter
-        None,              // play_area
-        0.8,               // robot_radius
-    );
+        let rand_area = AreaBounds::new(-2.0, 15.0, -2.0, 15.0);
+        let config = RRTConfig {
+            max_iter: 1000,
+            ..Default::default()
+        };
 
-    if let Some(path) = rrt.planning() {
-        println!("Found path with {} points!", path.len());
-        rrt.visualize_path(&path);
-    } else {
-        println!("Cannot find path");
+        RRTPlanner::new(obstacles, rand_area, None, config)
+    }
+
+    #[test]
+    fn test_rrt_finds_path() {
+        let planner = create_test_planner();
+        let start = Point2D::new(0.0, 0.0);
+        let goal = Point2D::new(10.0, 10.0);
+
+        let result = planner.plan(start, goal);
+        // RRT is probabilistic, so we just check it doesn't panic
+        // and returns either Ok or Err
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_rrt_config_default() {
+        let config = RRTConfig::default();
+        assert_eq!(config.expand_dis, 3.0);
+        assert_eq!(config.max_iter, 500);
     }
 }

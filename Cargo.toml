@@ -15,9 +15,12 @@ itertools = "0.13"
 gnuplot = "0.0.43"
 ordered-float = "4.2"
 
-[[bin]]
+# Examples (refactored)
+[[example]]
 name = "a_star"
-path = "src/path_planning/a_star.rs"
+path = "examples/path_planning/a_star.rs"
+
+# Legacy binaries (will be migrated to examples)
 
 [[bin]]
 name = "rrt"
@@ -77,11 +80,11 @@ path = "src/path_tracking/move_to_pose.rs"
 
 [[bin]]
 name = "inverted_pendulum_lqr"
-path = "src/inverted_pendulum/lqr_control.rs"
+path = "src/control/lqr_control.rs"
 
 [[bin]]
 name = "inverted_pendulum_mpc"
-path = "src/inverted_pendulum/mpc_control.rs"
+path = "src/control/mpc_control.rs"
 
 [[bin]]
 name = "two_joint_arm_control"
@@ -98,3 +101,35 @@ path = "src/mission_planning/state_machine.rs"
 [[bin]]
 name = "unscented_kalman_filter"
 path = "src/localization/unscented_kalman_filter.rs"
+
+[[bin]]
+name = "histogram_filter"
+path = "src/localization/histogram_filter.rs"
+
+[[bin]]
+name = "gaussian_grid_map"
+path = "src/mapping/gaussian_grid_map.rs"
+
+[[bin]]
+name = "ray_casting_grid_map"
+path = "src/mapping/ray_casting_grid_map.rs"
+
+[[bin]]
+name = "fastslam1"
+path = "src/slam/fastslam1.rs"
+
+[[bin]]
+name = "prm"
+path = "src/path_planning/prm.rs"
+
+[[bin]]
+name = "voronoi_road_map"
+path = "src/path_planning/voronoi_road_map.rs"
+
+[[bin]]
+name = "frenet_optimal_trajectory"
+path = "src/path_planning/frenet_optimal_trajectory.rs"
+
+[[bin]]
+name = "mpc"
+path = "src/path_tracking/mpc.rs"
