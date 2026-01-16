@@ -23,11 +23,14 @@ cargo run --bin two_joint_arm_control
       * [Extended Kalman Filter Localization](#extended-kalman-filter-localization)
       * [Particle Filter Localization](#particle-filter-localization)
       * [Unscented Kalman Filter Localization](#unscented-kalman-filter-localization)
+      * [Histogram Filter Localization](#histogram-filter-localization)
    * [Mapping](#mapping)
       * [NDT Map](#ndt-map)
+      * [Gaussian Grid Map](#gaussian-grid-map)
+      * [Ray Casting Grid Map](#ray-casting-grid-map)
    * [SLAM](#slam)
-      * Iterative Closest Point
-      * FastSLAM 1.0
+      * [Iterative Closest Point](#iterative-closest-point-icp-matching)
+      * [FastSLAM 1.0](#fastslam-10)
    * [Path Planning](#path-planning)
       * [A* Algorithm](#a-algorithm)
       * [Bezier Path Planning](#bezier-path-planning)
@@ -42,13 +45,15 @@ cargo run --bin two_joint_arm_control
       * [Rapidly-Exploring Random Trees (RRT)](#rapidly-exploring-random-trees-rrt)
       * [RRT*](#rrt)
       * [Reeds-Shepp Path](#reeds-shepp-path)
-      * State Lattice Planner
+      * [PRM (Probabilistic Road-Map)](#prm-probabilistic-road-map)
+      * [Voronoi Road-Map](#voronoi-road-map)
+      * [Frenet Optimal Trajectory](#frenet-optimal-trajectory)
    * [Path Tracking](#path-tracking)
       * [LQR Steer Control](#lqr-steer-control)
       * [Move to Pose](#move-to-pose)
       * [Pure Pursuit](#pure-pursuit)
       * [Stanley Control](#stanley-control)
-      * Nonlinear Model predictive control with C-GMRES
+      * [MPC (Model Predictive Control)](#mpc-model-predictive-control)
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
@@ -92,6 +97,20 @@ Blue: Ground Truth, Red: UKF Estimate, Black: Dead Reckoning, Green: GPS Observa
 cargo run --bin unscented_kalman_filter
 ```
 
+## Histogram Filter Localization
+
+<img src="./img/localization/histogram_filter.svg" width="640px">
+
+Grid-based probabilistic localization using RFID landmarks. The algorithm maintains a probability distribution over a 2D grid and updates it based on motion and observations.
+
+Blue: True path, Yellow: Dead Reckoning, Green: Histogram Filter estimate, Black: RFID landmarks
+
+- [src](./src/localization/histogram_filter.rs)
+
+```
+cargo run --bin histogram_filter
+```
+
 # Mapping
 ## NDT Map
 
@@ -101,6 +120,30 @@ cargo run --bin unscented_kalman_filter
 
 ```
 cargo run --bin ndt
+```
+
+## Gaussian Grid Map
+
+<img src="./img/mapping/gaussian_grid_map.svg" width="640px">
+
+Occupancy grid mapping using Gaussian distribution. Higher probability near obstacles.
+
+- [src](./src/mapping/gaussian_grid_map.rs)
+
+```
+cargo run --bin gaussian_grid_map
+```
+
+## Ray Casting Grid Map
+
+<img src="./img/mapping/ray_casting_grid_map.svg" width="640px">
+
+Occupancy grid mapping using ray casting. Free space (0.5), Occupied (1.0), Unknown (0.0).
+
+- [src](./src/mapping/ray_casting_grid_map.rs)
+
+```
+cargo run --bin ray_casting_grid_map
 ```
 
 # SLAM
@@ -119,6 +162,17 @@ cargo run --bin icp_matching
 
 ## FastSLAM 1.0
 
+<img src="./img/slam/fastslam1.svg" width="640px">
+
+Particle filter based SLAM (Simultaneous Localization and Mapping). Each particle maintains its own map of landmarks using EKF.
+
+Blue: True path, Yellow: Dead Reckoning, Green: FastSLAM estimate, Black: True landmarks, Cyan: Estimated landmarks
+
+- [src](./src/slam/fastslam1.rs)
+
+```
+cargo run --bin fastslam1
+```
 
 # Path Planning
 
@@ -280,6 +334,48 @@ cargo run --bin reeds_shepp_path
 
 ## State Lattice Planner
 
+## PRM (Probabilistic Road-Map)
+
+<img src="./img/path_planning/prm.svg" width="640px">
+
+Sampling-based path planning using random samples and k-nearest neighbor connections.
+
+Blue: Start, Red: Goal, Green: Path, Gray: Samples and edges, Black: Obstacles
+
+- [src](./src/path_planning/prm.rs)
+
+```
+cargo run --bin prm
+```
+
+## Voronoi Road-Map
+
+<img src="./img/path_planning/voronoi_road_map.svg" width="640px">
+
+Path planning using Voronoi diagram vertices as waypoints. Provides paths that maximize clearance from obstacles.
+
+Blue: Start, Red: Goal, Green: Path, Cyan: Voronoi vertices, Black: Obstacles
+
+- [src](./src/path_planning/voronoi_road_map.rs)
+
+```
+cargo run --bin voronoi_road_map
+```
+
+## Frenet Optimal Trajectory
+
+<img src="./img/path_planning/frenet_optimal_trajectory.svg" width="640px">
+
+Optimal trajectory planning in Frenet coordinate frame. Widely used in autonomous driving for lane keeping and obstacle avoidance.
+
+Gray: Reference path, Green: Optimal trajectory, Black: Obstacles, Red: Vehicle
+
+- [src](./src/path_planning/frenet_optimal_trajectory.rs)
+
+```
+cargo run --bin frenet_optimal_trajectory
+```
+
 # Path Tracking
 
 ## LQR Steer Control
@@ -331,6 +427,20 @@ cargo run --bin stanley_controller
 ```
 
 ## Nonlinear Model predictive control with C-GMRES
+
+## MPC (Model Predictive Control)
+
+<img src="./img/path_tracking/mpc.svg" width="640px">
+
+Model Predictive Control for path tracking using linearized bicycle model. Predicts future states and optimizes control inputs over a horizon.
+
+Gray: Reference path, Blue: Tracked trajectory, Green: Prediction horizon, Red: Vehicle
+
+- [src](./src/path_tracking/mpc.rs)
+
+```
+cargo run --bin mpc
+```
 
 # Inverted Pendulum
 
