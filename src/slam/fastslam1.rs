@@ -356,8 +356,8 @@ fn main() {
         // Get observations
         let z = get_observations(&x_true, &landmarks);
 
-        // FastSLAM update
-        fastslam_update(&mut particles, u_noisy, &z);
+        // FastSLAM update (use original control input, noise is added internally)
+        fastslam_update(&mut particles, u, &z);
 
         // Get best estimate
         let best = get_best_particle(&particles);
