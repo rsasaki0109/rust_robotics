@@ -20,6 +20,18 @@ ordered-float = "4.2"
 name = "a_star"
 path = "examples/path_planning/a_star.rs"
 
+[[example]]
+name = "theta_star"
+path = "examples/path_planning/theta_star.rs"
+
+[[example]]
+name = "jps"
+path = "examples/path_planning/jps.rs"
+
+[[example]]
+name = "state_lattice"
+path = "examples/path_planning/state_lattice.rs"
+
 # Legacy binaries (will be migrated to examples)
 
 [[bin]]
@@ -119,6 +131,14 @@ name = "fastslam1"
 path = "src/slam/fastslam1.rs"
 
 [[bin]]
+name = "ekf_slam"
+path = "src/slam/ekf_slam.rs"
+
+[[bin]]
+name = "graph_based_slam"
+path = "src/slam/graph_based_slam.rs"
+
+[[bin]]
 name = "prm"
 path = "src/path_planning/prm.rs"
 
@@ -133,3 +153,11 @@ path = "src/path_planning/frenet_optimal_trajectory.rs"
 [[bin]]
 name = "mpc"
 path = "src/path_tracking/mpc.rs"
+
+[[bin]]
+name = "cgmres_nmpc"
+path = "src/path_tracking/cgmres_nmpc.rs"
+
+[[example]]
+name = "rear_wheel_feedback"
+path = "examples/path_tracking/rear_wheel_feedback.rs"
