@@ -88,6 +88,29 @@ impl GridMap {
 
         self.get_xy(max_ix, max_iy)
     }
+
+    /// Get weighted mean position (more stable than max probability)
+    fn get_mean_position(&self) -> (f64, f64) {
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut sum_w = 0.0;
+
+        for ix in 0..self.x_width {
+            for iy in 0..self.y_width {
+                let w = self.data[(ix, iy)];
+                let (x, y) = self.get_xy(ix, iy);
+                sum_x += x * w;
+                sum_y += y * w;
+                sum_w += w;
+            }
+        }
+
+        if sum_w > 0.0 {
+            (sum_x / sum_w, sum_y / sum_w)
+        } else {
+            (0.0, 0.0)
+        }
+    }
 }
 
 /// Histogram filter for 2D localization
@@ -104,6 +127,26 @@ impl HistogramFilter {
             dx: 0.0,
             dy: 0.0,
         }
+    }
+
+    /// Create histogram filter with initial position
+    fn new_with_initial_pos(min_x: f64, min_y: f64, max_x: f64, max_y: f64, resolution: f64,
+                             init_x: f64, init_y: f64, init_std: f64) -> Self {
+        let mut hf = HistogramFilter::new(min_x, min_y, max_x, max_y, resolution);
+
+        // Set Gaussian distribution around initial position
+        for ix in 0..hf.grid_map.x_width {
+            for iy in 0..hf.grid_map.y_width {
+                let (gx, gy) = hf.grid_map.get_xy(ix, iy);
+                let dx = gx - init_x;
+                let dy = gy - init_y;
+                let prob = (-(dx * dx + dy * dy) / (2.0 * init_std * init_std)).exp();
+                hf.grid_map.data[(ix, iy)] = prob;
+            }
+        }
+        hf.grid_map.normalize();
+
+        hf
     }
 
     /// Motion update: shift probability grid based on movement
@@ -128,19 +171,21 @@ impl HistogramFilter {
     }
 
     /// Shift the probability grid
+    /// Following Python's map_shift: grid_map.data[ix + x_shift][iy + y_shift] = tmp_grid_map[ix][iy]
     fn shift_grid(&mut self, shift_x: i32, shift_y: i32) {
         let x_width = self.grid_map.x_width;
         let y_width = self.grid_map.y_width;
+        let old_data = self.grid_map.data.clone();
         let mut new_data = DMatrix::from_element(x_width, y_width, 0.0);
 
         for ix in 0..x_width {
             for iy in 0..y_width {
-                let new_ix = ix as i32 - shift_x;
-                let new_iy = iy as i32 - shift_y;
+                let nix = ix as i32 + shift_x;
+                let niy = iy as i32 + shift_y;
 
-                if new_ix >= 0 && new_ix < x_width as i32 &&
-                   new_iy >= 0 && new_iy < y_width as i32 {
-                    new_data[(ix, iy)] = self.grid_map.data[(new_ix as usize, new_iy as usize)];
+                if nix >= 0 && nix < x_width as i32 &&
+                   niy >= 0 && niy < y_width as i32 {
+                    new_data[(nix as usize, niy as usize)] = old_data[(ix, iy)];
                 }
             }
         }
@@ -219,7 +264,52 @@ impl HistogramFilter {
     }
 
     fn get_estimated_position(&self) -> (f64, f64) {
-        self.grid_map.get_max_prob_position()
+        self.grid_map.get_mean_position()
+    }
+
+    /// Get probability distribution data for heatmap visualization
+    /// Returns (x_coords, y_coords, probability_values) for each grid cell
+    fn get_heatmap_data(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+        let mut xs = Vec::new();
+        let mut ys = Vec::new();
+        let mut probs = Vec::new();
+
+        for ix in 0..self.grid_map.x_width {
+            for iy in 0..self.grid_map.y_width {
+                let (x, y) = self.grid_map.get_xy(ix, iy);
+                xs.push(x);
+                ys.push(y);
+                probs.push(self.grid_map.data[(ix, iy)]);
+            }
+        }
+
+        (xs, ys, probs)
+    }
+
+    /// Get grid dimensions for heatmap
+    fn get_grid_dims(&self) -> (usize, usize) {
+        (self.grid_map.x_width, self.grid_map.y_width)
+    }
+
+    /// Get min coordinates
+    fn get_min_coords(&self) -> (f64, f64) {
+        (self.grid_map.min_x, self.grid_map.min_y)
+    }
+
+    /// Get resolution
+    fn get_resolution(&self) -> f64 {
+        self.grid_map.resolution
+    }
+
+    /// Get probability data as 2D matrix for heatmap (row-major, y then x)
+    fn get_prob_matrix(&self) -> Vec<f64> {
+        let mut data = Vec::new();
+        for iy in 0..self.grid_map.y_width {
+            for ix in 0..self.grid_map.x_width {
+                data.push(self.grid_map.data[(ix, iy)]);
+            }
+        }
+        data
     }
 }
 
@@ -265,8 +355,11 @@ fn main() {
     // Grid area
     let area = (-5.0, -5.0, 15.0, 25.0); // (min_x, min_y, max_x, max_y)
 
-    // Initialize histogram filter
-    let mut hf = HistogramFilter::new(area.0, area.1, area.2, area.3, XY_RESOLUTION);
+    // Initialize histogram filter with initial position at origin
+    let mut hf = HistogramFilter::new_with_initial_pos(
+        area.0, area.1, area.2, area.3, XY_RESOLUTION,
+        0.0, 0.0, 1.0  // initial position (x, y) and initial standard deviation
+    );
 
     // State: [x, y, yaw, v]
     let mut x_true = Vector4::new(0.0, 0.0, 0.0, 0.0);
@@ -282,7 +375,6 @@ fn main() {
     // History for plotting
     let mut h_true: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let mut h_dr: Vec<(f64, f64)> = vec![(0.0, 0.0)];
-    let mut h_est: Vec<(f64, f64)> = vec![(0.0, 0.0)];
 
     let mut time = 0.0;
     let mut fig = Figure::new();
@@ -310,13 +402,9 @@ fn main() {
             hf.observation_update(&z, &rfid);
         }
 
-        // Get estimated position
-        let (est_x, est_y) = hf.get_estimated_position();
-
         // Store history
         h_true.push((x_true[0], x_true[1]));
         h_dr.push((x_dr[0], x_dr[1]));
-        h_est.push((est_x, est_y));
 
         // Animation
         if SHOW_ANIMATION {
@@ -326,8 +414,6 @@ fn main() {
             let true_y: Vec<f64> = h_true.iter().map(|p| p.1).collect();
             let dr_x: Vec<f64> = h_dr.iter().map(|p| p.0).collect();
             let dr_y: Vec<f64> = h_dr.iter().map(|p| p.1).collect();
-            let est_x_hist: Vec<f64> = h_est.iter().map(|p| p.0).collect();
-            let est_y_hist: Vec<f64> = h_est.iter().map(|p| p.1).collect();
             let rfid_x: Vec<f64> = rfid.iter().map(|p| p.0).collect();
             let rfid_y: Vec<f64> = rfid.iter().map(|p| p.1).collect();
 
@@ -339,8 +425,7 @@ fn main() {
                 .set_y_range(gnuplot::Fix(area.1 - 2.0), gnuplot::Fix(area.3 + 2.0))
                 .points(&rfid_x, &rfid_y, &[Caption("RFID"), Color("black"), gnuplot::PointSymbol('O'), gnuplot::PointSize(2.0)])
                 .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
-                .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")])
-                .lines(&est_x_hist, &est_y_hist, &[Caption("Histogram Filter"), Color("green")]);
+                .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")]);
 
             fig.show_and_keep_running().unwrap();
         }
@@ -348,26 +433,38 @@ fn main() {
 
     println!("Done!");
 
-    // Save final plot
+    // Save final plot with heatmap
     fig.clear_axes();
 
     let true_x: Vec<f64> = h_true.iter().map(|p| p.0).collect();
     let true_y: Vec<f64> = h_true.iter().map(|p| p.1).collect();
     let dr_x: Vec<f64> = h_dr.iter().map(|p| p.0).collect();
     let dr_y: Vec<f64> = h_dr.iter().map(|p| p.1).collect();
-    let est_x_hist: Vec<f64> = h_est.iter().map(|p| p.0).collect();
-    let est_y_hist: Vec<f64> = h_est.iter().map(|p| p.1).collect();
     let rfid_x: Vec<f64> = rfid.iter().map(|p| p.0).collect();
     let rfid_y: Vec<f64> = rfid.iter().map(|p| p.1).collect();
+
+    // Get heatmap data from histogram filter
+    let (x_width, y_width) = hf.get_grid_dims();
+    let (min_x, min_y) = hf.get_min_coords();
+    let resolution = hf.get_resolution();
+    let heatmap_data = hf.get_prob_matrix();
 
     fig.axes2d()
         .set_title("Histogram Filter Localization", &[])
         .set_x_label("x [m]", &[])
         .set_y_label("y [m]", &[])
+        .set_x_range(gnuplot::Fix(area.0 - 2.0), gnuplot::Fix(area.2 + 2.0))
+        .set_y_range(gnuplot::Fix(area.1 - 2.0), gnuplot::Fix(area.3 + 2.0))
+        .image(
+            heatmap_data.iter(),
+            x_width,
+            y_width,
+            Some((min_x, min_y, min_x + x_width as f64 * resolution, min_y + y_width as f64 * resolution)),
+            &[],
+        )
         .points(&rfid_x, &rfid_y, &[Caption("RFID"), Color("black"), gnuplot::PointSymbol('O'), gnuplot::PointSize(2.0)])
         .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
-        .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")])
-        .lines(&est_x_hist, &est_y_hist, &[Caption("Histogram Filter"), Color("green")]);
+        .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("orange")]);
 
     fig.save_to_svg("./img/localization/histogram_filter.svg", 640, 480).unwrap();
     println!("Plot saved to ./img/localization/histogram_filter.svg");

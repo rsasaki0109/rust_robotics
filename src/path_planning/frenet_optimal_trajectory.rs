@@ -498,12 +498,21 @@ fn main() {
 
     let mut fig = Figure::new();
 
+    // History for plotting
+    let mut h_x: Vec<f64> = Vec::new();
+    let mut h_y: Vec<f64> = Vec::new();
+
     // Simulation loop
-    let area = 20.0;
     for _ in 0..500 {
         let path = frenet_optimal_planning(&csp, s0, c_speed, c_d, c_d_d, c_d_dd, &ob);
 
         if let Some(ref fp) = path {
+            // Store current position
+            if !fp.x.is_empty() {
+                h_x.push(fp.x[0]);
+                h_y.push(fp.y[0]);
+            }
+
             // Update state
             if fp.s.len() > 1 {
                 s0 = fp.s[1];
@@ -549,24 +558,22 @@ fn main() {
 
     println!("Done!");
 
-    // Save final plot
-    if let Some(path) = frenet_optimal_planning(&csp, 0.0, 10.0 / 3.6, 2.0, 0.0, 0.0, &ob) {
-        fig.clear_axes();
+    // Save final plot with full trajectory history
+    fig.clear_axes();
 
-        let ref_x: Vec<f64> = csp.s.iter().map(|&s| csp.sx.calc(s)).collect();
-        let ref_y: Vec<f64> = csp.s.iter().map(|&s| csp.sy.calc(s)).collect();
-        let ob_x: Vec<f64> = ob.iter().map(|(x, _)| *x).collect();
-        let ob_y: Vec<f64> = ob.iter().map(|(_, y)| *y).collect();
+    let ref_x: Vec<f64> = csp.s.iter().map(|&s| csp.sx.calc(s)).collect();
+    let ref_y: Vec<f64> = csp.s.iter().map(|&s| csp.sy.calc(s)).collect();
+    let ob_x: Vec<f64> = ob.iter().map(|(x, _)| *x).collect();
+    let ob_y: Vec<f64> = ob.iter().map(|(_, y)| *y).collect();
 
-        fig.axes2d()
-            .set_title("Frenet Optimal Trajectory", &[])
-            .set_x_label("x [m]", &[])
-            .set_y_label("y [m]", &[])
-            .lines(&ref_x, &ref_y, &[Caption("Reference"), Color("gray")])
-            .points(&ob_x, &ob_y, &[Caption("Obstacles"), Color("black"), PointSymbol('O'), PointSize(2.0)])
-            .lines(&path.x, &path.y, &[Caption("Trajectory"), Color("green")]);
+    fig.axes2d()
+        .set_title("Frenet Optimal Trajectory", &[])
+        .set_x_label("x [m]", &[])
+        .set_y_label("y [m]", &[])
+        .lines(&ref_x, &ref_y, &[Caption("Reference"), Color("gray")])
+        .points(&ob_x, &ob_y, &[Caption("Obstacles"), Color("black"), PointSymbol('O'), PointSize(2.0)])
+        .lines(&h_x, &h_y, &[Caption("Trajectory"), Color("green")]);
 
-        fig.save_to_svg("./img/path_planning/frenet_optimal_trajectory.svg", 640, 480).unwrap();
-        println!("Plot saved to ./img/path_planning/frenet_optimal_trajectory.svg");
-    }
+    fig.save_to_svg("./img/path_planning/frenet_optimal_trajectory.svg", 640, 480).unwrap();
+    println!("Plot saved to ./img/path_planning/frenet_optimal_trajectory.svg");
 }
