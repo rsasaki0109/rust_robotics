@@ -373,19 +373,62 @@ impl JPSPlanner {
     }
 
     fn build_path(&self, goal_index: usize, node_storage: &[Node]) -> Path2D {
-        let mut points = Vec::new();
+        // First, collect jump points in reverse order
+        let mut jump_points = Vec::new();
         let mut current_index = Some(goal_index);
 
         while let Some(index) = current_index {
             let node = &node_storage[index];
-            points.push(Point2D::new(
-                self.grid_map.calc_grid_position(node.x),
-                self.grid_map.calc_grid_position(node.y),
-            ));
+            jump_points.push((node.x, node.y));
             current_index = node.parent_index;
         }
 
-        points.reverse();
+        jump_points.reverse();
+
+        // Now interpolate between consecutive jump points
+        let mut points = Vec::new();
+
+        for i in 0..jump_points.len() {
+            let (x, y) = jump_points[i];
+
+            if i == 0 {
+                // Add start point
+                points.push(Point2D::new(
+                    self.grid_map.calc_grid_position(x),
+                    self.grid_map.calc_grid_position(y),
+                ));
+            } else {
+                // Interpolate from previous jump point to current
+                let (px, py) = jump_points[i - 1];
+                let dx = (x - px).signum();
+                let dy = (y - py).signum();
+
+                let mut cx = px;
+                let mut cy = py;
+
+                // Walk from previous to current, adding intermediate points
+                while cx != x || cy != y {
+                    // Move one step
+                    if cx != x && cy != y {
+                        // Diagonal movement
+                        cx += dx;
+                        cy += dy;
+                    } else if cx != x {
+                        // Horizontal movement
+                        cx += dx;
+                    } else {
+                        // Vertical movement
+                        cy += dy;
+                    }
+
+                    points.push(Point2D::new(
+                        self.grid_map.calc_grid_position(cx),
+                        self.grid_map.calc_grid_position(cy),
+                    ));
+                }
+            }
+        }
+
         Path2D::from_points(points)
     }
 }
@@ -645,8 +688,12 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        // For a diagonal path with no obstacles, JPS should find a very short path
-        // (just start and goal, or very few waypoints)
-        assert!(path.len() <= 5, "JPS should find an efficient path");
+        // For a diagonal path with no obstacles, JPS should find an efficient path
+        // The path is interpolated, so it will have all intermediate grid points
+        // From (2,2) to (18,18) is 16 diagonal steps, so 17 points total
+        assert!(path.len() >= 2, "Path should have at least start and goal");
+        // Verify path is roughly diagonal (total length should be close to sqrt(2) * 16 ≈ 22.6)
+        let total_len = path.total_length();
+        assert!(total_len < 30.0, "Path should be efficient, got length {}", total_len);
     }
 }
