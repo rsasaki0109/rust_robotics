@@ -1,268 +1,322 @@
-// Path tracking simulation with pure pursuit steering and PID speed control.
-// author: Atsushi Sakai (@Atsushi_twi)
-//         Guillaume Jacquenot (@Gjacquenot)
-//         Ryohei Sasaki (@rsasaki0109)
-use gnuplot::{Figure, Caption, Color, AxesCommon};
+//! Pure Pursuit path tracking algorithm
+//!
+//! A geometric path tracking controller that computes the steering angle
+//! to follow a reference path by looking ahead to a target point.
 
-#[derive(Debug, Copy, Clone)] // Turn Move Semantics into Copy Semantics
-struct State {
-    x: f64,
-    y: f64,
-    yaw: f64,
-    v: f64,
-    rear_x: f64,
-    rear_y: f64,
-    wb: f64,
+use crate::common::{Point2D, Path2D, State2D, ControlInput, PathTracker};
+
+/// Vehicle state for Pure Pursuit
+#[derive(Debug, Clone, Copy)]
+pub struct VehicleState {
+    pub x: f64,
+    pub y: f64,
+    pub yaw: f64,
+    pub v: f64,
+    pub rear_x: f64,
+    pub rear_y: f64,
+    pub wheelbase: f64,
 }
 
-impl State {
-    fn new(x:(f64,f64,f64,f64), wb: f64)-> State{
-        State {
-          x: x.0, y: x.1,
-          yaw: x.2, v: x.3,
-          rear_x: x.0 - ((wb / 2.) * (x.2).cos()),
-          rear_y: x.1 - ((wb / 2.) * (x.2).sin()),
-          wb: wb
-        }
-      }
-    fn update(&mut self, a: f64, delta: f64, dt: f64) {
-        self.x += self.v * (self.yaw).cos() * dt;
-        self.y += self.v * (self.yaw).sin() * dt;
-        self.yaw += self.v / self.wb * (delta).tan() * dt;
+impl VehicleState {
+    pub fn new(x: f64, y: f64, yaw: f64, v: f64, wheelbase: f64) -> Self {
+        let rear_x = x - (wheelbase / 2.0) * yaw.cos();
+        let rear_y = y - (wheelbase / 2.0) * yaw.sin();
+        VehicleState { x, y, yaw, v, rear_x, rear_y, wheelbase }
+    }
+
+    pub fn update(&mut self, a: f64, delta: f64, dt: f64) {
+        self.x += self.v * self.yaw.cos() * dt;
+        self.y += self.v * self.yaw.sin() * dt;
+        self.yaw += self.v / self.wheelbase * delta.tan() * dt;
         self.v += a * dt;
-        self.rear_x = self.x - ((self.wb / 2.) * (self.yaw).cos());
-        self.rear_y = self.y - ((self.wb / 2.) * (self.yaw).sin());
-      }
-    fn calc_distance(&self, point_x: f64, point_y: f64) -> f64{
-        let dx = self.rear_x - point_x;
-        let dy = self.rear_y - point_y;
-        (dx.powi(2) + dy.powi(2) ).sqrt()
-      }   
-}
-
-fn proportional_control(target: f64, current: f64, kp: f64) -> f64
-{
-    kp * (target - current)
-}
-
-
-struct TargetCourse {
-  cx: Vec<f64>,
-  cy: Vec<f64>,
-  old_nearest_point_index: i32,
-  k: f64,
-  lfc: f64
-}
-
-impl TargetCourse {
-  fn new(c:(Vec<f64>,Vec<f64>),k: f64, lfc: f64)-> TargetCourse{
-    TargetCourse {
-      cx: c.0, cy: c.1,
-      old_nearest_point_index: -1,
-      k: k,
-      lfc: lfc
+        self.rear_x = self.x - (self.wheelbase / 2.0) * self.yaw.cos();
+        self.rear_y = self.y - (self.wheelbase / 2.0) * self.yaw.sin();
     }
-  }
-  fn search_target_index(&mut self, state: State) -> (i32, f64){
-    let mut ind = 0;
-    if self.old_nearest_point_index == -1 {
-      let mut d_min = std::f64::MAX;
-      let mut ind_min = 0;
-      for i in 0..self.cx.len()-1 { // The type of i is usize
-        let dx = state.rear_x - self.cx[i];
-        let dy = state.rear_y - self.cy[i];
-        let d = (dx.powi(2) + dy.powi(2)).sqrt();
-        if d < d_min {
-          d_min = d;
-          ind_min = i;
+
+    pub fn calc_distance(&self, px: f64, py: f64) -> f64 {
+        let dx = self.rear_x - px;
+        let dy = self.rear_y - py;
+        (dx * dx + dy * dy).sqrt()
+    }
+
+    pub fn to_state2d(&self) -> State2D {
+        State2D::new(self.x, self.y, self.yaw, self.v)
+    }
+}
+
+impl From<State2D> for VehicleState {
+    fn from(s: State2D) -> Self {
+        VehicleState::new(s.x, s.y, s.yaw, s.v, 2.9) // default wheelbase
+    }
+}
+
+/// Configuration for Pure Pursuit controller
+#[derive(Debug, Clone)]
+pub struct PurePursuitConfig {
+    /// Look-ahead gain (k)
+    pub look_ahead_gain: f64,
+    /// Look-ahead distance offset (Lfc)
+    pub look_ahead_distance: f64,
+    /// Vehicle wheelbase
+    pub wheelbase: f64,
+    /// Speed proportional gain
+    pub kp: f64,
+    /// Goal distance threshold
+    pub goal_threshold: f64,
+}
+
+impl Default for PurePursuitConfig {
+    fn default() -> Self {
+        Self {
+            look_ahead_gain: 0.1,
+            look_ahead_distance: 2.0,
+            wheelbase: 2.9,
+            kp: 1.0,
+            goal_threshold: 2.0,
         }
-      } 
-      self.old_nearest_point_index = ind_min as i32;
-      ind = ind_min;
-    } else {
-      ind = self.old_nearest_point_index as usize;
-      let mut distance_this_index = state.calc_distance(self.cx[ind],
-        self.cy[ind]);
-      loop {
-        if ind + 1 >= self.cx.len() {
-          break;
-        }
-        let distance_next_index = state.calc_distance(self.cx[ind + 1],
-          self.cy[ind + 1]);
-        if distance_this_index < distance_next_index {
-          break
-        }
-        ind += 1;
-        distance_this_index = distance_next_index;
-      }
-      self.old_nearest_point_index = ind as i32;
     }
-    let lf = self.k * state.v + self.lfc;
-    while ind < self.cx.len() && lf > state.calc_distance(self.cx[ind], self.cy[ind]) {
-      if ind + 1 >= self.cx.len() {
-        break
-      }
-      ind += 1;
-    }
-    (ind as i32, lf)
-  }
 }
 
-fn pure_pursuit_steer_control(state: State, trajectory: &mut TargetCourse, pind: i32)
--> (f64, i32)
-{
-    let pair = trajectory.search_target_index(state);
-    let mut ind = pair.0;
-    let lf = pair.1;
-    if pind > ind {
-      ind = pind;
-    }
-    
-    let tx: f64;
-    let ty: f64;
-    let traj_len = trajectory.cx.len();
-    if ind < traj_len as i32 {
-      tx = trajectory.cx[ind as usize];
-      ty = trajectory.cy[ind as usize];
-    } else {
-      tx = trajectory.cx[traj_len - 1];
-      ty = trajectory.cy[traj_len - 1];
-      ind = traj_len as i32 - 1
-    }
-
-    let alpha = (ty - state.rear_y).atan2(tx - state.rear_x) - state.yaw;
-    let delta = (2.0 * state.wb * alpha.sin() / lf).atan2(1.0);
-    (delta, ind) 
-}
-
+/// Pure Pursuit path tracking controller
 pub struct PurePursuitController {
-    pub reference_path: Vec<(f64, f64)>,
-    pub trajectory: Vec<(f64, f64)>,
-    pub k: f64,
-    pub lfc: f64,
-    pub wb: f64,
+    config: PurePursuitConfig,
+    path: Path2D,
+    old_nearest_index: Option<usize>,
 }
 
 impl PurePursuitController {
-    pub fn new(k: f64, lfc: f64, wb: f64) -> Self {
+    /// Create a new Pure Pursuit controller
+    pub fn new(config: PurePursuitConfig) -> Self {
         PurePursuitController {
-            reference_path: Vec::new(),
-            trajectory: Vec::new(),
-            k,
-            lfc,
-            wb,
+            config,
+            path: Path2D::new(),
+            old_nearest_index: None,
         }
     }
 
-    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64) -> bool {
-        if waypoints.len() < 2 {
-            println!("Need at least 2 waypoints");
-            return false;
+    /// Create with simplified parameters (legacy interface)
+    pub fn with_params(k: f64, lfc: f64, wb: f64) -> Self {
+        let config = PurePursuitConfig {
+            look_ahead_gain: k,
+            look_ahead_distance: lfc,
+            wheelbase: wb,
+            ..Default::default()
+        };
+        Self::new(config)
+    }
+
+    /// Set the reference path
+    pub fn set_path(&mut self, path: Path2D) {
+        self.path = path;
+        self.old_nearest_index = None;
+    }
+
+    /// Get the current reference path
+    pub fn get_path(&self) -> &Path2D {
+        &self.path
+    }
+
+    /// Compute steering angle for current state
+    pub fn compute_steering(&mut self, state: &VehicleState) -> f64 {
+        let (target_idx, lf) = self.search_target_index(state);
+
+        let (tx, ty) = if target_idx < self.path.len() {
+            let p = &self.path.points[target_idx];
+            (p.x, p.y)
+        } else {
+            let p = self.path.points.last().unwrap();
+            (p.x, p.y)
+        };
+
+        let alpha = (ty - state.rear_y).atan2(tx - state.rear_x) - state.yaw;
+        (2.0 * state.wheelbase * alpha.sin() / lf).atan2(1.0)
+    }
+
+    /// Search for target point index on path
+    fn search_target_index(&mut self, state: &VehicleState) -> (usize, f64) {
+        let mut ind = match self.old_nearest_index {
+            None => {
+                // Find nearest point
+                let mut min_dist = f64::MAX;
+                let mut min_idx = 0;
+                for (i, p) in self.path.points.iter().enumerate() {
+                    let d = state.calc_distance(p.x, p.y);
+                    if d < min_dist {
+                        min_dist = d;
+                        min_idx = i;
+                    }
+                }
+                min_idx
+            }
+            Some(prev_idx) => {
+                // Search from previous index
+                let mut idx = prev_idx;
+                let mut dist = state.calc_distance(
+                    self.path.points[idx].x,
+                    self.path.points[idx].y
+                );
+
+                while idx + 1 < self.path.len() {
+                    let next_dist = state.calc_distance(
+                        self.path.points[idx + 1].x,
+                        self.path.points[idx + 1].y
+                    );
+                    if dist < next_dist {
+                        break;
+                    }
+                    idx += 1;
+                    dist = next_dist;
+                }
+                idx
+            }
+        };
+
+        self.old_nearest_index = Some(ind);
+
+        // Calculate look-ahead distance
+        let lf = self.config.look_ahead_gain * state.v + self.config.look_ahead_distance;
+
+        // Find target point at look-ahead distance
+        while ind < self.path.len() {
+            let p = &self.path.points[ind];
+            if state.calc_distance(p.x, p.y) >= lf {
+                break;
+            }
+            if ind + 1 >= self.path.len() {
+                break;
+            }
+            ind += 1;
         }
 
-        // Generate reference path
-        self.reference_path = waypoints;
-        
-        // Simulate pure pursuit tracking
-        let kp = 1.0;  // speed proportional gain
-        let dt = 0.1;  // [s] time tick
-        let t_max = 100.0;  // max simulation time
+        (ind, lf)
+    }
 
-        // initial state
-        let init_x = (self.reference_path[0].0, self.reference_path[0].1 - 3.0, 0.0, 0.0);
-        let mut state = State::new(init_x, self.wb);
-        self.trajectory = vec![(state.x, state.y)];
+    /// Proportional speed control
+    pub fn compute_acceleration(&self, target_speed: f64, current_speed: f64) -> f64 {
+        self.config.kp * (target_speed - current_speed)
+    }
+
+    /// Check if goal is reached
+    pub fn is_goal_reached(&self, state: &VehicleState) -> bool {
+        if let Some(goal) = self.path.points.last() {
+            let dx = state.x - goal.x;
+            let dy = state.y - goal.y;
+            (dx * dx + dy * dy).sqrt() < self.config.goal_threshold
+        } else {
+            true
+        }
+    }
+
+    /// Simulate path tracking (legacy interface)
+    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64) -> Option<Vec<(f64, f64)>> {
+        if waypoints.len() < 2 {
+            return None;
+        }
+
+        // Set path
+        let path = Path2D::from_points(
+            waypoints.iter().map(|&(x, y)| Point2D::new(x, y)).collect()
+        );
+        self.set_path(path);
+
+        // Initial state
+        let init_pos = &self.path.points[0];
+        let mut state = VehicleState::new(
+            init_pos.x,
+            init_pos.y - 3.0,
+            0.0,
+            0.0,
+            self.config.wheelbase
+        );
+
+        let mut trajectory = vec![(state.x, state.y)];
+        let dt = 0.1;
+        let t_max = 100.0;
         let mut time = 0.0;
-        
-        let cx: Vec<f64> = self.reference_path.iter().map(|p| p.0).collect();
-        let cy: Vec<f64> = self.reference_path.iter().map(|p| p.1).collect();
-        let mut target_course = TargetCourse::new((cx, cy), self.k, self.lfc);
-        let pair = target_course.search_target_index(state);
-        let mut target_ind = pair.0;
 
-        while t_max > time {
-            let ai = proportional_control(target_speed, state.v, kp);
-            let tmp = pure_pursuit_steer_control(state, &mut target_course, target_ind);
-            let di = tmp.0;
-            target_ind = tmp.1;
+        while time < t_max {
+            let ai = self.compute_acceleration(target_speed, state.v);
+            let di = self.compute_steering(&state);
             state.update(ai, di, dt);
             time += dt;
 
-            self.trajectory.push((state.x, state.y));
-            
-            // Check if reached goal
-            let goal = self.reference_path.last().unwrap();
-            let dx = state.x - goal.0;
-            let dy = state.y - goal.1;
-            let distance_to_goal = (dx * dx + dy * dy).sqrt();
-            if distance_to_goal < 2.0 {
-                println!("Goal reached!");
+            trajectory.push((state.x, state.y));
+
+            if self.is_goal_reached(&state) {
                 break;
             }
         }
-        
-        true
-    }
 
-    pub fn visualize(&self, filename: &str) {
-        let mut fg = Figure::new();
-        {
-            let axes = fg.axes2d()
-                .set_title("Pure Pursuit Path Tracking", &[])
-                .set_x_label("x [m]", &[])
-                .set_y_label("y [m]", &[])
-                .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
-
-            // Plot reference path
-            let ref_x: Vec<f64> = self.reference_path.iter().map(|p| p.0).collect();
-            let ref_y: Vec<f64> = self.reference_path.iter().map(|p| p.1).collect();
-            axes.lines(&ref_x, &ref_y, &[Caption("Reference Path"), Color("blue")]);
-
-            // Plot trajectory
-            let traj_x: Vec<f64> = self.trajectory.iter().map(|p| p.0).collect();
-            let traj_y: Vec<f64> = self.trajectory.iter().map(|p| p.1).collect();
-            axes.lines(&traj_x, &traj_y, &[Caption("Pure Pursuit Trajectory"), Color("red")]);
-
-            // Plot start and goal
-            if !self.reference_path.is_empty() {
-                let start = &self.reference_path[0];
-                axes.points(&[start.0], &[start.1], &[Caption("Start"), Color("green")]);
-                let goal = self.reference_path.last().unwrap();
-                axes.points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red")]);
-            }
-        }
-
-        let output_path = format!("img/path_tracking/{}", filename);
-        fg.set_terminal("pngcairo", &output_path);
-        fg.show().unwrap();
-        println!("Pure pursuit path tracking visualization saved to: {}", output_path);
+        Some(trajectory)
     }
 }
 
-fn main() {
-    // Create output directory
-    std::fs::create_dir_all("img/path_tracking").unwrap();
+impl PathTracker for PurePursuitController {
+    fn compute_control(&mut self, current_state: &State2D, path: &Path2D) -> ControlInput {
+        // Set path if different
+        if self.path.len() != path.len() {
+            self.set_path(path.clone());
+        }
 
-    let mut controller = PurePursuitController::new(0.1, 2.0, 2.9);
-    
-    // Generate sinusoidal reference path
-    let mut waypoints = Vec::new();
-    let dx = 0.5;
-    let length = (50.0 / dx) as usize;
-    for i in 0..length {
-        let x = dx * i as f64;
-        let y = (i as f64 / 2.0) * (i as f64 / 5.0).sin();
-        waypoints.push((x, y));
+        let vehicle_state = VehicleState::new(
+            current_state.x,
+            current_state.y,
+            current_state.yaw,
+            current_state.v,
+            self.config.wheelbase
+        );
+
+        let delta = self.compute_steering(&vehicle_state);
+
+        // Compute speed control (assume constant target speed for now)
+        let target_speed = 5.0; // m/s
+        let v = current_state.v + self.compute_acceleration(target_speed, current_state.v) * 0.1;
+
+        // Convert steering angle to angular velocity
+        let omega = v * delta.tan() / self.config.wheelbase;
+
+        ControlInput::new(v, omega)
     }
-    
-    let target_speed = 10.0 / 3.6; // 10 km/h to m/s
-    
-    println!("Starting Pure Pursuit path tracking...");
-    
-    if controller.planning(waypoints, target_speed) {
-        controller.visualize("pure_pursuit.png");
-        println!("Pure Pursuit Path Tracking complete!");
-    } else {
-        println!("Planning failed!");
+
+    fn is_goal_reached(&self, current_state: &State2D, goal: Point2D) -> bool {
+        let dx = current_state.x - goal.x;
+        let dy = current_state.y - goal.y;
+        (dx * dx + dy * dy).sqrt() < self.config.goal_threshold
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pure_pursuit_creation() {
+        let config = PurePursuitConfig::default();
+        let controller = PurePursuitController::new(config);
+        assert!(controller.path.is_empty());
+    }
+
+    #[test]
+    fn test_pure_pursuit_set_path() {
+        let mut controller = PurePursuitController::with_params(0.1, 2.0, 2.9);
+        let path = Path2D::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.0),
+            Point2D::new(2.0, 0.0),
+        ]);
+        controller.set_path(path);
+        assert_eq!(controller.get_path().len(), 3);
+    }
+
+    #[test]
+    fn test_pure_pursuit_planning() {
+        let mut controller = PurePursuitController::with_params(0.1, 2.0, 2.9);
+        let waypoints: Vec<(f64, f64)> = (0..10)
+            .map(|i| (i as f64 * 2.0, 0.0))
+            .collect();
+
+        let result = controller.planning(waypoints, 5.0);
+        assert!(result.is_some());
+        assert!(result.unwrap().len() > 0);
     }
 }
