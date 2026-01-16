@@ -20,6 +20,10 @@ ordered-float = "4.2"
 name = "a_star"
 path = "examples/path_planning/a_star.rs"
 
+[[example]]
+name = "state_lattice"
+path = "examples/path_planning/state_lattice.rs"
+
 # Legacy binaries (will be migrated to examples)
 
 [[bin]]
