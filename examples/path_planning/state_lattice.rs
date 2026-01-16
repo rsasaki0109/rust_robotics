@@ -75,13 +75,10 @@ fn test_uniform_polar_sampling() {
         vis.plot_path(&path2d, &PathStyle::new(color, "").with_line_width(1.0));
     }
 
-    if let Err(e) = vis.save_png("img/path_planning/state_lattice_uniform.png", 800, 600) {
-        eprintln!("Failed to save PNG: {}", e);
-    }
     if let Err(e) = vis.save_svg("img/path_planning/state_lattice_uniform.svg", 800, 600) {
         eprintln!("Failed to save SVG: {}", e);
     }
-    println!("Plot saved to: img/path_planning/state_lattice_uniform.png/.svg");
+    println!("Plot saved to: img/path_planning/state_lattice_uniform.svg");
     println!();
 }
 
@@ -125,9 +122,8 @@ fn test_biased_polar_sampling() {
         vis.plot_path(&path2d, &PathStyle::new(colors::RED, "").with_line_width(1.0));
     }
 
-    let _ = vis.save_png("img/path_planning/state_lattice_biased.png", 800, 600);
     let _ = vis.save_svg("img/path_planning/state_lattice_biased.svg", 800, 600);
-    println!("Plot saved to: img/path_planning/state_lattice_biased.png/.svg");
+    println!("Plot saved to: img/path_planning/state_lattice_biased.svg");
     println!();
 }
 
@@ -186,9 +182,8 @@ fn test_lane_sampling() {
         vis.plot_path(&path2d, &PathStyle::new(colors::RED, "").with_line_width(1.0));
     }
 
-    let _ = vis.save_png("img/path_planning/state_lattice_lane.png", 800, 600);
     let _ = vis.save_svg("img/path_planning/state_lattice_lane.svg", 800, 600);
-    println!("Plot saved to: img/path_planning/state_lattice_lane.png/.svg");
+    println!("Plot saved to: img/path_planning/state_lattice_lane.svg");
     println!();
 }
 
@@ -218,9 +213,8 @@ fn test_full_planning() {
             vis.plot_goal(goal);
             vis.plot_path(&path, &PathStyle::new(colors::RED, "Path").with_line_width(2.0));
 
-            let _ = vis.save_png("img/path_planning/state_lattice_plan.png", 800, 600);
             let _ = vis.save_svg("img/path_planning/state_lattice_plan.svg", 800, 600);
-            println!("Plot saved to: img/path_planning/state_lattice_plan.png/.svg");
+            println!("Plot saved to: img/path_planning/state_lattice_plan.svg");
         }
         Err(e) => {
             println!("Planning failed: {}", e);
