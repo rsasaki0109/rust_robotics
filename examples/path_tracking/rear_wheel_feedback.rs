@@ -298,13 +298,5 @@ fn main() {
         Err(e) => eprintln!("Failed to save SVG: {:?}", e),
     }
 
-    // Also save as PNG
-    let png_path = "img/path_tracking/rear_wheel_feedback.png";
-    fg.set_terminal("pngcairo", png_path);
-    match fg.show() {
-        Ok(_) => println!("PNG saved to: {}", png_path),
-        Err(e) => eprintln!("Failed to save PNG: {:?}", e),
-    }
-
     println!("Rear Wheel Feedback Control visualization complete!");
 }
