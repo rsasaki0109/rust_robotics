@@ -7,9 +7,10 @@
 // Shunichi09/nonlinear_control: Implementing the nonlinear model predictive
 // control, sliding mode control https://github.com/Shunichi09/PythonLinearNonlinearControl
 
-use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
 use nalgebra::{DMatrix, DVector};
 use std::f64::consts::PI;
+use std::fs::File;
+use std::io::Write;
 
 // System parameters
 const U_A_MAX: f64 = 1.0; // Maximum acceleration input
@@ -17,8 +18,6 @@ const U_OMEGA_MAX: f64 = PI / 4.0; // Maximum steering angle (45 degrees)
 const PHI_V: f64 = 0.01; // Penalty weight for acceleration
 const PHI_OMEGA: f64 = 0.01; // Penalty weight for steering
 const WB: f64 = 0.25; // Wheelbase [m]
-
-const SHOW_ANIMATION: bool = false;
 
 /// Differential model for two-wheeled robot
 /// Returns (dx, dy, d_yaw, dv) derivatives
@@ -123,19 +122,18 @@ impl NMPCSimulatorSystem {
         let mut v_s = vec![v];
 
         for i in 0..n {
-            let (next_x, next_y, next_yaw, next_v) = self.predict_state_euler(
-                x_s[i], y_s[i], yaw_s[i], v_s[i], u_1s[i], u_2s[i], dt,
-            );
-            x_s.push(next_x);
-            y_s.push(next_y);
-            yaw_s.push(next_yaw);
-            v_s.push(next_v);
+            let (dx, dy, d_yaw, dv) = differential_model(v_s[i], yaw_s[i], u_1s[i], u_2s[i]);
+
+            x_s.push(x_s[i] + dt * dx);
+            y_s.push(y_s[i] + dt * dy);
+            yaw_s.push(yaw_s[i] + dt * d_yaw);
+            v_s.push(v_s[i] + dt * dv);
         }
 
         (x_s, y_s, yaw_s, v_s)
     }
 
-    /// Backward adjoint state calculation
+    /// Backward adjoint state calculation (returns N elements)
     fn calc_adjoint_states(
         &self,
         x_s: &[f64],
@@ -146,17 +144,37 @@ impl NMPCSimulatorSystem {
         n: usize,
         dt: f64,
     ) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
-        // Initialize with terminal conditions (terminal cost gradient = state)
+        // Initialize with terminal conditions (terminal cost gradient = final state)
+        // Python: lam_1s = [x_s[-1]], etc.
         let mut lam_1s = vec![x_s[n]];
         let mut lam_2s = vec![y_s[n]];
         let mut lam_3s = vec![yaw_s[n]];
         let mut lam_4s = vec![v_s[n]];
 
-        // Backward integration
+        // Backward integration: for i in range(N-1, 0, -1)
+        // This gives N-1 iterations, resulting in N total lambda values
         for i in (1..n).rev() {
-            let (pre_lam_1, pre_lam_2, pre_lam_3, pre_lam_4) = self.adjoint_state_euler(
-                yaw_s[i], v_s[i], lam_1s[0], lam_2s[0], lam_3s[0], lam_4s[0], u_2s[i], dt,
-            );
+            let yaw = yaw_s[i];
+            let v = v_s[i];
+            let u_2 = u_2s[i];
+            let lam_1 = lam_1s[0];
+            let lam_2 = lam_2s[0];
+            let lam_3 = lam_3s[0];
+            let lam_4 = lam_4s[0];
+
+            // Adjoint equations: dλ/dt = -∂H/∂x
+            // ∂H/∂x = 0, ∂H/∂y = 0
+            let pre_lam_1 = lam_1;
+            let pre_lam_2 = lam_2;
+
+            // ∂H/∂yaw = -lam_1 * sin(yaw) * v + lam_2 * cos(yaw) * v
+            let tmp1 = -lam_1 * yaw.sin() * v + lam_2 * yaw.cos() * v;
+            let pre_lam_3 = lam_3 + dt * tmp1;
+
+            // ∂H/∂v = lam_1 * cos(yaw) + lam_2 * sin(yaw) + lam_3 * sin(u_2) / WB
+            let tmp2 = lam_1 * yaw.cos() + lam_2 * yaw.sin() + lam_3 * u_2.sin() / WB;
+            let pre_lam_4 = lam_4 + dt * tmp2;
+
             lam_1s.insert(0, pre_lam_1);
             lam_2s.insert(0, pre_lam_2);
             lam_3s.insert(0, pre_lam_3);
@@ -164,59 +182,6 @@ impl NMPCSimulatorSystem {
         }
 
         (lam_1s, lam_2s, lam_3s, lam_4s)
-    }
-
-    /// Single step Euler integration for state prediction
-    fn predict_state_euler(
-        &self,
-        x: f64,
-        y: f64,
-        yaw: f64,
-        v: f64,
-        u_1: f64,
-        u_2: f64,
-        dt: f64,
-    ) -> (f64, f64, f64, f64) {
-        let (dx, dy, d_yaw, dv) = differential_model(v, yaw, u_1, u_2);
-
-        let next_x = x + dt * dx;
-        let next_y = y + dt * dy;
-        let next_yaw = yaw + dt * d_yaw;
-        let next_v = v + dt * dv;
-
-        (next_x, next_y, next_yaw, next_v)
-    }
-
-    /// Single step Euler integration for adjoint state (backward)
-    /// Computes ∂H/∂x for costate equations
-    fn adjoint_state_euler(
-        &self,
-        yaw: f64,
-        v: f64,
-        lam_1: f64,
-        lam_2: f64,
-        lam_3: f64,
-        lam_4: f64,
-        u_2: f64,
-        dt: f64,
-    ) -> (f64, f64, f64, f64) {
-        // Adjoint equations: dλ/dt = -∂H/∂x
-
-        // ∂H/∂x = 0
-        let pre_lam_1 = lam_1 + dt * 0.0;
-
-        // ∂H/∂y = 0
-        let pre_lam_2 = lam_2 + dt * 0.0;
-
-        // ∂H/∂yaw
-        let tmp1 = -lam_1 * yaw.sin() * v + lam_2 * yaw.cos() * v;
-        let pre_lam_3 = lam_3 + dt * tmp1;
-
-        // ∂H/∂v
-        let tmp2 = lam_1 * yaw.cos() + lam_2 * yaw.sin() + lam_3 * u_2.sin() / WB;
-        let pre_lam_4 = lam_4 + dt * tmp2;
-
-        (pre_lam_1, pre_lam_2, pre_lam_3, pre_lam_4)
     }
 }
 
@@ -229,19 +194,18 @@ impl Default for NMPCSimulatorSystem {
 /// NMPC Controller using C-GMRES (Continuation GMRES) algorithm
 pub struct NMPCControllerCGMRES {
     // Parameters
-    pub zeta: f64,      // Stability gain for optimal answer
-    pub ht: f64,        // Finite difference step size
-    pub tf: f64,        // Prediction time horizon
-    pub alpha: f64,     // Time scaling factor
-    pub n: usize,       // Number of prediction steps
-    pub threshold: f64, // CGMRES convergence threshold
-    pub input_num: usize, // Number of inputs (u1, u2, dummy_u1, dummy_u2, raw1, raw2)
+    pub zeta: f64,      // Stability gain
+    pub ht: f64,        // Finite difference step
+    pub tf: f64,        // Prediction horizon time
+    pub alpha: f64,     // Time scaling
+    pub n: usize,       // Prediction steps
+    pub threshold: f64, // Convergence threshold
+    pub input_num: usize,
     pub max_iteration: usize,
 
-    // Simulator
     simulator: NMPCSimulatorSystem,
 
-    // Control inputs over horizon
+    // Control inputs
     pub u_1s: Vec<f64>,
     pub u_2s: Vec<f64>,
     pub dummy_u_1s: Vec<f64>,
@@ -249,19 +213,15 @@ pub struct NMPCControllerCGMRES {
     pub raw_1s: Vec<f64>,
     pub raw_2s: Vec<f64>,
 
-    // History for plotting
+    // History
     pub history_u_1: Vec<f64>,
     pub history_u_2: Vec<f64>,
-    pub history_dummy_u_1: Vec<f64>,
-    pub history_dummy_u_2: Vec<f64>,
-    pub history_raw_1: Vec<f64>,
-    pub history_raw_2: Vec<f64>,
     pub history_f: Vec<f64>,
 }
 
 impl NMPCControllerCGMRES {
     pub fn new() -> Self {
-        let n = 10; // Number of prediction steps
+        let n = 10;
         let input_num = 6;
 
         NMPCControllerCGMRES {
@@ -276,20 +236,16 @@ impl NMPCControllerCGMRES {
 
             simulator: NMPCSimulatorSystem::new(),
 
-            // Initialize inputs as 1.0 (except raw which are 0.0)
-            u_1s: vec![1.0; n],
-            u_2s: vec![1.0; n],
-            dummy_u_1s: vec![1.0; n],
-            dummy_u_2s: vec![1.0; n],
-            raw_1s: vec![0.0; n],
-            raw_2s: vec![0.0; n],
+            // Initialize with smaller values to avoid numerical instability
+            u_1s: vec![0.1; n],
+            u_2s: vec![0.1; n],
+            dummy_u_1s: vec![0.9; n],  // sqrt(U_MAX^2 - u^2) ≈ 0.99 for u=0.1
+            dummy_u_2s: vec![0.78; n], // sqrt(U_OMEGA_MAX^2 - u^2) ≈ 0.78 for u=0.1
+            raw_1s: vec![0.01; n],
+            raw_2s: vec![0.01; n],
 
             history_u_1: Vec::new(),
             history_u_2: Vec::new(),
-            history_dummy_u_1: Vec::new(),
-            history_dummy_u_2: Vec::new(),
-            history_raw_1: Vec::new(),
-            history_raw_2: Vec::new(),
             history_f: Vec::new(),
         }
     }
@@ -303,10 +259,10 @@ impl NMPCControllerCGMRES {
         v: f64,
         time: f64,
     ) -> (Vec<f64>, Vec<f64>) {
-        // Calculate sampling time (increases with time for stability)
+        // dt increases with time for stability
         let dt = self.tf * (1.0 - (-self.alpha * time).exp()) / (self.n as f64);
 
-        // Calculate state derivatives (x_dot)
+        // x_dot
         let (x_1_dot, x_2_dot, x_3_dot, x_4_dot) =
             differential_model(v, yaw, self.u_1s[0], self.u_2s[0]);
 
@@ -315,22 +271,23 @@ impl NMPCControllerCGMRES {
         let dx_3 = x_3_dot * self.ht;
         let dx_4 = x_4_dot * self.ht;
 
-        // F(U, x + h*x_dot, t + h) - Fxt
-        let (_, _, _, v_s, _, _, lam_3s, lam_4s) = self.simulator.calc_predict_and_adjoint_state(
-            x + dx_1,
-            y + dx_2,
-            yaw + dx_3,
-            v + dx_4,
-            &self.u_1s,
-            &self.u_2s,
-            self.n,
-            dt,
-        );
+        // Fxt: F(U, x + h*x_dot, t + h)
+        let (_, _, _, v_s_fxt, _, _, lam_3s_fxt, lam_4s_fxt) =
+            self.simulator.calc_predict_and_adjoint_state(
+                x + dx_1,
+                y + dx_2,
+                yaw + dx_3,
+                v + dx_4,
+                &self.u_1s,
+                &self.u_2s,
+                self.n,
+                dt,
+            );
 
         let fxt = Self::calc_f(
-            &v_s,
-            &lam_3s,
-            &lam_4s,
+            &v_s_fxt,
+            &lam_3s_fxt,
+            &lam_4s_fxt,
             &self.u_1s,
             &self.u_2s,
             &self.dummy_u_1s,
@@ -340,15 +297,15 @@ impl NMPCControllerCGMRES {
             self.n,
         );
 
-        // F(U, x, t) - F
-        let (_, _, _, v_s_current, _, _, lam_3s_current, lam_4s_current) = self
+        // F: F(U, x, t)
+        let (_, _, _, v_s_f, _, _, lam_3s_f, lam_4s_f) = self
             .simulator
             .calc_predict_and_adjoint_state(x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt);
 
         let f = Self::calc_f(
-            &v_s_current,
-            &lam_3s_current,
-            &lam_4s_current,
+            &v_s_f,
+            &lam_3s_f,
+            &lam_4s_f,
             &self.u_1s,
             &self.u_2s,
             &self.dummy_u_1s,
@@ -358,14 +315,14 @@ impl NMPCControllerCGMRES {
             self.n,
         );
 
-        // Right hand side: -zeta * F - (Fxt - F) / ht
+        // right = -zeta * F - (Fxt - F) / ht
         let right: Vec<f64> = f
             .iter()
             .zip(fxt.iter())
             .map(|(&f_i, &fxt_i)| -self.zeta * f_i - (fxt_i - f_i) / self.ht)
             .collect();
 
-        // Initial du for perturbation
+        // du = u * ht (initial perturbation)
         let du_1: Vec<f64> = self.u_1s.iter().map(|&u| u * self.ht).collect();
         let du_2: Vec<f64> = self.u_2s.iter().map(|&u| u * self.ht).collect();
         let ddummy_u_1: Vec<f64> = self.dummy_u_1s.iter().map(|&u| u * self.ht).collect();
@@ -373,91 +330,81 @@ impl NMPCControllerCGMRES {
         let draw_1: Vec<f64> = self.raw_1s.iter().map(|&u| u * self.ht).collect();
         let draw_2: Vec<f64> = self.raw_2s.iter().map(|&u| u * self.ht).collect();
 
-        // F(U + h*dU(0), x + h*x_dot, t + h)
-        let u_1s_perturbed: Vec<f64> = self
-            .u_1s
-            .iter()
-            .zip(du_1.iter())
-            .map(|(&u, &d)| u + d)
-            .collect();
-        let u_2s_perturbed: Vec<f64> = self
-            .u_2s
-            .iter()
-            .zip(du_2.iter())
-            .map(|(&u, &d)| u + d)
-            .collect();
+        // Fuxt: F(U + h*dU(0), x + h*x_dot, t + h)
+        let u_1s_pert: Vec<f64> = self.u_1s.iter().zip(&du_1).map(|(&u, &d)| u + d).collect();
+        let u_2s_pert: Vec<f64> = self.u_2s.iter().zip(&du_2).map(|(&u, &d)| u + d).collect();
 
-        let (_, _, _, v_s_pert, _, _, lam_3s_pert, lam_4s_pert) =
+        let (_, _, _, v_s_fuxt, _, _, lam_3s_fuxt, lam_4s_fuxt) =
             self.simulator.calc_predict_and_adjoint_state(
                 x + dx_1,
                 y + dx_2,
                 yaw + dx_3,
                 v + dx_4,
-                &u_1s_perturbed,
-                &u_2s_perturbed,
+                &u_1s_pert,
+                &u_2s_pert,
                 self.n,
                 dt,
             );
 
-        let dummy_u_1s_pert: Vec<f64> = self
+        let dummy_1s_pert: Vec<f64> = self
             .dummy_u_1s
             .iter()
-            .zip(ddummy_u_1.iter())
+            .zip(&ddummy_u_1)
             .map(|(&u, &d)| u + d)
             .collect();
-        let dummy_u_2s_pert: Vec<f64> = self
+        let dummy_2s_pert: Vec<f64> = self
             .dummy_u_2s
             .iter()
-            .zip(ddummy_u_2.iter())
+            .zip(&ddummy_u_2)
             .map(|(&u, &d)| u + d)
             .collect();
         let raw_1s_pert: Vec<f64> = self
             .raw_1s
             .iter()
-            .zip(draw_1.iter())
+            .zip(&draw_1)
             .map(|(&u, &d)| u + d)
             .collect();
         let raw_2s_pert: Vec<f64> = self
             .raw_2s
             .iter()
-            .zip(draw_2.iter())
+            .zip(&draw_2)
             .map(|(&u, &d)| u + d)
             .collect();
 
         let fuxt = Self::calc_f(
-            &v_s_pert,
-            &lam_3s_pert,
-            &lam_4s_pert,
-            &u_1s_perturbed,
-            &u_2s_perturbed,
-            &dummy_u_1s_pert,
-            &dummy_u_2s_pert,
+            &v_s_fuxt,
+            &lam_3s_fuxt,
+            &lam_4s_fuxt,
+            &u_1s_pert,
+            &u_2s_pert,
+            &dummy_1s_pert,
+            &dummy_2s_pert,
             &raw_1s_pert,
             &raw_2s_pert,
             self.n,
         );
 
-        // Left hand side: (Fuxt - Fxt) / ht
+        // left = (Fuxt - Fxt) / ht
         let left: Vec<f64> = fuxt
             .iter()
-            .zip(fxt.iter())
+            .zip(&fxt)
             .map(|(&fuxt_i, &fxt_i)| (fuxt_i - fxt_i) / self.ht)
             .collect();
 
-        // Initial residual: r0 = right - left
-        let r0: Vec<f64> = right.iter().zip(left.iter()).map(|(&r, &l)| r - l).collect();
+        // r0 = right - left
+        let r0: Vec<f64> = right.iter().zip(&left).map(|(&r, &l)| r - l).collect();
         let r0_norm = vec_norm(&r0);
 
-        // GMRES iteration using simple vectors
+        // GMRES
         let m = self.max_iteration;
-        let mut vs: Vec<Vec<f64>> = vec![vec![0.0; m]; m + 1];
+        let mut vs = DMatrix::zeros(m, m + 1);
         for i in 0..m {
-            vs[0][i] = r0[i] / r0_norm;
+            vs[(i, 0)] = r0[i] / r0_norm;
         }
 
-        let mut hs: Vec<Vec<f64>> = vec![vec![0.0; m]; m + 1];
+        let mut hs = DMatrix::zeros(m + 1, m + 1);
 
-        let mut ys_pre: Vec<f64> = Vec::new();
+        let mut ys_pre: Option<DVector<f64>> = None;
 
         let mut du_1_new = du_1.clone();
         let mut du_2_new = du_2.clone();
@@ -467,7 +414,7 @@ impl NMPCControllerCGMRES {
         let mut draw_2_new = draw_2.clone();
 
         for i in 0..m {
-            // Extract du components from vs column i
+            // Extract du from vs column i
             let mut du_1_i = vec![0.0; self.n];
             let mut du_2_i = vec![0.0; self.n];
             let mut ddummy_u_1_i = vec![0.0; self.n];
@@ -476,27 +423,16 @@ impl NMPCControllerCGMRES {
             let mut draw_2_i = vec![0.0; self.n];
 
             for k in 0..self.n {
-                du_1_i[k] = vs[i][k * self.input_num] * self.ht;
-                du_2_i[k] = vs[i][k * self.input_num + 1] * self.ht;
-                ddummy_u_1_i[k] = vs[i][k * self.input_num + 2] * self.ht;
-                ddummy_u_2_i[k] = vs[i][k * self.input_num + 3] * self.ht;
-                draw_1_i[k] = vs[i][k * self.input_num + 4] * self.ht;
-                draw_2_i[k] = vs[i][k * self.input_num + 5] * self.ht;
+                du_1_i[k] = vs[(k * self.input_num, i)] * self.ht;
+                du_2_i[k] = vs[(k * self.input_num + 1, i)] * self.ht;
+                ddummy_u_1_i[k] = vs[(k * self.input_num + 2, i)] * self.ht;
+                ddummy_u_2_i[k] = vs[(k * self.input_num + 3, i)] * self.ht;
+                draw_1_i[k] = vs[(k * self.input_num + 4, i)] * self.ht;
+                draw_2_i[k] = vs[(k * self.input_num + 5, i)] * self.ht;
             }
 
-            // Perturb inputs
-            let u_1s_i: Vec<f64> = self
-                .u_1s
-                .iter()
-                .zip(du_1_i.iter())
-                .map(|(&u, &d)| u + d)
-                .collect();
-            let u_2s_i: Vec<f64> = self
-                .u_2s
-                .iter()
-                .zip(du_2_i.iter())
-                .map(|(&u, &d)| u + d)
-                .collect();
+            let u_1s_i: Vec<f64> = self.u_1s.iter().zip(&du_1_i).map(|(&u, &d)| u + d).collect();
+            let u_2s_i: Vec<f64> = self.u_2s.iter().zip(&du_2_i).map(|(&u, &d)| u + d).collect();
 
             let (_, _, _, v_s_i, _, _, lam_3s_i, lam_4s_i) =
                 self.simulator.calc_predict_and_adjoint_state(
@@ -510,28 +446,28 @@ impl NMPCControllerCGMRES {
                     dt,
                 );
 
-            let dummy_u_1s_i: Vec<f64> = self
+            let dummy_1s_i: Vec<f64> = self
                 .dummy_u_1s
                 .iter()
-                .zip(ddummy_u_1_i.iter())
+                .zip(&ddummy_u_1_i)
                 .map(|(&u, &d)| u + d)
                 .collect();
-            let dummy_u_2s_i: Vec<f64> = self
+            let dummy_2s_i: Vec<f64> = self
                 .dummy_u_2s
                 .iter()
-                .zip(ddummy_u_2_i.iter())
+                .zip(&ddummy_u_2_i)
                 .map(|(&u, &d)| u + d)
                 .collect();
             let raw_1s_i: Vec<f64> = self
                 .raw_1s
                 .iter()
-                .zip(draw_1_i.iter())
+                .zip(&draw_1_i)
                 .map(|(&u, &d)| u + d)
                 .collect();
             let raw_2s_i: Vec<f64> = self
                 .raw_2s
                 .iter()
-                .zip(draw_2_i.iter())
+                .zip(&draw_2_i)
                 .map(|(&u, &d)| u + d)
                 .collect();
 
@@ -541,8 +477,8 @@ impl NMPCControllerCGMRES {
                 &lam_4s_i,
                 &u_1s_i,
                 &u_2s_i,
-                &dummy_u_1s_i,
-                &dummy_u_2s_i,
+                &dummy_1s_i,
+                &dummy_2s_i,
                 &raw_1s_i,
                 &raw_2s_i,
                 self.n,
@@ -551,74 +487,75 @@ impl NMPCControllerCGMRES {
             // Av = (Fuxt_i - Fxt) / ht
             let av: Vec<f64> = fuxt_i
                 .iter()
-                .zip(fxt.iter())
-                .map(|(&f_i, &fxt_i)| (f_i - fxt_i) / self.ht)
+                .zip(&fxt)
+                .map(|(&fi, &fxti)| (fi - fxti) / self.ht)
                 .collect();
 
-            // Gram-Schmidt orthonormalization
+            // Gram-Schmidt
             let mut sum_av = vec![0.0; m];
             for j in 0..=i {
-                let mut dot_product = 0.0;
+                let mut dot = 0.0;
                 for k in 0..m {
-                    dot_product += av[k] * vs[j][k];
+                    dot += av[k] * vs[(k, j)];
                 }
-                hs[j][i] = dot_product;
+                hs[(j, i)] = dot;
                 for k in 0..m {
-                    sum_av[k] += hs[j][i] * vs[j][k];
+                    sum_av[k] += hs[(j, i)] * vs[(k, j)];
                 }
             }
 
-            // v_est = Av - sum_Av
-            let v_est: Vec<f64> = av.iter().zip(sum_av.iter()).map(|(&a, &s)| a - s).collect();
+            let v_est: Vec<f64> = av.iter().zip(&sum_av).map(|(&a, &s)| a - s).collect();
             let v_est_norm = vec_norm(&v_est);
-            hs[i + 1][i] = v_est_norm;
+            hs[(i + 1, i)] = v_est_norm;
 
-            // Normalize and store
             if v_est_norm > 1e-10 {
                 for k in 0..m {
-                    vs[i + 1][k] = v_est[k] / v_est_norm;
+                    vs[(k, i + 1)] = v_est[k] / v_est_norm;
                 }
             }
 
-            // Solve least squares using pseudo-inverse
-            // hs[:i+1, :i] * ys = r0_norm * e[:i+1]
-            let ys = solve_least_squares_nalgebra(&hs, i + 1, i, r0_norm);
+            // Solve hs[:i+2, :i+1] * ys = r0_norm * e (where e = [1, 0, 0, ...])
+            let hs_sub = hs.view((0, 0), (i + 2, i + 1)).clone_owned();
+            let mut e = DVector::zeros(i + 2);
+            e[0] = r0_norm;
 
-            // Check convergence
-            let judge_norm = calc_residual(&hs, &ys, i + 1, i, r0_norm);
+            // Use pseudoinverse to solve least squares: ys = pinv(hs_sub) * e
+            let ys = match hs_sub.clone().svd(true, true).solve(&e, 1e-10) {
+                Ok(sol) => sol,
+                Err(_) => DVector::zeros(i + 1),
+            };
 
-            let converged = judge_norm < self.threshold;
-            let max_iter_reached = i == m - 1;
+            // Check convergence: judge_value = e - hs_sub * ys
+            let hs_ys = &hs_sub * &ys;
+            let residual = &e - &hs_ys;
+            let judge_norm = residual.norm();
 
-            if converged || max_iter_reached {
-                if !ys_pre.is_empty() {
-                    let update_len = i.saturating_sub(1);
-                    if update_len > 0 && ys_pre.len() >= update_len {
-                        // update_val = vs[:, :update_len] * ys_pre[:update_len]
-                        let mut update_val = vec![0.0; m];
-                        for col in 0..update_len {
-                            for row in 0..m {
-                                update_val[row] += vs[col][row] * ys_pre[col];
-                            }
-                        }
+            if judge_norm < self.threshold || i == m - 1 {
+                // Use ys_pre for final update (from previous iteration)
+                if let Some(ref ys_p) = ys_pre {
+                    let update_len = ys_p.len().min(i);
+                    if update_len > 0 {
+                        let vs_sub = vs.view((0, 0), (m, update_len)).clone_owned();
+                        let ys_sub = ys_p.rows(0, update_len).clone_owned();
+                        let update_val = &vs_sub * &ys_sub;
 
                         for k in 0..self.n {
-                            du_1_new[k] = du_1_i[k] + update_val[k * self.input_num];
-                            du_2_new[k] = du_2_i[k] + update_val[k * self.input_num + 1];
-                            ddummy_u_1_new[k] = ddummy_u_1_i[k] + update_val[k * self.input_num + 2];
-                            ddummy_u_2_new[k] = ddummy_u_2_i[k] + update_val[k * self.input_num + 3];
-                            draw_1_new[k] = draw_1_i[k] + update_val[k * self.input_num + 4];
-                            draw_2_new[k] = draw_2_i[k] + update_val[k * self.input_num + 5];
+                            du_1_new[k] = update_val[k * self.input_num];
+                            du_2_new[k] = update_val[k * self.input_num + 1];
+                            ddummy_u_1_new[k] = update_val[k * self.input_num + 2];
+                            ddummy_u_2_new[k] = update_val[k * self.input_num + 3];
+                            draw_1_new[k] = update_val[k * self.input_num + 4];
+                            draw_2_new[k] = update_val[k * self.input_num + 5];
                         }
                     }
                 }
                 break;
             }
 
-            ys_pre = ys;
+            ys_pre = Some(ys);
         }
 
-        // Update control inputs
+        // Update inputs
         for i in 0..self.n {
             self.u_1s[i] += du_1_new[i] * self.ht;
             self.u_2s[i] += du_2_new[i] * self.ht;
@@ -628,7 +565,7 @@ impl NMPCControllerCGMRES {
             self.raw_2s[i] += draw_2_new[i] * self.ht;
         }
 
-        // Calculate final F norm for monitoring
+        // Calculate final F norm
         let (_, _, _, v_s_final, _, _, lam_3s_final, lam_4s_final) = self
             .simulator
             .calc_predict_and_adjoint_state(x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt);
@@ -649,19 +586,14 @@ impl NMPCControllerCGMRES {
         let f_norm = vec_norm(&f_final);
         println!("norm(F) = {:.6}", f_norm);
 
-        // Save history
         self.history_f.push(f_norm);
         self.history_u_1.push(self.u_1s[0]);
         self.history_u_2.push(self.u_2s[0]);
-        self.history_dummy_u_1.push(self.dummy_u_1s[0]);
-        self.history_dummy_u_2.push(self.dummy_u_2s[0]);
-        self.history_raw_1.push(self.raw_1s[0]);
-        self.history_raw_2.push(self.raw_2s[0]);
 
         (self.u_1s.clone(), self.u_2s.clone())
     }
 
-    /// Calculate the optimality condition F (Hamiltonian gradient and constraints)
+    /// Calculate optimality condition F
     fn calc_f(
         v_s: &[f64],
         lam_3s: &[f64],
@@ -677,28 +609,30 @@ impl NMPCControllerCGMRES {
         let mut f = Vec::with_capacity(6 * n);
 
         for i in 0..n {
-            // ∂H/∂u_1: Hamiltonian gradient w.r.t. acceleration
-            // H_u1 = u_1 + lambda_4 + 2 * raw_1 * u_1 = 0
-            f.push(u_1s[i] + lam_4s[i] + 2.0 * raw_1s[i] * u_1s[i]);
+            // Use min to avoid index out of bounds
+            let lam_3_idx = i.min(lam_3s.len() - 1);
+            let lam_4_idx = i.min(lam_4s.len() - 1);
 
-            // ∂H/∂u_2: Hamiltonian gradient w.r.t. steering
-            // Note: derivative of sin(u_2) is cos(u_2)
+            // ∂H/∂u_1
+            f.push(u_1s[i] + lam_4s[lam_4_idx] + 2.0 * raw_1s[i] * u_1s[i]);
+
+            // ∂H/∂u_2
             f.push(
                 u_2s[i]
-                    + lam_3s[i] * v_s[i] / WB * u_2s[i].cos().powi(2)
+                    + lam_3s[lam_3_idx] * v_s[i] / WB * u_2s[i].cos().powi(2)
                     + 2.0 * raw_2s[i] * u_2s[i],
             );
 
-            // ∂H/∂dummy_u_1: -phi_v + 2 * raw_1 * dummy_u_1 = 0
+            // ∂H/∂dummy_u_1
             f.push(-PHI_V + 2.0 * raw_1s[i] * dummy_u_1s[i]);
 
-            // ∂H/∂dummy_u_2: -phi_omega + 2 * raw_2 * dummy_u_2 = 0
+            // ∂H/∂dummy_u_2
             f.push(-PHI_OMEGA + 2.0 * raw_2s[i] * dummy_u_2s[i]);
 
-            // Constraint C_1: u_1^2 + dummy_u_1^2 - U_A_MAX^2 = 0
+            // C_1
             f.push(u_1s[i].powi(2) + dummy_u_1s[i].powi(2) - U_A_MAX.powi(2));
 
-            // Constraint C_2: u_2^2 + dummy_u_2^2 - U_OMEGA_MAX^2 = 0
+            // C_2
             f.push(u_2s[i].powi(2) + dummy_u_2s[i].powi(2) - U_OMEGA_MAX.powi(2));
         }
 
@@ -712,190 +646,172 @@ impl Default for NMPCControllerCGMRES {
     }
 }
 
-/// Calculate vector L2 norm
 fn vec_norm(v: &[f64]) -> f64 {
     v.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
-/// Solve least squares using nalgebra's SVD-based pseudo-inverse
-fn solve_least_squares_nalgebra(
-    hs: &[Vec<f64>],
-    rows: usize,
-    cols: usize,
-    r0_norm: f64,
-) -> Vec<f64> {
-    if cols == 0 || rows == 0 {
-        return vec![];
-    }
-
-    // Build the submatrix
-    let mut a = DMatrix::zeros(rows, cols);
-    for i in 0..rows {
-        for j in 0..cols {
-            a[(i, j)] = hs[i][j];
-        }
-    }
-
-    // Build rhs: r0_norm * e_1
-    let mut b = DVector::zeros(rows);
-    b[0] = r0_norm;
-
-    // Use SVD-based pseudo-inverse solve
-    let svd = a.svd(true, true);
-    match svd.solve(&b, 1e-10) {
-        Ok(solution) => solution.iter().cloned().collect(),
-        Err(_) => vec![0.0; cols],
-    }
-}
-
-/// Calculate residual for convergence check
-fn calc_residual(hs: &[Vec<f64>], ys: &[f64], rows: usize, cols: usize, r0_norm: f64) -> f64 {
-    if cols == 0 || ys.is_empty() {
-        return f64::MAX;
-    }
-
-    let mut residual = vec![0.0; rows];
-    residual[0] = r0_norm;
-
-    // residual = b - A * y
-    for i in 0..rows {
-        for j in 0..cols.min(ys.len()) {
-            residual[i] -= hs[i][j] * ys[j];
-        }
-    }
-
-    vec_norm(&residual)
-}
-
-/// Plot car shape for visualization
-#[allow(dead_code)]
-fn plot_car(
-    fig: &mut Figure,
-    x: f64,
-    y: f64,
-    yaw: f64,
+/// Generate SVG plot without gnuplot
+fn save_trajectory_svg(
+    filename: &str,
     history_x: &[f64],
     history_y: &[f64],
-    time: f64,
-    accel: f64,
-    v: f64,
-) {
-    // Vehicle parameters
-    let length = 0.4;
-    let width = 0.2;
-    let back_to_wheel = 0.1;
+    title: &str,
+) -> std::io::Result<()> {
+    let width = 800;
+    let height = 600;
+    let margin = 60;
 
-    // Calculate vehicle outline corners
-    let corners = [
-        (-back_to_wheel, width / 2.0),
-        (length - back_to_wheel, width / 2.0),
-        (length - back_to_wheel, -width / 2.0),
-        (-back_to_wheel, -width / 2.0),
-        (-back_to_wheel, width / 2.0),
-    ];
+    // Find bounds
+    let x_min = history_x.iter().cloned().fold(f64::INFINITY, f64::min);
+    let x_max = history_x.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let y_min = history_y.iter().cloned().fold(f64::INFINITY, f64::min);
+    let y_max = history_y.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
-    // Rotate and translate corners
-    let cos_yaw = yaw.cos();
-    let sin_yaw = yaw.sin();
+    // Include origin
+    let x_min = x_min.min(0.0) - 0.5;
+    let x_max = x_max.max(0.0) + 0.5;
+    let y_min = y_min.min(0.0) - 0.5;
+    let y_max = y_max.max(0.0) + 0.5;
 
-    let rotated: Vec<(f64, f64)> = corners
-        .iter()
-        .map(|(cx, cy)| {
-            let rx = cx * cos_yaw - cy * sin_yaw + x;
-            let ry = cx * sin_yaw + cy * cos_yaw + y;
-            (rx, ry)
-        })
-        .collect();
+    let plot_width = (width - 2 * margin) as f64;
+    let plot_height = (height - 2 * margin) as f64;
 
-    let car_x: Vec<f64> = rotated.iter().map(|(x, _)| *x).collect();
-    let car_y: Vec<f64> = rotated.iter().map(|(_, y)| *y).collect();
+    let scale_x = plot_width / (x_max - x_min);
+    let scale_y = plot_height / (y_max - y_min);
+    let scale = scale_x.min(scale_y);
 
-    fig.clear_axes();
-    fig.axes2d()
-        .set_title(
-            &format!(
-                "CGMRES NMPC - Time: {:.2}s, Accel: {:.2} m/s², Speed: {:.2} m/s",
-                time, accel, v
-            ),
-            &[],
-        )
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-        .lines(history_x, history_y, &[Caption("Trajectory"), Color("red")])
-        .lines(&car_x, &car_y, &[Caption("Vehicle"), Color("black")])
-        .points(
-            &[x],
-            &[y],
-            &[Color("blue"), PointSymbol('*'), PointSize(2.0)],
-        )
-        .points(
-            &[0.0],
-            &[0.0],
-            &[Caption("Goal"), Color("green"), PointSymbol('O'), PointSize(2.0)],
-        );
+    let to_svg_x = |x: f64| margin as f64 + (x - x_min) * scale;
+    let to_svg_y = |y: f64| (height - margin) as f64 - (y - y_min) * scale;
 
-    fig.show_and_keep_running().ok();
+    let mut file = File::create(filename)?;
+
+    writeln!(
+        file,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">
+<rect width="100%" height="100%" fill="white"/>"#,
+        width, height, width, height
+    )?;
+
+    // Title
+    writeln!(
+        file,
+        r#"<text x="{}" y="30" text-anchor="middle" font-size="16" font-family="sans-serif">{}</text>"#,
+        width / 2,
+        title
+    )?;
+
+    // Axes
+    writeln!(
+        file,
+        r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>"#,
+        margin,
+        height - margin,
+        width - margin,
+        height - margin
+    )?;
+    writeln!(
+        file,
+        r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>"#,
+        margin, margin, margin, height - margin
+    )?;
+
+    // Trajectory
+    if history_x.len() > 1 {
+        let mut path = String::from("M");
+        for (i, (&x, &y)) in history_x.iter().zip(history_y.iter()).enumerate() {
+            let svg_x = to_svg_x(x);
+            let svg_y = to_svg_y(y);
+            if i == 0 {
+                path.push_str(&format!(" {:.2},{:.2}", svg_x, svg_y));
+            } else {
+                path.push_str(&format!(" L {:.2},{:.2}", svg_x, svg_y));
+            }
+        }
+        writeln!(
+            file,
+            r#"<path d="{}" fill="none" stroke="red" stroke-width="2"/>"#,
+            path
+        )?;
+    }
+
+    // Start point
+    let start_x = to_svg_x(history_x[0]);
+    let start_y = to_svg_y(history_y[0]);
+    writeln!(
+        file,
+        r#"<circle cx="{:.2}" cy="{:.2}" r="6" fill="blue"/>"#,
+        start_x, start_y
+    )?;
+    writeln!(
+        file,
+        r#"<text x="{:.2}" y="{:.2}" font-size="12" font-family="sans-serif">Start</text>"#,
+        start_x + 10.0,
+        start_y
+    )?;
+
+    // Goal (origin)
+    let goal_x = to_svg_x(0.0);
+    let goal_y = to_svg_y(0.0);
+    writeln!(
+        file,
+        r#"<circle cx="{:.2}" cy="{:.2}" r="6" fill="green"/>"#,
+        goal_x, goal_y
+    )?;
+    writeln!(
+        file,
+        r#"<text x="{:.2}" y="{:.2}" font-size="12" font-family="sans-serif">Goal</text>"#,
+        goal_x + 10.0,
+        goal_y
+    )?;
+
+    // Axis labels
+    writeln!(
+        file,
+        r#"<text x="{}" y="{}" text-anchor="middle" font-size="12" font-family="sans-serif">x [m]</text>"#,
+        width / 2,
+        height - 20
+    )?;
+    writeln!(
+        file,
+        r#"<text x="20" y="{}" text-anchor="middle" font-size="12" font-family="sans-serif" transform="rotate(-90, 20, {})">y [m]</text>"#,
+        height / 2,
+        height / 2
+    )?;
+
+    writeln!(file, "</svg>")?;
+
+    Ok(())
 }
 
 pub fn main() {
     println!("CGMRES Nonlinear MPC simulation start!");
 
-    // Simulation parameters
     let dt = 0.1;
-    let iteration_time = 150.0; // [s]
+    let iteration_time = 150.0;
 
-    // Initial state
     let init_x = -4.5;
     let init_y = -2.5;
-    let init_yaw = PI / 4.0; // 45 degrees
+    let init_yaw = PI / 4.0;
     let init_v = -1.0;
 
-    // Create plant system
-    let mut plant_system = TwoWheeledSystem::new(init_x, init_y, init_yaw, init_v);
-
-    // Create controller
+    let mut plant = TwoWheeledSystem::new(init_x, init_y, init_yaw, init_v);
     let mut controller = NMPCControllerCGMRES::new();
 
     let iteration_num = (iteration_time / dt) as usize;
-
-    let mut fig = Figure::new();
 
     println!("Starting simulation for {} iterations...", iteration_num);
 
     for i in 1..iteration_num {
         let time = (i as f64) * dt;
 
-        // Calculate control input
-        let (u_1s, u_2s) = controller.calc_input(
-            plant_system.x,
-            plant_system.y,
-            plant_system.yaw,
-            plant_system.v,
-            time,
-        );
+        let (u_1s, u_2s) =
+            controller.calc_input(plant.x, plant.y, plant.yaw, plant.v, time);
 
-        // Update plant state with first control input
-        plant_system.update_state(u_1s[0], u_2s[0], dt);
+        plant.update_state(u_1s[0], u_2s[0], dt);
 
-        // Animation (optional)
-        if SHOW_ANIMATION && i % 20 == 0 {
-            plot_car(
-                &mut fig,
-                plant_system.x,
-                plant_system.y,
-                plant_system.yaw,
-                &plant_system.history_x,
-                &plant_system.history_y,
-                time,
-                u_1s[0],
-                plant_system.v,
-            );
-        }
-
-        // Check if goal reached (near origin)
-        let dist_to_goal = (plant_system.x.powi(2) + plant_system.y.powi(2)).sqrt();
-        if dist_to_goal < 0.5 && plant_system.v.abs() < 0.5 {
+        let dist = (plant.x.powi(2) + plant.y.powi(2)).sqrt();
+        if dist < 0.5 && plant.v.abs() < 0.5 {
             println!("Goal reached at iteration {}!", i);
             break;
         }
@@ -904,127 +820,18 @@ pub fn main() {
     println!("\nSimulation completed!");
     println!(
         "Final position: ({:.3}, {:.3}), yaw: {:.3} rad, v: {:.3} m/s",
-        plant_system.x, plant_system.y, plant_system.yaw, plant_system.v
+        plant.x, plant.y, plant.yaw, plant.v
     );
 
-    // Save final trajectory plot
-    fig.clear_axes();
-    fig.axes2d()
-        .set_title("CGMRES NMPC - Trajectory", &[])
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-        .lines(
-            &plant_system.history_x,
-            &plant_system.history_y,
-            &[Caption("Trajectory"), Color("red")],
-        )
-        .points(
-            &[plant_system.history_x[0]],
-            &[plant_system.history_y[0]],
-            &[
-                Caption("Start"),
-                Color("blue"),
-                PointSymbol('s'),
-                PointSize(2.0),
-            ],
-        )
-        .points(
-            &[0.0],
-            &[0.0],
-            &[
-                Caption("Goal"),
-                Color("green"),
-                PointSymbol('O'),
-                PointSize(2.0),
-            ],
-        );
-
-    if let Err(e) = fig.save_to_svg("./img/path_tracking/cgmres_nmpc.svg", 800, 600) {
-        eprintln!("Failed to save plot: {}", e);
-    } else {
-        println!("Plot saved to ./img/path_tracking/cgmres_nmpc.svg");
-    }
-
-    // Plot state history
-    let mut fig_state = Figure::new();
-    let time_vec: Vec<f64> = (0..plant_system.history_x.len())
-        .map(|i| i as f64 * dt)
-        .collect();
-
-    fig_state
-        .axes2d()
-        .set_title("State History - Position", &[])
-        .set_x_label("Time [s]", &[])
-        .set_y_label("Position [m]", &[])
-        .lines(
-            &time_vec,
-            &plant_system.history_x,
-            &[Caption("x"), Color("red")],
-        )
-        .lines(
-            &time_vec,
-            &plant_system.history_y,
-            &[Caption("y"), Color("blue")],
-        );
-
-    if let Err(e) = fig_state.save_to_svg("./img/path_tracking/cgmres_nmpc_state.svg", 800, 600) {
-        eprintln!("Failed to save state plot: {}", e);
-    } else {
-        println!("State plot saved to ./img/path_tracking/cgmres_nmpc_state.svg");
-    }
-
-    // Plot control history
-    if !controller.history_u_1.is_empty() {
-        let mut fig_control = Figure::new();
-        let control_time: Vec<f64> = (0..controller.history_u_1.len())
-            .map(|i| (i + 1) as f64 * dt)
-            .collect();
-
-        fig_control
-            .axes2d()
-            .set_title("Control Input History", &[])
-            .set_x_label("Time [s]", &[])
-            .set_y_label("Control Input", &[])
-            .lines(
-                &control_time,
-                &controller.history_u_1,
-                &[Caption("Acceleration"), Color("red")],
-            )
-            .lines(
-                &control_time,
-                &controller.history_u_2,
-                &[Caption("Steering"), Color("blue")],
-            );
-
-        if let Err(e) =
-            fig_control.save_to_svg("./img/path_tracking/cgmres_nmpc_control.svg", 800, 600)
-        {
-            eprintln!("Failed to save control plot: {}", e);
-        } else {
-            println!("Control plot saved to ./img/path_tracking/cgmres_nmpc_control.svg");
-        }
-
-        // Plot optimality error
-        let mut fig_error = Figure::new();
-        fig_error
-            .axes2d()
-            .set_title("Optimality Error (norm(F))", &[])
-            .set_x_label("Time [s]", &[])
-            .set_y_label("norm(F)", &[])
-            .lines(
-                &control_time,
-                &controller.history_f,
-                &[Caption("norm(F)"), Color("red")],
-            );
-
-        if let Err(e) =
-            fig_error.save_to_svg("./img/path_tracking/cgmres_nmpc_error.svg", 800, 600)
-        {
-            eprintln!("Failed to save error plot: {}", e);
-        } else {
-            println!("Error plot saved to ./img/path_tracking/cgmres_nmpc_error.svg");
-        }
+    // Save SVG
+    match save_trajectory_svg(
+        "./img/path_tracking/cgmres_nmpc.svg",
+        &plant.history_x,
+        &plant.history_y,
+        "CGMRES NMPC - Trajectory",
+    ) {
+        Ok(_) => println!("Plot saved to ./img/path_tracking/cgmres_nmpc.svg"),
+        Err(e) => eprintln!("Failed to save plot: {}", e),
     }
 
     println!("\nDone!");
