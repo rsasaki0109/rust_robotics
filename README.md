@@ -53,6 +53,7 @@ cargo run --bin two_joint_arm_control
       * [Move to Pose](#move-to-pose)
       * [Pure Pursuit](#pure-pursuit)
       * [Stanley Control](#stanley-control)
+      * [Rear Wheel Feedback Control](#rear-wheel-feedback-control)
       * [MPC (Model Predictive Control)](#mpc-model-predictive-control)
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
@@ -424,6 +425,20 @@ Black: Planned path, Green: Tracked path
 
 ```
 cargo run --bin stanley_controller
+```
+
+## Rear Wheel Feedback Control
+
+<img src="./img/path_tracking/rear_wheel_feedback.svg" width="640px">
+
+Path tracking using rear wheel feedback steering control. Combines heading error and lateral error with path curvature feedforward.
+
+Blue: Reference path, Red: Vehicle trajectory, Green: Waypoints
+
+- [src](./src/path_tracking/rear_wheel_feedback.rs)
+
+```
+cargo run --example rear_wheel_feedback
 ```
 
 ## Nonlinear Model predictive control with C-GMRES
