@@ -145,3 +145,7 @@ path = "src/path_planning/frenet_optimal_trajectory.rs"
 [[bin]]
 name = "mpc"
 path = "src/path_tracking/mpc.rs"
+
+[[bin]]
+name = "cgmres_nmpc"
+path = "src/path_tracking/cgmres_nmpc.rs"
