@@ -72,14 +72,18 @@ impl State {
 
 /// Normalize angle to [-pi, pi]
 fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
+    let mut a = angle % (2.0 * PI);
+    if a > PI {
         a -= 2.0 * PI;
-    }
-    while a < -PI {
+    } else if a < -PI {
         a += 2.0 * PI;
     }
     a
+}
+
+/// Calculate angle difference (handles wrap-around)
+fn angle_diff(a: f64, b: f64) -> f64 {
+    normalize_angle(a - b)
 }
 
 /// Get linearized state-space matrices at operating point
@@ -272,7 +276,9 @@ fn mpc_solve(
             let ui = u[i];
 
             let (a, b, c) = get_linear_model_matrix(xi[2], xi[3], ui[1]);
-            let x_next = a * xi + b * ui + c;
+            let mut x_next = a * xi + b * ui + c;
+            // Normalize yaw angle in prediction
+            x_next[3] = normalize_angle(x_next[3]);
             x_pred.push(x_next);
         }
 
@@ -280,7 +286,11 @@ fn mpc_solve(
         let mut du = vec![Vector2::zeros(); T];
 
         for i in 0..T {
-            let x_error = x_pred[i + 1] - xref[i + 1];
+            // Calculate state error with proper angle wrapping for yaw
+            let mut x_error = x_pred[i + 1] - xref[i + 1];
+            // Handle yaw angle wrap-around (index 3 is yaw)
+            x_error[3] = angle_diff(x_pred[i + 1][3], xref[i + 1][3]);
+
             let (_, b, _) = get_linear_model_matrix(x_pred[i][2], x_pred[i][3], u[i][1]);
 
             // Gradient of cost w.r.t. control
