@@ -352,8 +352,8 @@ fn main() {
         (-5.0, 20.0),
     ];
 
-    // Grid area
-    let area = (-5.0, -5.0, 15.0, 25.0); // (min_x, min_y, max_x, max_y)
+    // Grid area (matching Python version: -15 to 15 for x, -5 to 25 for y)
+    let area = (-15.0, -5.0, 15.0, 25.0); // (min_x, min_y, max_x, max_y)
 
     // Initialize histogram filter with initial position at origin
     let mut hf = HistogramFilter::new_with_initial_pos(
