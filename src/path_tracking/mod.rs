@@ -6,6 +6,7 @@ pub mod lqr_steer_control;
 pub mod move_to_pose;
 pub mod model_predictive_trajectory_generator;
 pub mod mpc;
+pub mod cgmres_nmpc;
 
 // Re-export main controllers with explicit types to avoid name conflicts
 pub use pure_pursuit::{PurePursuitController, PurePursuitConfig};
