@@ -60,7 +60,6 @@ cargo run --bin two_joint_arm_control
       * [Stanley Control](#stanley-control)
       * [Rear Wheel Feedback Control](#rear-wheel-feedback-control)
       * [MPC (Model Predictive Control)](#mpc-model-predictive-control)
-      * [C-GMRES NMPC](#c-gmres-nmpc)
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
@@ -507,16 +506,6 @@ Gray: Reference path, Blue: Tracked trajectory, Green: Prediction horizon, Red: 
 
 ```
 cargo run --bin mpc
-```
-
-## C-GMRES NMPC
-
-Continuation/GMRES-based Nonlinear Model Predictive Control. Uses the C/GMRES method to solve the optimal control problem in real-time without discretizing the horizon.
-
-- [src](./src/path_tracking/cgmres_nmpc.rs)
-
-```
-cargo run --bin cgmres_nmpc
 ```
 
 # Inverted Pendulum
