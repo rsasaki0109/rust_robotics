@@ -182,6 +182,8 @@ cargo run --bin fastslam1
 
 ## EKF SLAM
 
+<img src="./img/slam/ekf_slam.svg" width="640px">
+
 Extended Kalman Filter based SLAM. Maintains a joint state vector of robot pose and landmark positions with full covariance matrix.
 
 - [src](./src/slam/ekf_slam.rs)
@@ -191,6 +193,8 @@ cargo run --bin ekf_slam
 ```
 
 ## Graph-Based SLAM
+
+<img src="./img/slam/graph_based_slam.svg" width="640px">
 
 Pose graph optimization for SLAM. Constructs a graph of robot poses connected by odometry and observation constraints, then optimizes the graph using iterative methods.
 
@@ -216,6 +220,8 @@ cargo run --example a_star
 
 ## Theta* Algorithm
 
+<img src="./img/path_planning/theta_star_result.svg" width="640px">
+
 Any-angle path planning algorithm. Unlike A* which restricts movement to grid edges, Theta* allows paths at any angle by checking line-of-sight between nodes.
 
 - [src](./src/path_planning/theta_star.rs)
@@ -225,6 +231,8 @@ cargo run --example theta_star
 ```
 
 ## Jump Point Search (JPS)
+
+<img src="./img/path_planning/jps_result.svg" width="640px">
 
 Optimized pathfinding algorithm for uniform-cost grids. Reduces the number of nodes to explore by identifying and jumping to key "jump points" instead of examining all neighbors.
 
@@ -344,9 +352,11 @@ cargo run --bin quintic_polynomials
 
 ## Rapidly-Exploring Random Trees (RRT)
 
-<img src="./img/path_planning/rrt_star_result.png" width="640px">
+<img src="./img/path_planning/rrt_star_result.svg" width="640px">
 
-Blue: Start, Red: Goal, Green: Path, Black: Tree
+Sampling-based path planning algorithm that builds a tree by randomly sampling the configuration space.
+
+Blue: Start, Red: Goal, Green: Path, Gray: Tree
 
 - [src](./src/path_planning/rrt.rs)
 
@@ -356,9 +366,11 @@ cargo run --bin rrt
 
 ## RRT*
 
-<img src="./img/path_planning/rrt_star_result.png" width="640px">
+<img src="./img/path_planning/rrt_star_result.svg" width="640px">
 
-Blue: Start, Red: Goal, Green: Path, Black: Tree
+Optimized version of RRT that rewires the tree to find shorter paths. Asymptotically optimal.
+
+Blue: Start, Red: Goal, Green: Path, Gray: Tree
 
 - [src](./src/path_planning/rrt_star.rs)
 
@@ -421,6 +433,8 @@ cargo run --bin frenet_optimal_trajectory
 ```
 
 ## State Lattice Planner
+
+<img src="./img/path_planning/state_lattice_plan.svg" width="640px">
 
 Lattice-based motion planning that searches over a pre-computed set of motion primitives. Generates smooth, dynamically feasible trajectories by connecting state lattice primitives.
 
@@ -514,9 +528,9 @@ cargo run --bin mpc
 
 <img src="./img/inverted_pendulum/inverted_pendulum_lqr.png" width="640px">
 
-Blue: Position, Red: Angle
+Cart-pendulum animation showing LQR control stabilization. Blue: Cart, Black: Pendulum. Multiple frames overlaid to show time progression from initial angle to stabilized state.
 
-- [src](./src/inverted_pendulum/lqr_control.rs)
+- [src](./src/control/lqr_control.rs)
 
 ```
 cargo run --bin inverted_pendulum_lqr
@@ -526,9 +540,11 @@ cargo run --bin inverted_pendulum_lqr
 
 ## Two Joint Arm Control
 
-<img src="./img/arm_navigation/random_demo_summary.png" width="640px">
+<img src="./img/arm_navigation/two_joint_arm_control.png" width="640px">
 
-Blue: Theta1, Red: Theta2 joint angles over time
+Two joint arm to a point control simulation using inverse kinematics.
+
+Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target position
 
 - [src](./src/arm_navigation/two_joint_arm_control.rs)
 
@@ -540,7 +556,7 @@ cargo run --bin two_joint_arm_control
 
 ## State Machine
 
-<img src="./img/mission_planning/state_machine_diagram.png" width="640px">
+<img src="./img/mission_planning/state_machine_diagram.svg" width="640px">
 
 Finite state machine for robot behavior management with states, transitions, guards, and actions
 
