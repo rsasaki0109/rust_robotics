@@ -235,7 +235,7 @@ impl NMPCControllerCGMRES {
             tf: 3.0,
             alpha: 0.5,
             n,
-            threshold: 0.0001,  // Stricter threshold
+            threshold: 0.001,  // Same as Python
             input_num,
             max_iteration: input_num * n,
 
@@ -411,15 +411,17 @@ impl NMPCControllerCGMRES {
 
         let mut ys_pre: Option<DVector<f64>> = None;
 
-        let mut du_1_new = du_1.clone();
-        let mut du_2_new = du_2.clone();
-        let mut ddummy_u_1_new = ddummy_u_1.clone();
-        let mut ddummy_u_2_new = ddummy_u_2.clone();
-        let mut draw_1_new = draw_1.clone();
-        let mut draw_2_new = draw_2.clone();
+        // Initialize as None (like Python), will be set when converged
+        let mut du_1_new: Option<Vec<f64>> = None;
+        let mut du_2_new: Option<Vec<f64>> = None;
+        let mut ddummy_u_1_new: Option<Vec<f64>> = None;
+        let mut ddummy_u_2_new: Option<Vec<f64>> = None;
+        let mut draw_1_new: Option<Vec<f64>> = None;
+        let mut draw_2_new: Option<Vec<f64>> = None;
 
         for i in 0..m {
-            // Extract du from vs column i
+            // Extract du from vs column i (like Python's vs[::input_num, i])
+            // These are redefined each iteration, not using the initial du_1, du_2
             let mut du_1_i = vec![0.0; self.n];
             let mut du_2_i = vec![0.0; self.n];
             let mut ddummy_u_1_i = vec![0.0; self.n];
@@ -496,7 +498,7 @@ impl NMPCControllerCGMRES {
                 .map(|(&fi, &fxti)| (fi - fxti) / self.ht)
                 .collect();
 
-            // Gram-Schmidt
+            // Gram-Schmidt orthonormalization
             let mut sum_av = vec![0.0; m];
             for j in 0..=i {
                 let mut dot = 0.0;
@@ -513,81 +515,105 @@ impl NMPCControllerCGMRES {
             let v_est_norm = vec_norm(&v_est);
             hs[(i + 1, i)] = v_est_norm;
 
-            if v_est_norm > 1e-10 {
+            // Python: vs[:, i + 1] = v_est / hs[i + 1, i]
+            // No zero check in Python version
+            if v_est_norm > 1e-15 {
                 for k in 0..m {
                     vs[(k, i + 1)] = v_est[k] / v_est_norm;
                 }
             }
 
-            // Python: hs[:i+1, :i] which is (i+1) rows x i columns
-            // For i=0, this is empty (0 columns), so skip
+            // Python: inv_hs = np.linalg.pinv(hs[:i + 1, :i])
+            // Python: ys = np.dot(inv_hs, r0_norm * e[:i + 1])
+            // For i=0, hs[:1, :0] is empty, pinv returns empty, ys is empty
+            // We need to handle this case
+
+            // hs_sub is (i+1) x i matrix
             if i == 0 {
+                // For i=0, we can't solve the system (empty matrix)
+                // Just set ys_pre and continue
                 ys_pre = Some(DVector::zeros(1));
                 continue;
             }
 
-            // hs_sub is (i+1) x i matrix (like Python's hs[:i+1, :i])
             let hs_sub = hs.view((0, 0), (i + 1, i)).clone_owned();
 
-            // e vector: first element is 1.0, rest are 0
-            // Python: r0_norm * e[:i+1]
+            // e[:i+1] with first element = 1
             let mut e_scaled = DVector::zeros(i + 1);
             e_scaled[0] = r0_norm;
 
-            // Solve least squares: ys = pinv(hs_sub) * (r0_norm * e[:i+1])
-            // Result ys has length i (number of columns in hs_sub)
-            let ys = match hs_sub.clone().svd(true, true).solve(&e_scaled, 1e-10) {
+            // Solve least squares via SVD (use same tolerance as numpy default)
+            let ys = match hs_sub.clone().svd(true, true).solve(&e_scaled, 1e-15) {
                 Ok(sol) => sol,
                 Err(_) => DVector::zeros(i),
             };
 
-            // Check convergence: judge_value = r0_norm * e[:i+1] - hs[:i+1, :i] @ ys[:i]
-            // ys already has length i from SVD solve, so use it directly
+            // judge_value = r0_norm * e[:i+1] - hs[:i+1, :i] @ ys[:i]
             let hs_ys = &hs_sub * &ys;
             let residual = &e_scaled - &hs_ys;
             let judge_norm = residual.norm();
 
             if judge_norm < self.threshold || i == m - 1 {
-                // Use ys_pre for final update (from previous iteration)
                 // Python: update_val = np.dot(vs[:, :i-1], ys_pre[:i-1]).flatten()
                 // Python: du_1_new = du_1 + update_val[::input_num]
+                // IMPORTANT: du_1 here is the loop variable (vs-based), not initial du_1!
+                let mut du_1_tmp = du_1_i.clone();
+                let mut du_2_tmp = du_2_i.clone();
+                let mut ddummy_u_1_tmp = ddummy_u_1_i.clone();
+                let mut ddummy_u_2_tmp = ddummy_u_2_i.clone();
+                let mut draw_1_tmp = draw_1_i.clone();
+                let mut draw_2_tmp = draw_2_i.clone();
+
                 if let Some(ref ys_p) = ys_pre {
-                    let update_len = (i.saturating_sub(1)).min(ys_p.len());
+                    // Python: i - 1 (current i minus 1)
+                    let update_len = i.saturating_sub(1);
+                    let update_len = update_len.min(ys_p.len());
                     if update_len > 0 {
                         let vs_sub = vs.view((0, 0), (m, update_len)).clone_owned();
                         let ys_sub = ys_p.rows(0, update_len).clone_owned();
                         let update_val = &vs_sub * &ys_sub;
 
                         for k in 0..self.n {
-                            du_1_new[k] = du_1[k] + update_val[k * self.input_num];
-                            du_2_new[k] = du_2[k] + update_val[k * self.input_num + 1];
-                            ddummy_u_1_new[k] = ddummy_u_1[k] + update_val[k * self.input_num + 2];
-                            ddummy_u_2_new[k] = ddummy_u_2[k] + update_val[k * self.input_num + 3];
-                            draw_1_new[k] = draw_1[k] + update_val[k * self.input_num + 4];
-                            draw_2_new[k] = draw_2[k] + update_val[k * self.input_num + 5];
+                            du_1_tmp[k] = du_1_i[k] + update_val[k * self.input_num];
+                            du_2_tmp[k] = du_2_i[k] + update_val[k * self.input_num + 1];
+                            ddummy_u_1_tmp[k] = ddummy_u_1_i[k] + update_val[k * self.input_num + 2];
+                            ddummy_u_2_tmp[k] = ddummy_u_2_i[k] + update_val[k * self.input_num + 3];
+                            draw_1_tmp[k] = draw_1_i[k] + update_val[k * self.input_num + 4];
+                            draw_2_tmp[k] = draw_2_i[k] + update_val[k * self.input_num + 5];
                         }
                     }
                 }
+
+                du_1_new = Some(du_1_tmp);
+                du_2_new = Some(du_2_tmp);
+                ddummy_u_1_new = Some(ddummy_u_1_tmp);
+                ddummy_u_2_new = Some(ddummy_u_2_tmp);
+                draw_1_new = Some(draw_1_tmp);
+                draw_2_new = Some(draw_2_tmp);
                 break;
             }
 
             ys_pre = Some(ys);
         }
 
-        // Update inputs
-        for i in 0..self.n {
-            self.u_1s[i] += du_1_new[i] * self.ht;
-            self.u_2s[i] += du_2_new[i] * self.ht;
-            self.dummy_u_1s[i] += ddummy_u_1_new[i] * self.ht;
-            self.dummy_u_2s[i] += ddummy_u_2_new[i] * self.ht;
-            self.raw_1s[i] += draw_1_new[i] * self.ht;
-            self.raw_2s[i] += draw_2_new[i] * self.ht;
+        // Update inputs (only if converged)
+        if let (Some(du1), Some(du2), Some(dd1), Some(dd2), Some(dr1), Some(dr2)) =
+            (du_1_new, du_2_new, ddummy_u_1_new, ddummy_u_2_new, draw_1_new, draw_2_new)
+        {
+            for i in 0..self.n {
+                self.u_1s[i] += du1[i] * self.ht;
+                self.u_2s[i] += du2[i] * self.ht;
+                self.dummy_u_1s[i] += dd1[i] * self.ht;
+                self.dummy_u_2s[i] += dd2[i] * self.ht;
+                self.raw_1s[i] += dr1[i] * self.ht;
+                self.raw_2s[i] += dr2[i] * self.ht;
 
-            // Clip inputs to prevent numerical instability
-            self.u_1s[i] = self.u_1s[i].clamp(-U_A_MAX, U_A_MAX);
-            self.u_2s[i] = self.u_2s[i].clamp(-U_OMEGA_MAX, U_OMEGA_MAX);
-            self.dummy_u_1s[i] = self.dummy_u_1s[i].max(0.0);
-            self.dummy_u_2s[i] = self.dummy_u_2s[i].max(0.0);
+                // Clip inputs to prevent numerical instability
+                self.u_1s[i] = self.u_1s[i].clamp(-U_A_MAX, U_A_MAX);
+                self.u_2s[i] = self.u_2s[i].clamp(-U_OMEGA_MAX, U_OMEGA_MAX);
+                self.dummy_u_1s[i] = self.dummy_u_1s[i].max(0.0);
+                self.dummy_u_2s[i] = self.dummy_u_2s[i].max(0.0);
+            }
         }
 
         // Calculate final F norm
