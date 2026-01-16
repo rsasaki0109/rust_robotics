@@ -14,7 +14,7 @@ const N_KNN: usize = 10; // number of edges per node
 const MAX_EDGE_LEN: f64 = 30.0; // maximum edge length [m]
 const ROBOT_RADIUS: f64 = 5.0; // robot radius [m]
 
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = false;
 
 /// Node for Dijkstra search
 #[derive(Clone)]

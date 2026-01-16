@@ -27,7 +27,7 @@ const K_D: f64 = 1.0; // lateral offset cost weight
 const K_LAT: f64 = 1.0; // lateral cost weight
 const K_LON: f64 = 1.0; // longitudinal cost weight
 
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = false;
 
 /// Quintic polynomial for trajectory generation
 struct QuinticPolynomial {
