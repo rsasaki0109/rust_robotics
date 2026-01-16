@@ -141,7 +141,7 @@ impl TwoJointArm {
     fn save_frame(&self, frame: usize, theta1: f64, theta2: f64, end_x: f64, end_y: f64, output_dir: &str) {
         let mut fg = Figure::new();
         {
-            let mut axes = fg.axes2d()
+            let axes = fg.axes2d()
                 .set_title(&format!("Two Joint Arm Control - Frame {} (Target: {:.2}, {:.2})", frame, self.target_x, self.target_y), &[])
                 .set_x_label("X [m]", &[])
                 .set_y_label("Y [m]", &[])
@@ -154,47 +154,81 @@ impl TwoJointArm {
             let elbow = (L1 * theta1.cos(), L1 * theta1.sin());
             let wrist = (end_x, end_y);
 
-            // Draw arm links
+            // Draw arm links (black lines like Python version)
             axes.lines(&[shoulder.0, elbow.0], &[shoulder.1, elbow.1], &[
-                Caption("Upper Arm"), Color("black")
+                Color("black")
             ]);
             axes.lines(&[elbow.0, wrist.0], &[elbow.1, wrist.1], &[
-                Caption("Forearm"), Color("black")
+                Color("black")
             ]);
 
-            // Draw joints
-            axes.points(&[shoulder.0], &[shoulder.1], &[
-                Caption("Shoulder"), Color("red"), PointSymbol('o')
-            ]);
-            axes.points(&[elbow.0], &[elbow.1], &[
-                Caption("Elbow"), Color("red"), PointSymbol('o')
-            ]);
-            axes.points(&[wrist.0], &[wrist.1], &[
-                Caption("End Effector"), Color("red"), PointSymbol('o')
+            // Draw joints (red circles like Python version)
+            axes.points(&[shoulder.0, elbow.0, wrist.0], &[shoulder.1, elbow.1, wrist.1], &[
+                Color("red"), PointSymbol('O')
             ]);
 
-            // Draw target
+            // Draw target (green star like Python version)
             axes.points(&[self.target_x], &[self.target_y], &[
-                Caption("Target"), Color("green"), PointSymbol('*')
+                Color("green"), PointSymbol('*')
             ]);
 
-            // Draw line to target
+            // Draw line to target (green dashed line like Python version)
             axes.lines(&[wrist.0, self.target_x], &[wrist.1, self.target_y], &[
-                Caption("To Target"), Color("green")
-            ]);
-
-            // Draw workspace circle
-            let angles: Vec<f64> = (0..360).map(|i| i as f64 * PI / 180.0).collect();
-            let workspace_x: Vec<f64> = angles.iter().map(|a| (L1 + L2) * a.cos()).collect();
-            let workspace_y: Vec<f64> = angles.iter().map(|a| (L1 + L2) * a.sin()).collect();
-            axes.lines(&workspace_x, &workspace_y, &[
-                Caption("Workspace"), Color("gray")
+                Color("green")
             ]);
         }
 
         let output_path = format!("{}/frame_{:04}.png", output_dir, frame);
         fg.set_terminal("pngcairo", &output_path);
         fg.show().unwrap();
+    }
+
+    /// Save a single arm visualization image (like PythonRobotics)
+    pub fn save_arm_plot(&self, output_path: &str) {
+        let (end_x, end_y) = self.forward_kinematics();
+
+        let mut fg = Figure::new();
+        {
+            let axes = fg.axes2d()
+                .set_title("Two Joint Arm to Point Control", &[])
+                .set_x_label("X [m]", &[])
+                .set_y_label("Y [m]", &[])
+                .set_x_range(gnuplot::Fix(-2.5), gnuplot::Fix(2.5))
+                .set_y_range(gnuplot::Fix(-2.5), gnuplot::Fix(2.5))
+                .set_aspect_ratio(gnuplot::Fix(1.0));
+
+            // Calculate joint positions
+            let shoulder = (0.0, 0.0);
+            let elbow = (L1 * self.theta1.cos(), L1 * self.theta1.sin());
+            let wrist = (end_x, end_y);
+
+            // Draw arm links (black lines like Python version)
+            axes.lines(&[shoulder.0, elbow.0], &[shoulder.1, elbow.1], &[
+                Color("black")
+            ]);
+            axes.lines(&[elbow.0, wrist.0], &[elbow.1, wrist.1], &[
+                Color("black")
+            ]);
+
+            // Draw joints (red circles like Python version)
+            axes.points(&[shoulder.0, elbow.0, wrist.0], &[shoulder.1, elbow.1, wrist.1], &[
+                Color("red"), PointSymbol('O')
+            ]);
+
+            // Draw target (green star like Python version)
+            axes.points(&[self.target_x], &[self.target_y], &[
+                Color("green"), PointSymbol('*')
+            ]);
+
+            // Draw line to target (green dashed line like Python version)
+            axes.lines(&[wrist.0, self.target_x], &[wrist.1, self.target_y], &[
+                Color("green")
+            ]);
+        }
+
+        fg.set_terminal("pngcairo", output_path);
+        fg.show().unwrap();
+        println!("Arm plot saved to: {}", output_path);
     }
 
     pub fn create_summary_plot(&self, target_name: &str) {
@@ -253,9 +287,18 @@ impl TwoJointArm {
 
 fn main() {
     std::fs::create_dir_all("img/arm_navigation").unwrap();
-    
+
     let mut arm = TwoJointArm::new();
-    
-    // Run demo with 3 random targets
-    arm.run_random_targets_demo(3);
+
+    // Set a target and solve inverse kinematics (like PythonRobotics demo)
+    arm.set_target(1.5, 0.5);
+
+    if arm.solve_inverse_kinematics(0.01) {
+        println!("Reached target in {} iterations", arm.trajectory.len());
+
+        // Save the final arm position as a single image (like PythonRobotics)
+        arm.save_arm_plot("img/arm_navigation/two_joint_arm_control.png");
+    } else {
+        println!("Failed to reach target");
+    }
 }
