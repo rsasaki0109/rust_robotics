@@ -95,7 +95,8 @@ fn main() {
                 Ok(_) => println!("SVG saved to: img/path_planning/jps_result.svg"),
                 Err(e) => println!("Failed to save SVG: {}", e),
             }
-            let _ = vis.show();
+            // Uncomment to display interactive plot
+            // let _ = vis.show();
         }
         Err(e) => {
             println!("Planning failed: {}", e);
