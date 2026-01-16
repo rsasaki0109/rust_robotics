@@ -423,28 +423,33 @@ fn main() {
 
     let (sample_x, sample_y) = prm.get_samples();
 
-    fig.axes2d()
-        .set_title("PRM Path Planning", &[])
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-        .points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
-        .points(sample_x, sample_y, &[Caption("Samples"), Color("gray"), PointSymbol('.'), PointSize(1.0)])
-        .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
-        .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
-
-    // Draw road map edges
+    // Draw road map edges first (so they appear behind other elements)
     let edges = prm.get_edges();
-    for ((x1, y1), (x2, y2)) in &edges {
-        fig.axes2d().lines(&[*x1, *x2], &[*y1, *y2], &[Color("lightgray")]);
-    }
+    {
+        let axes = fig.axes2d();
+        axes.set_title("PRM Path Planning", &[])
+            .set_x_label("x [m]", &[])
+            .set_y_label("y [m]", &[])
+            .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
 
-    // Draw path
-    if let Some((path_x, path_y)) = &path {
-        fig.axes2d().lines(path_x, path_y, &[Caption("Path"), Color("green")]);
-        println!("Path found!");
-    } else {
-        println!("No path found!");
+        // Draw road map edges
+        for ((x1, y1), (x2, y2)) in &edges {
+            axes.lines(&[*x1, *x2], &[*y1, *y2], &[Color("lightgray")]);
+        }
+
+        // Draw obstacles and samples
+        axes.points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
+            .points(sample_x, sample_y, &[Caption("Samples"), Color("gray"), PointSymbol('.'), PointSize(1.0)])
+            .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
+            .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
+
+        // Draw path
+        if let Some((path_x, path_y)) = &path {
+            axes.lines(path_x, path_y, &[Caption("Path"), Color("green")]);
+            println!("Path found!");
+        } else {
+            println!("No path found!");
+        }
     }
 
     if SHOW_ANIMATION {

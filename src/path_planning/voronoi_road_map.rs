@@ -447,29 +447,44 @@ fn main() {
     let mut fig = Figure::new();
 
     let (sample_x, sample_y) = planner.get_samples();
-
-    fig.axes2d()
-        .set_title("Voronoi Road-Map Path Planning", &[])
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-        .points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
-        .points(sample_x, sample_y, &[Caption("Voronoi Vertices"), Color("cyan"), PointSymbol('o'), PointSize(1.0)])
-        .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
-        .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
-
-    // Draw road map edges
     let edges = planner.get_edges();
+
+
+    // Prepare edge data as disconnected line segments using NaN separator
+    let mut edge_x = Vec::new();
+    let mut edge_y = Vec::new();
     for ((x1, y1), (x2, y2)) in &edges {
-        fig.axes2d().lines(&[*x1, *x2], &[*y1, *y2], &[Color("lightgray")]);
+        edge_x.push(*x1);
+        edge_x.push(*x2);
+        edge_x.push(f64::NAN); // NaN separates line segments
+        edge_y.push(*y1);
+        edge_y.push(*y2);
+        edge_y.push(f64::NAN);
     }
 
-    // Draw path
-    if let Some((path_x, path_y)) = &path {
-        fig.axes2d().lines(path_x, path_y, &[Caption("Path"), Color("green")]);
-        println!("Path found with {} waypoints!", path_x.len());
-    } else {
-        println!("No path found!");
+    {
+        let axes = fig.axes2d();
+        axes.set_title("Voronoi Road-Map Path Planning", &[])
+            .set_x_label("x [m]", &[])
+            .set_y_label("y [m]", &[])
+            .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
+
+        // Draw road map edges as single dataset with NaN separators
+        axes.lines(&edge_x, &edge_y, &[Color("gray")]);
+
+        // Draw obstacles and samples
+        axes.points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
+            .points(sample_x, sample_y, &[Caption("Voronoi Vertices"), Color("cyan"), PointSymbol('o'), PointSize(1.0)])
+            .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
+            .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
+
+        // Draw path
+        if let Some((path_x, path_y)) = &path {
+            axes.lines(path_x, path_y, &[Caption("Path"), Color("green")]);
+            println!("Path found with {} waypoints!", path_x.len());
+        } else {
+            println!("No path found!");
+        }
     }
 
     if SHOW_ANIMATION {
@@ -477,6 +492,7 @@ fn main() {
     }
 
     fig.save_to_svg("./img/path_planning/voronoi_road_map.svg", 640, 480).unwrap();
+    fig.close();
     println!("Plot saved to ./img/path_planning/voronoi_road_map.svg");
 
     println!("Done!");
