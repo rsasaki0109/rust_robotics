@@ -131,6 +131,10 @@ name = "fastslam1"
 path = "src/slam/fastslam1.rs"
 
 [[bin]]
+name = "ekf_slam"
+path = "src/slam/ekf_slam.rs"
+
+[[bin]]
 name = "graph_based_slam"
 path = "src/slam/graph_based_slam.rs"
 
@@ -153,3 +157,7 @@ path = "src/path_tracking/mpc.rs"
 [[bin]]
 name = "cgmres_nmpc"
 path = "src/path_tracking/cgmres_nmpc.rs"
+
+[[example]]
+name = "rear_wheel_feedback"
+path = "examples/path_tracking/rear_wheel_feedback.rs"
