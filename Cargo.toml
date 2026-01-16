@@ -20,6 +20,14 @@ ordered-float = "4.2"
 name = "a_star"
 path = "examples/path_planning/a_star.rs"
 
+[[example]]
+name = "theta_star"
+path = "examples/path_planning/theta_star.rs"
+
+[[example]]
+name = "jps"
+path = "examples/path_planning/jps.rs"
+
 # Legacy binaries (will be migrated to examples)
 
 [[bin]]
@@ -117,6 +125,10 @@ path = "src/mapping/ray_casting_grid_map.rs"
 [[bin]]
 name = "fastslam1"
 path = "src/slam/fastslam1.rs"
+
+[[bin]]
+name = "graph_based_slam"
+path = "src/slam/graph_based_slam.rs"
 
 [[bin]]
 name = "prm"
