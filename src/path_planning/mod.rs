@@ -5,6 +5,7 @@
 //! - Sampling-based: RRT, RRT*, Informed RRT*, PRM
 //! - Potential field methods
 //! - Curve-based: Bezier, Cubic Spline, Quintic Polynomials, Reeds-Shepp
+//! - State Lattice Planner
 
 // Grid-based planners
 pub mod a_star;
@@ -25,6 +26,9 @@ pub mod dwa;
 pub mod potential_field;
 pub mod frenet_optimal_trajectory;
 
+// State Lattice Planner
+pub mod state_lattice;
+
 // Curve generation
 pub mod bezier_path;
 pub mod bezier_path_planning;
@@ -39,3 +43,4 @@ pub use jps::{JPSPlanner, JPSConfig};
 pub use theta_star::{ThetaStarPlanner, ThetaStarConfig};
 pub use rrt::{RRTPlanner, RRTConfig, RRTNode, CircleObstacle, AreaBounds};
 pub use dwa::{DWAPlanner, DWAConfig, DWAState, DWAControl, Trajectory as DWATrajectory};
+pub use state_lattice::{StateLattice, StateLatticeConfig};
