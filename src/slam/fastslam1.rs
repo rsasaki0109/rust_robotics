@@ -23,7 +23,7 @@ const NTH: f64 = N_PARTICLE as f64 / 1.5; // resampling threshold
 const Q_SIM: [[f64; 2]; 2] = [[0.3, 0.0], [0.0, 0.0305]]; // simulation noise
 const R_SIM: [[f64; 2]; 2] = [[0.5, 0.0], [0.0, 0.0305]]; // observation noise
 
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = false;
 
 /// Landmark for EKF
 #[derive(Clone)]

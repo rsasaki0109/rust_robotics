@@ -33,7 +33,7 @@ const TARGET_SPEED: f64 = 10.0 / 3.6; // target speed [m/s]
 const GOAL_DIS: f64 = 1.5; // goal distance threshold
 const MAX_ITER: usize = 3; // max MPC iterations
 
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = false;
 
 /// Vehicle state
 #[derive(Clone, Copy)]

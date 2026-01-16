@@ -15,7 +15,7 @@ const MOTION_STD: f64 = 1.0; // standard deviation of motion model
 const RANGE_STD: f64 = 3.0; // standard deviation of observation model
 const XY_RESOLUTION: f64 = 0.5; // grid resolution [m]
 
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = false;
 
 /// Grid map for histogram filter
 struct GridMap {
