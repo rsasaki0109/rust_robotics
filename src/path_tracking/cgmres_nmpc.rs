@@ -7,16 +7,16 @@
 // Shunichi09/nonlinear_control: Implementing the nonlinear model predictive
 // control, sliding mode control https://github.com/Shunichi09/PythonLinearNonlinearControl
 
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
 use nalgebra::{DMatrix, DVector};
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
 use std::f64::consts::PI;
 
 // System parameters
-const U_A_MAX: f64 = 1.0;              // Maximum acceleration input
-const U_OMEGA_MAX: f64 = PI / 4.0;     // Maximum steering angle (45 degrees)
-const PHI_V: f64 = 0.01;               // Penalty weight for acceleration
-const PHI_OMEGA: f64 = 0.01;           // Penalty weight for steering
-const WB: f64 = 0.25;                  // Wheelbase [m]
+const U_A_MAX: f64 = 1.0; // Maximum acceleration input
+const U_OMEGA_MAX: f64 = PI / 4.0; // Maximum steering angle (45 degrees)
+const PHI_V: f64 = 0.01; // Penalty weight for acceleration
+const PHI_OMEGA: f64 = 0.01; // Penalty weight for steering
+const WB: f64 = 0.25; // Wheelbase [m]
 
 const SHOW_ANIMATION: bool = false;
 
@@ -229,13 +229,13 @@ impl Default for NMPCSimulatorSystem {
 /// NMPC Controller using C-GMRES (Continuation GMRES) algorithm
 pub struct NMPCControllerCGMRES {
     // Parameters
-    pub zeta: f64,         // Stability gain for optimal answer
-    pub ht: f64,           // Finite difference step size
-    pub tf: f64,           // Prediction time horizon
-    pub alpha: f64,        // Time scaling factor
-    pub n: usize,          // Number of prediction steps
-    pub threshold: f64,    // CGMRES convergence threshold
-    pub input_num: usize,  // Number of inputs (u1, u2, dummy_u1, dummy_u2, raw1, raw2)
+    pub zeta: f64,      // Stability gain for optimal answer
+    pub ht: f64,        // Finite difference step size
+    pub tf: f64,        // Prediction time horizon
+    pub alpha: f64,     // Time scaling factor
+    pub n: usize,       // Number of prediction steps
+    pub threshold: f64, // CGMRES convergence threshold
+    pub input_num: usize, // Number of inputs (u1, u2, dummy_u1, dummy_u2, raw1, raw2)
     pub max_iteration: usize,
 
     // Simulator
@@ -261,7 +261,7 @@ pub struct NMPCControllerCGMRES {
 
 impl NMPCControllerCGMRES {
     pub fn new() -> Self {
-        let n = 10;  // Number of prediction steps
+        let n = 10; // Number of prediction steps
         let input_num = 6;
 
         NMPCControllerCGMRES {
@@ -295,7 +295,14 @@ impl NMPCControllerCGMRES {
     }
 
     /// Calculate control input using C-GMRES algorithm
-    pub fn calc_input(&mut self, x: f64, y: f64, yaw: f64, v: f64, time: f64) -> (Vec<f64>, Vec<f64>) {
+    pub fn calc_input(
+        &mut self,
+        x: f64,
+        y: f64,
+        yaw: f64,
+        v: f64,
+        time: f64,
+    ) -> (Vec<f64>, Vec<f64>) {
         // Calculate sampling time (increases with time for stability)
         let dt = self.tf * (1.0 - (-self.alpha * time).exp()) / (self.n as f64);
 
@@ -334,10 +341,9 @@ impl NMPCControllerCGMRES {
         );
 
         // F(U, x, t) - F
-        let (_, _, _, v_s_current, _, _, lam_3s_current, lam_4s_current) =
-            self.simulator.calc_predict_and_adjoint_state(
-                x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt,
-            );
+        let (_, _, _, v_s_current, _, _, lam_3s_current, lam_4s_current) = self
+            .simulator
+            .calc_predict_and_adjoint_state(x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt);
 
         let f = Self::calc_f(
             &v_s_current,
@@ -368,8 +374,18 @@ impl NMPCControllerCGMRES {
         let draw_2: Vec<f64> = self.raw_2s.iter().map(|&u| u * self.ht).collect();
 
         // F(U + h*dU(0), x + h*x_dot, t + h)
-        let u_1s_perturbed: Vec<f64> = self.u_1s.iter().zip(du_1.iter()).map(|(&u, &d)| u + d).collect();
-        let u_2s_perturbed: Vec<f64> = self.u_2s.iter().zip(du_2.iter()).map(|(&u, &d)| u + d).collect();
+        let u_1s_perturbed: Vec<f64> = self
+            .u_1s
+            .iter()
+            .zip(du_1.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
+        let u_2s_perturbed: Vec<f64> = self
+            .u_2s
+            .iter()
+            .zip(du_2.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
 
         let (_, _, _, v_s_pert, _, _, lam_3s_pert, lam_4s_pert) =
             self.simulator.calc_predict_and_adjoint_state(
@@ -383,10 +399,30 @@ impl NMPCControllerCGMRES {
                 dt,
             );
 
-        let dummy_u_1s_pert: Vec<f64> = self.dummy_u_1s.iter().zip(ddummy_u_1.iter()).map(|(&u, &d)| u + d).collect();
-        let dummy_u_2s_pert: Vec<f64> = self.dummy_u_2s.iter().zip(ddummy_u_2.iter()).map(|(&u, &d)| u + d).collect();
-        let raw_1s_pert: Vec<f64> = self.raw_1s.iter().zip(draw_1.iter()).map(|(&u, &d)| u + d).collect();
-        let raw_2s_pert: Vec<f64> = self.raw_2s.iter().zip(draw_2.iter()).map(|(&u, &d)| u + d).collect();
+        let dummy_u_1s_pert: Vec<f64> = self
+            .dummy_u_1s
+            .iter()
+            .zip(ddummy_u_1.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
+        let dummy_u_2s_pert: Vec<f64> = self
+            .dummy_u_2s
+            .iter()
+            .zip(ddummy_u_2.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
+        let raw_1s_pert: Vec<f64> = self
+            .raw_1s
+            .iter()
+            .zip(draw_1.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
+        let raw_2s_pert: Vec<f64> = self
+            .raw_2s
+            .iter()
+            .zip(draw_2.iter())
+            .map(|(&u, &d)| u + d)
+            .collect();
 
         let fuxt = Self::calc_f(
             &v_s_pert,
@@ -412,18 +448,16 @@ impl NMPCControllerCGMRES {
         let r0: Vec<f64> = right.iter().zip(left.iter()).map(|(&r, &l)| r - l).collect();
         let r0_norm = vec_norm(&r0);
 
-        // GMRES iteration
-        let mut vs = DMatrix::zeros(self.max_iteration, self.max_iteration + 1);
-        for i in 0..self.max_iteration {
-            vs[(i, 0)] = r0[i] / r0_norm;
+        // GMRES iteration using simple vectors
+        let m = self.max_iteration;
+        let mut vs: Vec<Vec<f64>> = vec![vec![0.0; m]; m + 1];
+        for i in 0..m {
+            vs[0][i] = r0[i] / r0_norm;
         }
 
-        let mut hs = DMatrix::zeros(self.max_iteration + 1, self.max_iteration + 1);
+        let mut hs: Vec<Vec<f64>> = vec![vec![0.0; m]; m + 1];
 
-        let mut e = DVector::zeros(self.max_iteration + 1);
-        e[0] = 1.0;
-
-        let mut ys_pre: Option<DVector<f64>> = None;
+        let mut ys_pre: Vec<f64> = Vec::new();
 
         let mut du_1_new = du_1.clone();
         let mut du_2_new = du_2.clone();
@@ -432,7 +466,7 @@ impl NMPCControllerCGMRES {
         let mut draw_1_new = draw_1.clone();
         let mut draw_2_new = draw_2.clone();
 
-        for i in 0..self.max_iteration {
+        for i in 0..m {
             // Extract du components from vs column i
             let mut du_1_i = vec![0.0; self.n];
             let mut du_2_i = vec![0.0; self.n];
@@ -442,17 +476,27 @@ impl NMPCControllerCGMRES {
             let mut draw_2_i = vec![0.0; self.n];
 
             for k in 0..self.n {
-                du_1_i[k] = vs[(k * self.input_num, i)] * self.ht;
-                du_2_i[k] = vs[(k * self.input_num + 1, i)] * self.ht;
-                ddummy_u_1_i[k] = vs[(k * self.input_num + 2, i)] * self.ht;
-                ddummy_u_2_i[k] = vs[(k * self.input_num + 3, i)] * self.ht;
-                draw_1_i[k] = vs[(k * self.input_num + 4, i)] * self.ht;
-                draw_2_i[k] = vs[(k * self.input_num + 5, i)] * self.ht;
+                du_1_i[k] = vs[i][k * self.input_num] * self.ht;
+                du_2_i[k] = vs[i][k * self.input_num + 1] * self.ht;
+                ddummy_u_1_i[k] = vs[i][k * self.input_num + 2] * self.ht;
+                ddummy_u_2_i[k] = vs[i][k * self.input_num + 3] * self.ht;
+                draw_1_i[k] = vs[i][k * self.input_num + 4] * self.ht;
+                draw_2_i[k] = vs[i][k * self.input_num + 5] * self.ht;
             }
 
             // Perturb inputs
-            let u_1s_i: Vec<f64> = self.u_1s.iter().zip(du_1_i.iter()).map(|(&u, &d)| u + d).collect();
-            let u_2s_i: Vec<f64> = self.u_2s.iter().zip(du_2_i.iter()).map(|(&u, &d)| u + d).collect();
+            let u_1s_i: Vec<f64> = self
+                .u_1s
+                .iter()
+                .zip(du_1_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
+            let u_2s_i: Vec<f64> = self
+                .u_2s
+                .iter()
+                .zip(du_2_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
 
             let (_, _, _, v_s_i, _, _, lam_3s_i, lam_4s_i) =
                 self.simulator.calc_predict_and_adjoint_state(
@@ -466,10 +510,30 @@ impl NMPCControllerCGMRES {
                     dt,
                 );
 
-            let dummy_u_1s_i: Vec<f64> = self.dummy_u_1s.iter().zip(ddummy_u_1_i.iter()).map(|(&u, &d)| u + d).collect();
-            let dummy_u_2s_i: Vec<f64> = self.dummy_u_2s.iter().zip(ddummy_u_2_i.iter()).map(|(&u, &d)| u + d).collect();
-            let raw_1s_i: Vec<f64> = self.raw_1s.iter().zip(draw_1_i.iter()).map(|(&u, &d)| u + d).collect();
-            let raw_2s_i: Vec<f64> = self.raw_2s.iter().zip(draw_2_i.iter()).map(|(&u, &d)| u + d).collect();
+            let dummy_u_1s_i: Vec<f64> = self
+                .dummy_u_1s
+                .iter()
+                .zip(ddummy_u_1_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
+            let dummy_u_2s_i: Vec<f64> = self
+                .dummy_u_2s
+                .iter()
+                .zip(ddummy_u_2_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
+            let raw_1s_i: Vec<f64> = self
+                .raw_1s
+                .iter()
+                .zip(draw_1_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
+            let raw_2s_i: Vec<f64> = self
+                .raw_2s
+                .iter()
+                .zip(draw_2_i.iter())
+                .map(|(&u, &d)| u + d)
+                .collect();
 
             let fuxt_i = Self::calc_f(
                 &v_s_i,
@@ -492,57 +556,51 @@ impl NMPCControllerCGMRES {
                 .collect();
 
             // Gram-Schmidt orthonormalization
-            let mut sum_av = vec![0.0; self.max_iteration];
+            let mut sum_av = vec![0.0; m];
             for j in 0..=i {
                 let mut dot_product = 0.0;
-                for k in 0..self.max_iteration {
-                    dot_product += av[k] * vs[(k, j)];
+                for k in 0..m {
+                    dot_product += av[k] * vs[j][k];
                 }
-                hs[(j, i)] = dot_product;
-                for k in 0..self.max_iteration {
-                    sum_av[k] += hs[(j, i)] * vs[(k, j)];
+                hs[j][i] = dot_product;
+                for k in 0..m {
+                    sum_av[k] += hs[j][i] * vs[j][k];
                 }
             }
 
             // v_est = Av - sum_Av
             let v_est: Vec<f64> = av.iter().zip(sum_av.iter()).map(|(&a, &s)| a - s).collect();
             let v_est_norm = vec_norm(&v_est);
-            hs[(i + 1, i)] = v_est_norm;
+            hs[i + 1][i] = v_est_norm;
 
             // Normalize and store
-            for k in 0..self.max_iteration {
-                vs[(k, i + 1)] = v_est[k] / v_est_norm;
+            if v_est_norm > 1e-10 {
+                for k in 0..m {
+                    vs[i + 1][k] = v_est[k] / v_est_norm;
+                }
             }
 
-            // Solve least squares: hs[:i+1, :i] * ys = r0_norm * e[:i+1]
-            // Skip first iteration since we need at least 1 column
-            if i == 0 {
-                ys_pre = Some(DVector::zeros(1));
-                continue;
-            }
-
-            let hs_sub = hs.view((0, 0), (i + 1, i));
-            let e_sub = e.rows(0, i + 1) * r0_norm;
-
-            // Use pseudo-inverse for least squares solution
-            let ys = pseudo_inverse_solve(&hs_sub.clone_owned(), &e_sub);
+            // Solve least squares using pseudo-inverse
+            // hs[:i+1, :i] * ys = r0_norm * e[:i+1]
+            let ys = solve_least_squares_nalgebra(&hs, i + 1, i, r0_norm);
 
             // Check convergence
-            let hs_ys = &hs_sub * &ys.rows(0, i);
-            let judge = &e_sub - &hs_ys;
-            let judge_norm = judge.norm();
+            let judge_norm = calc_residual(&hs, &ys, i + 1, i, r0_norm);
 
             let converged = judge_norm < self.threshold;
-            let max_iter_reached = i == self.max_iteration - 1;
+            let max_iter_reached = i == m - 1;
 
             if converged || max_iter_reached {
-                if let Some(ref ys_p) = ys_pre {
-                    // Compute update
+                if !ys_pre.is_empty() {
                     let update_len = i.saturating_sub(1);
-                    if update_len > 0 && ys_p.len() >= update_len {
-                        let vs_sub = vs.view((0, 0), (self.max_iteration, update_len));
-                        let ys_sub = ys_p.rows(0, update_len);
-                        let update_val = &vs_sub * &ys_sub;
+                    if update_len > 0 && ys_pre.len() >= update_len {
+                        // update_val = vs[:, :update_len] * ys_pre[:update_len]
+                        let mut update_val = vec![0.0; m];
+                        for col in 0..update_len {
+                            for row in 0..m {
+                                update_val[row] += vs[col][row] * ys_pre[col];
+                            }
+                        }
 
                         for k in 0..self.n {
                             du_1_new[k] = du_1_i[k] + update_val[k * self.input_num];
@@ -557,7 +615,7 @@ impl NMPCControllerCGMRES {
                 break;
             }
 
-            ys_pre = Some(ys);
+            ys_pre = ys;
         }
 
         // Update control inputs
@@ -571,10 +629,9 @@ impl NMPCControllerCGMRES {
         }
 
         // Calculate final F norm for monitoring
-        let (_, _, _, v_s_final, _, _, lam_3s_final, lam_4s_final) =
-            self.simulator.calc_predict_and_adjoint_state(
-                x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt,
-            );
+        let (_, _, _, v_s_final, _, _, lam_3s_final, lam_4s_final) = self
+            .simulator
+            .calc_predict_and_adjoint_state(x, y, yaw, v, &self.u_1s, &self.u_2s, self.n, dt);
 
         let f_final = Self::calc_f(
             &v_s_final,
@@ -625,8 +682,7 @@ impl NMPCControllerCGMRES {
             f.push(u_1s[i] + lam_4s[i] + 2.0 * raw_1s[i] * u_1s[i]);
 
             // ∂H/∂u_2: Hamiltonian gradient w.r.t. steering
-            // H_u2 = u_2 + lambda_3 * v / WB * cos(u_2)^2 + 2 * raw_2 * u_2 = 0
-            // Note: derivative of sin(u_2) is cos(u_2), but we have cos^2 from chain rule
+            // Note: derivative of sin(u_2) is cos(u_2)
             f.push(
                 u_2s[i]
                     + lam_3s[i] * v_s[i] / WB * u_2s[i].cos().powi(2)
@@ -661,19 +717,58 @@ fn vec_norm(v: &[f64]) -> f64 {
     v.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
-/// Pseudo-inverse based least squares solver
-fn pseudo_inverse_solve(a: &DMatrix<f64>, b: &DVector<f64>) -> DVector<f64> {
-    // Use SVD for pseudo-inverse
-    let svd = a.clone().svd(true, true);
-    if let Ok(solution) = svd.solve(b, 1e-10) {
-        return solution;
+/// Solve least squares using nalgebra's SVD-based pseudo-inverse
+fn solve_least_squares_nalgebra(
+    hs: &[Vec<f64>],
+    rows: usize,
+    cols: usize,
+    r0_norm: f64,
+) -> Vec<f64> {
+    if cols == 0 || rows == 0 {
+        return vec![];
     }
 
-    // Fallback: return zeros if SVD fails
-    DVector::zeros(a.ncols())
+    // Build the submatrix
+    let mut a = DMatrix::zeros(rows, cols);
+    for i in 0..rows {
+        for j in 0..cols {
+            a[(i, j)] = hs[i][j];
+        }
+    }
+
+    // Build rhs: r0_norm * e_1
+    let mut b = DVector::zeros(rows);
+    b[0] = r0_norm;
+
+    // Use SVD-based pseudo-inverse solve
+    let svd = a.svd(true, true);
+    match svd.solve(&b, 1e-10) {
+        Ok(solution) => solution.iter().cloned().collect(),
+        Err(_) => vec![0.0; cols],
+    }
+}
+
+/// Calculate residual for convergence check
+fn calc_residual(hs: &[Vec<f64>], ys: &[f64], rows: usize, cols: usize, r0_norm: f64) -> f64 {
+    if cols == 0 || ys.is_empty() {
+        return f64::MAX;
+    }
+
+    let mut residual = vec![0.0; rows];
+    residual[0] = r0_norm;
+
+    // residual = b - A * y
+    for i in 0..rows {
+        for j in 0..cols.min(ys.len()) {
+            residual[i] -= hs[i][j] * ys[j];
+        }
+    }
+
+    vec_norm(&residual)
 }
 
 /// Plot car shape for visualization
+#[allow(dead_code)]
 fn plot_car(
     fig: &mut Figure,
     x: f64,
@@ -729,8 +824,16 @@ fn plot_car(
         .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
         .lines(history_x, history_y, &[Caption("Trajectory"), Color("red")])
         .lines(&car_x, &car_y, &[Caption("Vehicle"), Color("black")])
-        .points(&[x], &[y], &[Color("blue"), PointSymbol('*'), PointSize(2.0)])
-        .points(&[0.0], &[0.0], &[Caption("Goal"), Color("green"), PointSymbol('O'), PointSize(2.0)]);
+        .points(
+            &[x],
+            &[y],
+            &[Color("blue"), PointSymbol('*'), PointSize(2.0)],
+        )
+        .points(
+            &[0.0],
+            &[0.0],
+            &[Caption("Goal"), Color("green"), PointSymbol('O'), PointSize(2.0)],
+        );
 
     fig.show_and_keep_running().ok();
 }
@@ -819,12 +922,22 @@ pub fn main() {
         .points(
             &[plant_system.history_x[0]],
             &[plant_system.history_y[0]],
-            &[Caption("Start"), Color("blue"), PointSymbol('s'), PointSize(2.0)],
+            &[
+                Caption("Start"),
+                Color("blue"),
+                PointSymbol('s'),
+                PointSize(2.0),
+            ],
         )
         .points(
             &[0.0],
             &[0.0],
-            &[Caption("Goal"), Color("green"), PointSymbol('O'), PointSize(2.0)],
+            &[
+                Caption("Goal"),
+                Color("green"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
         );
 
     if let Err(e) = fig.save_to_svg("./img/path_tracking/cgmres_nmpc.svg", 800, 600) {
@@ -839,12 +952,21 @@ pub fn main() {
         .map(|i| i as f64 * dt)
         .collect();
 
-    fig_state.axes2d()
+    fig_state
+        .axes2d()
         .set_title("State History - Position", &[])
         .set_x_label("Time [s]", &[])
         .set_y_label("Position [m]", &[])
-        .lines(&time_vec, &plant_system.history_x, &[Caption("x"), Color("red")])
-        .lines(&time_vec, &plant_system.history_y, &[Caption("y"), Color("blue")]);
+        .lines(
+            &time_vec,
+            &plant_system.history_x,
+            &[Caption("x"), Color("red")],
+        )
+        .lines(
+            &time_vec,
+            &plant_system.history_y,
+            &[Caption("y"), Color("blue")],
+        );
 
     if let Err(e) = fig_state.save_to_svg("./img/path_tracking/cgmres_nmpc_state.svg", 800, 600) {
         eprintln!("Failed to save state plot: {}", e);
@@ -859,14 +981,25 @@ pub fn main() {
             .map(|i| (i + 1) as f64 * dt)
             .collect();
 
-        fig_control.axes2d()
+        fig_control
+            .axes2d()
             .set_title("Control Input History", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("Control Input", &[])
-            .lines(&control_time, &controller.history_u_1, &[Caption("Acceleration"), Color("red")])
-            .lines(&control_time, &controller.history_u_2, &[Caption("Steering"), Color("blue")]);
+            .lines(
+                &control_time,
+                &controller.history_u_1,
+                &[Caption("Acceleration"), Color("red")],
+            )
+            .lines(
+                &control_time,
+                &controller.history_u_2,
+                &[Caption("Steering"), Color("blue")],
+            );
 
-        if let Err(e) = fig_control.save_to_svg("./img/path_tracking/cgmres_nmpc_control.svg", 800, 600) {
+        if let Err(e) =
+            fig_control.save_to_svg("./img/path_tracking/cgmres_nmpc_control.svg", 800, 600)
+        {
             eprintln!("Failed to save control plot: {}", e);
         } else {
             println!("Control plot saved to ./img/path_tracking/cgmres_nmpc_control.svg");
@@ -874,13 +1007,20 @@ pub fn main() {
 
         // Plot optimality error
         let mut fig_error = Figure::new();
-        fig_error.axes2d()
+        fig_error
+            .axes2d()
             .set_title("Optimality Error (norm(F))", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("norm(F)", &[])
-            .lines(&control_time, &controller.history_f, &[Caption("norm(F)"), Color("red")]);
+            .lines(
+                &control_time,
+                &controller.history_f,
+                &[Caption("norm(F)"), Color("red")],
+            );
 
-        if let Err(e) = fig_error.save_to_svg("./img/path_tracking/cgmres_nmpc_error.svg", 800, 600) {
+        if let Err(e) =
+            fig_error.save_to_svg("./img/path_tracking/cgmres_nmpc_error.svg", 800, 600)
+        {
             eprintln!("Failed to save error plot: {}", e);
         } else {
             println!("Error plot saved to ./img/path_tracking/cgmres_nmpc_error.svg");
