@@ -297,9 +297,9 @@ impl Visualizer {
     }
 
     /// Save plot to SVG file
-    pub fn save_svg(&mut self, path: &str) -> Result<(), String> {
+    pub fn save_svg(&mut self, path: &str, width: u32, height: u32) -> Result<(), String> {
         self.apply_settings();
-        self.figure.save_to_svg(path, 800, 600).map_err(|e| e.to_string())
+        self.figure.save_to_svg(path, width, height).map_err(|e| e.to_string())
     }
 
     fn apply_settings(&mut self) {
