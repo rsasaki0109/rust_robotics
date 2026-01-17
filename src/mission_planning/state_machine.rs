@@ -11,7 +11,6 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use gnuplot::{Figure, Caption, Color, AxesCommon};
 
 /// Type alias for callback functions
 pub type CallbackFn = Box<dyn Fn() -> ()>;
@@ -303,50 +302,131 @@ impl StateMachine {
         diagram.join("\n")
     }
 
-    /// Create a visualization of the state machine
+    /// Create a visualization of the state machine as SVG
     pub fn visualize(&self, filename: &str) {
-        let mut fg = Figure::new();
-        let axes = fg.axes2d();
+        use std::io::Write;
 
-        // For simplicity, we'll create a basic state diagram visualization
-        let states: Vec<_> = self.states.keys().collect();
-        let n_states = states.len();
-        
+        // Get sorted state names for consistent layout
+        let mut state_names: Vec<_> = self.states.keys().cloned().collect();
+        state_names.sort();
+        let n_states = state_names.len();
+
         if n_states == 0 {
             return;
         }
 
+        // SVG dimensions
+        let width = 640.0;
+        let height = 640.0;
+        let cx = width / 2.0;
+        let cy = height / 2.0;
+        let radius = 200.0; // Circle radius for state layout
+        let node_radius = 40.0;
+
         // Position states in a circle
-        let mut state_positions = HashMap::new();
-        for (i, state_name) in states.iter().enumerate() {
-            let angle = 2.0 * std::f64::consts::PI * i as f64 / n_states as f64;
-            let x = 3.0 * angle.cos();
-            let y = 3.0 * angle.sin();
-            state_positions.insert(state_name.as_str(), (x, y));
+        let mut state_positions: HashMap<String, (f64, f64)> = HashMap::new();
+        for (i, state_name) in state_names.iter().enumerate() {
+            let angle = std::f64::consts::PI / 2.0 - 2.0 * std::f64::consts::PI * i as f64 / n_states as f64;
+            let x = cx + radius * angle.cos();
+            let y = cy - radius * angle.sin(); // SVG y is inverted
+            state_positions.insert(state_name.clone(), (x, y));
         }
 
-        // Plot states
-        let mut state_x = Vec::new();
-        let mut state_y = Vec::new();
-        let mut state_labels = Vec::new();
+        let mut svg = String::new();
 
-        for (state_name, (x, y)) in &state_positions {
-            state_x.push(*x);
-            state_y.push(*y);
-            state_labels.push(state_name.to_string());
+        // SVG header
+        svg.push_str(&format!(
+            r##"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="{}" y="30" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold">Robot State Machine</text>
+"##,
+            width, height, width, height, cx
+        ));
+
+        // Draw transitions as arrows
+        for transition in self.transitions.values() {
+            if let (Some(&(x1, y1)), Some(&(x2, y2))) = (
+                state_positions.get(&transition.src_state),
+                state_positions.get(&transition.dst_state)
+            ) {
+                if transition.src_state != transition.dst_state {
+                    let dx = x2 - x1;
+                    let dy = y2 - y1;
+                    let dist = (dx * dx + dy * dy).sqrt();
+
+                    // Offset from node centers
+                    let start_x = x1 + (node_radius + 5.0) * dx / dist;
+                    let start_y = y1 + (node_radius + 5.0) * dy / dist;
+                    let end_x = x2 - (node_radius + 10.0) * dx / dist;
+                    let end_y = y2 - (node_radius + 10.0) * dy / dist;
+
+                    // Draw arrow line
+                    svg.push_str(&format!(
+                        r##"  <line x1="{:.1}" y1="{:.1}" x2="{:.1}" y2="{:.1}" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+"##,
+                        start_x, start_y, end_x, end_y
+                    ));
+
+                    // Event label at midpoint, offset perpendicular to line
+                    let mid_x = (start_x + end_x) / 2.0;
+                    let mid_y = (start_y + end_y) / 2.0;
+                    let perp_x = -dy / dist * 15.0;
+                    let perp_y = dx / dist * 15.0;
+
+                    svg.push_str(&format!(
+                        r##"  <text x="{:.1}" y="{:.1}" text-anchor="middle" font-family="Arial" font-size="11" fill="#0066cc">{}</text>
+"##,
+                        mid_x + perp_x, mid_y + perp_y, transition.event
+                    ));
+                }
+            }
         }
 
-        // Plot state points
-        axes.points(&state_x, &state_y, &[Caption("States"), Color("blue")]);
+        // Draw state nodes
+        for state_name in &state_names {
+            if let Some(&(x, y)) = state_positions.get(state_name) {
+                // Circle
+                svg.push_str(&format!(
+                    r##"  <circle cx="{:.1}" cy="{:.1}" r="{}" fill="#4682b4" stroke="#2c5574" stroke-width="2"/>
+"##,
+                    x, y, node_radius
+                ));
 
-        // Add state labels (simplified - gnuplot text positioning is limited)
-        axes.set_title("State Machine Diagram", &[]);
-        axes.set_x_label("X", &[]);
-        axes.set_y_label("Y", &[]);
+                // State name label
+                svg.push_str(&format!(
+                    "  <text x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-family=\"Arial\" font-size=\"12\" fill=\"white\" font-weight=\"bold\">{}</text>\n",
+                    x, y, state_name
+                ));
+            }
+        }
 
-        // Save the plot
-        fg.set_terminal("pngcairo", filename);
-        fg.show().unwrap();
+        // Legend
+        svg.push_str(&format!(
+            r##"  <text x="{}" y="{}" text-anchor="middle" font-family="Arial" font-size="10" fill="#666">States: circles | Transitions: arrows with event labels</text>
+"##,
+            cx, height - 15.0
+        ));
+
+        svg.push_str("</svg>\n");
+
+        // Determine output filename (convert .png to .svg if needed)
+        let output_filename = if filename.ends_with(".png") {
+            filename.replace(".png", ".svg")
+        } else {
+            filename.to_string()
+        };
+
+        // Write to file
+        if let Ok(mut file) = std::fs::File::create(&output_filename) {
+            let _ = file.write_all(svg.as_bytes());
+            println!("State machine diagram saved to {}", output_filename);
+        }
     }
 }
 
