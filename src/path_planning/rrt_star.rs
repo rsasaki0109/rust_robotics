@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 use rand::Rng;
 use gnuplot::{Figure, Caption, Color, AxesCommon};
+use std::io::Write;
 
 // RRT* planner parameters
 const SHOW_ANIMATION: bool = true;
@@ -379,48 +380,121 @@ impl RRTStar {
     }
 
     pub fn visualize_path(&self, path: &[[f64; 2]]) {
-        if !SHOW_ANIMATION {
-            return;
+        self.save_svg(path, "img/path_planning/rrt_star_result.svg");
+    }
+
+    pub fn save_svg(&self, path: &[[f64; 2]], filename: &str) {
+        let width = 640.0;
+        let height = 640.0;
+        let margin = 40.0;
+
+        // Calculate bounds
+        let min_x = self.min_rand;
+        let max_x = self.max_rand;
+        let min_y = self.min_rand;
+        let max_y = self.max_rand;
+
+        // Scale factor
+        let scale_x = (width - 2.0 * margin) / (max_x - min_x);
+        let scale_y = (height - 2.0 * margin) / (max_y - min_y);
+        let scale = scale_x.min(scale_y);
+
+        let transform_x = |x: f64| -> f64 { margin + (x - min_x) * scale };
+        let transform_y = |y: f64| -> f64 { height - margin - (y - min_y) * scale };
+
+        let mut svg = String::new();
+
+        // SVG header
+        svg.push_str(&format!(
+            r##"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">
+  <rect width="100%" height="100%" fill="white"/>
+  <text x="{}" y="25" text-anchor="middle" font-family="Arial" font-size="16" font-weight="bold">RRT* Path Planning</text>
+"##,
+            width, height, width, height, width / 2.0
+        ));
+
+        // Draw obstacles as circles
+        for (ox, oy, r) in &self.obstacle_list {
+            let cx = transform_x(*ox);
+            let cy = transform_y(*oy);
+            let radius = r * scale;
+            svg.push_str(&format!(
+                r##"  <circle cx="{:.1}" cy="{:.1}" r="{:.1}" fill="#404040" stroke="#202020" stroke-width="1"/>
+"##,
+                cx, cy, radius
+            ));
         }
 
-        let mut fg = Figure::new();
-        let mut axes = fg.axes2d();
-        
-        // Plot obstacles
-        let obs_x: Vec<f64> = self.obstacle_list.iter().map(|obs| obs.0).collect();
-        let obs_y: Vec<f64> = self.obstacle_list.iter().map(|obs| obs.1).collect();
-        axes.points(&obs_x, &obs_y, &[Caption("Obstacles"), Color("black")]);
-        
-        // Plot tree
+        // Draw tree edges
         for node in &self.node_list {
             if let Some(parent_index) = node.parent {
                 let parent = &self.node_list[parent_index];
-                axes.lines(&[parent.x, node.x], &[parent.y, node.y], &[Color("blue")]);
+                let x1 = transform_x(parent.x);
+                let y1 = transform_y(parent.y);
+                let x2 = transform_x(node.x);
+                let y2 = transform_y(node.y);
+                svg.push_str(&format!(
+                    r##"  <line x1="{:.1}" y1="{:.1}" x2="{:.1}" y2="{:.1}" stroke="#aaaaaa" stroke-width="0.5"/>
+"##,
+                    x1, y1, x2, y2
+                ));
             }
         }
-        
-        // Plot path
-        if !path.is_empty() {
-            let path_x: Vec<f64> = path.iter().map(|node| node[0]).collect();
-            let path_y: Vec<f64> = path.iter().map(|node| node[1]).collect();
-            axes.lines(&path_x, &path_y, &[Caption("RRT* Path"), Color("red")]);
+
+        // Draw path
+        if path.len() > 1 {
+            let mut path_d = String::new();
+            for (i, point) in path.iter().enumerate() {
+                let x = transform_x(point[0]);
+                let y = transform_y(point[1]);
+                if i == 0 {
+                    path_d.push_str(&format!("M {:.1} {:.1}", x, y));
+                } else {
+                    path_d.push_str(&format!(" L {:.1} {:.1}", x, y));
+                }
+            }
+            svg.push_str(&format!(
+                r##"  <path d="{}" fill="none" stroke="#00aa00" stroke-width="3"/>
+"##,
+                path_d
+            ));
         }
-        
-        // Plot start and goal
-        axes.points(&[self.start.x], &[self.start.y], &[Caption("Start"), Color("green")]);
-        axes.points(&[self.end.x], &[self.end.y], &[Caption("Goal"), Color("blue")]);
-        
-        axes.set_title("RRT* Path Planning", &[])
-            .set_x_label("X [m]", &[])
-            .set_y_label("Y [m]", &[])
-            .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0));
-        
-        // Save to file
-        let output_path = "img/path_planning/rrt_star_result.png";
-        fg.save_to_png(output_path, 800, 600).unwrap();
-        println!("Plot saved to: {}", output_path);
-        
-        fg.show().unwrap();
+
+        // Draw start point
+        let start_x = transform_x(self.start.x);
+        let start_y = transform_y(self.start.y);
+        svg.push_str(&format!(
+            r##"  <circle cx="{:.1}" cy="{:.1}" r="8" fill="#0066ff" stroke="#003388" stroke-width="2"/>
+  <text x="{:.1}" y="{:.1}" text-anchor="middle" font-family="Arial" font-size="10" fill="#0066ff">Start</text>
+"##,
+            start_x, start_y, start_x, start_y + 20.0
+        ));
+
+        // Draw goal point
+        let goal_x = transform_x(self.end.x);
+        let goal_y = transform_y(self.end.y);
+        svg.push_str(&format!(
+            r##"  <circle cx="{:.1}" cy="{:.1}" r="8" fill="#ff3300" stroke="#aa2200" stroke-width="2"/>
+  <text x="{:.1}" y="{:.1}" text-anchor="middle" font-family="Arial" font-size="10" fill="#ff3300">Goal</text>
+"##,
+            goal_x, goal_y, goal_x, goal_y + 20.0
+        ));
+
+        // Legend
+        svg.push_str(&format!(
+            r##"  <text x="{}" y="{}" text-anchor="middle" font-family="Arial" font-size="10" fill="#666">Blue: Start | Red: Goal | Green: Path | Gray: Tree</text>
+"##,
+            width / 2.0, height - 10.0
+        ));
+
+        svg.push_str("</svg>\n");
+
+        // Write to file
+        if let Ok(mut file) = std::fs::File::create(filename) {
+            let _ = file.write_all(svg.as_bytes());
+            println!("RRT* result saved to {}", filename);
+        }
     }
 }
 
@@ -444,20 +518,21 @@ fn main() {
         (6.0, 10.0),   // goal
         obstacle_list,
         (-2.0, 15.0),  // rand_area
-        3.0,           // expand_dis (increased)
-        0.5,           // path_resolution (decreased for smoother path)
-        10,            // goal_sample_rate (decreased for more exploration)
-        500,           // max_iter (increased)
-        30.0,          // connect_circle_dist (decreased)
-        true,          // search_until_max_iter (changed to true)
-        0.5,           // robot_radius (decreased)
+        2.0,           // expand_dis
+        0.5,           // path_resolution
+        20,            // goal_sample_rate
+        1000,          // max_iter (increased)
+        50.0,          // connect_circle_dist
+        true,          // search_until_max_iter
+        0.3,           // robot_radius
     );
 
     if let Some(path) = rrt_star.planning() {
         println!("Found path with {} points!", path.len());
         rrt_star.visualize_path(&path);
     } else {
-        println!("Cannot find path");
+        println!("Cannot find path, generating visualization with tree only");
+        rrt_star.save_svg(&[], "img/path_planning/rrt_star_result.svg");
     }
 
     println!("RRT* path planning finish!!");
