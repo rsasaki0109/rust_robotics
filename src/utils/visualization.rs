@@ -93,6 +93,12 @@ impl PointStyle {
     }
 }
 
+/// Plot command to be rendered
+enum PlotCommand {
+    Path { x: Vec<f64>, y: Vec<f64>, style: PathStyle },
+    Points { x: Vec<f64>, y: Vec<f64>, style: PointStyle },
+}
+
 /// Main visualizer struct
 pub struct Visualizer {
     figure: Figure,
@@ -102,6 +108,7 @@ pub struct Visualizer {
     x_range: Option<(f64, f64)>,
     y_range: Option<(f64, f64)>,
     aspect_ratio: Option<f64>,
+    commands: Vec<PlotCommand>,
 }
 
 impl Visualizer {
@@ -115,6 +122,7 @@ impl Visualizer {
             x_range: None,
             y_range: None,
             aspect_ratio: Some(1.0),
+            commands: Vec::new(),
         }
     }
 
@@ -163,24 +171,17 @@ impl Visualizer {
     pub fn plot_path(&mut self, path: &Path2D, style: &PathStyle) -> &mut Self {
         let x: Vec<f64> = path.points.iter().map(|p| p.x).collect();
         let y: Vec<f64> = path.points.iter().map(|p| p.y).collect();
-
-        self.figure.axes2d()
-            .lines(&x, &y, &[
-                Caption(&style.caption),
-                Color(&style.color),
-                LineWidth(style.line_width),
-            ]);
+        self.commands.push(PlotCommand::Path { x, y, style: style.clone() });
         self
     }
 
     /// Plot a path from x,y vectors
     pub fn plot_path_xy(&mut self, x: &[f64], y: &[f64], style: &PathStyle) -> &mut Self {
-        self.figure.axes2d()
-            .lines(x, y, &[
-                Caption(&style.caption),
-                Color(&style.color),
-                LineWidth(style.line_width),
-            ]);
+        self.commands.push(PlotCommand::Path {
+            x: x.to_vec(),
+            y: y.to_vec(),
+            style: style.clone()
+        });
         self
     }
 
@@ -188,38 +189,41 @@ impl Visualizer {
     pub fn plot_obstacles(&mut self, obstacles: &Obstacles) -> &mut Self {
         let x: Vec<f64> = obstacles.points.iter().map(|p| p.x).collect();
         let y: Vec<f64> = obstacles.points.iter().map(|p| p.y).collect();
-
-        self.figure.axes2d()
-            .points(&x, &y, &[
-                Caption("Obstacles"),
-                Color(colors::OBSTACLE),
-                PointSymbol('S'),
-                PointSize(0.5),
-            ]);
+        self.commands.push(PlotCommand::Points {
+            x,
+            y,
+            style: PointStyle {
+                color: colors::OBSTACLE.to_string(),
+                size: 0.5,
+                symbol: 'S',
+                caption: "Obstacles".to_string(),
+            },
+        });
         self
     }
 
     /// Plot obstacles from x,y vectors
     pub fn plot_obstacles_xy(&mut self, ox: &[f64], oy: &[f64]) -> &mut Self {
-        self.figure.axes2d()
-            .points(ox, oy, &[
-                Caption("Obstacles"),
-                Color(colors::OBSTACLE),
-                PointSymbol('S'),
-                PointSize(0.5),
-            ]);
+        self.commands.push(PlotCommand::Points {
+            x: ox.to_vec(),
+            y: oy.to_vec(),
+            style: PointStyle {
+                color: colors::OBSTACLE.to_string(),
+                size: 0.5,
+                symbol: 'S',
+                caption: "Obstacles".to_string(),
+            },
+        });
         self
     }
 
     /// Plot a single point (start, goal, etc.)
     pub fn plot_point(&mut self, point: Point2D, style: &PointStyle) -> &mut Self {
-        self.figure.axes2d()
-            .points(&[point.x], &[point.y], &[
-                Caption(&style.caption),
-                Color(&style.color),
-                PointSymbol(style.symbol),
-                PointSize(style.size),
-            ]);
+        self.commands.push(PlotCommand::Points {
+            x: vec![point.x],
+            y: vec![point.y],
+            style: style.clone(),
+        });
         self
     }
 
@@ -227,50 +231,47 @@ impl Visualizer {
     pub fn plot_points(&mut self, points: &[Point2D], style: &PointStyle) -> &mut Self {
         let x: Vec<f64> = points.iter().map(|p| p.x).collect();
         let y: Vec<f64> = points.iter().map(|p| p.y).collect();
-
-        self.figure.axes2d()
-            .points(&x, &y, &[
-                Caption(&style.caption),
-                Color(&style.color),
-                PointSymbol(style.symbol),
-                PointSize(style.size),
-            ]);
+        self.commands.push(PlotCommand::Points { x, y, style: style.clone() });
         self
     }
 
     /// Plot points from x,y vectors
     pub fn plot_points_xy(&mut self, x: &[f64], y: &[f64], style: &PointStyle) -> &mut Self {
-        self.figure.axes2d()
-            .points(x, y, &[
-                Caption(&style.caption),
-                Color(&style.color),
-                PointSymbol(style.symbol),
-                PointSize(style.size),
-            ]);
+        self.commands.push(PlotCommand::Points {
+            x: x.to_vec(),
+            y: y.to_vec(),
+            style: style.clone(),
+        });
         self
     }
 
     /// Plot robot pose with direction indicator
     pub fn plot_robot(&mut self, pose: &Pose2D, size: f64) -> &mut Self {
         // Plot robot position
-        self.figure.axes2d()
-            .points(&[pose.x], &[pose.y], &[
-                Caption("Robot"),
-                Color(colors::ROBOT),
-                PointSymbol('O'),
-                PointSize(size),
-            ]);
+        self.commands.push(PlotCommand::Points {
+            x: vec![pose.x],
+            y: vec![pose.y],
+            style: PointStyle {
+                color: colors::ROBOT.to_string(),
+                size,
+                symbol: 'O',
+                caption: "Robot".to_string(),
+            },
+        });
 
         // Plot direction line (arrow substitute)
         let arrow_len = size * 0.5;
         let end_x = pose.x + arrow_len * pose.yaw.cos();
         let end_y = pose.y + arrow_len * pose.yaw.sin();
-
-        self.figure.axes2d()
-            .lines(&[pose.x, end_x], &[pose.y, end_y], &[
-                Color(colors::ROBOT),
-                LineWidth(2.0),
-            ]);
+        self.commands.push(PlotCommand::Path {
+            x: vec![pose.x, end_x],
+            y: vec![pose.y, end_y],
+            style: PathStyle {
+                color: colors::ROBOT.to_string(),
+                line_width: 2.0,
+                caption: String::new(),
+            },
+        });
         self
     }
 
@@ -297,13 +298,34 @@ impl Visualizer {
     }
 
     /// Save plot to SVG file
-    pub fn save_svg(&mut self, path: &str) -> Result<(), String> {
+    pub fn save_svg(&mut self, path: &str, width: u32, height: u32) -> Result<(), String> {
         self.apply_settings();
-        self.figure.save_to_svg(path, 800, 600).map_err(|e| e.to_string())
+        self.figure.save_to_svg(path, width, height).map_err(|e| e.to_string())
     }
 
     fn apply_settings(&mut self) {
         let axes = self.figure.axes2d();
+
+        // Apply all plot commands to the same axes
+        for cmd in &self.commands {
+            match cmd {
+                PlotCommand::Path { x, y, style } => {
+                    axes.lines(x, y, &[
+                        Caption(&style.caption),
+                        Color(&style.color),
+                        LineWidth(style.line_width),
+                    ]);
+                }
+                PlotCommand::Points { x, y, style } => {
+                    axes.points(x, y, &[
+                        Caption(&style.caption),
+                        Color(&style.color),
+                        PointSymbol(style.symbol),
+                        PointSize(style.size),
+                    ]);
+                }
+            }
+        }
 
         if !self.title.is_empty() {
             axes.set_title(&self.title, &[]);
