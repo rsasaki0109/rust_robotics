@@ -15,6 +15,7 @@ pub use pure_pursuit::VehicleState as PurePursuitVehicleState;
 pub use stanley_controller::{StanleyController, StanleyConfig};
 pub use stanley_controller::VehicleState as StanleyVehicleState;
 pub use lqr_steer_control::{LQRSteerController, LQRSteerConfig, LQRVehicleState};
+pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController, MoveToPoseResult};
 pub use rear_wheel_feedback::{RearWheelFeedbackController, RearWheelFeedbackConfig};
 pub use rear_wheel_feedback::VehicleState as RearWheelFeedbackVehicleState;
 pub use mpc::*;
