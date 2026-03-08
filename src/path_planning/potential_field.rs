@@ -1,11 +1,11 @@
+use gnuplot::{AxesCommon, Caption, Color, Figure};
 use std::collections::VecDeque;
-use gnuplot::{Figure, Caption, Color, AxesCommon};
 
 // Parameters
-const KP: f64 = 5.0;  // attractive potential gain
-const ETA: f64 = 100.0;  // repulsive potential gain
-const AREA_WIDTH: f64 = 30.0;  // potential area width [m]
-const OSCILLATIONS_DETECTION_LENGTH: usize = 3;  // number of previous positions used to check oscillations
+const KP: f64 = 5.0; // attractive potential gain
+const ETA: f64 = 100.0; // repulsive potential gain
+const AREA_WIDTH: f64 = 30.0; // potential area width [m]
+const OSCILLATIONS_DETECTION_LENGTH: usize = 3; // number of previous positions used to check oscillations
 const SHOW_ANIMATION: bool = true;
 
 pub struct PotentialFieldPlanner {
@@ -21,7 +21,15 @@ impl PotentialFieldPlanner {
         }
     }
 
-    pub fn planning(&self, sx: f64, sy: f64, gx: f64, gy: f64, ox: &[f64], oy: &[f64]) -> Option<(Vec<f64>, Vec<f64>)> {
+    pub fn planning(
+        &self,
+        sx: f64,
+        sy: f64,
+        gx: f64,
+        gy: f64,
+        ox: &[f64],
+        oy: &[f64],
+    ) -> Option<(Vec<f64>, Vec<f64>)> {
         // Calculate potential field
         let (pmap, minx, miny) = self.calc_potential_field(gx, gy, ox, oy, sx, sy);
 
@@ -47,9 +55,13 @@ impl PotentialFieldPlanner {
             for motion_step in &motion {
                 let inx = ix + motion_step[0];
                 let iny = iy + motion_step[1];
-                
-                let p = if inx >= pmap.len() as i32 || iny >= pmap[0].len() as i32 || inx < 0 || iny < 0 {
-                    f64::INFINITY  // outside area
+
+                let p = if inx >= pmap.len() as i32
+                    || iny >= pmap[0].len() as i32
+                    || inx < 0
+                    || iny < 0
+                {
+                    f64::INFINITY // outside area
                 } else {
                     pmap[inx as usize][iny as usize]
                 };
@@ -79,12 +91,32 @@ impl PotentialFieldPlanner {
         Some((rx, ry))
     }
 
-    fn calc_potential_field(&self, gx: f64, gy: f64, ox: &[f64], oy: &[f64], sx: f64, sy: f64) -> (Vec<Vec<f64>>, f64, f64) {
-        let minx = [ox.iter().fold(f64::INFINITY, |a, &b| a.min(b)), sx, gx].iter().fold(f64::INFINITY, |a, &b| a.min(b)) - AREA_WIDTH / 2.0;
-        let miny = [oy.iter().fold(f64::INFINITY, |a, &b| a.min(b)), sy, gy].iter().fold(f64::INFINITY, |a, &b| a.min(b)) - AREA_WIDTH / 2.0;
-        let maxx = [ox.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)), sx, gx].iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)) + AREA_WIDTH / 2.0;
-        let maxy = [oy.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)), sy, gy].iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)) + AREA_WIDTH / 2.0;
-        
+    fn calc_potential_field(
+        &self,
+        gx: f64,
+        gy: f64,
+        ox: &[f64],
+        oy: &[f64],
+        sx: f64,
+        sy: f64,
+    ) -> (Vec<Vec<f64>>, f64, f64) {
+        let minx = [ox.iter().fold(f64::INFINITY, |a, &b| a.min(b)), sx, gx]
+            .iter()
+            .fold(f64::INFINITY, |a, &b| a.min(b))
+            - AREA_WIDTH / 2.0;
+        let miny = [oy.iter().fold(f64::INFINITY, |a, &b| a.min(b)), sy, gy]
+            .iter()
+            .fold(f64::INFINITY, |a, &b| a.min(b))
+            - AREA_WIDTH / 2.0;
+        let maxx = [ox.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)), sx, gx]
+            .iter()
+            .fold(f64::NEG_INFINITY, |a, &b| a.max(b))
+            + AREA_WIDTH / 2.0;
+        let maxy = [oy.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)), sy, gy]
+            .iter()
+            .fold(f64::NEG_INFINITY, |a, &b| a.max(b))
+            + AREA_WIDTH / 2.0;
+
         let xw = ((maxx - minx) / self.resolution).round() as usize;
         let yw = ((maxy - miny) / self.resolution).round() as usize;
 
@@ -146,7 +178,12 @@ impl PotentialFieldPlanner {
         ]
     }
 
-    fn oscillations_detection(&self, previous_ids: &mut VecDeque<(i32, i32)>, ix: i32, iy: i32) -> bool {
+    fn oscillations_detection(
+        &self,
+        previous_ids: &mut VecDeque<(i32, i32)>,
+        ix: i32,
+        iy: i32,
+    ) -> bool {
         previous_ids.push_back((ix, iy));
 
         if previous_ids.len() > OSCILLATIONS_DETECTION_LENGTH {
@@ -164,7 +201,17 @@ impl PotentialFieldPlanner {
         false
     }
 
-    pub fn visualize_path(&self, rx: &[f64], ry: &[f64], sx: f64, sy: f64, gx: f64, gy: f64, ox: &[f64], oy: &[f64]) {
+    pub fn visualize_path(
+        &self,
+        rx: &[f64],
+        ry: &[f64],
+        sx: f64,
+        sy: f64,
+        gx: f64,
+        gy: f64,
+        ox: &[f64],
+        oy: &[f64],
+    ) {
         if !SHOW_ANIMATION {
             return;
         }
@@ -199,7 +246,7 @@ impl PotentialFieldPlanner {
 fn main() {
     println!("Potential Field path planning start!!");
 
-    let sx = 0.0;  // start x position [m]
+    let sx = 0.0; // start x position [m]
     let sy = 10.0; // start y position [m]
     let gx = 30.0; // goal x position [m]
     let gy = 30.0; // goal y position [m]

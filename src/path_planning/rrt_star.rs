@@ -1,6 +1,6 @@
-use std::f64::consts::PI;
+use gnuplot::{AxesCommon, Caption, Color, Figure};
 use rand::Rng;
-use gnuplot::{Figure, Caption, Color, AxesCommon};
+use std::f64::consts::PI;
 use std::io::Write;
 
 // RRT* planner parameters
@@ -74,24 +74,24 @@ impl RRTStar {
 
     pub fn planning(&mut self) -> Option<Vec<[f64; 2]>> {
         self.node_list = vec![self.start.clone()];
-        
+
         for i in 0..self.max_iter {
             if i % 100 == 0 {
                 println!("Iter: {}, number of nodes: {}", i, self.node_list.len());
             }
-            
+
             let rnd_node = self.get_random_node();
             let nearest_ind = self.get_nearest_node_index(&rnd_node);
             let mut new_node = self.steer(nearest_ind, &rnd_node);
-            
+
             if let Some(ref mut node) = new_node {
                 let near_node = &self.node_list[nearest_ind];
                 node.cost = near_node.cost + self.calc_distance(near_node, node);
-                
+
                 if self.check_collision_free(node) {
                     let near_inds = self.find_near_nodes(node);
                     let node_with_updated_parent = self.choose_parent(node.clone(), &near_inds);
-                    
+
                     if let Some(updated_node) = node_with_updated_parent {
                         let new_index = self.node_list.len();
                         self.node_list.push(updated_node);
@@ -99,7 +99,7 @@ impl RRTStar {
                     } else {
                         self.node_list.push(node.clone());
                     }
-                    
+
                     if !self.search_until_max_iter {
                         if let Some(last_index) = self.search_best_goal_node() {
                             return Some(self.generate_final_course(last_index));
@@ -108,18 +108,18 @@ impl RRTStar {
                 }
             }
         }
-        
+
         println!("Reached max iteration");
         if let Some(last_index) = self.search_best_goal_node() {
             return Some(self.generate_final_course(last_index));
         }
-        
+
         None
     }
 
     fn get_random_node(&self) -> Node {
         let mut rng = rand::thread_rng();
-        
+
         if rng.gen_range(0..100) > self.goal_sample_rate {
             Node::new(
                 rng.gen_range(self.min_rand..self.max_rand),
@@ -133,7 +133,7 @@ impl RRTStar {
     fn get_nearest_node_index(&self, rnd_node: &Node) -> usize {
         let mut min_dist = f64::INFINITY;
         let mut nearest_ind = 0;
-        
+
         for (i, node) in self.node_list.iter().enumerate() {
             let dist = self.calc_distance(node, rnd_node);
             if dist < min_dist {
@@ -141,37 +141,37 @@ impl RRTStar {
                 nearest_ind = i;
             }
         }
-        
+
         nearest_ind
     }
 
     fn steer(&self, from_ind: usize, to_node: &Node) -> Option<Node> {
         let from_node = &self.node_list[from_ind];
         let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
-        
+
         let extend_length = if dist > self.expand_dis {
             self.expand_dis
         } else {
             dist
         };
-        
+
         let mut new_node = Node::new(
             from_node.x + extend_length * theta.cos(),
             from_node.y + extend_length * theta.sin(),
         );
         new_node.parent = Some(from_ind);
-        
+
         Some(new_node)
     }
 
     fn check_collision_free(&self, node: &Node) -> bool {
         if let Some(parent_ind) = node.parent {
             let parent = &self.node_list[parent_ind];
-            
+
             for &(ox, oy, size) in &self.obstacle_list {
                 let dx_list = self.get_path_x(parent, node);
                 let dy_list = self.get_path_y(parent, node);
-                
+
                 for (&dx, &dy) in dx_list.iter().zip(dy_list.iter()) {
                     let d = (dx - ox).powi(2) + (dy - oy).powi(2);
                     if d <= (size + self.robot_radius).powi(2) {
@@ -186,7 +186,7 @@ impl RRTStar {
     fn get_path_x(&self, from_node: &Node, to_node: &Node) -> Vec<f64> {
         let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
         let n_expand = (dist / self.path_resolution).floor() as i32;
-        
+
         (0..=n_expand)
             .map(|i| from_node.x + self.path_resolution * i as f64 * theta.cos())
             .collect()
@@ -195,7 +195,7 @@ impl RRTStar {
     fn get_path_y(&self, from_node: &Node, to_node: &Node) -> Vec<f64> {
         let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
         let n_expand = (dist / self.path_resolution).floor() as i32;
-        
+
         (0..=n_expand)
             .map(|i| from_node.y + self.path_resolution * i as f64 * theta.sin())
             .collect()
@@ -205,7 +205,7 @@ impl RRTStar {
         let nnode = self.node_list.len() + 1;
         let r = self.connect_circle_dist * ((nnode as f64).ln() / nnode as f64).sqrt();
         let r = r.min(self.expand_dis);
-        
+
         self.node_list
             .iter()
             .enumerate()
@@ -224,42 +224,43 @@ impl RRTStar {
         if near_inds.is_empty() {
             return None;
         }
-        
+
         let mut costs = Vec::new();
         for &i in near_inds {
             let near_node = &self.node_list[i];
             let mut t_node = Node::new(new_node.x, new_node.y);
             t_node.parent = Some(i);
-            
+
             if self.check_collision_free(&t_node) {
                 costs.push(self.calc_new_cost(near_node, &new_node));
             } else {
                 costs.push(f64::INFINITY);
             }
         }
-        
+
         let min_cost = costs.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        
+
         if min_cost == f64::INFINITY {
             return None;
         }
-        
+
         let min_ind = costs.iter().position(|&x| x == min_cost)?;
         let parent_ind = near_inds[min_ind];
-        
+
         let mut result_node = Node::new(new_node.x, new_node.y);
         result_node.parent = Some(parent_ind);
         result_node.cost = min_cost;
-        
+
         Some(result_node)
     }
 
     fn search_best_goal_node(&self) -> Option<usize> {
-        let dist_to_goal_list: Vec<f64> = self.node_list
+        let dist_to_goal_list: Vec<f64> = self
+            .node_list
             .iter()
             .map(|n| self.calc_dist_to_goal(n.x, n.y))
             .collect();
-        
+
         let goal_inds: Vec<usize> = dist_to_goal_list
             .iter()
             .enumerate()
@@ -271,7 +272,7 @@ impl RRTStar {
                 }
             })
             .collect();
-        
+
         let safe_goal_inds: Vec<usize> = goal_inds
             .into_iter()
             .filter(|&goal_ind| {
@@ -280,20 +281,21 @@ impl RRTStar {
                 self.check_collision_free(&t_node)
             })
             .collect();
-        
+
         if safe_goal_inds.is_empty() {
             return None;
         }
-        
+
         let safe_goal_costs: Vec<f64> = safe_goal_inds
             .iter()
             .map(|&i| {
-                self.node_list[i].cost + self.calc_dist_to_goal(self.node_list[i].x, self.node_list[i].y)
+                self.node_list[i].cost
+                    + self.calc_dist_to_goal(self.node_list[i].x, self.node_list[i].y)
             })
             .collect();
-        
+
         let min_cost = safe_goal_costs.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        
+
         safe_goal_inds
             .into_iter()
             .zip(safe_goal_costs)
@@ -305,14 +307,14 @@ impl RRTStar {
         for &i in near_inds {
             let near_node = self.node_list[i].clone();
             let new_node = &self.node_list[new_node_ind];
-            
+
             let mut edge_node = Node::new(near_node.x, near_node.y);
             edge_node.parent = Some(new_node_ind);
             edge_node.cost = self.calc_new_cost(new_node, &near_node);
-            
+
             let no_collision = self.check_collision_free(&edge_node);
             let improved_cost = near_node.cost > edge_node.cost;
-            
+
             if no_collision && improved_cost {
                 // Update parent references
                 for node in &mut self.node_list {
@@ -334,11 +336,12 @@ impl RRTStar {
 
     fn propagate_cost_to_leaves(&mut self, parent_ind: usize) {
         let parent_node = self.node_list[parent_ind].clone();
-        
+
         for i in 0..self.node_list.len() {
             if let Some(node_parent) = self.node_list[i].parent {
                 if node_parent == parent_ind {
-                    self.node_list[i].cost = self.calc_new_cost(&parent_node, &self.node_list[i].clone());
+                    self.node_list[i].cost =
+                        self.calc_new_cost(&parent_node, &self.node_list[i].clone());
                     self.propagate_cost_to_leaves(i);
                 }
             }
@@ -348,13 +351,13 @@ impl RRTStar {
     fn generate_final_course(&self, goal_ind: usize) -> Vec<[f64; 2]> {
         let mut path = vec![[self.end.x, self.end.y]];
         let mut node = &self.node_list[goal_ind];
-        
+
         while let Some(parent_ind) = node.parent {
             path.push([node.x, node.y]);
             node = &self.node_list[parent_ind];
         }
         path.push([node.x, node.y]);
-        
+
         path.reverse();
         path
     }
@@ -514,17 +517,17 @@ fn main() {
     ];
 
     let mut rrt_star = RRTStar::new(
-        (0.0, 0.0),    // start
-        (6.0, 10.0),   // goal
+        (0.0, 0.0),  // start
+        (6.0, 10.0), // goal
         obstacle_list,
-        (-2.0, 15.0),  // rand_area
-        2.0,           // expand_dis
-        0.5,           // path_resolution
-        20,            // goal_sample_rate
-        1000,          // max_iter (increased)
-        50.0,          // connect_circle_dist
-        true,          // search_until_max_iter
-        0.3,           // robot_radius
+        (-2.0, 15.0), // rand_area
+        2.0,          // expand_dis
+        0.5,          // path_resolution
+        20,           // goal_sample_rate
+        1000,         // max_iter (increased)
+        50.0,         // connect_circle_dist
+        true,         // search_until_max_iter
+        0.3,          // robot_radius
     );
 
     if let Some(path) = rrt_star.planning() {

@@ -3,8 +3,8 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
+use gnuplot::{AutoOption, AxesCommon, Figure, PlotOption};
 use nalgebra::DMatrix;
-use gnuplot::{Figure, AxesCommon, AutoOption, PlotOption};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
@@ -65,7 +65,12 @@ impl RayCastingGridMap {
 
         // Precompute cell database
         let precast_db = Self::precompute_db(
-            x_width, y_width, origin_ix, origin_iy, resolution, yaw_resolution
+            x_width,
+            y_width,
+            origin_ix,
+            origin_iy,
+            resolution,
+            yaw_resolution,
         );
 
         let mut grid_map = RayCastingGridMap {
@@ -133,8 +138,11 @@ impl RayCastingGridMap {
         let obs_ix = ((obs_x - self.min_x) / self.resolution).round() as i32;
         let obs_iy = ((obs_y - self.min_y) / self.resolution).round() as i32;
 
-        if obs_ix < 0 || obs_ix >= self.x_width as i32 ||
-           obs_iy < 0 || obs_iy >= self.y_width as i32 {
+        if obs_ix < 0
+            || obs_ix >= self.x_width as i32
+            || obs_iy < 0
+            || obs_iy >= self.y_width as i32
+        {
             return;
         }
 
@@ -212,17 +220,28 @@ fn draw_heatmap(grid_map: &RayCastingGridMap, ox: &[f64], oy: &[f64]) {
             z_data.iter().cloned(),
             x_width,
             y_width,
-            Some((grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y)),
-            &[PlotOption::Caption("Occupancy")]
+            Some((
+                grid_map.min_x,
+                grid_map.min_y,
+                grid_map.max_x,
+                grid_map.max_y,
+            )),
+            &[PlotOption::Caption("Occupancy")],
         )
         .points(
             ox,
             oy,
-            &[PlotOption::Caption("Obstacles"), PlotOption::Color("red"), gnuplot::PointSymbol('O'), gnuplot::PointSize(1.0)]
+            &[
+                PlotOption::Caption("Obstacles"),
+                PlotOption::Color("red"),
+                gnuplot::PointSymbol('O'),
+                gnuplot::PointSize(1.0),
+            ],
         );
 
     fig.show_and_keep_running().unwrap();
-    fig.save_to_svg("./img/mapping/ray_casting_grid_map.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/mapping/ray_casting_grid_map.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/mapping/ray_casting_grid_map.svg");
 }
 
@@ -265,8 +284,10 @@ fn main() {
 
     println!("Grid map created:");
     println!("  Size: {} x {}", grid_map.x_width, grid_map.y_width);
-    println!("  Bounds: ({:.1}, {:.1}) to ({:.1}, {:.1})",
-             grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y);
+    println!(
+        "  Bounds: ({:.1}, {:.1}) to ({:.1}, {:.1})",
+        grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y
+    );
 
     // Draw heatmap
     draw_heatmap(&grid_map, &ox, &oy);

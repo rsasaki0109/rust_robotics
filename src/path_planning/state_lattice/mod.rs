@@ -35,15 +35,13 @@
 //! - "State Space Sampling of Feasible Motions for High-Performance Mobile Robot Navigation"
 
 pub mod motion_model;
-pub mod trajectory_generator;
 pub mod state_lattice_planner;
+pub mod trajectory_generator;
 
 // Re-exports
 pub use motion_model::{MotionModel, MotionModelConfig, VehicleState};
+pub use state_lattice_planner::{StateLattice, StateLatticeConfig, TargetPose, Trajectory};
 pub use trajectory_generator::{
     LookupTable, LookupTableEntry, TargetState, TrajectoryGenerator, TrajectoryGeneratorConfig,
     TrajectoryParams,
-};
-pub use state_lattice_planner::{
-    StateLattice, StateLatticeConfig, TargetPose, Trajectory,
 };

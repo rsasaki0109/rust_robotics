@@ -12,10 +12,10 @@
 //! Reference: Nash, A., Daniel, K., Koenig, S., & Felner, A. (2007).
 //! "Theta*: Any-Angle Path Planning on Grids"
 
-use std::collections::{HashMap, BinaryHeap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
-use crate::common::{Point2D, Path2D, PathPlanner, RoboticsError};
+use crate::common::{Path2D, PathPlanner, Point2D, RoboticsError};
 use crate::utils::{GridMap, Node};
 
 /// Configuration for Theta* planner
@@ -60,7 +60,10 @@ impl PartialEq for PriorityNode {
 impl Ord for PriorityNode {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse ordering for min-heap behavior
-        other.priority.partial_cmp(&self.priority).unwrap_or(Ordering::Equal)
+        other
+            .priority
+            .partial_cmp(&self.priority)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -87,7 +90,11 @@ impl ThetaStarPlanner {
         let grid_map = GridMap::new(ox, oy, config.resolution, config.robot_radius);
         let motion = Self::get_motion_model();
 
-        ThetaStarPlanner { grid_map, config, motion }
+        ThetaStarPlanner {
+            grid_map,
+            config,
+            motion,
+        }
     }
 
     /// Create from obstacle x/y vectors with default config
@@ -117,8 +124,7 @@ impl ThetaStarPlanner {
     }
 
     fn calc_heuristic(&self, n1_x: i32, n1_y: i32, n2_x: i32, n2_y: i32) -> f64 {
-        self.config.heuristic_weight
-            * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
+        self.config.heuristic_weight * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
     }
 
     fn get_motion_model() -> Vec<(i32, i32, f64)> {
@@ -266,7 +272,8 @@ impl PathPlanner for ThetaStarPlanner {
                     // Check line-of-sight from parent to neighbor
                     if self.line_of_sight(parent_node.x, parent_node.y, new_x, new_y) {
                         // Path 2: Connect directly to grandparent
-                        let dist = self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
+                        let dist =
+                            self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
                         let cost = parent_node.cost + dist;
                         (cost, Some(p_idx))
                     } else {
@@ -283,7 +290,10 @@ impl PathPlanner for ThetaStarPlanner {
                 };
 
                 // Check if this path is better than existing path
-                let existing_g = g_values.get(&new_grid_index).copied().unwrap_or(f64::INFINITY);
+                let existing_g = g_values
+                    .get(&new_grid_index)
+                    .copied()
+                    .unwrap_or(f64::INFINITY);
                 if new_cost < existing_g {
                     g_values.insert(new_grid_index, new_cost);
 
@@ -318,10 +328,14 @@ mod tests {
 
         // Boundary
         for i in 0..21 {
-            ox.push(i as f64); oy.push(0.0);
-            ox.push(i as f64); oy.push(20.0);
-            ox.push(0.0); oy.push(i as f64);
-            ox.push(20.0); oy.push(i as f64);
+            ox.push(i as f64);
+            oy.push(0.0);
+            ox.push(i as f64);
+            oy.push(20.0);
+            ox.push(0.0);
+            oy.push(i as f64);
+            ox.push(20.0);
+            oy.push(i as f64);
         }
 
         // Internal obstacle (vertical wall)
@@ -367,7 +381,8 @@ mod tests {
         let (ox, oy) = create_simple_obstacles();
 
         let theta_planner = ThetaStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);
-        let a_star_planner = crate::path_planning::a_star::AStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);
+        let a_star_planner =
+            crate::path_planning::a_star::AStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);
 
         let start = Point2D::new(2.0, 2.0);
         let goal = Point2D::new(18.0, 18.0);
@@ -381,9 +396,12 @@ mod tests {
         let a_star_length = a_star_path.total_length();
 
         // Theta* should produce path length <= A* path length
-        assert!(theta_length <= a_star_length + 0.1,
+        assert!(
+            theta_length <= a_star_length + 0.1,
             "Theta* path ({}) should not be significantly longer than A* path ({})",
-            theta_length, a_star_length);
+            theta_length,
+            a_star_length
+        );
     }
 
     #[test]

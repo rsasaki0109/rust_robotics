@@ -169,14 +169,7 @@ impl JPSPlanner {
     }
 
     /// Jump in a given direction from (x, y) until we find a jump point or hit an obstacle
-    fn jump(
-        &self,
-        x: i32,
-        y: i32,
-        dir: Direction,
-        goal_x: i32,
-        goal_y: i32,
-    ) -> Option<(i32, i32)> {
+    fn jump(&self, x: i32, y: i32, dir: Direction, goal_x: i32, goal_y: i32) -> Option<(i32, i32)> {
         let nx = x + dir.dx;
         let ny = y + dir.dy;
 
@@ -694,6 +687,10 @@ mod tests {
         assert!(path.len() >= 2, "Path should have at least start and goal");
         // Verify path is roughly diagonal (total length should be close to sqrt(2) * 16 ≈ 22.6)
         let total_len = path.total_length();
-        assert!(total_len < 30.0, "Path should be efficient, got length {}", total_len);
+        assert!(
+            total_len < 30.0,
+            "Path should be efficient, got length {}",
+            total_len
+        );
     }
 }

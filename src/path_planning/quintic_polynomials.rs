@@ -1,9 +1,9 @@
-use gnuplot::{Figure, Caption, Color, AxesCommon};
+use gnuplot::{AxesCommon, Caption, Color, Figure};
 use std::f64::consts::PI;
 
 // Parameters
 const MAX_T: f64 = 100.0; // maximum time to the goal [s]
-const MIN_T: f64 = 5.0;   // minimum time to the goal [s]
+const MIN_T: f64 = 5.0; // minimum time to the goal [s]
 const SHOW_ANIMATION: bool = true;
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ impl QuinticPolynomial {
 
         // Solve using Cramer's rule
         let det_a = Self::determinant_3x3(&a_matrix);
-        
+
         let mut a3_matrix = a_matrix;
         a3_matrix[0][0] = b[0];
         a3_matrix[1][0] = b[1];
@@ -65,7 +65,14 @@ impl QuinticPolynomial {
         a5_matrix[2][2] = b[2];
         let a5 = Self::determinant_3x3(&a5_matrix) / det_a;
 
-        QuinticPolynomial { a0, a1, a2, a3, a4, a5 }
+        QuinticPolynomial {
+            a0,
+            a1,
+            a2,
+            a3,
+            a4,
+            a5,
+        }
     }
 
     fn determinant_3x3(matrix: &[[f64; 3]; 3]) -> f64 {
@@ -75,18 +82,24 @@ impl QuinticPolynomial {
     }
 
     pub fn calc_point(&self, t: f64) -> f64 {
-        self.a0 + self.a1 * t + self.a2 * t.powi(2) + 
-        self.a3 * t.powi(3) + self.a4 * t.powi(4) + self.a5 * t.powi(5)
+        self.a0
+            + self.a1 * t
+            + self.a2 * t.powi(2)
+            + self.a3 * t.powi(3)
+            + self.a4 * t.powi(4)
+            + self.a5 * t.powi(5)
     }
 
     pub fn calc_first_derivative(&self, t: f64) -> f64 {
-        self.a1 + 2.0 * self.a2 * t + 
-        3.0 * self.a3 * t.powi(2) + 4.0 * self.a4 * t.powi(3) + 5.0 * self.a5 * t.powi(4)
+        self.a1
+            + 2.0 * self.a2 * t
+            + 3.0 * self.a3 * t.powi(2)
+            + 4.0 * self.a4 * t.powi(3)
+            + 5.0 * self.a5 * t.powi(4)
     }
 
     pub fn calc_second_derivative(&self, t: f64) -> f64 {
-        2.0 * self.a2 + 6.0 * self.a3 * t + 
-        12.0 * self.a4 * t.powi(2) + 20.0 * self.a5 * t.powi(3)
+        2.0 * self.a2 + 6.0 * self.a3 * t + 12.0 * self.a4 * t.powi(2) + 20.0 * self.a5 * t.powi(3)
     }
 
     pub fn calc_third_derivative(&self, t: f64) -> f64 {
@@ -120,9 +133,19 @@ impl QuinticPolynomialsPlanner {
 
     pub fn planning(
         &mut self,
-        sx: f64, sy: f64, syaw: f64, sv: f64, sa: f64,
-        gx: f64, gy: f64, gyaw: f64, gv: f64, ga: f64,
-        max_accel: f64, max_jerk: f64, dt: f64,
+        sx: f64,
+        sy: f64,
+        syaw: f64,
+        sv: f64,
+        sa: f64,
+        gx: f64,
+        gy: f64,
+        gyaw: f64,
+        gv: f64,
+        ga: f64,
+        max_accel: f64,
+        max_jerk: f64,
+        dt: f64,
     ) -> bool {
         let vxs = sv * syaw.cos();
         let vys = sv * syaw.sin();
@@ -163,7 +186,9 @@ impl QuinticPolynomialsPlanner {
                 let ax = xqp.calc_second_derivative(current_t);
                 let ay = yqp.calc_second_derivative(current_t);
                 let mut a = (ax * ax + ay * ay).sqrt();
-                if self.rv.len() >= 2 && self.rv[self.rv.len() - 1] - self.rv[self.rv.len() - 2] < 0.0 {
+                if self.rv.len() >= 2
+                    && self.rv[self.rv.len() - 1] - self.rv[self.rv.len() - 2] < 0.0
+                {
                     a *= -1.0;
                 }
                 self.ra.push(a);
@@ -171,7 +196,9 @@ impl QuinticPolynomialsPlanner {
                 let jx = xqp.calc_third_derivative(current_t);
                 let jy = yqp.calc_third_derivative(current_t);
                 let mut j = (jx * jx + jy * jy).sqrt();
-                if self.ra.len() >= 2 && self.ra[self.ra.len() - 1] - self.ra[self.ra.len() - 2] < 0.0 {
+                if self.ra.len() >= 2
+                    && self.ra[self.ra.len() - 1] - self.ra[self.ra.len() - 2] < 0.0
+                {
                     j *= -1.0;
                 }
                 self.rj.push(j);
@@ -202,7 +229,11 @@ impl QuinticPolynomialsPlanner {
         let axes = fg.axes2d();
 
         // Plot path
-        axes.lines(&self.rx, &self.ry, &[Caption("Quintic Polynomial Path"), Color("red")]);
+        axes.lines(
+            &self.rx,
+            &self.ry,
+            &[Caption("Quintic Polynomial Path"), Color("red")],
+        );
 
         // Plot start and goal positions
         axes.points(&[sx], &[sy], &[Caption("Start"), Color("green")]);
@@ -244,7 +275,8 @@ impl QuinticPolynomialsPlanner {
         axes.set_title("Yaw Profile", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("Yaw [deg]", &[]);
-        fg.save_to_png("img/path_planning/quintic_yaw_profile.png", 800, 600).unwrap();
+        fg.save_to_png("img/path_planning/quintic_yaw_profile.png", 800, 600)
+            .unwrap();
 
         // Velocity profile
         let mut fg = Figure::new();
@@ -253,16 +285,26 @@ impl QuinticPolynomialsPlanner {
         axes.set_title("Velocity Profile", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("Speed [m/s]", &[]);
-        fg.save_to_png("img/path_planning/quintic_velocity_profile.png", 800, 600).unwrap();
+        fg.save_to_png("img/path_planning/quintic_velocity_profile.png", 800, 600)
+            .unwrap();
 
         // Acceleration profile
         let mut fg = Figure::new();
         let axes = fg.axes2d();
-        axes.lines(&self.time, &self.ra, &[Caption("Acceleration"), Color("red")]);
+        axes.lines(
+            &self.time,
+            &self.ra,
+            &[Caption("Acceleration"), Color("red")],
+        );
         axes.set_title("Acceleration Profile", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("Accel [m/s²]", &[]);
-        fg.save_to_png("img/path_planning/quintic_acceleration_profile.png", 800, 600).unwrap();
+        fg.save_to_png(
+            "img/path_planning/quintic_acceleration_profile.png",
+            800,
+            600,
+        )
+        .unwrap();
 
         // Jerk profile
         let mut fg = Figure::new();
@@ -271,7 +313,8 @@ impl QuinticPolynomialsPlanner {
         axes.set_title("Jerk Profile", &[])
             .set_x_label("Time [s]", &[])
             .set_y_label("Jerk [m/s³]", &[]);
-        fg.save_to_png("img/path_planning/quintic_jerk_profile.png", 800, 600).unwrap();
+        fg.save_to_png("img/path_planning/quintic_jerk_profile.png", 800, 600)
+            .unwrap();
 
         println!("Profile plots saved to img/path_planning/");
     }
@@ -280,23 +323,25 @@ impl QuinticPolynomialsPlanner {
 fn main() {
     println!("Quintic Polynomials Planner start!!");
 
-    let sx = 10.0;  // start x position [m]
-    let sy = 10.0;  // start y position [m]
+    let sx = 10.0; // start x position [m]
+    let sy = 10.0; // start y position [m]
     let syaw = 10.0_f64.to_radians(); // start yaw angle [rad]
-    let sv = 1.0;   // start speed [m/s]
-    let sa = 0.1;   // start accel [m/s²]
-    let gx = 30.0;  // goal x position [m]
+    let sv = 1.0; // start speed [m/s]
+    let sa = 0.1; // start accel [m/s²]
+    let gx = 30.0; // goal x position [m]
     let gy = -10.0; // goal y position [m]
     let gyaw = 20.0_f64.to_radians(); // goal yaw angle [rad]
-    let gv = 1.0;   // goal speed [m/s]
-    let ga = 0.1;   // goal accel [m/s²]
+    let gv = 1.0; // goal speed [m/s]
+    let ga = 0.1; // goal accel [m/s²]
     let max_accel = 1.0; // max accel [m/s²]
-    let max_jerk = 0.5;  // max jerk [m/s³]
-    let dt = 0.1;   // time tick [s]
+    let max_jerk = 0.5; // max jerk [m/s³]
+    let dt = 0.1; // time tick [s]
 
     let mut planner = QuinticPolynomialsPlanner::new();
 
-    if planner.planning(sx, sy, syaw, sv, sa, gx, gy, gyaw, gv, ga, max_accel, max_jerk, dt) {
+    if planner.planning(
+        sx, sy, syaw, sv, sa, gx, gy, gyaw, gv, ga, max_accel, max_jerk, dt,
+    ) {
         println!("Path found with {} points!", planner.rx.len());
         planner.visualize_path(sx, sy, syaw, gx, gy, gyaw);
         planner.visualize_profiles();

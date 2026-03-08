@@ -1,5 +1,5 @@
-use rust_robotics::localization::{UKFLocalizer, UKFState};
 use rust_robotics::localization::unscented_kalman_filter::{calc_input, observation};
+use rust_robotics::localization::{UKFLocalizer, UKFState};
 use rust_robotics::StateEstimator;
 
 fn main() {

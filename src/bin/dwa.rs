@@ -36,18 +36,33 @@ fn main() {
         axes.points(
             &obs_x,
             &obs_y,
-            &[Caption("Obstacles"), Color("black"), PointSymbol('O'), PointSize(1.5)],
+            &[
+                Caption("Obstacles"),
+                Color("black"),
+                PointSymbol('O'),
+                PointSize(1.5),
+            ],
         );
         axes.lines(&path_x, &path_y, &[Caption("Trajectory"), Color("green")]);
         axes.points(
             &[0.0],
             &[0.0],
-            &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)],
+            &[
+                Caption("Start"),
+                Color("blue"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
         );
         axes.points(
             &[10.0],
             &[10.0],
-            &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)],
+            &[
+                Caption("Goal"),
+                Color("red"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
         );
         axes.set_title("Dynamic Window Approach", &[])
             .set_x_label("X [m]", &[])

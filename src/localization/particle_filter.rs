@@ -3,12 +3,12 @@
 //! Implements state estimation using Sequential Monte Carlo method
 //! for robot localization with landmark observations.
 
-use nalgebra::{Matrix4, Vector4, Vector2};
+use nalgebra::{Matrix4, Vector2, Vector4};
 use rand::Rng;
-use rand_distr::{Normal, Distribution};
+use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;
 
-use crate::common::{StateEstimator, Point2D};
+use crate::common::{Point2D, StateEstimator};
 
 /// State representation for Particle Filter (x, y, yaw, velocity)
 pub type PFState = Vector4<f64>;
