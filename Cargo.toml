@@ -32,15 +32,31 @@ path = "examples/path_planning/jps.rs"
 name = "state_lattice"
 path = "examples/path_planning/state_lattice.rs"
 
+[[bin]]
+name = "ekf"
+path = "src/bin/ekf.rs"
+
+[[bin]]
+name = "dwa"
+path = "src/bin/dwa.rs"
+
 # Legacy binaries (will be migrated to examples)
 
 [[bin]]
+name = "ndt"
+path = "src/mapping/ndt.rs"
+
+[[bin]]
 name = "rrt"
-path = "src/path_planning/rrt.rs"
+path = "src/bin/rrt.rs"
+
+[[bin]]
+name = "dijkstra"
+path = "src/path_planning/dijkstra.rs"
 
 [[bin]]
 name = "particle_filter"
-path = "src/localization/particle_filter.rs"
+path = "src/bin/particle_filter.rs"
 
 [[bin]]
 name = "rrt_star"
@@ -59,6 +75,10 @@ name = "quintic_polynomials"
 path = "src/path_planning/quintic_polynomials.rs"
 
 [[bin]]
+name = "csp"
+path = "src/path_planning/csp.rs"
+
+[[bin]]
 name = "cubic_spline"
 path = "src/path_planning/cubic_spline_planner.rs"
 
@@ -75,20 +95,28 @@ name = "bezier_planning"
 path = "src/path_planning/bezier_path_planning.rs"
 
 [[bin]]
+name = "bezier_path"
+path = "src/path_planning/bezier_path.rs"
+
+[[bin]]
 name = "lqr_steer_control"
-path = "src/path_tracking/lqr_steer_control.rs"
+path = "src/bin/lqr_steer_control.rs"
 
 [[bin]]
 name = "pure_pursuit"
-path = "src/path_tracking/pure_pursuit.rs"
+path = "src/bin/pure_pursuit.rs"
 
 [[bin]]
 name = "stanley_controller"
-path = "src/path_tracking/stanley_controller.rs"
+path = "src/bin/stanley_controller.rs"
 
 [[bin]]
 name = "move_to_pose"
 path = "src/path_tracking/move_to_pose.rs"
+
+[[bin]]
+name = "model_predictive_trajectory_generator"
+path = "src/path_tracking/model_predictive_trajectory_generator.rs"
 
 [[bin]]
 name = "inverted_pendulum_lqr"
@@ -112,7 +140,7 @@ path = "src/mission_planning/state_machine.rs"
 
 [[bin]]
 name = "unscented_kalman_filter"
-path = "src/localization/unscented_kalman_filter.rs"
+path = "src/bin/unscented_kalman_filter.rs"
 
 [[bin]]
 name = "histogram_filter"
