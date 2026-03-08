@@ -1,3 +1,11 @@
+#![allow(
+    dead_code,
+    clippy::items_after_test_module,
+    clippy::needless_borrows_for_generic_args,
+    clippy::ptr_arg,
+    clippy::legacy_numeric_constants
+)]
+
 /*!
  * Iterative Closest Point (ICP) SLAM implementation
  *
@@ -280,8 +288,8 @@ fn plot_points(
 
     // Plot origin
     axes.points(
-        &[0.0],
-        &[0.0],
+        [0.0],
+        [0.0],
         &[Caption("Origin"), Color("red"), PointSymbol('x')],
     );
 
@@ -440,8 +448,8 @@ fn create_summary_plot() {
         &[Caption("Aligned"), Color("green"), PointSymbol('.')],
     );
     axes.points(
-        &[0.0],
-        &[0.0],
+        [0.0],
+        [0.0],
         &[Caption("Origin"), Color("black"), PointSymbol('x')],
     );
 

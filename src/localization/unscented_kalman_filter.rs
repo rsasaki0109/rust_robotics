@@ -8,7 +8,7 @@ use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
 use rand::Rng;
 use std::f64::consts::PI;
 
-use crate::common::{Point2D, StateEstimator};
+use crate::common::StateEstimator;
 
 /// State representation for UKF (x, y, yaw, velocity)
 pub type UKFState = Vector4<f64>;

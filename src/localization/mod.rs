@@ -7,7 +7,6 @@ pub mod unscented_kalman_filter;
 
 // Re-exports
 pub use ekf::{EKFConfig, EKFControl, EKFLocalizer, EKFMeasurement, EKFState};
-pub use histogram_filter::*;
 pub use particle_filter::{
     PFControl, PFMeasurement, PFState, Particle, ParticleFilterConfig, ParticleFilterLocalizer,
 };

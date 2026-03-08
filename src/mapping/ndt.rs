@@ -1,8 +1,9 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
-use gnuplot::AxesCommon;
-use gnuplot::{Axes2D, Caption, Color, Figure, PointSymbol};
-use na::{DMatrix, Matrix2, SymmetricEigen, Vector2};
+use gnuplot::{Caption, Color, Figure, PointSymbol};
+use na::{Matrix2, SymmetricEigen, Vector2};
 use nalgebra as na; // For matrices, vectors, stats, etc.
 use rand::prelude::*;
 use rand_distr::{Distribution, Uniform};
@@ -133,8 +134,10 @@ impl NDTMap {
     /// Build each cell's NDTGrid from the points that fall in it.
     fn construct_grid_map(&mut self) {
         for (grid_index, inds) in &self.grid_index_map {
-            let mut ndt = NDTGrid::default();
-            ndt.n_points = inds.len();
+            let mut ndt = NDTGrid {
+                n_points: inds.len(),
+                ..NDTGrid::default()
+            };
             if ndt.n_points >= self.min_n_points {
                 // Compute means:
                 let mut sum_x = 0.0;
@@ -311,7 +314,7 @@ fn main() {
     let mut fg = Figure::new();
     {
         // 1) plot raw data in red (dots)
-        let mut axes = fg.axes2d();
+        let axes = fg.axes2d();
         // axes.set_aspect_ratio(1.0); // similar to plt.axis("equal")
         axes.points(
             &ox,

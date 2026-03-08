@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 // Ray Casting Grid Map
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -117,10 +119,7 @@ impl RayCastingGridMap {
 
                 let cell_info = CellInfo { ix, iy, distance };
 
-                cells_by_angle
-                    .entry(angle_id)
-                    .or_insert_with(Vec::new)
-                    .push(cell_info);
+                cells_by_angle.entry(angle_id).or_default().push(cell_info);
             }
         }
 

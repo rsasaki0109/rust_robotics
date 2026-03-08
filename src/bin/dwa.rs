@@ -45,8 +45,8 @@ fn main() {
         );
         axes.lines(&path_x, &path_y, &[Caption("Trajectory"), Color("green")]);
         axes.points(
-            &[0.0],
-            &[0.0],
+            [0.0],
+            [0.0],
             &[
                 Caption("Start"),
                 Color("blue"),
@@ -55,8 +55,8 @@ fn main() {
             ],
         );
         axes.points(
-            &[10.0],
-            &[10.0],
+            [10.0],
+            [10.0],
             &[
                 Caption("Goal"),
                 Color("red"),
