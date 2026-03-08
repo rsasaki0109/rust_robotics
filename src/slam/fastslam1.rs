@@ -3,9 +3,9 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
-use nalgebra::{Matrix2, Matrix2x3, Matrix3x2, Vector2, Vector3, DMatrix, DVector};
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
+use nalgebra::{DMatrix, DVector, Matrix2, Matrix2x3, Matrix3x2, Vector2, Vector3};
 use rand_distr::{Distribution, Normal, Uniform};
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -109,10 +109,7 @@ fn compute_jacobian(particle: &Particle, lm_id: usize) -> Matrix2<f64> {
     let d2 = dx * dx + dy * dy;
     let d = d2.sqrt();
 
-    Matrix2::new(
-        dx / d, dy / d,
-        -dy / d2, dx / d2,
-    )
+    Matrix2::new(dx / d, dy / d, -dy / d2, dx / d2)
 }
 
 /// Process noise covariance
@@ -273,14 +270,14 @@ fn fastslam_update(
 
 /// Get best particle (highest weight)
 fn get_best_particle(particles: &[Particle]) -> &Particle {
-    particles.iter().max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap()).unwrap()
+    particles
+        .iter()
+        .max_by(|a, b| a.weight.partial_cmp(&b.weight).unwrap())
+        .unwrap()
 }
 
 /// Simulate observations
-fn get_observations(
-    x_true: &Vector3<f64>,
-    landmarks: &[(f64, f64)],
-) -> Vec<(f64, f64, usize)> {
+fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
     let normal = Normal::new(0.0, 1.0).unwrap();
     let r = get_r();
     let mut z = Vec::new();
@@ -385,20 +382,53 @@ fn main() {
             let p_y: Vec<f64> = particles.iter().map(|p| p.y).collect();
 
             // Estimated landmark positions from best particle
-            let est_lm_x: Vec<f64> = best.landmarks.iter()
+            let est_lm_x: Vec<f64> = best
+                .landmarks
+                .iter()
                 .filter(|lm| lm.cov[(0, 0)] < 100.0)
-                .map(|lm| lm.x).collect();
-            let est_lm_y: Vec<f64> = best.landmarks.iter()
+                .map(|lm| lm.x)
+                .collect();
+            let est_lm_y: Vec<f64> = best
+                .landmarks
+                .iter()
                 .filter(|lm| lm.cov[(0, 0)] < 100.0)
-                .map(|lm| lm.y).collect();
+                .map(|lm| lm.y)
+                .collect();
 
             fig.axes2d()
                 .set_title("FastSLAM 1.0", &[])
                 .set_x_label("x [m]", &[])
                 .set_y_label("y [m]", &[])
-                .points(&lm_x, &lm_y, &[Caption("True Landmarks"), Color("black"), PointSymbol('*'), PointSize(2.0)])
-                .points(&est_lm_x, &est_lm_y, &[Caption("Est. Landmarks"), Color("cyan"), PointSymbol('O'), PointSize(1.5)])
-                .points(&p_x, &p_y, &[Caption("Particles"), Color("gray"), PointSymbol('.'), PointSize(0.5)])
+                .points(
+                    &lm_x,
+                    &lm_y,
+                    &[
+                        Caption("True Landmarks"),
+                        Color("black"),
+                        PointSymbol('*'),
+                        PointSize(2.0),
+                    ],
+                )
+                .points(
+                    &est_lm_x,
+                    &est_lm_y,
+                    &[
+                        Caption("Est. Landmarks"),
+                        Color("cyan"),
+                        PointSymbol('O'),
+                        PointSize(1.5),
+                    ],
+                )
+                .points(
+                    &p_x,
+                    &p_y,
+                    &[
+                        Caption("Particles"),
+                        Color("gray"),
+                        PointSymbol('.'),
+                        PointSize(0.5),
+                    ],
+                )
                 .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
                 .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")])
                 .lines(&est_x, &est_y, &[Caption("FastSLAM"), Color("green")]);
@@ -422,23 +452,48 @@ fn main() {
     let lm_y: Vec<f64> = landmarks.iter().map(|p| p.1).collect();
 
     let best = get_best_particle(&particles);
-    let est_lm_x: Vec<f64> = best.landmarks.iter()
+    let est_lm_x: Vec<f64> = best
+        .landmarks
+        .iter()
         .filter(|lm| lm.cov[(0, 0)] < 100.0)
-        .map(|lm| lm.x).collect();
-    let est_lm_y: Vec<f64> = best.landmarks.iter()
+        .map(|lm| lm.x)
+        .collect();
+    let est_lm_y: Vec<f64> = best
+        .landmarks
+        .iter()
         .filter(|lm| lm.cov[(0, 0)] < 100.0)
-        .map(|lm| lm.y).collect();
+        .map(|lm| lm.y)
+        .collect();
 
     fig.axes2d()
         .set_title("FastSLAM 1.0", &[])
         .set_x_label("x [m]", &[])
         .set_y_label("y [m]", &[])
-        .points(&lm_x, &lm_y, &[Caption("True Landmarks"), Color("black"), PointSymbol('*'), PointSize(2.0)])
-        .points(&est_lm_x, &est_lm_y, &[Caption("Est. Landmarks"), Color("cyan"), PointSymbol('O'), PointSize(1.5)])
+        .points(
+            &lm_x,
+            &lm_y,
+            &[
+                Caption("True Landmarks"),
+                Color("black"),
+                PointSymbol('*'),
+                PointSize(2.0),
+            ],
+        )
+        .points(
+            &est_lm_x,
+            &est_lm_y,
+            &[
+                Caption("Est. Landmarks"),
+                Color("cyan"),
+                PointSymbol('O'),
+                PointSize(1.5),
+            ],
+        )
         .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
         .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")])
         .lines(&est_x, &est_y, &[Caption("FastSLAM"), Color("green")]);
 
-    fig.save_to_svg("./img/slam/fastslam1.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/slam/fastslam1.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/slam/fastslam1.svg");
 }

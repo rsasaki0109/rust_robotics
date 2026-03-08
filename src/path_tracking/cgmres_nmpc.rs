@@ -98,7 +98,16 @@ impl NMPCSimulatorSystem {
         u_2s: &[f64],
         n: usize,
         dt: f64,
-    ) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+    ) -> (
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+        Vec<f64>,
+    ) {
         // Forward prediction using state equations
         let (x_s, y_s, yaw_s, v_s) = self.calc_predict_states(x, y, yaw, v, u_1s, u_2s, n, dt);
 
@@ -230,12 +239,12 @@ impl NMPCControllerCGMRES {
         let input_num = 6;
 
         NMPCControllerCGMRES {
-            zeta: 100.0,  // Original value
+            zeta: 100.0, // Original value
             ht: 0.01,
             tf: 3.0,
             alpha: 0.5,
             n,
-            threshold: 0.001,  // Same as Python
+            threshold: 0.001, // Same as Python
             input_num,
             max_iteration: input_num * n,
 
@@ -438,8 +447,18 @@ impl NMPCControllerCGMRES {
                 draw_2_i[k] = vs[(k * self.input_num + 5, i)] * self.ht;
             }
 
-            let u_1s_i: Vec<f64> = self.u_1s.iter().zip(&du_1_i).map(|(&u, &d)| u + d).collect();
-            let u_2s_i: Vec<f64> = self.u_2s.iter().zip(&du_2_i).map(|(&u, &d)| u + d).collect();
+            let u_1s_i: Vec<f64> = self
+                .u_1s
+                .iter()
+                .zip(&du_1_i)
+                .map(|(&u, &d)| u + d)
+                .collect();
+            let u_2s_i: Vec<f64> = self
+                .u_2s
+                .iter()
+                .zip(&du_2_i)
+                .map(|(&u, &d)| u + d)
+                .collect();
 
             let (_, _, _, v_s_i, _, _, lam_3s_i, lam_4s_i) =
                 self.simulator.calc_predict_and_adjoint_state(
@@ -576,8 +595,10 @@ impl NMPCControllerCGMRES {
                         for k in 0..self.n {
                             du_1_tmp[k] = du_1_i[k] + update_val[k * self.input_num];
                             du_2_tmp[k] = du_2_i[k] + update_val[k * self.input_num + 1];
-                            ddummy_u_1_tmp[k] = ddummy_u_1_i[k] + update_val[k * self.input_num + 2];
-                            ddummy_u_2_tmp[k] = ddummy_u_2_i[k] + update_val[k * self.input_num + 3];
+                            ddummy_u_1_tmp[k] =
+                                ddummy_u_1_i[k] + update_val[k * self.input_num + 2];
+                            ddummy_u_2_tmp[k] =
+                                ddummy_u_2_i[k] + update_val[k * self.input_num + 3];
                             draw_1_tmp[k] = draw_1_i[k] + update_val[k * self.input_num + 4];
                             draw_2_tmp[k] = draw_2_i[k] + update_val[k * self.input_num + 5];
                         }
@@ -597,9 +618,14 @@ impl NMPCControllerCGMRES {
         }
 
         // Update inputs (only if converged)
-        if let (Some(du1), Some(du2), Some(dd1), Some(dd2), Some(dr1), Some(dr2)) =
-            (du_1_new, du_2_new, ddummy_u_1_new, ddummy_u_2_new, draw_1_new, draw_2_new)
-        {
+        if let (Some(du1), Some(du2), Some(dd1), Some(dd2), Some(dr1), Some(dr2)) = (
+            du_1_new,
+            du_2_new,
+            ddummy_u_1_new,
+            ddummy_u_2_new,
+            draw_1_new,
+            draw_2_new,
+        ) {
             for i in 0..self.n {
                 self.u_1s[i] += du1[i] * self.ht;
                 self.u_2s[i] += du2[i] * self.ht;
@@ -764,7 +790,10 @@ fn save_trajectory_svg(
     writeln!(
         file,
         r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>"#,
-        margin, margin, margin, height - margin
+        margin,
+        margin,
+        margin,
+        height - margin
     )?;
 
     // Trajectory
@@ -856,8 +885,7 @@ pub fn main() {
     for i in 1..iteration_num {
         let time = (i as f64) * dt;
 
-        let (u_1s, u_2s) =
-            controller.calc_input(plant.x, plant.y, plant.yaw, plant.v, time);
+        let (u_1s, u_2s) = controller.calc_input(plant.x, plant.y, plant.yaw, plant.v, time);
 
         plant.update_state(u_1s[0], u_2s[0], dt);
 

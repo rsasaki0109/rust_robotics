@@ -3,10 +3,10 @@
 //! Grid-based path planning using A* search algorithm with
 //! configurable heuristic weight.
 
-use std::collections::{HashMap, BinaryHeap};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
-use crate::common::{Point2D, Path2D, PathPlanner, RoboticsError};
+use crate::common::{Path2D, PathPlanner, Point2D, RoboticsError};
 use crate::utils::{GridMap, Node};
 
 /// Configuration for A* planner
@@ -51,7 +51,10 @@ impl PartialEq for PriorityNode {
 impl Ord for PriorityNode {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse ordering for min-heap behavior
-        other.priority.partial_cmp(&self.priority).unwrap_or(Ordering::Equal)
+        other
+            .priority
+            .partial_cmp(&self.priority)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -74,7 +77,11 @@ impl AStarPlanner {
         let grid_map = GridMap::new(ox, oy, config.resolution, config.robot_radius);
         let motion = Self::get_motion_model();
 
-        AStarPlanner { grid_map, config, motion }
+        AStarPlanner {
+            grid_map,
+            config,
+            motion,
+        }
     }
 
     /// Create from obstacle x/y vectors with default config
@@ -104,8 +111,7 @@ impl AStarPlanner {
     }
 
     fn calc_heuristic(&self, n1_x: i32, n1_y: i32, n2_x: i32, n2_y: i32) -> f64 {
-        self.config.heuristic_weight
-            * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
+        self.config.heuristic_weight * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
     }
 
     fn get_motion_model() -> Vec<(i32, i32, f64)> {
@@ -223,10 +229,14 @@ mod tests {
 
         // Boundary
         for i in 0..11 {
-            ox.push(i as f64); oy.push(0.0);
-            ox.push(i as f64); oy.push(10.0);
-            ox.push(0.0); oy.push(i as f64);
-            ox.push(10.0); oy.push(i as f64);
+            ox.push(i as f64);
+            oy.push(0.0);
+            ox.push(i as f64);
+            oy.push(10.0);
+            ox.push(0.0);
+            oy.push(i as f64);
+            ox.push(10.0);
+            oy.push(i as f64);
         }
 
         // Internal obstacle

@@ -6,9 +6,9 @@
 //! Theta* extends A* by allowing paths to connect any two visible nodes,
 //! resulting in shorter, more natural paths compared to standard A*.
 
-use rust_robotics::path_planning::theta_star::{ThetaStarPlanner, ThetaStarConfig};
-use rust_robotics::path_planning::a_star::{AStarPlanner, AStarConfig};
-use rust_robotics::common::{Point2D, Path2D, PathPlanner};
+use rust_robotics::common::{Path2D, PathPlanner, Point2D};
+use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
+use rust_robotics::path_planning::theta_star::{ThetaStarConfig, ThetaStarPlanner};
 use std::fs::File;
 use std::io::Write;
 
@@ -68,11 +68,17 @@ fn generate_svg(
         let y = transform_y(i as f64);
         svg.push_str(&format!(
             "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"/>\n",
-            x, margin, x, height as f64 - margin
+            x,
+            margin,
+            x,
+            height as f64 - margin
         ));
         svg.push_str(&format!(
             "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"/>\n",
-            margin, y, width as f64 - margin, y
+            margin,
+            y,
+            width as f64 - margin,
+            y
         ));
     }
     svg.push_str("</g>\n");
@@ -84,7 +90,8 @@ fn generate_svg(
         let cy = transform_y(y);
         svg.push_str(&format!(
             "<rect x=\"{}\" y=\"{}\" width=\"8\" height=\"8\" rx=\"1\"/>\n",
-            cx - 4.0, cy - 4.0
+            cx - 4.0,
+            cy - 4.0
         ));
     }
     svg.push_str("</g>\n");
@@ -102,7 +109,8 @@ fn generate_svg(
         for p in &a_star_path.points {
             svg.push_str(&format!(
                 "<circle cx=\"{}\" cy=\"{}\" r=\"3\"/>\n",
-                transform_x(p.x), transform_y(p.y)
+                transform_x(p.x),
+                transform_y(p.y)
             ));
         }
         svg.push_str("</g>\n");
@@ -121,7 +129,8 @@ fn generate_svg(
         for p in &theta_path.points {
             svg.push_str(&format!(
                 "<circle cx=\"{}\" cy=\"{}\" r=\"5\"/>\n",
-                transform_x(p.x), transform_y(p.y)
+                transform_x(p.x),
+                transform_y(p.y)
             ));
         }
         svg.push_str("</g>\n");
@@ -134,7 +143,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" class=\"axis-label\" fill=\"#00AA00\">S</text>\n",
-        transform_x(start.x) + 12.0, transform_y(start.y) + 4.0
+        transform_x(start.x) + 12.0,
+        transform_y(start.y) + 4.0
     ));
 
     // Draw goal point (blue)
@@ -144,7 +154,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" class=\"axis-label\" fill=\"#0000AA\">G</text>\n",
-        transform_x(goal.x) + 12.0, transform_y(goal.y) + 4.0
+        transform_x(goal.x) + 12.0,
+        transform_y(goal.y) + 4.0
     ));
 
     // Legend
@@ -157,20 +168,30 @@ fn generate_svg(
     // A* legend
     svg.push_str(&format!(
         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#0066CC\" stroke-width=\"2\"/>\n",
-        legend_x + 10.0, legend_y + 25.0, legend_x + 40.0, legend_y + 25.0
+        legend_x + 10.0,
+        legend_y + 25.0,
+        legend_x + 40.0,
+        legend_y + 25.0
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" class=\"legend\">A* ({} pts)</text>\n",
-        legend_x + 50.0, legend_y + 29.0, a_star_path.len()
+        legend_x + 50.0,
+        legend_y + 29.0,
+        a_star_path.len()
     ));
     // Theta* legend
     svg.push_str(&format!(
         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#CC0000\" stroke-width=\"3\"/>\n",
-        legend_x + 10.0, legend_y + 50.0, legend_x + 40.0, legend_y + 50.0
+        legend_x + 10.0,
+        legend_y + 50.0,
+        legend_x + 40.0,
+        legend_y + 50.0
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" class=\"legend\">Theta* ({} pts)</text>\n",
-        legend_x + 50.0, legend_y + 54.0, theta_path.len()
+        legend_x + 50.0,
+        legend_y + 54.0,
+        theta_path.len()
     ));
 
     svg.push_str("</svg>\n");
@@ -193,10 +214,14 @@ fn main() {
     let mut oy = Vec::new();
 
     for i in 0..21 {
-        ox.push(i as f64); oy.push(0.0);
-        ox.push(i as f64); oy.push(20.0);
-        ox.push(0.0); oy.push(i as f64);
-        ox.push(20.0); oy.push(i as f64);
+        ox.push(i as f64);
+        oy.push(0.0);
+        ox.push(i as f64);
+        oy.push(20.0);
+        ox.push(0.0);
+        oy.push(i as f64);
+        ox.push(20.0);
+        oy.push(i as f64);
     }
 
     // Add internal obstacles (L-shaped wall)
@@ -234,12 +259,20 @@ fn main() {
     match (theta_result, a_star_result) {
         (Ok(theta_path), Ok(a_star_path)) => {
             println!("\n=== Results ===");
-            println!("Theta* path: {} waypoints, length: {:.2}",
-                theta_path.len(), theta_path.total_length());
-            println!("A* path: {} waypoints, length: {:.2}",
-                a_star_path.len(), a_star_path.total_length());
-            println!("Theta* improvement: {:.1}% shorter path",
-                (1.0 - theta_path.total_length() / a_star_path.total_length()) * 100.0);
+            println!(
+                "Theta* path: {} waypoints, length: {:.2}",
+                theta_path.len(),
+                theta_path.total_length()
+            );
+            println!(
+                "A* path: {} waypoints, length: {:.2}",
+                a_star_path.len(),
+                a_star_path.total_length()
+            );
+            println!(
+                "Theta* improvement: {:.1}% shorter path",
+                (1.0 - theta_path.total_length() / a_star_path.total_length()) * 100.0
+            );
 
             // Generate and save SVG
             let base_path = std::env::current_dir()

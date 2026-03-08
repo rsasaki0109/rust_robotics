@@ -7,7 +7,7 @@
 use nalgebra::{Vector2, Vector4, Vector5};
 use std::f64::consts::PI;
 
-use crate::common::{Point2D, Path2D, State2D, ControlInput, Obstacles};
+use crate::common::{ControlInput, Obstacles, Path2D, Point2D, State2D};
 
 /// Robot state for DWA: [x, y, yaw, v, omega]
 pub type DWAState = Vector5<f64>;
@@ -100,7 +100,9 @@ impl Trajectory {
 
     /// Convert to Path2D
     pub fn to_path(&self) -> Path2D {
-        let points: Vec<Point2D> = self.states.iter()
+        let points: Vec<Point2D> = self
+            .states
+            .iter()
             .map(|s| Point2D::new(s[0], s[1]))
             .collect();
         Path2D::from_points(points)
@@ -171,7 +173,8 @@ impl DWAPlanner {
 
     /// Set obstacles from tuples
     pub fn set_obstacles_from_tuples(&mut self, obstacles: &[(f64, f64)]) {
-        self.obstacles = obstacles.iter()
+        self.obstacles = obstacles
+            .iter()
             .map(|(x, y)| Point2D::new(*x, *y))
             .collect();
     }
@@ -190,11 +193,11 @@ impl DWAPlanner {
     fn motion(&self, state: &DWAState, control: &DWAControl) -> DWAState {
         let dt = self.config.dt;
         let mut next = *state;
-        next[2] += control[1] * dt;  // yaw += omega * dt
-        next[0] += control[0] * state[2].cos() * dt;  // x += v * cos(yaw) * dt
-        next[1] += control[0] * state[2].sin() * dt;  // y += v * sin(yaw) * dt
-        next[3] = control[0];  // v
-        next[4] = control[1];  // omega
+        next[2] += control[1] * dt; // yaw += omega * dt
+        next[0] += control[0] * state[2].cos() * dt; // x += v * cos(yaw) * dt
+        next[1] += control[0] * state[2].sin() * dt; // y += v * sin(yaw) * dt
+        next[3] = control[0]; // v
+        next[4] = control[1]; // omega
         next
     }
 
@@ -290,7 +293,7 @@ impl DWAPlanner {
                 let dist = (dx * dx + dy * dy).sqrt();
 
                 if dist <= self.config.robot_radius {
-                    return f64::MAX;  // Collision
+                    return f64::MAX; // Collision
                 }
 
                 if dist < min_dist {
@@ -324,7 +327,8 @@ impl DWAPlanner {
                 // Calculate costs
                 let goal_cost = config.to_goal_cost_gain * self.calc_to_goal_cost(&trajectory);
                 let speed_cost = config.speed_cost_gain * self.calc_speed_cost(&trajectory);
-                let obstacle_cost = config.obstacle_cost_gain * self.calc_obstacle_cost(&trajectory);
+                let obstacle_cost =
+                    config.obstacle_cost_gain * self.calc_obstacle_cost(&trajectory);
 
                 let total_cost = goal_cost + speed_cost + obstacle_cost;
 
@@ -467,11 +471,7 @@ pub fn predict_trajectory(
 
 /// Legacy obstacle cost calculation
 #[allow(deprecated)]
-pub fn calc_obstacle_cost(
-    trajectory: &[Vector5<f64>],
-    ob: &[(f64, f64)],
-    config: &Config,
-) -> f64 {
+pub fn calc_obstacle_cost(trajectory: &[Vector5<f64>], ob: &[(f64, f64)], config: &Config) -> f64 {
     if trajectory.is_empty() || ob.is_empty() {
         return 0.0;
     }
@@ -542,7 +542,8 @@ pub fn calc_control_and_trajectory(
         while y <= dw[3] {
             let trajectory = predict_trajectory(x, v, y, config);
             let to_goal_cost = config.to_goal_cost_gain * calc_to_goal_cost(&trajectory, goal);
-            let speed_cost = config.speed_cost_gain * (config.max_speed - trajectory.last().unwrap()[3]);
+            let speed_cost =
+                config.speed_cost_gain * (config.max_speed - trajectory.last().unwrap()[3]);
             let ob_cost = config.obstacle_cost_gain * calc_obstacle_cost(&trajectory, ob, config);
             let final_cost = to_goal_cost + speed_cost + ob_cost;
 

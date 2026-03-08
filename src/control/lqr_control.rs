@@ -6,14 +6,14 @@
 // Visualization style based on PythonRobotics by AtsushiSakai
 //
 
-use gnuplot::{Figure, AxesCommon, PlotOption, Coordinate};
-use nalgebra::{Matrix4, Matrix1, Vector4, Matrix1x4};
+use gnuplot::{AxesCommon, Coordinate, Figure, PlotOption};
+use nalgebra::{Matrix1, Matrix1x4, Matrix4, Vector4};
 
 // Model parameters
-const L_BAR: f64 = 2.0;  // length of bar
-const M: f64 = 1.0;      // [kg] cart mass
-const MASS: f64 = 0.3;   // [kg] pendulum mass
-const G: f64 = 9.8;      // [m/s^2] gravity
+const L_BAR: f64 = 2.0; // length of bar
+const M: f64 = 1.0; // [kg] cart mass
+const MASS: f64 = 0.3; // [kg] pendulum mass
+const G: f64 = 9.8; // [m/s^2] gravity
 
 const DELTA_T: f64 = 0.1; // time tick [s]
 const SIM_TIME: f64 = 5.0; // simulation time [s]
@@ -24,16 +24,16 @@ const CART_HEIGHT: f64 = 0.5;
 const WHEEL_RADIUS: f64 = 0.1;
 
 pub struct InvertedPendulumLQR {
-    pub q: Matrix4<f64>,     // state cost matrix
-    pub r: Matrix1<f64>,     // input cost matrix
+    pub q: Matrix4<f64>,                      // state cost matrix
+    pub r: Matrix1<f64>,                      // input cost matrix
     pub trajectory: Vec<(f64, Vector4<f64>)>, // time, state history
 }
 
 impl InvertedPendulumLQR {
     pub fn new() -> Self {
         let mut q = Matrix4::<f64>::zeros();
-        q[(1, 1)] = 1.0;  // velocity cost
-        q[(2, 2)] = 1.0;  // angle cost
+        q[(1, 1)] = 1.0; // velocity cost
+        q[(2, 2)] = 1.0; // angle cost
 
         let r = Matrix1::<f64>::from_element(0.01); // input cost
 
@@ -64,8 +64,11 @@ impl InvertedPendulumLQR {
         }
 
         println!("Simulation finished");
-        println!("Final state: x={:.2} [m], theta={:.2} [deg]",
-                x[0], x[2].to_degrees());
+        println!(
+            "Final state: x={:.2} [m], theta={:.2} [deg]",
+            x[0],
+            x[2].to_degrees()
+        );
 
         true
     }
@@ -83,24 +86,37 @@ impl InvertedPendulumLQR {
 
     fn get_model_matrix(&self) -> (Matrix4<f64>, Vector4<f64>) {
         let mut a = Matrix4::<f64>::new(
-            0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, MASS * G / M, 0.0,
-            0.0, 0.0, 0.0, 1.0,
-            0.0, 0.0, G * (M + MASS) / (L_BAR * M), 0.0
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            MASS * G / M,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            G * (M + MASS) / (L_BAR * M),
+            0.0,
         );
         a = Matrix4::<f64>::identity() + DELTA_T * a;
 
-        let b = Vector4::new(
-            0.0,
-            1.0 / M,
-            0.0,
-            1.0 / (L_BAR * M)
-        ) * DELTA_T;
+        let b = Vector4::new(0.0, 1.0 / M, 0.0, 1.0 / (L_BAR * M)) * DELTA_T;
 
         (a, b)
     }
 
-    fn solve_dare(&self, a: &Matrix4<f64>, b: &Vector4<f64>, q: &Matrix4<f64>, r: &Matrix1<f64>) -> Matrix4<f64> {
+    fn solve_dare(
+        &self,
+        a: &Matrix4<f64>,
+        b: &Vector4<f64>,
+        q: &Matrix4<f64>,
+        r: &Matrix1<f64>,
+    ) -> Matrix4<f64> {
         let mut p = *q;
         let max_iter = 150;
         let eps = 0.01;
@@ -112,8 +128,9 @@ impl InvertedPendulumLQR {
                 break;
             }
 
-            let pn = a.transpose() * p * a -
-                     a.transpose() * p * b * (1.0 / denominator[0]) * bt_p * a + q;
+            let pn = a.transpose() * p * a
+                - a.transpose() * p * b * (1.0 / denominator[0]) * bt_p * a
+                + q;
 
             if (pn - p).abs().max() < eps {
                 break;
@@ -123,7 +140,13 @@ impl InvertedPendulumLQR {
         p
     }
 
-    fn dlqr(&self, a: &Matrix4<f64>, b: &Vector4<f64>, q: &Matrix4<f64>, r: &Matrix1<f64>) -> (Matrix1x4<f64>, Matrix4<f64>, Vector4<f64>) {
+    fn dlqr(
+        &self,
+        a: &Matrix4<f64>,
+        b: &Vector4<f64>,
+        q: &Matrix4<f64>,
+        r: &Matrix1<f64>,
+    ) -> (Matrix1x4<f64>, Matrix4<f64>, Vector4<f64>) {
         let p = self.solve_dare(a, b, q, r);
 
         let bt_p = b.transpose() * p;
@@ -142,11 +165,13 @@ impl InvertedPendulumLQR {
         let half_w = CART_WIDTH / 2.0;
 
         // Rectangle corners (closed polygon)
-        let xs = vec![
-            x - half_w, x + half_w, x + half_w, x - half_w, x - half_w
-        ];
+        let xs = vec![x - half_w, x + half_w, x + half_w, x - half_w, x - half_w];
         let ys = vec![
-            y_offset, y_offset, y_offset + CART_HEIGHT, y_offset + CART_HEIGHT, y_offset
+            y_offset,
+            y_offset,
+            y_offset + CART_HEIGHT,
+            y_offset + CART_HEIGHT,
+            y_offset,
         ];
         (xs, ys)
     }
@@ -181,20 +206,35 @@ impl InvertedPendulumLQR {
 
         let mut fg = Figure::new();
         {
-            let axes = fg.axes2d()
+            let axes = fg
+                .axes2d()
                 .set_title("Inverted Pendulum LQR Control", &[])
                 .set_x_label("x [m]", &[])
                 .set_y_label("y [m]", &[])
                 .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-                .set_x_range(gnuplot::AutoOption::Fix(-3.0), gnuplot::AutoOption::Fix(3.0))
-                .set_y_range(gnuplot::AutoOption::Fix(-1.0), gnuplot::AutoOption::Fix(4.0));
+                .set_x_range(
+                    gnuplot::AutoOption::Fix(-3.0),
+                    gnuplot::AutoOption::Fix(3.0),
+                )
+                .set_y_range(
+                    gnuplot::AutoOption::Fix(-1.0),
+                    gnuplot::AutoOption::Fix(4.0),
+                );
 
             // Draw ground line
-            axes.lines(&[-4.0, 4.0], &[0.0, 0.0], &[PlotOption::Color("gray"), PlotOption::LineWidth(2.0)]);
+            axes.lines(
+                &[-4.0, 4.0],
+                &[0.0, 0.0],
+                &[PlotOption::Color("gray"), PlotOption::LineWidth(2.0)],
+            );
 
             // Draw multiple frames with transparency effect (lighter colors for older frames)
-            let colors = ["#CCCCFF", "#AAAAFF", "#8888FF", "#6666FF", "#4444FF", "#0000FF"];
-            let pendulum_colors = ["#CCCCCC", "#AAAAAA", "#888888", "#666666", "#444444", "#000000"];
+            let colors = [
+                "#CCCCFF", "#AAAAFF", "#8888FF", "#6666FF", "#4444FF", "#0000FF",
+            ];
+            let pendulum_colors = [
+                "#CCCCCC", "#AAAAAA", "#888888", "#666666", "#444444", "#000000",
+            ];
 
             for (frame_idx, color_idx) in (0..num_frames).zip(0..num_frames) {
                 let step = if frame_idx == num_frames - 1 {
@@ -209,22 +249,57 @@ impl InvertedPendulumLQR {
 
                 // Draw cart
                 let (cart_x, cart_y) = self.get_cart_polygon(x_pos);
-                axes.lines(&cart_x, &cart_y, &[PlotOption::Color(colors[color_idx]), PlotOption::LineWidth(2.0)]);
+                axes.lines(
+                    &cart_x,
+                    &cart_y,
+                    &[
+                        PlotOption::Color(colors[color_idx]),
+                        PlotOption::LineWidth(2.0),
+                    ],
+                );
 
                 // Draw wheels
                 let y_offset = WHEEL_RADIUS;
                 let (w1x, w1y) = self.get_wheel_points(x_pos - CART_WIDTH / 4.0, y_offset);
                 let (w2x, w2y) = self.get_wheel_points(x_pos + CART_WIDTH / 4.0, y_offset);
-                axes.lines(&w1x, &w1y, &[PlotOption::Color(pendulum_colors[color_idx]), PlotOption::LineWidth(1.5)]);
-                axes.lines(&w2x, &w2y, &[PlotOption::Color(pendulum_colors[color_idx]), PlotOption::LineWidth(1.5)]);
+                axes.lines(
+                    &w1x,
+                    &w1y,
+                    &[
+                        PlotOption::Color(pendulum_colors[color_idx]),
+                        PlotOption::LineWidth(1.5),
+                    ],
+                );
+                axes.lines(
+                    &w2x,
+                    &w2y,
+                    &[
+                        PlotOption::Color(pendulum_colors[color_idx]),
+                        PlotOption::LineWidth(1.5),
+                    ],
+                );
 
                 // Draw pendulum
                 let (pend_x, pend_y) = self.get_pendulum_points(x_pos, theta);
-                axes.lines(&pend_x, &pend_y, &[PlotOption::Color(pendulum_colors[color_idx]), PlotOption::LineWidth(3.0)]);
+                axes.lines(
+                    &pend_x,
+                    &pend_y,
+                    &[
+                        PlotOption::Color(pendulum_colors[color_idx]),
+                        PlotOption::LineWidth(3.0),
+                    ],
+                );
 
                 // Draw pendulum mass (circle at the end)
                 let (mass_x, mass_y) = self.get_wheel_points(pend_x[1], pend_y[1]);
-                axes.lines(&mass_x, &mass_y, &[PlotOption::Color(pendulum_colors[color_idx]), PlotOption::LineWidth(2.0)]);
+                axes.lines(
+                    &mass_x,
+                    &mass_y,
+                    &[
+                        PlotOption::Color(pendulum_colors[color_idx]),
+                        PlotOption::LineWidth(2.0),
+                    ],
+                );
 
                 // Add time label for the last frame
                 if frame_idx == num_frames - 1 {
@@ -232,7 +307,7 @@ impl InvertedPendulumLQR {
                         &format!("t={:.1}s", time),
                         Coordinate::Graph(0.02),
                         Coordinate::Graph(0.95),
-                        &[]
+                        &[],
                     );
                 }
             }
@@ -243,7 +318,7 @@ impl InvertedPendulumLQR {
                 &format!("Initial angle: {:.1} deg", initial_state[2].to_degrees()),
                 Coordinate::Graph(0.02),
                 Coordinate::Graph(0.88),
-                &[]
+                &[],
             );
         }
 
@@ -266,42 +341,76 @@ impl InvertedPendulumLQR {
 
         let mut fg = Figure::new();
         {
-            let axes = fg.axes2d()
-                .set_title(&format!("Inverted Pendulum LQR Control  t={:.2}s", time), &[])
+            let axes = fg
+                .axes2d()
+                .set_title(
+                    &format!("Inverted Pendulum LQR Control  t={:.2}s", time),
+                    &[],
+                )
                 .set_x_label("x [m]", &[])
                 .set_y_label("y [m]", &[])
                 .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-                .set_x_range(gnuplot::AutoOption::Fix(-3.0), gnuplot::AutoOption::Fix(3.0))
-                .set_y_range(gnuplot::AutoOption::Fix(-1.0), gnuplot::AutoOption::Fix(4.0));
+                .set_x_range(
+                    gnuplot::AutoOption::Fix(-3.0),
+                    gnuplot::AutoOption::Fix(3.0),
+                )
+                .set_y_range(
+                    gnuplot::AutoOption::Fix(-1.0),
+                    gnuplot::AutoOption::Fix(4.0),
+                );
 
             // Draw ground line
-            axes.lines(&[-4.0, 4.0], &[0.0, 0.0], &[PlotOption::Color("gray"), PlotOption::LineWidth(2.0)]);
+            axes.lines(
+                &[-4.0, 4.0],
+                &[0.0, 0.0],
+                &[PlotOption::Color("gray"), PlotOption::LineWidth(2.0)],
+            );
 
             // Draw cart (blue, matching PythonRobotics)
             let (cart_x, cart_y) = self.get_cart_polygon(x_pos);
-            axes.lines(&cart_x, &cart_y, &[PlotOption::Color("blue"), PlotOption::LineWidth(2.0)]);
+            axes.lines(
+                &cart_x,
+                &cart_y,
+                &[PlotOption::Color("blue"), PlotOption::LineWidth(2.0)],
+            );
 
             // Draw wheels (black)
             let y_offset = WHEEL_RADIUS;
             let (w1x, w1y) = self.get_wheel_points(x_pos - CART_WIDTH / 4.0, y_offset);
             let (w2x, w2y) = self.get_wheel_points(x_pos + CART_WIDTH / 4.0, y_offset);
-            axes.lines(&w1x, &w1y, &[PlotOption::Color("black"), PlotOption::LineWidth(1.5)]);
-            axes.lines(&w2x, &w2y, &[PlotOption::Color("black"), PlotOption::LineWidth(1.5)]);
+            axes.lines(
+                &w1x,
+                &w1y,
+                &[PlotOption::Color("black"), PlotOption::LineWidth(1.5)],
+            );
+            axes.lines(
+                &w2x,
+                &w2y,
+                &[PlotOption::Color("black"), PlotOption::LineWidth(1.5)],
+            );
 
             // Draw pendulum (black, matching PythonRobotics)
             let (pend_x, pend_y) = self.get_pendulum_points(x_pos, theta);
-            axes.lines(&pend_x, &pend_y, &[PlotOption::Color("black"), PlotOption::LineWidth(3.0)]);
+            axes.lines(
+                &pend_x,
+                &pend_y,
+                &[PlotOption::Color("black"), PlotOption::LineWidth(3.0)],
+            );
 
             // Draw pendulum mass
             let (mass_x, mass_y) = self.get_wheel_points(pend_x[1], pend_y[1]);
-            axes.lines(&mass_x, &mass_y, &[PlotOption::Color("black"), PlotOption::LineWidth(2.0)]);
+            axes.lines(
+                &mass_x,
+                &mass_y,
+                &[PlotOption::Color("black"), PlotOption::LineWidth(2.0)],
+            );
 
             // Add state info
             axes.label(
                 &format!("x={:.2}m, θ={:.1}°", x_pos, theta.to_degrees()),
                 Coordinate::Graph(0.02),
                 Coordinate::Graph(0.95),
-                &[]
+                &[],
             );
         }
 

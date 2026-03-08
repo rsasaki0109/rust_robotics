@@ -3,7 +3,7 @@
 //! A geometric path tracking controller that computes the steering angle
 //! to follow a reference path by looking ahead to a target point.
 
-use crate::common::{Point2D, Path2D, State2D, ControlInput, PathTracker};
+use crate::common::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 
 /// Vehicle state for Pure Pursuit
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +21,15 @@ impl VehicleState {
     pub fn new(x: f64, y: f64, yaw: f64, v: f64, wheelbase: f64) -> Self {
         let rear_x = x - (wheelbase / 2.0) * yaw.cos();
         let rear_y = y - (wheelbase / 2.0) * yaw.sin();
-        VehicleState { x, y, yaw, v, rear_x, rear_y, wheelbase }
+        VehicleState {
+            x,
+            y,
+            yaw,
+            v,
+            rear_x,
+            rear_y,
+            wheelbase,
+        }
     }
 
     pub fn update(&mut self, a: f64, delta: f64, dt: f64) {
@@ -151,16 +159,12 @@ impl PurePursuitController {
             Some(prev_idx) => {
                 // Search from previous index
                 let mut idx = prev_idx;
-                let mut dist = state.calc_distance(
-                    self.path.points[idx].x,
-                    self.path.points[idx].y
-                );
+                let mut dist =
+                    state.calc_distance(self.path.points[idx].x, self.path.points[idx].y);
 
                 while idx + 1 < self.path.len() {
-                    let next_dist = state.calc_distance(
-                        self.path.points[idx + 1].x,
-                        self.path.points[idx + 1].y
-                    );
+                    let next_dist = state
+                        .calc_distance(self.path.points[idx + 1].x, self.path.points[idx + 1].y);
                     if dist < next_dist {
                         break;
                     }
@@ -208,15 +212,18 @@ impl PurePursuitController {
     }
 
     /// Simulate path tracking (legacy interface)
-    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64) -> Option<Vec<(f64, f64)>> {
+    pub fn planning(
+        &mut self,
+        waypoints: Vec<(f64, f64)>,
+        target_speed: f64,
+    ) -> Option<Vec<(f64, f64)>> {
         if waypoints.len() < 2 {
             return None;
         }
 
         // Set path
-        let path = Path2D::from_points(
-            waypoints.iter().map(|&(x, y)| Point2D::new(x, y)).collect()
-        );
+        let path =
+            Path2D::from_points(waypoints.iter().map(|&(x, y)| Point2D::new(x, y)).collect());
         self.set_path(path);
 
         // Initial state
@@ -226,7 +233,7 @@ impl PurePursuitController {
             init_pos.y - 3.0,
             0.0,
             0.0,
-            self.config.wheelbase
+            self.config.wheelbase,
         );
 
         let mut trajectory = vec![(state.x, state.y)];
@@ -263,7 +270,7 @@ impl PathTracker for PurePursuitController {
             current_state.y,
             current_state.yaw,
             current_state.v,
-            self.config.wheelbase
+            self.config.wheelbase,
         );
 
         let delta = self.compute_steering(&vehicle_state);
@@ -311,9 +318,7 @@ mod tests {
     #[test]
     fn test_pure_pursuit_planning() {
         let mut controller = PurePursuitController::with_params(0.1, 2.0, 2.9);
-        let waypoints: Vec<(f64, f64)> = (0..10)
-            .map(|i| (i as f64 * 2.0, 0.0))
-            .collect();
+        let waypoints: Vec<(f64, f64)> = (0..10).map(|i| (i as f64 * 2.0, 0.0)).collect();
 
         let result = controller.planning(waypoints, 5.0);
         assert!(result.is_some());

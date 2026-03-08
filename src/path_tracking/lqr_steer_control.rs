@@ -6,9 +6,9 @@
 //! author: Atsushi Sakai (@Atsushi_twi)
 //!         Ryohei Sasaki (@rsasaki0109)
 
+use crate::common::{ControlInput, Path2D, PathTracker, Point2D, State2D};
+use nalgebra::{Matrix1, Matrix1x4, Matrix4, Vector4};
 use std::f64::consts::PI;
-use nalgebra::{Matrix1, Matrix4, Vector4, Matrix1x4};
-use crate::common::{Point2D, Path2D, State2D, ControlInput, PathTracker};
 
 /// Vehicle state for LQR controller
 #[derive(Debug, Clone, Copy)]
@@ -23,7 +23,14 @@ pub struct LQRVehicleState {
 
 impl LQRVehicleState {
     pub fn new(x: f64, y: f64, yaw: f64, v: f64, wheelbase: f64, max_steer: f64) -> Self {
-        LQRVehicleState { x, y, yaw, v, wheelbase, max_steer }
+        LQRVehicleState {
+            x,
+            y,
+            yaw,
+            v,
+            wheelbase,
+            max_steer,
+        }
     }
 
     pub fn update(&mut self, a: f64, mut delta: f64, dt: f64) {
@@ -228,7 +235,12 @@ impl LQRSteerController {
     }
 
     /// Solve Discrete Algebraic Riccati Equation
-    fn solve_dare(a: Matrix4<f64>, b: Vector4<f64>, q: Matrix4<f64>, r: Matrix1<f64>) -> Matrix4<f64> {
+    fn solve_dare(
+        a: Matrix4<f64>,
+        b: Vector4<f64>,
+        q: Matrix4<f64>,
+        r: Matrix1<f64>,
+    ) -> Matrix4<f64> {
         let mut x = q;
         let max_iter = 150;
         let eps = 0.01;
@@ -236,9 +248,8 @@ impl LQRSteerController {
         for _ in 0..max_iter {
             let bt_x_b = b.transpose() * x * b;
             let inv = (r + bt_x_b).try_inverse().unwrap_or(Matrix1::identity());
-            let xn = a.transpose() * x * a
-                - a.transpose() * x * b * inv * b.transpose() * x * a
-                + q;
+            let xn =
+                a.transpose() * x * a - a.transpose() * x * b * inv * b.transpose() * x * a + q;
 
             if (xn - x).abs().max() < eps {
                 break;
@@ -293,9 +304,17 @@ impl LQRSteerController {
         // State error vector
         let x_err = Vector4::new(
             e,
-            if dt > 0.0 { (e - self.prev_error) / dt } else { 0.0 },
+            if dt > 0.0 {
+                (e - self.prev_error) / dt
+            } else {
+                0.0
+            },
             th_e,
-            if dt > 0.0 { (th_e - self.prev_theta_error) / dt } else { 0.0 },
+            if dt > 0.0 {
+                (th_e - self.prev_theta_error) / dt
+            } else {
+                0.0
+            },
         );
 
         // Feed-forward + feedback
@@ -335,7 +354,12 @@ impl LQRSteerController {
     }
 
     /// Legacy planning interface
-    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64, ds: f64) -> Option<Vec<(f64, f64)>> {
+    pub fn planning(
+        &mut self,
+        waypoints: Vec<(f64, f64)>,
+        target_speed: f64,
+        ds: f64,
+    ) -> Option<Vec<(f64, f64)>> {
         if waypoints.len() < 2 {
             return None;
         }
@@ -347,7 +371,10 @@ impl LQRSteerController {
 
         // Set path
         let path = Path2D::from_points(
-            cx.iter().zip(cy.iter()).map(|(&x, &y)| Point2D::new(x, y)).collect()
+            cx.iter()
+                .zip(cy.iter())
+                .map(|(&x, &y)| Point2D::new(x, y))
+                .collect(),
         );
         self.path_yaw = cyaw;
         self.path_curvature = ck;
@@ -356,7 +383,10 @@ impl LQRSteerController {
 
         // Simulate tracking
         let mut state = LQRVehicleState::new(
-            0.0, 0.0, 0.0, 0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
             self.config.wheelbase,
             self.config.max_steer,
         );
@@ -406,7 +436,8 @@ impl PathTracker for LQRSteerController {
         let (target_idx, _) = self.calc_target_index(&vehicle_state);
         let target_v = self.get_target_speed(target_idx);
 
-        let v = current_state.v + self.compute_acceleration(target_v, current_state.v) * self.config.dt;
+        let v =
+            current_state.v + self.compute_acceleration(target_v, current_state.v) * self.config.dt;
         let omega = v * delta.tan() / self.config.wheelbase;
 
         ControlInput::new(v, omega)
@@ -421,7 +452,11 @@ impl PathTracker for LQRSteerController {
 
 // Cubic spline helper functions for legacy interface
 
-fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+fn calc_spline_course(
+    x: &[f64],
+    y: &[f64],
+    ds: f64,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
     let sp = CubicSpline2D::new(x, y);
     let mut s = 0.0;
     let mut course_x = Vec::new();
@@ -492,7 +527,13 @@ impl CubicSpline {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline { a, b, c, d, x: x.to_vec() }
+        CubicSpline {
+            a,
+            b,
+            c,
+            d,
+            x: x.to_vec(),
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -632,11 +673,7 @@ mod tests {
     #[test]
     fn test_lqr_planning() {
         let mut controller = LQRSteerController::with_defaults();
-        let waypoints = vec![
-            (0.0, 0.0),
-            (5.0, 0.0),
-            (10.0, 0.0),
-        ];
+        let waypoints = vec![(0.0, 0.0), (5.0, 0.0), (10.0, 0.0)];
 
         let result = controller.planning(waypoints, 2.0, 0.5);
         assert!(result.is_some());

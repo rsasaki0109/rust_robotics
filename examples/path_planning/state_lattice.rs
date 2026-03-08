@@ -6,11 +6,9 @@
 //! 2. Biased polar sampling (toward a goal direction)
 //! 3. Lane-based sampling (for structured environments)
 
-use rust_robotics::path_planning::state_lattice::{
-    StateLattice, StateLatticeConfig,
-};
 use rust_robotics::common::Point2D;
-use rust_robotics::utils::{Visualizer, PathStyle, PointStyle, colors};
+use rust_robotics::path_planning::state_lattice::{StateLattice, StateLatticeConfig};
+use rust_robotics::utils::{colors, PathStyle, PointStyle, Visualizer};
 
 fn main() {
     println!("State Lattice Path Planning Example");
@@ -58,7 +56,9 @@ fn test_uniform_polar_sampling() {
     for state in &states {
         vis.plot_point(
             Point2D::new(state.x, state.y),
-            &PointStyle::new(colors::BLUE, "").with_size(1.0).with_symbol('x'),
+            &PointStyle::new(colors::BLUE, "")
+                .with_size(1.0)
+                .with_symbol('x'),
         );
     }
 
@@ -113,13 +113,18 @@ fn test_biased_polar_sampling() {
     let goal_y = goal_dist * goal_angle.sin();
     vis.plot_point(
         Point2D::new(goal_x, goal_y),
-        &PointStyle::new(colors::BLUE, "Goal Dir").with_size(2.0).with_symbol('*'),
+        &PointStyle::new(colors::BLUE, "Goal Dir")
+            .with_size(2.0)
+            .with_symbol('*'),
     );
 
     // Plot generated paths
     for path in &paths {
         let path2d = path.to_path();
-        vis.plot_path(&path2d, &PathStyle::new(colors::RED, "").with_line_width(1.0));
+        vis.plot_path(
+            &path2d,
+            &PathStyle::new(colors::RED, "").with_line_width(1.0),
+        );
     }
 
     let _ = vis.save_svg("img/path_planning/state_lattice_biased.svg", 800, 600);
@@ -159,7 +164,10 @@ fn test_lane_sampling() {
             Point2D::new(lane_length, y_offset),
         ];
         let lane_path = rust_robotics::common::Path2D::from_points(lane_points);
-        vis.plot_path(&lane_path, &PathStyle::new(colors::GRAY, "Lane").with_line_width(2.0));
+        vis.plot_path(
+            &lane_path,
+            &PathStyle::new(colors::GRAY, "Lane").with_line_width(2.0),
+        );
     }
 
     // Plot origin
@@ -172,14 +180,19 @@ fn test_lane_sampling() {
     for state in &states {
         vis.plot_point(
             Point2D::new(state.x, state.y),
-            &PointStyle::new(colors::BLUE, "").with_size(1.0).with_symbol('x'),
+            &PointStyle::new(colors::BLUE, "")
+                .with_size(1.0)
+                .with_symbol('x'),
         );
     }
 
     // Plot generated paths
     for path in &paths {
         let path2d = path.to_path();
-        vis.plot_path(&path2d, &PathStyle::new(colors::RED, "").with_line_width(1.0));
+        vis.plot_path(
+            &path2d,
+            &PathStyle::new(colors::RED, "").with_line_width(1.0),
+        );
     }
 
     let _ = vis.save_svg("img/path_planning/state_lattice_lane.svg", 800, 600);
@@ -196,7 +209,10 @@ fn test_full_planning() {
     let start = Point2D::new(0.0, 0.0);
     let goal = Point2D::new(30.0, 10.0);
 
-    println!("Planning from ({}, {}) to ({}, {})", start.x, start.y, goal.x, goal.y);
+    println!(
+        "Planning from ({}, {}) to ({}, {})",
+        start.x, start.y, goal.x, goal.y
+    );
 
     match planner.plan(start, goal) {
         Ok(path) => {
@@ -211,7 +227,10 @@ fn test_full_planning() {
 
             vis.plot_start(start);
             vis.plot_goal(goal);
-            vis.plot_path(&path, &PathStyle::new(colors::RED, "Path").with_line_width(2.0));
+            vis.plot_path(
+                &path,
+                &PathStyle::new(colors::RED, "Path").with_line_width(2.0),
+            );
 
             let _ = vis.save_svg("img/path_planning/state_lattice_plan.svg", 800, 600);
             println!("Plot saved to: img/path_planning/state_lattice_plan.svg");
