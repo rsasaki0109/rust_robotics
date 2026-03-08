@@ -1,10 +1,10 @@
 /*!
  * State Machine implementation for Mission Planning
- * 
+ *
  * This module implements a finite state machine for robot behavior management.
  * It provides a flexible framework for defining states, transitions, events,
  * guards, and actions in robotics applications.
- * 
+ *
  * Ported from PythonRobotics
  * Original author: Wang Zheng (@Aglargil)
  */
@@ -167,7 +167,7 @@ impl StateMachine {
     pub fn process(&mut self, event: &str) -> Result<(), String> {
         if let Some(ref current_state) = self.current_state {
             let key = (current_state.name.clone(), event.to_string());
-            
+
             if let Some(transition) = self.transitions.get(&key).cloned() {
                 self.execute_transition(&transition, event)
             } else {
@@ -184,7 +184,7 @@ impl StateMachine {
     /// Execute a transition
     fn execute_transition(&mut self, transition: &Transition, event: &str) -> Result<(), String> {
         let current_state = self.current_state.as_ref().unwrap();
-        
+
         // Check guard condition
         if let Some(ref guard) = transition.guard {
             println!("  checking guard: {}", guard);
@@ -210,7 +210,7 @@ impl StateMachine {
                 "|{}| transitioning from <{}> to <{}> on event [{}]",
                 self.name, current_state.name, transition.dst_state, event
             );
-            
+
             // Record transition history
             self.transition_history.push((
                 current_state.name.clone(),
@@ -226,7 +226,10 @@ impl StateMachine {
                 self.current_state = Some(new_state.clone());
                 new_state.enter();
             } else {
-                return Err(format!("Destination state '{}' not found", transition.dst_state));
+                return Err(format!(
+                    "Destination state '{}' not found",
+                    transition.dst_state
+                ));
             }
         } else {
             println!(
@@ -272,7 +275,7 @@ impl StateMachine {
         let mut diagram = Vec::new();
         diagram.push(format!("State Machine: {}", self.name));
         diagram.push("".to_string());
-        
+
         if let Some(ref current) = self.current_state {
             diagram.push(format!("Current State: {}", current.name));
             diagram.push("".to_string());
@@ -280,16 +283,22 @@ impl StateMachine {
 
         diagram.push("States:".to_string());
         for state in self.states.values() {
-            let marker = if Some(state) == self.current_state.as_ref() { " [CURRENT]" } else { "" };
+            let marker = if Some(state) == self.current_state.as_ref() {
+                " [CURRENT]"
+            } else {
+                ""
+            };
             diagram.push(format!("  - {}{}", state.name, marker));
         }
         diagram.push("".to_string());
 
         diagram.push("Transitions:".to_string());
         for transition in self.transitions.values() {
-            let mut trans_str = format!("  {} --[{}]--> {}", 
-                transition.src_state, transition.event, transition.dst_state);
-            
+            let mut trans_str = format!(
+                "  {} --[{}]--> {}",
+                transition.src_state, transition.event, transition.dst_state
+            );
+
             if let Some(ref guard) = transition.guard {
                 trans_str.push_str(&format!(" [guard: {}]", guard));
             }
@@ -326,7 +335,8 @@ impl StateMachine {
         // Position states in a circle
         let mut state_positions: HashMap<String, (f64, f64)> = HashMap::new();
         for (i, state_name) in state_names.iter().enumerate() {
-            let angle = std::f64::consts::PI / 2.0 - 2.0 * std::f64::consts::PI * i as f64 / n_states as f64;
+            let angle = std::f64::consts::PI / 2.0
+                - 2.0 * std::f64::consts::PI * i as f64 / n_states as f64;
             let x = cx + radius * angle.cos();
             let y = cy - radius * angle.sin(); // SVG y is inverted
             state_positions.insert(state_name.clone(), (x, y));
@@ -353,7 +363,7 @@ impl StateMachine {
         for transition in self.transitions.values() {
             if let (Some(&(x1, y1)), Some(&(x2, y2))) = (
                 state_positions.get(&transition.src_state),
-                state_positions.get(&transition.dst_state)
+                state_positions.get(&transition.dst_state),
             ) {
                 if transition.src_state != transition.dst_state {
                     let dx = x2 - x1;
@@ -466,57 +476,64 @@ pub fn create_robot_state_machine() -> StateMachine {
     let mut machine = StateMachine::new("RobotController");
 
     // Define states
-    machine.register_state(State::with_callbacks("idle", Some("on_enter_idle"), Some("on_exit_idle")));
-    machine.register_state(State::with_callbacks("moving", Some("on_enter_moving"), Some("on_exit_moving")));
-    machine.register_state(State::with_callbacks("avoiding", Some("on_enter_avoiding"), None));
-    machine.register_state(State::with_callbacks("charging", Some("on_enter_charging"), None));
-    machine.register_state(State::with_callbacks("emergency", Some("on_enter_emergency"), None));
+    machine.register_state(State::with_callbacks(
+        "idle",
+        Some("on_enter_idle"),
+        Some("on_exit_idle"),
+    ));
+    machine.register_state(State::with_callbacks(
+        "moving",
+        Some("on_enter_moving"),
+        Some("on_exit_moving"),
+    ));
+    machine.register_state(State::with_callbacks(
+        "avoiding",
+        Some("on_enter_avoiding"),
+        None,
+    ));
+    machine.register_state(State::with_callbacks(
+        "charging",
+        Some("on_enter_charging"),
+        None,
+    ));
+    machine.register_state(State::with_callbacks(
+        "emergency",
+        Some("on_enter_emergency"),
+        None,
+    ));
 
     // Define transitions
     machine.add_transition(
         Transition::new("idle", "start", "moving")
             .with_guard("can_start")
-            .with_action("start_motors")
+            .with_action("start_motors"),
     );
 
     machine.add_transition(
-        Transition::new("moving", "obstacle", "avoiding")
-            .with_action("stop_motors")
+        Transition::new("moving", "obstacle", "avoiding").with_action("stop_motors"),
+    );
+
+    machine
+        .add_transition(Transition::new("avoiding", "clear", "moving").with_action("start_motors"));
+
+    machine.add_transition(
+        Transition::new("moving", "low_battery", "charging").with_action("save_position"),
+    );
+
+    machine
+        .add_transition(Transition::new("charging", "charged", "idle").with_action("play_sound"));
+
+    machine.add_transition(Transition::new("moving", "stop", "idle").with_action("stop_motors"));
+
+    machine.add_transition(
+        Transition::new("idle", "emergency", "emergency").with_action("send_alert"),
     );
 
     machine.add_transition(
-        Transition::new("avoiding", "clear", "moving")
-            .with_action("start_motors")
+        Transition::new("moving", "emergency", "emergency").with_action("send_alert"),
     );
 
-    machine.add_transition(
-        Transition::new("moving", "low_battery", "charging")
-            .with_action("save_position")
-    );
-
-    machine.add_transition(
-        Transition::new("charging", "charged", "idle")
-            .with_action("play_sound")
-    );
-
-    machine.add_transition(
-        Transition::new("moving", "stop", "idle")
-            .with_action("stop_motors")
-    );
-
-    machine.add_transition(
-        Transition::new("idle", "emergency", "emergency")
-            .with_action("send_alert")
-    );
-
-    machine.add_transition(
-        Transition::new("moving", "emergency", "emergency")
-            .with_action("send_alert")
-    );
-
-    machine.add_transition(
-        Transition::new("emergency", "reset", "idle")
-    );
+    machine.add_transition(Transition::new("emergency", "reset", "idle"));
 
     machine
 }
@@ -529,16 +546,16 @@ pub fn demo_state_machine() {
     std::fs::create_dir_all("img/mission_planning").unwrap_or_default();
 
     let mut machine = create_robot_state_machine();
-    
+
     // Set initial state
     machine.set_initial_state("idle");
-    
+
     println!("\n{}\n", machine.generate_diagram());
 
     // Simulate a sequence of events
     let events = vec![
         "start",
-        "obstacle", 
+        "obstacle",
         "clear",
         "low_battery",
         "charged",
@@ -548,7 +565,7 @@ pub fn demo_state_machine() {
     ];
 
     println!("=== Processing Events ===\n");
-    
+
     for event in events {
         println!("Processing event: [{}]", event);
         match machine.process(event) {
@@ -606,7 +623,7 @@ mod tests {
         let transition = Transition::new("idle", "start", "running")
             .with_guard("can_start")
             .with_action("start_motors");
-        
+
         assert_eq!(transition.src_state, "idle");
         assert_eq!(transition.event, "start");
         assert_eq!(transition.dst_state, "running");
@@ -617,15 +634,11 @@ mod tests {
     #[test]
     fn test_simple_transition() {
         let mut machine = StateMachine::new("test");
-        
+
         machine.add_transition(Transition::new("idle", "start", "running"));
         machine.set_initial_state("idle");
-        
+
         assert!(machine.process("start").is_ok());
         assert_eq!(machine.get_current_state().unwrap().name, "running");
     }
-}
-
-fn main() {
-    demo_state_machine();
 }
