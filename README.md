@@ -64,6 +64,10 @@ cargo run --bin two_joint_arm_control
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
       * [Two Joint Arm Control](#two-joint-arm-control)
+   * [Aerial Navigation](#aerial-navigation)
+      * [3D Grid A*](#3d-grid-a)
+   * [Mission Planning](#mission-planning)
+      * [State Machine](#state-machine)
 
 # Localization
 ## Extended Kalman Filter Localization
@@ -552,6 +556,18 @@ Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target pos
 cargo run --bin two_joint_arm_control
 ```
 
+# Aerial Navigation
+
+## 3D Grid A*
+
+Bounded 3D voxel-grid planning for aerial robots. The planner supports 6-connected or 26-connected motion and returns a collision-free waypoint sequence.
+
+- [src](./src/aerial_navigation/grid_a_star_3d.rs)
+
+```
+cargo run --bin grid_a_star_3d
+```
+
 # Mission Planning
 
 ## State Machine
@@ -565,4 +581,3 @@ Finite state machine for robot behavior management with states, transitions, gua
 ```
 cargo run --bin state_machine
 ```
-
