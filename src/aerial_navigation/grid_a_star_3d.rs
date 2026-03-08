@@ -325,10 +325,7 @@ pub fn demo_grid_a_star_3d() {
 mod tests {
     use super::*;
 
-    fn planner_with_config(
-        allow_diagonal: bool,
-        obstacles: Vec<Point3D>,
-    ) -> GridAStar3DPlanner {
+    fn planner_with_config(allow_diagonal: bool, obstacles: Vec<Point3D>) -> GridAStar3DPlanner {
         GridAStar3DPlanner::new(
             GridAStar3DConfig {
                 resolution: 1.0,
@@ -374,10 +371,7 @@ mod tests {
             Point3D::new(1.0, 1.0, 0.0),
             Point3D::new(1.0, 2.0, 0.0),
         ];
-        let planner = planner_with_config(
-            false,
-            obstacles.clone(),
-        );
+        let planner = planner_with_config(false, obstacles.clone());
 
         let path = planner
             .plan(Point3D::new(0.0, 0.0, 0.0), Point3D::new(2.0, 2.0, 0.0))
