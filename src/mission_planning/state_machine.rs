@@ -641,4 +641,27 @@ mod tests {
         assert!(machine.process("start").is_ok());
         assert_eq!(machine.get_current_state().unwrap().name, "running");
     }
+
+    #[test]
+    fn test_robot_state_machine_follows_demo_transitions() {
+        let mut machine = create_robot_state_machine();
+        machine.set_initial_state("idle");
+
+        assert!(machine.process("start").is_ok());
+        assert_eq!(machine.get_current_state().unwrap().name, "moving");
+
+        assert!(machine.process("low_battery").is_ok());
+        assert_eq!(machine.get_current_state().unwrap().name, "charging");
+
+        let history = machine.get_transition_history();
+        assert_eq!(history.len(), 2);
+        assert_eq!(
+            history.last(),
+            Some(&(
+                "moving".to_string(),
+                "low_battery".to_string(),
+                "charging".to_string()
+            ))
+        );
+    }
 }
