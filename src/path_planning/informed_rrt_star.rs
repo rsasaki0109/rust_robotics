@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use rand::Rng;
 use std::f64::consts::PI;
@@ -106,20 +108,20 @@ impl InformedRRTStar {
                 self.node_list.push(new_node);
                 self.rewire(new_node_index, &near_inds);
 
-                if self.is_near_goal(&self.node_list[new_node_index]) {
-                    if self.check_segment_collision(
+                if self.is_near_goal(&self.node_list[new_node_index])
+                    && self.check_segment_collision(
                         self.node_list[new_node_index].x,
                         self.node_list[new_node_index].y,
                         self.goal.x,
                         self.goal.y,
-                    ) {
-                        let temp_path = self.get_final_course(new_node_index);
-                        let temp_path_len = self.get_path_len(&temp_path);
-                        if temp_path_len < c_best {
-                            path = Some(temp_path);
-                            c_best = temp_path_len;
-                            println!("Found better path with cost: {:.2}", c_best);
-                        }
+                    )
+                {
+                    let temp_path = self.get_final_course(new_node_index);
+                    let temp_path_len = self.get_path_len(&temp_path);
+                    if temp_path_len < c_best {
+                        path = Some(temp_path);
+                        c_best = temp_path_len;
+                        println!("Found better path with cost: {:.2}", c_best);
                     }
                 }
             }
@@ -338,7 +340,7 @@ impl InformedRRTStar {
         for node in &self.node_list {
             if let Some(parent_index) = node.parent {
                 let parent = &self.node_list[parent_index];
-                axes.lines(&[parent.x, node.x], &[parent.y, node.y], &[Color("blue")]);
+                axes.lines([parent.x, node.x], [parent.y, node.y], &[Color("blue")]);
             }
         }
 

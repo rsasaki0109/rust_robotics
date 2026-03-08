@@ -1,3 +1,9 @@
+#![allow(
+    dead_code,
+    clippy::needless_borrows_for_generic_args,
+    clippy::new_without_default
+)]
+
 //
 // Inverse kinematics of a two-joint arm
 // Author: Daniel Ingram (daniel-s-ingram)
@@ -6,6 +12,7 @@
 //
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSymbol};
+
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -145,7 +152,7 @@ impl TwoJointArm {
         &self,
         frame: usize,
         theta1: f64,
-        theta2: f64,
+        _theta2: f64,
         end_x: f64,
         end_y: f64,
         output_dir: &str,

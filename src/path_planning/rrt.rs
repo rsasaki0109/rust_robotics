@@ -110,7 +110,7 @@ pub struct RRTPlanner {
     play_area: Option<AreaBounds>,
     rand_area: AreaBounds,
     node_list: Vec<RRTNode>,
-    start: RRTNode,
+    _start: RRTNode,
     goal: RRTNode,
 }
 
@@ -128,7 +128,7 @@ impl RRTPlanner {
             play_area,
             rand_area,
             node_list: Vec::new(),
-            start: RRTNode::new(0.0, 0.0),
+            _start: RRTNode::new(0.0, 0.0),
             goal: RRTNode::new(0.0, 0.0),
         }
     }
@@ -308,7 +308,7 @@ impl PathPlanner for RRTPlanner {
             play_area: self.play_area.clone(),
             rand_area: self.rand_area.clone(),
             node_list: vec![RRTNode::new(start.x, start.y)],
-            start: RRTNode::new(start.x, start.y),
+            _start: RRTNode::new(start.x, start.y),
             goal: RRTNode::new(goal.x, goal.y),
         };
 

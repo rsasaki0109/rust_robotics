@@ -5,9 +5,8 @@
 //! the best trajectory based on goal direction, speed, and obstacle clearance.
 
 use nalgebra::{Vector2, Vector4, Vector5};
-use std::f64::consts::PI;
 
-use crate::common::{ControlInput, Obstacles, Path2D, Point2D, State2D};
+use crate::common::{ControlInput, Path2D, Point2D, State2D};
 
 /// Robot state for DWA: [x, y, yaw, v, omega]
 pub type DWAState = Vector5<f64>;

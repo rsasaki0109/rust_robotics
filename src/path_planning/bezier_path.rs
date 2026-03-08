@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_range_loop, clippy::type_complexity)]
+
 //
 // Path planning with Bezier curve.
 //
@@ -9,7 +11,6 @@ use plotlib::repr::Plot;
 use plotlib::style::LineStyle;
 use plotlib::style::PointStyle;
 use plotlib::view::ContinuousView;
-use rust_robotics::path_planning::cubic_spline_planner;
 
 fn calc_4points_bezier_path(
     x_start: (f64, f64, f64),
@@ -67,7 +68,7 @@ fn binom(n: i32, k: i32) -> i32 {
     })
 }
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 fn bezier_derivatives_control_points(
     control_points: [(f64, f64); 4],
     n_derivatives: usize,
@@ -85,7 +86,7 @@ fn bezier_derivatives_control_points(
     w
 }
 
-#[warn(dead_code)]
+#[allow(dead_code)]
 fn curvature(dx: f64, dy: f64, ddx: f64, ddy: f64) -> f64 {
     (dx * ddy - dy * ddx) / (dx.powi(2) + dy.powi(2)).powf(3. / 2.)
 }

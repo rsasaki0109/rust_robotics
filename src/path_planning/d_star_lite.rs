@@ -1,3 +1,9 @@
+#![allow(
+    dead_code,
+    clippy::legacy_numeric_constants,
+    clippy::needless_borrows_for_generic_args
+)]
+
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use nalgebra as na;
 use std::cmp::Ordering;
@@ -385,9 +391,9 @@ fn main() {
             );
 
             // Plot start and goal
-            axes.points(&[sx], &[sy], &[Caption("Start"), Color("blue")]);
+            axes.points([sx], [sy], &[Caption("Start"), Color("blue")]);
 
-            axes.points(&[gx], &[gy], &[Caption("Goal"), Color("red")]);
+            axes.points([gx], [gy], &[Caption("Goal"), Color("red")]);
 
             // Plot path if found
             if let Some(path) = &path {
@@ -429,7 +435,7 @@ fn main() {
         }
 
         // 画像を表示
-        fg.show();
+        let _ = fg.show();
     }
 
     if let Some(path) = path {

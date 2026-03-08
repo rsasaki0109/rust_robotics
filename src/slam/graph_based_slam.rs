@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::too_many_arguments)]
+
 // Graph-based SLAM
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Rust port

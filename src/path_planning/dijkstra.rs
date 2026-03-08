@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 // Dijkstra path planning
 // author: Salah Eddine Ghamri (s.ghamri)
 
@@ -65,7 +67,7 @@ fn dijkstra_planner(obstacle_map: &grid_map::Map, start: &(usize, usize), goal: 
     let (mut ci, mut cj) = start;
 
     pq.push((Reverse(NotNan::new(0.0).unwrap()), (ci, cj)));
-    dist.insert((ci, cj), 0.0 as f64);
+    dist.insert((ci, cj), 0.0);
 
     let mut fg = Figure::new();
     let mut map_x = vec![];
@@ -106,8 +108,8 @@ fn dijkstra_planner(obstacle_map: &grid_map::Map, start: &(usize, usize), goal: 
                     neighbors_x.push(nj as i32);
                     neighbors_y.push(-(ni as i32));
 
-                    let delta_x = (ci as f64 - ni as f64) as f64;
-                    let delta_y = (cj as f64 - nj as f64) as f64;
+                    let delta_x = ci as f64 - ni as f64;
+                    let delta_y = cj as f64 - nj as f64;
                     let edge_distance = (delta_x * delta_x + delta_y * delta_y).sqrt();
                     let alt = distance.0.into_inner() + edge_distance;
 
@@ -166,7 +168,7 @@ fn dijkstra_planner(obstacle_map: &grid_map::Map, start: &(usize, usize), goal: 
             )
             .lines(&path_x, &path_y, &[Color("black"), LineWidth(3.0)]);
 
-        let crate_dir = option_env!("CARGO_MANIFEST_DIR").unwrap();
+        let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         fg.show_and_keep_running().unwrap();
         sleep(Duration::from_millis(10));
 

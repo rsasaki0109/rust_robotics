@@ -1,3 +1,9 @@
+#![allow(
+    dead_code,
+    clippy::too_many_arguments,
+    clippy::needless_borrows_for_generic_args
+)]
+
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use std::f64::consts::PI;
 
@@ -236,8 +242,8 @@ impl QuinticPolynomialsPlanner {
         );
 
         // Plot start and goal positions
-        axes.points(&[sx], &[sy], &[Caption("Start"), Color("green")]);
-        axes.points(&[gx], &[gy], &[Caption("Goal"), Color("blue")]);
+        axes.points([sx], [sy], &[Caption("Start"), Color("green")]);
+        axes.points([gx], [gy], &[Caption("Goal"), Color("blue")]);
 
         // Plot arrows for start and goal orientations
         let arrow_length = 2.0;
@@ -317,6 +323,12 @@ impl QuinticPolynomialsPlanner {
             .unwrap();
 
         println!("Profile plots saved to img/path_planning/");
+    }
+}
+
+impl Default for QuinticPolynomialsPlanner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

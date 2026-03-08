@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Histogram Filter 2D Localization
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -250,7 +252,7 @@ impl HistogramFilter {
     }
 
     /// Observation update: multiply grid probabilities by observation likelihoods
-    fn observation_update(&mut self, z: &[(f64, f64, f64)], rfid: &[(f64, f64)]) {
+    fn observation_update(&mut self, z: &[(f64, f64, f64)], _rfid: &[(f64, f64)]) {
         for (z_d, z_id_x, z_id_y) in z {
             for ix in 0..self.grid_map.x_width {
                 for iy in 0..self.grid_map.y_width {

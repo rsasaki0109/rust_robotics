@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 // Model Predictive Control (MPC) for path tracking
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -7,7 +9,7 @@
 // Uses iterative linearization and gradient descent.
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
-use nalgebra::{DMatrix, DVector, Matrix4, Matrix4x2, Vector2, Vector4};
+use nalgebra::{Matrix4, Matrix4x2, Vector2, Vector4};
 use std::f64::consts::PI;
 
 // Vehicle parameters
@@ -19,8 +21,6 @@ const MIN_SPEED: f64 = -20.0 / 3.6; // min speed (reverse) [m/s]
 const MAX_ACCEL: f64 = 1.0; // max acceleration [m/ss]
 
 // MPC parameters
-const NX: usize = 4; // state dimension [x, y, v, yaw]
-const NU: usize = 2; // control dimension [accel, steer]
 const T: usize = 5; // prediction horizon
 const DT: f64 = 0.2; // time step [s]
 
@@ -51,10 +51,6 @@ impl State {
 
     fn to_vector(&self) -> Vector4<f64> {
         Vector4::new(self.x, self.y, self.v, self.yaw)
-    }
-
-    fn from_vector(v: &Vector4<f64>) -> Self {
-        State::new(v[0], v[1], v[2], v[3])
     }
 
     /// Update state using bicycle model
@@ -147,7 +143,7 @@ struct CubicSpline1D {
 impl CubicSpline1D {
     fn new(x: &[f64], y: &[f64]) -> Self {
         let n = x.len();
-        let mut a = y.to_vec();
+        let a = y.to_vec();
         let mut b = vec![0.0; n];
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
@@ -235,11 +231,6 @@ impl CubicSpline2D {
         let dx = self.sx.calc_d(s);
         let dy = self.sy.calc_d(s);
         dy.atan2(dx)
-    }
-
-    fn calc_curvature(&self, _s: f64) -> f64 {
-        // Simplified curvature calculation
-        0.0
     }
 }
 
@@ -451,8 +442,8 @@ fn main() {
                 .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
                 .lines(&pred_x, &pred_y, &[Caption("Prediction"), Color("green")])
                 .points(
-                    &[state.x],
-                    &[state.y],
+                    [state.x],
+                    [state.y],
                     &[
                         Caption("Vehicle"),
                         Color("red"),
@@ -461,8 +452,8 @@ fn main() {
                     ],
                 )
                 .points(
-                    &[goal_x],
-                    &[goal_y],
+                    [goal_x],
+                    [goal_y],
                     &[
                         Caption("Goal"),
                         Color("magenta"),
@@ -495,8 +486,8 @@ fn main() {
         .lines(&cx, &cy, &[Caption("Reference"), Color("gray")])
         .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
         .points(
-            &[goal_x],
-            &[goal_y],
+            [goal_x],
+            [goal_y],
             &[
                 Caption("Goal"),
                 Color("magenta"),

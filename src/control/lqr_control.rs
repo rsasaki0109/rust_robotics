@@ -1,3 +1,9 @@
+#![allow(
+    dead_code,
+    clippy::needless_borrows_for_generic_args,
+    clippy::new_without_default
+)]
+
 //
 // Inverted Pendulum LQR control
 // author: Trung Kien - letrungkien.k53.hut@gmail.com
