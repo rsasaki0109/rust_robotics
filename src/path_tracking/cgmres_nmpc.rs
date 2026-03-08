@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::too_many_arguments, clippy::type_complexity)]
+
 // Nonlinear MPC simulation with CGMRES (Continuation GMRES)
 //
 // author: Atsushi Sakai (@Atsushi_twi)

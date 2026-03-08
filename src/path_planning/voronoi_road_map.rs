@@ -1,12 +1,13 @@
+#![allow(dead_code)]
+
 // Voronoi Road-Map path planning
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
-use rand::Rng;
 use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::collections::{BinaryHeap, HashMap};
 
 // Parameters
 const N_KNN: usize = 10; // number of edges per node
@@ -129,10 +130,14 @@ fn compute_voronoi_vertices(
             let dist_i = ((mx - ox[i]).powi(2) + (my - oy[i]).powi(2)).sqrt();
             let dist_j = ((mx - ox[j]).powi(2) + (my - oy[j]).powi(2)).sqrt();
 
-            if dist_i > robot_radius * 1.5 && dist_j > robot_radius * 1.5 {
-                if mx > min_x && mx < max_x && my > min_y && my < max_y {
-                    vertices.push((mx, my));
-                }
+            if dist_i > robot_radius * 1.5
+                && dist_j > robot_radius * 1.5
+                && mx > min_x
+                && mx < max_x
+                && my > min_y
+                && my < max_y
+            {
+                vertices.push((mx, my));
             }
         }
     }
@@ -198,7 +203,6 @@ pub struct VoronoiPlanner {
     sample_x: Vec<f64>,
     sample_y: Vec<f64>,
     road_map: Vec<Vec<usize>>,
-    obstacle_tree: KDTree,
 }
 
 impl VoronoiPlanner {
@@ -238,7 +242,6 @@ impl VoronoiPlanner {
             sample_x,
             sample_y,
             road_map,
-            obstacle_tree,
         }
     }
 
@@ -516,8 +519,8 @@ fn main() {
             ],
         )
         .points(
-            &[start.0],
-            &[start.1],
+            [start.0],
+            [start.1],
             &[
                 Caption("Start"),
                 Color("blue"),
@@ -526,8 +529,8 @@ fn main() {
             ],
         )
         .points(
-            &[goal.0],
-            &[goal.1],
+            [goal.0],
+            [goal.1],
             &[
                 Caption("Goal"),
                 Color("red"),

@@ -1,10 +1,12 @@
+#![allow(dead_code)]
+
 // FastSLAM 1.0
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
-use nalgebra::{DMatrix, DVector, Matrix2, Matrix2x3, Matrix3x2, Vector2, Vector3};
+use nalgebra::{Matrix2, Vector2, Vector3};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::f64::consts::PI;
 

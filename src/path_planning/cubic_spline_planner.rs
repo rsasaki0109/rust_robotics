@@ -1,3 +1,11 @@
+#![allow(
+    dead_code,
+    clippy::needless_borrows_for_generic_args,
+    clippy::new_without_default,
+    clippy::ptr_arg,
+    clippy::type_complexity
+)]
+
 // https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/CubicSpline
 // https://github.com/onlytailei/CppRobotics/blob/master/include/cubic_spline.h
 // Cubic spline planner
@@ -47,10 +55,10 @@ impl Spline {
         }
 
         Spline {
-            a: a,
-            b: b,
-            c: c,
-            d: d,
+            a,
+            b,
+            c,
+            d,
             x: x.to_vec(),
             y: y.to_vec(),
         }
@@ -139,11 +147,7 @@ impl Spline2D {
         let sx = Spline::new(&s, &x);
         let sy = Spline::new(&s, &y);
 
-        Spline2D {
-            s: s,
-            sx: sx,
-            sy: sy,
-        }
+        Spline2D { s, sx, sy }
     }
 
     fn __calc_s(x: &Vec<f64>, y: &Vec<f64>) -> Vec<f64> {

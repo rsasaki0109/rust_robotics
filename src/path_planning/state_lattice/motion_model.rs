@@ -243,7 +243,7 @@ mod tests {
     #[test]
     fn test_generate_trajectory_straight() {
         let model = MotionModel::with_defaults();
-        let (x, y, yaw) = model.generate_trajectory(1.0, 0.0, 0.0, 0.0);
+        let (x, y, _yaw) = model.generate_trajectory(1.0, 0.0, 0.0, 0.0);
 
         // Straight line should have y ≈ 0
         assert!(x.len() > 1);

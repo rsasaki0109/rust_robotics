@@ -315,8 +315,6 @@ impl LookupTable {
         // Generate entries for various arc lengths and curvatures
         let s_values = [1.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
         let k_values = [-0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2];
-        let yaw_targets = [-1.0, -0.5, 0.0, 0.5, 1.0];
-
         for &s in &s_values {
             for &km in &k_values {
                 for &kf in &k_values {
@@ -379,14 +377,13 @@ impl Default for LookupTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::PI;
 
     #[test]
     fn test_trajectory_generator_straight() {
         let generator = TrajectoryGenerator::with_defaults();
         let params = Vector3::new(5.0, 0.0, 0.0); // s=5, km=0, kf=0
 
-        let (x, y, yaw) = generator.generate(&params);
+        let (x, y, _yaw) = generator.generate(&params);
 
         assert!(x.len() > 1);
         // Should be approximately straight line

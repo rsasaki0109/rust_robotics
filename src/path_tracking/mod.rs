@@ -12,7 +12,6 @@ pub mod stanley_controller;
 // Re-export main controllers with explicit types to avoid name conflicts
 pub use lqr_steer_control::{LQRSteerConfig, LQRSteerController, LQRVehicleState};
 pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController, MoveToPoseResult};
-pub use mpc::*;
 pub use pure_pursuit::VehicleState as PurePursuitVehicleState;
 pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
 pub use rear_wheel_feedback::VehicleState as RearWheelFeedbackVehicleState;

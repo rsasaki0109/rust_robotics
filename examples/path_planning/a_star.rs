@@ -4,7 +4,7 @@
 
 use rust_robotics::common::{PathPlanner, Point2D};
 use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
-use rust_robotics::utils::{colors, PathStyle, PointStyle, Visualizer};
+use rust_robotics::utils::{PathStyle, Visualizer};
 
 fn main() {
     println!("A* path planning start!!");

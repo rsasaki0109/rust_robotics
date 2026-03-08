@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // EKF SLAM (Extended Kalman Filter SLAM)
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -162,7 +164,7 @@ fn jacob_observation(
 
 /// EKF SLAM prediction step
 fn ekf_slam_predict(state: &mut EKFSLAMState, u: &Vector2<f64>) {
-    let n = state.x.len();
+    let _n = state.x.len();
 
     // Get current robot pose
     let robot_pose = state.get_robot_pose();

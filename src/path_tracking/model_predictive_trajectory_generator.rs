@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::too_many_arguments)]
+
 // https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/ModelPredictiveTrajectoryGenerator
 //
 // Model trajectory generator
@@ -37,7 +39,7 @@ impl State {
             y: x.1,
             yaw: x.2,
             v: x.3,
-            l: l,
+            l,
         }
     }
 
@@ -131,35 +133,34 @@ fn calc_j(
     l: f64,
 ) -> nalgebra::Matrix3<f64> {
     let (mut xp, mut yawp) = generate_last_state((p[0] + h[0], p[1], p[2]), k0, ds, v, l);
-    let mut dp = calc_diff(&target, (xp.0, xp.1, yawp));
+    let mut dp = calc_diff(target, (xp.0, xp.1, yawp));
     let (mut xn, mut yawn) = generate_last_state((p[0] - h[0], p[1], p[2]), k0, ds, v, l);
-    let mut dn = calc_diff(&target, (xn.0, xn.1, yawn));
+    let mut dn = calc_diff(target, (xn.0, xn.1, yawn));
     let d1 = (dp - dn) / (2. * h[0]);
 
     let mut pair = generate_last_state((p[0], p[1] + h[1], p[2]), k0, ds, v, l);
     xp = pair.0;
     yawp = pair.1;
-    dp = calc_diff(&target, (xp.0, xp.1, yawp));
+    dp = calc_diff(target, (xp.0, xp.1, yawp));
     pair = generate_last_state((p[0], p[1] - h[1], p[2]), k0, ds, v, l);
     xn = pair.0;
     yawn = pair.1;
-    dn = calc_diff(&target, (xn.0, xn.1, yawn));
+    dn = calc_diff(target, (xn.0, xn.1, yawn));
     let d2 = (dp - dn) / (2. * h[1]);
 
     pair = generate_last_state((p[0], p[1], p[2] + h[2]), k0, ds, v, l);
     xp = pair.0;
     yawp = pair.1;
-    dp = calc_diff(&target, (xp.0, xp.1, yawp));
+    dp = calc_diff(target, (xp.0, xp.1, yawp));
     pair = generate_last_state((p[0], p[1], p[2] - h[2]), k0, ds, v, l);
     xn = pair.0;
     yawn = pair.1;
-    dn = calc_diff(&target, (xn.0, xn.1, yawn));
+    dn = calc_diff(target, (xn.0, xn.1, yawn));
     let d3 = (dp - dn) / (2. * h[2]);
 
-    let j = nalgebra::Matrix3::new(
+    nalgebra::Matrix3::new(
         d1[0], d2[0], d3[0], d1[1], d2[1], d3[1], d1[2], d2[2], d3[2],
-    );
-    j
+    )
 }
 
 fn selection_learning_param(
@@ -170,7 +171,7 @@ fn selection_learning_param(
     l: f64,
     target: &State,
 ) -> f64 {
-    let mut mincost = std::f64::MAX;
+    let mut mincost = f64::MAX;
     let mut mina = 1.0;
     let maxa = 2.0;
     let da = 0.5;
@@ -181,7 +182,7 @@ fn selection_learning_param(
         let pair = generate_last_state((tp[0], tp[1], tp[2]), k0, ds, v, l);
         let xc = pair.0;
         let yawc = pair.1;
-        let dc = calc_diff(&target, (xc.0, xc.1, yawc));
+        let dc = calc_diff(target, (xc.0, xc.1, yawc));
         let cost = dc.norm();
         if cost <= mincost && a != 0. {
             mina = a;
