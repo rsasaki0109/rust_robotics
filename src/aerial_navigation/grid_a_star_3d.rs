@@ -365,6 +365,18 @@ mod tests {
     }
 
     #[test]
+    fn test_grid_a_star_3d_uses_diagonal_shortcut_when_enabled() {
+        let planner = planner_with_config(true, vec![]);
+
+        let path = planner
+            .plan(Point3D::new(0.0, 0.0, 0.0), Point3D::new(2.0, 2.0, 2.0))
+            .expect("path should exist");
+
+        assert_eq!(path.len(), 3);
+        assert_eq!(path.points[1], Point3D::new(1.0, 1.0, 1.0));
+    }
+
+    #[test]
     fn test_grid_a_star_3d_avoids_obstacles() {
         let obstacles = vec![
             Point3D::new(1.0, 0.0, 0.0),
