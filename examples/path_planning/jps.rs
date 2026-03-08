@@ -155,7 +155,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" class=\"legend\">JPS Path</text>\n",
-        legend_x + 50.0, legend_y + 22.0
+        legend_x + 50.0,
+        legend_y + 22.0
     ));
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" stroke=\"#0066CC\" stroke-width=\"2\" stroke-opacity=\"0.5\"/>\n",
@@ -163,7 +164,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" class=\"legend\">A* Path</text>\n",
-        legend_x + 50.0, legend_y + 42.0
+        legend_x + 50.0,
+        legend_y + 42.0
     ));
 
     svg.push_str("</svg>\n");

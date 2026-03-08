@@ -55,7 +55,10 @@ impl TrajectoryGenerator {
     }
 
     pub fn with_defaults() -> Self {
-        Self::new(MotionModel::with_defaults(), TrajectoryGeneratorConfig::default())
+        Self::new(
+            MotionModel::with_defaults(),
+            TrajectoryGeneratorConfig::default(),
+        )
     }
 
     /// Set initial curvature
@@ -75,9 +78,12 @@ impl TrajectoryGenerator {
 
     /// Calculate difference between current trajectory endpoint and target
     fn calc_diff(&self, params: &TrajectoryParams, target: &TargetState) -> Vector3<f64> {
-        let (x_final, y_final, yaw_final) =
-            self.motion_model
-                .generate_trajectory_final_state(params[0], self.config.k0, params[1], params[2]);
+        let (x_final, y_final, yaw_final) = self.motion_model.generate_trajectory_final_state(
+            params[0],
+            self.config.k0,
+            params[1],
+            params[2],
+        );
 
         Vector3::new(
             x_final - target[0],
@@ -231,7 +237,14 @@ pub struct LookupTableEntry {
 
 impl LookupTableEntry {
     pub fn new(x: f64, y: f64, yaw: f64, s: f64, km: f64, kf: f64) -> Self {
-        Self { x, y, yaw, s, km, kf }
+        Self {
+            x,
+            y,
+            yaw,
+            s,
+            km,
+            kf,
+        }
     }
 
     /// Get target state from entry
@@ -307,9 +320,12 @@ impl LookupTable {
         for &s in &s_values {
             for &km in &k_values {
                 for &kf in &k_values {
-                    let (x_final, y_final, yaw_final) =
-                        generator.motion_model.generate_trajectory_final_state(s, 0.0, km, kf);
-                    entries.push(LookupTableEntry::new(x_final, y_final, yaw_final, s, km, kf));
+                    let (x_final, y_final, yaw_final) = generator
+                        .motion_model
+                        .generate_trajectory_final_state(s, 0.0, km, kf);
+                    entries.push(LookupTableEntry::new(
+                        x_final, y_final, yaw_final, s, km, kf,
+                    ));
                 }
             }
         }
@@ -319,13 +335,11 @@ impl LookupTable {
 
     /// Find nearest entry to target state
     pub fn find_nearest(&self, target: &TargetState) -> Option<&LookupTableEntry> {
-        self.entries
-            .iter()
-            .min_by(|a, b| {
-                a.distance_to(target)
-                    .partial_cmp(&b.distance_to(target))
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
+        self.entries.iter().min_by(|a, b| {
+            a.distance_to(target)
+                .partial_cmp(&b.distance_to(target))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 
     /// Add entry to table

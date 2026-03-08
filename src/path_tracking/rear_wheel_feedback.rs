@@ -8,8 +8,8 @@
 //!     - B. Paden, M. Čáp, S. Z. Yong, D. Yershov and E. Frazzoli,
 //!       "A Survey of Motion Planning and Control Techniques Adopted in Self-Driving Vehicles"
 
+use crate::common::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 use std::f64::consts::PI;
-use crate::common::{Point2D, Path2D, State2D, ControlInput, PathTracker};
 
 /// Vehicle state for Rear Wheel Feedback Controller
 #[derive(Debug, Clone, Copy)]
@@ -23,7 +23,13 @@ pub struct VehicleState {
 
 impl VehicleState {
     pub fn new(x: f64, y: f64, yaw: f64, v: f64, wheelbase: f64) -> Self {
-        VehicleState { x, y, yaw, v, wheelbase }
+        VehicleState {
+            x,
+            y,
+            yaw,
+            v,
+            wheelbase,
+        }
     }
 
     /// Update vehicle state using bicycle model kinematics
@@ -277,16 +283,24 @@ impl RearWheelFeedbackController {
         let v_abs = v.abs().max(0.1); // Avoid division by zero
 
         // Handle small heading errors to avoid numerical issues
-        let th_e_safe = if th_e.abs() < 1e-6 { 1e-6 * th_e.signum().max(1.0) } else { th_e };
+        let th_e_safe = if th_e.abs() < 1e-6 {
+            1e-6 * th_e.signum().max(1.0)
+        } else {
+            th_e
+        };
 
         // Rear wheel feedback control formula
         // omega = v * k * cos(th_e) / (1.0 - k * e) - KTH * |v| * th_e - KE * v * sin(th_e) * e / th_e
         let denom = 1.0 - k * e;
-        let denom_safe = if denom.abs() < 0.01 { 0.01 * denom.signum().max(1.0) } else { denom };
+        let denom_safe = if denom.abs() < 0.01 {
+            0.01 * denom.signum().max(1.0)
+        } else {
+            denom
+        };
 
         let omega = v * k * th_e.cos() / denom_safe
-                  - self.config.kth * v_abs * th_e
-                  - self.config.ke * v * th_e.sin() * e / th_e_safe;
+            - self.config.kth * v_abs * th_e
+            - self.config.ke * v * th_e.sin() * e / th_e_safe;
 
         // Compute steering angle
         // delta = atan2(L * omega, v)
@@ -317,7 +331,12 @@ impl RearWheelFeedbackController {
     }
 
     /// Legacy planning interface - simulate path tracking
-    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64, ds: f64) -> Option<Vec<(f64, f64)>> {
+    pub fn planning(
+        &mut self,
+        waypoints: Vec<(f64, f64)>,
+        target_speed: f64,
+        ds: f64,
+    ) -> Option<Vec<(f64, f64)>> {
         if waypoints.len() < 2 {
             return None;
         }
@@ -329,7 +348,10 @@ impl RearWheelFeedbackController {
 
         // Set path
         let path = Path2D::from_points(
-            cx.iter().zip(cy.iter()).map(|(&x, &y)| Point2D::new(x, y)).collect()
+            cx.iter()
+                .zip(cy.iter())
+                .map(|(&x, &y)| Point2D::new(x, y))
+                .collect(),
         );
         self.set_path_with_info(path, cyaw, ck);
 
@@ -400,7 +422,11 @@ impl PathTracker for RearWheelFeedbackController {
 
 // Cubic spline helper functions for path generation
 
-fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+fn calc_spline_course(
+    x: &[f64],
+    y: &[f64],
+    ds: f64,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
     let sp = CubicSpline2D::new(x, y);
     let mut s = 0.0;
     let mut course_x = Vec::new();
@@ -471,7 +497,13 @@ impl CubicSpline {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline { a, b, c, d, x: x.to_vec() }
+        CubicSpline {
+            a,
+            b,
+            c,
+            d,
+            x: x.to_vec(),
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -658,17 +690,17 @@ mod tests {
         // With positive lateral error and positive heading error,
         // the controller should apply negative steering (turn right)
         // to both correct heading and move back toward the path
-        assert!(steering < 0.0, "Steering should be negative to correct errors, got: {}", steering);
+        assert!(
+            steering < 0.0,
+            "Steering should be negative to correct errors, got: {}",
+            steering
+        );
     }
 
     #[test]
     fn test_rear_wheel_feedback_planning() {
         let mut controller = RearWheelFeedbackController::with_params(1.0, 0.5, 2.9);
-        let waypoints = vec![
-            (0.0, 0.0),
-            (50.0, 0.0),
-            (100.0, 0.0),
-        ];
+        let waypoints = vec![(0.0, 0.0), (50.0, 0.0), (100.0, 0.0)];
 
         let result = controller.planning(waypoints, 5.0, 0.5);
         assert!(result.is_some());
@@ -678,12 +710,7 @@ mod tests {
     #[test]
     fn test_rear_wheel_feedback_curved_path() {
         let mut controller = RearWheelFeedbackController::with_params(1.0, 0.5, 2.9);
-        let waypoints = vec![
-            (0.0, 0.0),
-            (10.0, 0.0),
-            (20.0, 5.0),
-            (30.0, 10.0),
-        ];
+        let waypoints = vec![(0.0, 0.0), (10.0, 0.0), (20.0, 5.0), (30.0, 10.0)];
 
         let result = controller.planning(waypoints, 3.0, 0.5);
         assert!(result.is_some());

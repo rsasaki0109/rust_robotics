@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
+use gnuplot::AxesCommon;
+use gnuplot::{Axes2D, Caption, Color, Figure, PointSymbol};
+use na::{DMatrix, Matrix2, SymmetricEigen, Vector2};
 use nalgebra as na; // For matrices, vectors, stats, etc.
-use na::{DMatrix, Matrix2, Vector2, SymmetricEigen};
 use rand::prelude::*;
 use rand_distr::{Distribution, Uniform};
-use gnuplot::{Figure, Axes2D, Caption, Color, PointSymbol};
-use gnuplot::AxesCommon;
 
 #[derive(Debug, Clone)]
 struct NDTGrid {
@@ -45,12 +45,7 @@ struct GridMap {
 }
 
 impl GridMap {
-    fn new(width: usize,
-           height: usize,
-           resolution: f64,
-           center_x: f64,
-           center_y: f64) -> Self
-    {
+    fn new(width: usize, height: usize, resolution: f64, center_x: f64, center_y: f64) -> Self {
         let data = vec![NDTGrid::default(); width * height];
         GridMap {
             width,
@@ -58,7 +53,7 @@ impl GridMap {
             resolution,
             center_x,
             center_y,
-            data
+            data,
         }
     }
 
@@ -87,8 +82,8 @@ impl GridMap {
         let col = idx % self.width;
 
         // center in grid coords:
-        let cx = (col as f64 + 0.5) - (self.width as f64)/2.0;
-        let cy = (row as f64 + 0.5) - (self.height as f64)/2.0;
+        let cx = (col as f64 + 0.5) - (self.width as f64) / 2.0;
+        let cy = (row as f64 + 0.5) - (self.height as f64) / 2.0;
         // scale by resolution and add the map center:
         let x = self.center_x + cx * self.resolution;
         let y = self.center_y + cy * self.resolution;
@@ -155,7 +150,9 @@ impl NDTMap {
                 ndt.mean_y = mean_y;
 
                 // Center of the cell in world coords:
-                let (cx, cy) = self.grid_map.calc_grid_central_xy_position_from_grid_index(*grid_index);
+                let (cx, cy) = self
+                    .grid_map
+                    .calc_grid_central_xy_position_from_grid_index(*grid_index);
                 ndt.center_grid_x = cx;
                 ndt.center_grid_y = cy;
 
@@ -213,8 +210,7 @@ fn compute_covariance_2d(xs: &[f64], ys: &[f64], mean_x: f64, mean_y: f64) -> Ma
     }
     // sample covariance uses n-1
     let denom = n - 1.0;
-    Matrix2::new(sxx/denom, sxy/denom,
-                 sxy/denom, syy/denom)
+    Matrix2::new(sxx / denom, sxy / denom, sxy / denom, syy / denom)
 }
 
 /// Generates dummy corridor-like data with random noise.
@@ -320,11 +316,7 @@ fn main() {
         axes.points(
             &ox,
             &oy,
-            &[
-                Caption("Raw observation"),
-                Color("red"),
-                PointSymbol('O'),
-            ],
+            &[Caption("Raw observation"), Color("red"), PointSymbol('O')],
         );
 
         // 2) For each grid cell cluster, plot them in blue "x"
@@ -336,14 +328,7 @@ fn main() {
             }
             let cx: Vec<f64> = point_inds.iter().map(|&i| ox[i]).collect();
             let cy: Vec<f64> = point_inds.iter().map(|&i| oy[i]).collect();
-            axes.points(
-                &cx,
-                &cy,
-                &[
-                    Color("blue"),
-                    PointSymbol('x'),
-                ],
-            );
+            axes.points(&cx, &cy, &[Color("blue"), PointSymbol('x')]);
         }
 
         // 3) plot the covariance ellipses for each valid NDT cell

@@ -289,7 +289,8 @@ impl StateLattice {
                 // Sample headings
                 for j in 0..config.nh {
                     let yaw = if config.nh > 1 {
-                        config.a_min + (config.a_max - config.a_min) * j as f64 / (config.nh - 1) as f64
+                        config.a_min
+                            + (config.a_max - config.a_min) * j as f64 / (config.nh - 1) as f64
                     } else {
                         angle
                     };
@@ -410,10 +411,10 @@ impl StateLattice {
                 let goal_x = dx;
                 let goal_y = dy;
 
-                let a_cost = (a_final_x * scale - goal_x).powi(2)
-                    + (a_final_y * scale - goal_y).powi(2);
-                let b_cost = (b_final_x * scale - goal_x).powi(2)
-                    + (b_final_y * scale - goal_y).powi(2);
+                let a_cost =
+                    (a_final_x * scale - goal_x).powi(2) + (a_final_y * scale - goal_y).powi(2);
+                let b_cost =
+                    (b_final_x * scale - goal_x).powi(2) + (b_final_y * scale - goal_y).powi(2);
 
                 a_cost
                     .partial_cmp(&b_cost)

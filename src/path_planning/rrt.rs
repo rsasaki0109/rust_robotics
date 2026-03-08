@@ -5,7 +5,7 @@
 
 use rand::Rng;
 
-use crate::common::{Point2D, Path2D, PathPlanner, RoboticsError};
+use crate::common::{Path2D, PathPlanner, Point2D, RoboticsError};
 
 /// Internal node for RRT tree
 #[derive(Debug, Clone)]
@@ -44,7 +44,12 @@ pub struct AreaBounds {
 
 impl AreaBounds {
     pub fn new(xmin: f64, xmax: f64, ymin: f64, ymax: f64) -> Self {
-        AreaBounds { xmin, xmax, ymin, ymax }
+        AreaBounds {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+        }
     }
 
     pub fn from_array(area: [f64; 4]) -> Self {
@@ -165,9 +170,7 @@ impl RRTPlanner {
 
         match self.plan(start_pt, goal_pt) {
             Ok(path) => {
-                let result: Vec<[f64; 2]> = path.points.iter()
-                    .map(|p| [p.x, p.y])
-                    .collect();
+                let result: Vec<[f64; 2]> = path.points.iter().map(|p| [p.x, p.y]).collect();
                 Some(result)
             }
             Err(_) => None,
@@ -262,8 +265,11 @@ impl RRTPlanner {
 
     fn check_if_outside_play_area(&self, node: &RRTNode) -> bool {
         if let Some(ref play_area) = self.play_area {
-            if node.x < play_area.xmin || node.x > play_area.xmax ||
-               node.y < play_area.ymin || node.y > play_area.ymax {
+            if node.x < play_area.xmin
+                || node.x > play_area.xmax
+                || node.y < play_area.ymin
+                || node.y > play_area.ymax
+            {
                 return false;
             }
         }
@@ -320,7 +326,8 @@ impl PathPlanner for RRTPlanner {
 
                 let last = planner.node_list.last().unwrap();
                 if planner.calc_dist_to_goal(last.x, last.y) <= planner.config.expand_dis {
-                    let final_node = planner.steer(last, &planner.goal.clone(), planner.config.expand_dis);
+                    let final_node =
+                        planner.steer(last, &planner.goal.clone(), planner.config.expand_dis);
                     if planner.check_collision(&final_node) {
                         return Ok(planner.generate_final_course(planner.node_list.len() - 1));
                     }
@@ -328,7 +335,9 @@ impl PathPlanner for RRTPlanner {
             }
         }
 
-        Err(RoboticsError::PlanningError("RRT: Cannot find path within max iterations".to_string()))
+        Err(RoboticsError::PlanningError(
+            "RRT: Cannot find path within max iterations".to_string(),
+        ))
     }
 }
 

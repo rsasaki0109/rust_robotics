@@ -7,9 +7,9 @@ use rust_robotics::path_planning::cubic_spline_planner;
 
 use plotlib::page::Page;
 use plotlib::repr::Plot;
-use plotlib::view::ContinuousView;
-use plotlib::style::PointStyle;
 use plotlib::style::LineStyle;
+use plotlib::style::PointStyle;
+use plotlib::view::ContinuousView;
 
 fn main() {
     let points = vec![
@@ -32,28 +32,20 @@ fn main() {
         y.push(p.1);
     }
 
-
     let sp = cubic_spline_planner::Spline2D::new(x, y);
-    let s_end = sp.s[sp.s.len()-1]; 
+    let s_end = sp.s[sp.s.len() - 1];
     let n = (s_end / ds) as usize;
-    let mut pos: Vec<(f64,f64)> = Vec::with_capacity(nx);
-    for i in 0..n-1 {
-        let pair = sp.clone().calc_position((i as f64/ (n -1)as f64)  * s_end);
+    let mut pos: Vec<(f64, f64)> = Vec::with_capacity(nx);
+    for i in 0..n - 1 {
+        let pair = sp
+            .clone()
+            .calc_position((i as f64 / (n - 1) as f64) * s_end);
         pos.push(pair);
     }
 
+    let s0: Plot = Plot::new(points).point_style(PointStyle::new().colour("#000000"));
 
-    let s0: Plot = Plot::new(points).point_style(
-        PointStyle::new()
-            .colour("#000000"),
-    );
-
-    let s1: Plot = Plot::new(pos).line_style(
-        LineStyle::new() 
-            .colour("#35C788")
-            .width(2.),
-    ); 
-
+    let s1: Plot = Plot::new(pos).line_style(LineStyle::new().colour("#35C788").width(2.));
 
     let v = ContinuousView::new()
         .add(s0)

@@ -4,11 +4,11 @@
 //! UKF propagates sigma points through nonlinear functions for more accurate estimation
 //! compared to EKF linearization.
 
-use nalgebra::{Matrix4, Matrix2, Vector4, Vector2, DMatrix, DVector};
+use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
 use rand::Rng;
 use std::f64::consts::PI;
 
-use crate::common::{StateEstimator, Point2D};
+use crate::common::{Point2D, StateEstimator};
 
 /// State representation for UKF (x, y, yaw, velocity)
 pub type UKFState = Vector4<f64>;
@@ -58,10 +58,10 @@ impl Default for UKFConfig {
         Self {
             params: UKFParams::default(),
             process_noise: Vector4::new(
-                0.1_f64.powi(2),           // x variance
-                0.1_f64.powi(2),           // y variance
+                0.1_f64.powi(2),              // x variance
+                0.1_f64.powi(2),              // y variance
                 1.0_f64.to_radians().powi(2), // yaw variance
-                1.0_f64.powi(2),           // velocity variance
+                1.0_f64.powi(2),              // velocity variance
             ),
             observation_noise: Vector2::new(
                 1.0_f64.powi(2), // x position variance
@@ -176,10 +176,10 @@ impl UKFLocalizer {
     fn motion_model(&self, x: &UKFState, u: &UKFControl) -> UKFState {
         let dt = self.config.dt;
         Vector4::new(
-            x[0] + dt * x[3] * x[2].cos(),  // x += dt * v * cos(yaw)
-            x[1] + dt * x[3] * x[2].sin(),  // y += dt * v * sin(yaw)
-            x[2] + dt * u[1],                // yaw += dt * yaw_rate
-            u[0],                            // v = input_v
+            x[0] + dt * x[3] * x[2].cos(), // x += dt * v * cos(yaw)
+            x[1] + dt * x[3] * x[2].sin(), // y += dt * v * sin(yaw)
+            x[2] + dt * u[1],              // yaw += dt * yaw_rate
+            u[0],                          // v = input_v
         )
     }
 
@@ -236,9 +236,7 @@ impl UKFLocalizer {
         let mut sigma_pred = DMatrix::zeros(sigma.nrows(), sigma.ncols());
 
         for i in 0..sigma.ncols() {
-            let x_sigma = Vector4::new(
-                sigma[(0, i)], sigma[(1, i)], sigma[(2, i)], sigma[(3, i)]
-            );
+            let x_sigma = Vector4::new(sigma[(0, i)], sigma[(1, i)], sigma[(2, i)], sigma[(3, i)]);
             let x_pred = self.motion_model(&x_sigma, u);
 
             for j in 0..4 {
@@ -254,9 +252,7 @@ impl UKFLocalizer {
         let mut z_sigma = DMatrix::zeros(2, sigma.ncols());
 
         for i in 0..sigma.ncols() {
-            let x_sigma = Vector4::new(
-                sigma[(0, i)], sigma[(1, i)], sigma[(2, i)], sigma[(3, i)]
-            );
+            let x_sigma = Vector4::new(sigma[(0, i)], sigma[(1, i)], sigma[(2, i)], sigma[(3, i)]);
             let z_pred = self.observation_model(&x_sigma);
 
             z_sigma[(0, i)] = z_pred[0];
@@ -357,7 +353,10 @@ impl UKFLocalizer {
         let pxz = self.calc_cross_covariance(&sigma_dyn, &x_mean, &z_sigma, &z_pred);
 
         // Kalman gain
-        let s_inv = s.clone().try_inverse().unwrap_or_else(|| DMatrix::identity(2, 2));
+        let s_inv = s
+            .clone()
+            .try_inverse()
+            .unwrap_or_else(|| DMatrix::identity(2, 2));
         let k = &pxz * &s_inv;
 
         // Innovation
@@ -533,10 +532,11 @@ pub fn observation(
 
     *x_true = motion_model(x_true, u);
 
-    let z = observation_model(x_true) + Vector2::new(
-        GPS_NOISE_X * rng.gen::<f64>() - GPS_NOISE_X / 2.0,
-        GPS_NOISE_Y * rng.gen::<f64>() - GPS_NOISE_Y / 2.0,
-    );
+    let z = observation_model(x_true)
+        + Vector2::new(
+            GPS_NOISE_X * rng.gen::<f64>() - GPS_NOISE_X / 2.0,
+            GPS_NOISE_Y * rng.gen::<f64>() - GPS_NOISE_Y / 2.0,
+        );
 
     let u_noisy = u + Vector2::new(
         INPUT_NOISE_V * rng.gen::<f64>() - INPUT_NOISE_V / 2.0,
