@@ -17,7 +17,7 @@ use rand::Rng;
 // ICP parameters
 const EPS: f64 = 0.0001;
 const MAX_ITER: usize = 100;
-const SHOW_ANIMATION: bool = true;
+const SHOW_ANIMATION: bool = !cfg!(test);
 
 pub struct ICPResult {
     pub rotation: DMatrix<f64>,
@@ -127,15 +127,9 @@ fn nearest_neighbor_association(
     previous_points: &DMatrix<f64>,
     current_points: &DMatrix<f64>,
 ) -> (Vec<usize>, f64) {
-    // Calculate residual error for current association
-    let delta_points = previous_points - current_points;
-    let mut error = 0.0;
-    for j in 0..delta_points.ncols() {
-        error += delta_points.column(j).norm();
-    }
-    
     // Find nearest neighbor associations
     let mut indexes = Vec::with_capacity(current_points.ncols());
+    let mut error = 0.0;
     
     for j in 0..current_points.ncols() {
         let current_point = current_points.column(j);
@@ -151,6 +145,7 @@ fn nearest_neighbor_association(
             }
         }
         indexes.push(best_idx);
+        error += min_dist;
     }
     
     (indexes, error)
@@ -226,8 +221,8 @@ fn svd_motion_estimation(
     let u = svd.u.unwrap();
     let v_t = svd.v_t.unwrap();
     
-    // Calculate rotation: R = (U * V^T)^T = V * U^T
-    let r = (&v_t.transpose() * &u.transpose()).transpose();
+    // Calculate rotation: R = V * U^T
+    let r = &v_t.transpose() * &u.transpose();
     
     // Calculate translation: t = pm - R * cm
     let cm_vec = DVector::from_vec(vec![cm_x, cm_y]);
@@ -351,13 +346,18 @@ pub fn demo_2d_icp() {
         println!("Rotation matrix:\n{}", result.rotation);
         println!("Translation vector:\n{}", result.translation);
         
-        // Compare with ground truth
+        // ICP estimates the inverse transform that aligns current_points back to previous_points.
         let expected_rotation = Matrix2::new(
-            rotation_angle.cos(), -rotation_angle.sin(),
-            rotation_angle.sin(), rotation_angle.cos()
+            rotation_angle.cos(), rotation_angle.sin(),
+            -rotation_angle.sin(), rotation_angle.cos()
         );
+        let expected_translation = -expected_rotation * motion;
         println!("Expected rotation:\n{}", expected_rotation);
-        println!("Expected translation: [{:.3}, {:.3}]", motion.x, motion.y);
+        println!(
+            "Expected translation: [{:.3}, {:.3}]",
+            expected_translation.x,
+            expected_translation.y
+        );
     }
     
     // Create summary plot
@@ -439,8 +439,8 @@ mod tests {
         let result = icp_matching(&previous_points, &current_points);
         
         assert!(result.converged);
-        assert!((result.translation[0] - translation.x).abs() < 0.1);
-        assert!((result.translation[1] - translation.y).abs() < 0.1);
+        assert!((result.translation[0] + translation.x).abs() < 0.1);
+        assert!((result.translation[1] + translation.y).abs() < 0.1);
     }
     
     #[test]
