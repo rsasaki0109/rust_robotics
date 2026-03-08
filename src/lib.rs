@@ -3,6 +3,8 @@
 //! This crate provides implementations of common robotics algorithms
 //! for localization, mapping, path planning, path tracking, and control.
 
+extern crate self as rust_robotics;
+
 // Core modules
 pub mod common;
 pub mod utils;

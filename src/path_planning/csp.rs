@@ -3,7 +3,7 @@
 //
 // Author: Atsushi Sakai(@Atsushi_twi)
 //         Ryohei Sasaki(@rsasaki0109)
-use crate::path_planning::cubic_spline_planner;
+use rust_robotics::path_planning::cubic_spline_planner;
 
 use plotlib::page::Page;
 use plotlib::repr::Plot;
