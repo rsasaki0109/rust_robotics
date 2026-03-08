@@ -112,7 +112,7 @@ path = "src/bin/stanley_controller.rs"
 
 [[bin]]
 name = "move_to_pose"
-path = "src/path_tracking/move_to_pose.rs"
+path = "src/bin/move_to_pose.rs"
 
 [[bin]]
 name = "model_predictive_trajectory_generator"
