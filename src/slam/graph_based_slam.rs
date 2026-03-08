@@ -6,9 +6,9 @@
 // [A Tutorial on Graph-Based SLAM]
 // http://www2.informatik.uni-freiburg.de/~stachnis/pdf/grisetti10titsmag.pdf
 
-use nalgebra::{Matrix3, Vector3, DMatrix, DVector};
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
+use nalgebra::{DMatrix, DVector, Matrix3, Vector3};
 use rand_distr::{Distribution, Normal};
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
 use std::f64::consts::PI;
 use std::fs::File;
 use std::io::Write;
@@ -36,17 +36,17 @@ const SHOW_ANIMATION: bool = false;
 /// Observation data structure
 #[derive(Clone)]
 struct Observation {
-    d: f64,      // distance
-    angle: f64,  // angle relative to robot
-    phi: f64,    // absolute angle
-    id: usize,   // landmark id
+    d: f64,     // distance
+    angle: f64, // angle relative to robot
+    phi: f64,   // absolute angle
+    id: usize,  // landmark id
 }
 
 /// Edge represents a constraint between two poses
 #[derive(Clone)]
 struct Edge {
-    e: Vector3<f64>,      // error vector
-    omega: Matrix3<f64>,  // information matrix
+    e: Vector3<f64>,     // error vector
+    omega: Matrix3<f64>, // information matrix
     d1: f64,
     d2: f64,
     yaw1: f64,
@@ -99,20 +99,23 @@ fn cal_observation_sigma() -> Matrix3<f64> {
 fn calc_3d_rotational_matrix(angle: f64) -> Matrix3<f64> {
     let c = angle.cos();
     let s = angle.sin();
-    Matrix3::new(
-        c, -s, 0.0,
-        s,  c, 0.0,
-        0.0, 0.0, 1.0,
-    )
+    Matrix3::new(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0)
 }
 
 /// Calculate edge between two poses that observed the same landmark
 fn calc_edge(
-    x1: f64, y1: f64, yaw1: f64,
-    x2: f64, y2: f64, yaw2: f64,
-    d1: f64, angle1: f64,
-    d2: f64, angle2: f64,
-    t1: usize, t2: usize,
+    x1: f64,
+    y1: f64,
+    yaw1: f64,
+    x2: f64,
+    y2: f64,
+    yaw2: f64,
+    d1: f64,
+    angle1: f64,
+    d2: f64,
+    angle2: f64,
+    t1: usize,
+    t2: usize,
 ) -> Edge {
     let mut edge = Edge::new();
 
@@ -175,10 +178,7 @@ fn calc_edges(x_list: &DMatrix<f64>, z_list: &[Option<Vec<Observation>>]) -> (Ve
                     for obs2 in z2 {
                         if obs1.id == obs2.id {
                             let edge = calc_edge(
-                                x1, y1, yaw1,
-                                x2, y2, yaw2,
-                                obs1.d, obs1.angle,
-                                obs2.d, obs2.angle,
+                                x1, y1, yaw1, x2, y2, yaw2, obs1.d, obs1.angle, obs2.d, obs2.angle,
                                 t1, t2,
                             );
 
@@ -202,27 +202,35 @@ fn calc_edges(x_list: &DMatrix<f64>, z_list: &[Option<Vec<Observation>>]) -> (Ve
 fn calc_jacobian(edge: &Edge) -> (Matrix3<f64>, Matrix3<f64>) {
     let t1 = edge.yaw1 + edge.angle1;
     let a = Matrix3::new(
-        -1.0, 0.0, edge.d1 * t1.sin(),
-        0.0, -1.0, -edge.d1 * t1.cos(),
-        0.0, 0.0, 0.0,
+        -1.0,
+        0.0,
+        edge.d1 * t1.sin(),
+        0.0,
+        -1.0,
+        -edge.d1 * t1.cos(),
+        0.0,
+        0.0,
+        0.0,
     );
 
     let t2 = edge.yaw2 + edge.angle2;
     let b = Matrix3::new(
-        1.0, 0.0, -edge.d2 * t2.sin(),
-        0.0, 1.0, edge.d2 * t2.cos(),
-        0.0, 0.0, 0.0,
+        1.0,
+        0.0,
+        -edge.d2 * t2.sin(),
+        0.0,
+        1.0,
+        edge.d2 * t2.cos(),
+        0.0,
+        0.0,
+        0.0,
     );
 
     (a, b)
 }
 
 /// Fill H matrix and b vector for an edge
-fn fill_h_and_b(
-    h: &mut DMatrix<f64>,
-    b: &mut DVector<f64>,
-    edge: &Edge,
-) {
+fn fill_h_and_b(h: &mut DMatrix<f64>, b: &mut DVector<f64>, edge: &Edge) {
     let (a, b_jac) = calc_jacobian(edge);
 
     let id1 = edge.id1 * STATE_SIZE;
@@ -257,10 +265,7 @@ fn fill_h_and_b(
 }
 
 /// Graph-based SLAM optimization
-fn graph_based_slam(
-    x_init: &DMatrix<f64>,
-    hz: &[Option<Vec<Observation>>],
-) -> DMatrix<f64> {
+fn graph_based_slam(x_init: &DMatrix<f64>, hz: &[Option<Vec<Observation>>]) -> DMatrix<f64> {
     println!("start graph based slam");
 
     let mut x_opt = x_init.clone();
@@ -328,7 +333,7 @@ fn motion_model(x: &Vector3<f64>, u: &[f64; 2]) -> Vector3<f64> {
 
 /// Calculate control input
 fn calc_input() -> [f64; 2] {
-    let v = 1.0;        // [m/s]
+    let v = 1.0; // [m/s]
     let yaw_rate = 0.1; // [rad/s]
     [v, yaw_rate]
 }
@@ -339,7 +344,12 @@ fn observation(
     xd: &Vector3<f64>,
     u: &[f64; 2],
     rfid: &[(f64, f64)],
-) -> (Vector3<f64>, Option<Vec<Observation>>, Vector3<f64>, [f64; 2]) {
+) -> (
+    Vector3<f64>,
+    Option<Vec<Observation>>,
+    Vector3<f64>,
+    [f64; 2],
+) {
     let normal = Normal::new(0.0, 1.0).unwrap();
     let mut rng = rand::thread_rng();
 
@@ -386,23 +396,29 @@ fn observation(
 /// Save SVG plot directly without gnuplot dependency
 fn save_svg(
     path: &str,
-    true_x: &[f64], true_y: &[f64],
-    dr_x: &[f64], dr_y: &[f64],
-    opt_x: &[f64], opt_y: &[f64],
-    lm_x: &[f64], lm_y: &[f64],
+    true_x: &[f64],
+    true_y: &[f64],
+    dr_x: &[f64],
+    dr_y: &[f64],
+    opt_x: &[f64],
+    opt_y: &[f64],
+    lm_x: &[f64],
+    lm_y: &[f64],
 ) {
     let width = 640;
     let height = 480;
     let margin = 60.0;
 
     // Calculate bounds
-    let all_x: Vec<f64> = true_x.iter()
+    let all_x: Vec<f64> = true_x
+        .iter()
         .chain(dr_x.iter())
         .chain(opt_x.iter())
         .chain(lm_x.iter())
         .copied()
         .collect();
-    let all_y: Vec<f64> = true_y.iter()
+    let all_y: Vec<f64> = true_y
+        .iter()
         .chain(dr_y.iter())
         .chain(opt_y.iter())
         .chain(lm_y.iter())
@@ -425,12 +441,8 @@ fn save_svg(
     let plot_height = height as f64 - 2.0 * margin;
     let scale = plot_width.min(plot_height) / range;
 
-    let transform_x = |x: f64| -> f64 {
-        margin + plot_width / 2.0 + (x - x_center) * scale
-    };
-    let transform_y = |y: f64| -> f64 {
-        margin + plot_height / 2.0 - (y - y_center) * scale
-    };
+    let transform_x = |x: f64| -> f64 { margin + plot_width / 2.0 + (x - x_center) * scale };
+    let transform_y = |y: f64| -> f64 { margin + plot_height / 2.0 - (y - y_center) * scale };
 
     let mut svg = String::new();
     svg.push_str(&format!(
@@ -450,11 +462,17 @@ fn save_svg(
         let y = margin + (i as f64 / 10.0) * plot_height;
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
-            x, margin, x, margin + plot_height
+            x,
+            margin,
+            x,
+            margin + plot_height
         ));
         svg.push_str(&format!(
             r#"<line x1="{}" y1="{}" x2="{}" y2="{}"/>"#,
-            margin, y, margin + plot_width, y
+            margin,
+            y,
+            margin + plot_width,
+            y
         ));
     }
     svg.push_str("</g>\n");
@@ -515,27 +533,39 @@ fn save_svg(
     ));
     svg.push_str(&format!(
         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"blue\" stroke-width=\"2\"/>",
-        legend_x + 10.0, legend_y + 20.0, legend_x + 40.0, legend_y + 20.0
+        legend_x + 10.0,
+        legend_y + 20.0,
+        legend_x + 40.0,
+        legend_y + 20.0
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">True</text>",
-        legend_x + 50.0, legend_y + 24.0
+        legend_x + 50.0,
+        legend_y + 24.0
     ));
     svg.push_str(&format!(
         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"#333\" stroke-width=\"1.5\"/>",
-        legend_x + 10.0, legend_y + 40.0, legend_x + 40.0, legend_y + 40.0
+        legend_x + 10.0,
+        legend_y + 40.0,
+        legend_x + 40.0,
+        legend_y + 40.0
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">Dead Reckoning</text>",
-        legend_x + 50.0, legend_y + 44.0
+        legend_x + 50.0,
+        legend_y + 44.0
     ));
     svg.push_str(&format!(
         "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\" stroke=\"red\" stroke-width=\"2\"/>",
-        legend_x + 10.0, legend_y + 60.0, legend_x + 40.0, legend_y + 60.0
+        legend_x + 10.0,
+        legend_y + 60.0,
+        legend_x + 40.0,
+        legend_y + 60.0
     ));
     svg.push_str(&format!(
         "<text x=\"{}\" y=\"{}\" font-size=\"12\" font-family=\"sans-serif\">Graph SLAM</text>",
-        legend_x + 50.0, legend_y + 64.0
+        legend_x + 50.0,
+        legend_y + 64.0
     ));
 
     svg.push_str("</svg>\n");
@@ -629,7 +659,16 @@ fn main() {
                     .set_x_label("x [m]", &[])
                     .set_y_label("y [m]", &[])
                     .set_aspect_ratio(gnuplot::Fix(1.0))
-                    .points(&lm_x, &lm_y, &[Caption("Landmarks"), Color("black"), PointSymbol('*'), PointSize(2.0)])
+                    .points(
+                        &lm_x,
+                        &lm_y,
+                        &[
+                            Caption("Landmarks"),
+                            Color("black"),
+                            PointSymbol('*'),
+                            PointSize(2.0),
+                        ],
+                    )
                     .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
                     .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("black")])
                     .lines(&opt_x, &opt_y, &[Caption("Graph SLAM"), Color("red")]);
@@ -669,14 +708,25 @@ fn main() {
         .set_x_label("x [m]", &[])
         .set_y_label("y [m]", &[])
         .set_aspect_ratio(gnuplot::Fix(1.0))
-        .points(&lm_x, &lm_y, &[Caption("Landmarks"), Color("black"), PointSymbol('*'), PointSize(2.0)])
+        .points(
+            &lm_x,
+            &lm_y,
+            &[
+                Caption("Landmarks"),
+                Color("black"),
+                PointSymbol('*'),
+                PointSize(2.0),
+            ],
+        )
         .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
         .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("black")])
         .lines(&opt_x, &opt_y, &[Caption("Graph SLAM"), Color("red")]);
 
     // Save SVG directly without gnuplot dependency
     let svg_path = "./img/slam/graph_based_slam.svg";
-    save_svg(svg_path, &true_x, &true_y, &dr_x, &dr_y, &opt_x, &opt_y, &lm_x, &lm_y);
+    save_svg(
+        svg_path, &true_x, &true_y, &dr_x, &dr_y, &opt_x, &opt_y, &lm_x, &lm_y,
+    );
     println!("Plot saved to {}", svg_path);
 
     // Print final error
@@ -685,8 +735,10 @@ fn main() {
     let opt_final_x = x_opt[(0, x_opt.ncols() - 1)];
     let opt_final_y = x_opt[(1, x_opt.ncols() - 1)];
 
-    let dr_error = ((dr_final[0] - true_final[0]).powi(2) + (dr_final[1] - true_final[1]).powi(2)).sqrt();
-    let opt_error = ((opt_final_x - true_final[0]).powi(2) + (opt_final_y - true_final[1]).powi(2)).sqrt();
+    let dr_error =
+        ((dr_final[0] - true_final[0]).powi(2) + (dr_final[1] - true_final[1]).powi(2)).sqrt();
+    let opt_error =
+        ((opt_final_x - true_final[0]).powi(2) + (opt_final_y - true_final[1]).powi(2)).sqrt();
 
     println!("\nFinal position errors:");
     println!("  Dead Reckoning error: {:.4} m", dr_error);
