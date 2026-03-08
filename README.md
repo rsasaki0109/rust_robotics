@@ -67,6 +67,7 @@ cargo run --bin two_joint_arm_control
    * [Aerial Navigation](#aerial-navigation)
       * [3D Grid A*](#3d-grid-a)
    * [Mission Planning](#mission-planning)
+      * [Behavior Tree](#behavior-tree)
       * [State Machine](#state-machine)
 
 # Localization
@@ -569,6 +570,16 @@ cargo run --bin grid_a_star_3d
 ```
 
 # Mission Planning
+
+## Behavior Tree
+
+Behavior tree runtime for mission-level decision making with sequence, selector, condition, and action nodes backed by a shared blackboard.
+
+- [src](./src/mission_planning/behavior_tree.rs)
+
+```
+cargo run --bin behavior_tree
+```
 
 ## State Machine
 
