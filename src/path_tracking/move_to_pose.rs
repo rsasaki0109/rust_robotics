@@ -114,11 +114,7 @@ impl MoveToPoseController {
         }
     }
 
-    pub fn planning(
-        &self,
-        start: (f64, f64, f64),
-        goal: (f64, f64, f64),
-    ) -> Vec<(f64, f64)> {
+    pub fn planning(&self, start: (f64, f64, f64), goal: (f64, f64, f64)) -> Vec<(f64, f64)> {
         self.simulate(
             Pose2D::new(start.0, start.1, start.2),
             Pose2D::new(goal.0, goal.1, goal.2),
