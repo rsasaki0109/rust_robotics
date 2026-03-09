@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RustRobotics Showcase</title>
+  <meta name="description" content="A visual GitHub Pages wall for RustRobotics. Browse robotics algorithms, planners, controllers, and SLAM demos rendered straight from Rust.">
+  <meta name="theme-color" content="#08111a">
+  <meta property="og:title" content="RustRobotics Showcase">
+  <meta property="og:description" content="A scroll-stopping wall of robotics visuals built from executable Rust demos.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://rsasaki0109.github.io/rust_robotics/">
+  <meta property="og:image" content="https://rsasaki0109.github.io/rust_robotics/assets/social-preview.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="RustRobotics Showcase">
+  <meta name="twitter:description" content="A visual GitHub Pages wall of robotics algorithms, planners, controllers, and SLAM demos implemented in Rust.">
+  <meta name="twitter:image" content="https://rsasaki0109.github.io/rust_robotics/assets/social-preview.svg">
+  <link rel="canonical" href="https://rsasaki0109.github.io/rust_robotics/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"></div>
+  <div class="page-shell">
+    <header class="hero">
+      <nav class="topbar">
+        <a class="brand" href="#top">
+          <span class="brand-mark">RR</span>
+          <span class="brand-copy">
+            <strong>RustRobotics</strong>
+            <span>Visual showcase</span>
+          </span>
+        </a>
+        <div class="topbar-links">
+          <a href="https://github.com/rsasaki0109/rust_robotics" target="_blank" rel="noreferrer">Repository</a>
+          <a href="#gallery">Gallery</a>
+          <a href="#share">Post on X</a>
+        </div>
+      </nav>
+
+      <div class="hero-grid">
+        <section class="hero-copy">
+          <p class="eyebrow">GitHub Pages launch wall</p>
+          <h1>Rust robotics demos that look built for the timeline.</h1>
+          <p class="hero-text">
+            Localization, SLAM, planning, control, mission logic, and aerial navigation,
+            all rendered into a dense visual wall you can scroll, share, and point people at in one link.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="#gallery">Open the wall</a>
+            <a class="button button-secondary" href="https://github.com/rsasaki0109/rust_robotics" target="_blank" rel="noreferrer">View source</a>
+          </div>
+
+          <div class="metric-row">
+            <article class="metric">
+              <span class="metric-value" id="module-count">12</span>
+              <span class="metric-label">Rust modules</span>
+            </article>
+            <article class="metric">
+              <span class="metric-value" id="visual-count">93</span>
+              <span class="metric-label">Generated visuals</span>
+            </article>
+            <article class="metric">
+              <span class="metric-value" id="gallery-count">0</span>
+              <span class="metric-label">Showcase cards</span>
+            </article>
+          </div>
+        </section>
+
+        <aside class="hero-panel">
+          <p class="panel-label">Featured frames</p>
+          <div class="marquee-window">
+            <div class="marquee-track" id="hero-marquee"></div>
+          </div>
+          <p class="panel-note">
+            Built from the repo's own output images. No mock screenshots, no design filler.
+          </p>
+        </aside>
+      </div>
+    </header>
+
+    <main>
+      <section class="share-card" id="share">
+        <div>
+          <p class="eyebrow">Tweet-ready</p>
+          <h2>Make the repo feel alive before anyone reads the code.</h2>
+          <p>
+            The page is designed as a visual index first: strong thumbnails, short captions,
+            direct run commands, and enough density to look good in a quote post or screenshot.
+          </p>
+        </div>
+        <div class="share-actions">
+          <pre id="tweet-copy"></pre>
+          <div class="share-buttons">
+            <button class="button button-primary" id="copy-post" type="button">Copy post text</button>
+            <a class="button button-secondary" id="share-link" href="https://x.com/intent/post" target="_blank" rel="noreferrer">Open X intent</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <div>
+          <p class="eyebrow">Filter the wall</p>
+          <h2>One page, many algorithm families.</h2>
+        </div>
+        <div class="filter-chips" id="category-filters" role="toolbar" aria-label="Algorithm categories"></div>
+      </section>
+
+      <section class="gallery-section" id="gallery">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Showcase wall</p>
+            <h2>Scroll until something makes you open the repo.</h2>
+          </div>
+          <p class="section-note">
+            Every card links visual output to a concrete Rust entrypoint.
+          </p>
+        </div>
+        <div class="gallery-grid" id="gallery-grid"></div>
+      </section>
+
+      <section class="cta-card">
+        <div>
+          <p class="eyebrow">Next move</p>
+          <h2>Ship this to GitHub Pages, then pin it.</h2>
+          <p>
+            This page is static and deploys from GitHub Actions. Once it is live, the repo gets a clean public front door
+            that works for social posts, demos, and quick visual proof.
+          </p>
+        </div>
+        <div class="cta-links">
+          <a class="button button-primary" href="https://github.com/rsasaki0109/rust_robotics" target="_blank" rel="noreferrer">Open repository</a>
+          <a class="button button-secondary" href="https://github.com/rsasaki0109/rust_robotics#readme" target="_blank" rel="noreferrer">Read the README</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="card-template">
+    <article class="gallery-card">
+      <div class="card-media">
+        <img alt="" loading="lazy" decoding="async">
+      </div>
+      <div class="card-body">
+        <div class="card-topline">
+          <span class="category-pill"></span>
+          <span class="command-chip"></span>
+        </div>
+        <h3></h3>
+        <p class="card-description"></p>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
