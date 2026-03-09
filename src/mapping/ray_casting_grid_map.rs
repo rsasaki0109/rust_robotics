@@ -5,10 +5,11 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
-use gnuplot::{AutoOption, AxesCommon, Figure, PlotOption};
 use nalgebra::DMatrix;
 use std::collections::HashMap;
 use std::f64::consts::PI;
+use std::fs::File;
+use std::io::Write;
 
 // Parameters
 const EXTEND_AREA: f64 = 10.0; // [m] grid map extension area
@@ -195,51 +196,207 @@ fn atan_zero_to_twopi(y: f64, x: f64) -> f64 {
     }
 }
 
-/// Draw heatmap of the grid map
-fn draw_heatmap(grid_map: &RayCastingGridMap, ox: &[f64], oy: &[f64]) {
-    let mut fig = Figure::new();
+fn occupancy_style(value: f64) -> (&'static str, f64) {
+    if value >= 0.99 {
+        ("#b91c1c", 0.95)
+    } else if value >= 0.49 {
+        ("#bfdbfe", 0.92)
+    } else {
+        ("#f8fafc", 0.75)
+    }
+}
 
-    let x_width = grid_map.x_width;
-    let y_width = grid_map.y_width;
+fn build_ray_casting_grid_map_svg(grid_map: &RayCastingGridMap, ox: &[f64], oy: &[f64]) -> String {
+    let width = 920.0;
+    let height = 700.0;
+    let margin = 72.0;
+    let side_panel_width = 220.0;
+    let available_plot_width = width - 2.0 * margin - side_panel_width;
+    let available_plot_height = height - 2.0 * margin;
+    let x_range = grid_map.max_x - grid_map.min_x;
+    let y_range = grid_map.max_y - grid_map.min_y;
+    let scale = (available_plot_width / x_range)
+        .min(available_plot_height / y_range)
+        .max(1.0);
+    let plot_width = x_range * scale;
+    let plot_height = y_range * scale;
+    let plot_left = margin;
+    let plot_top = margin + (available_plot_height - plot_height) / 2.0;
+    let legend_x = plot_left + plot_width + 36.0;
+    let legend_y = plot_top + 24.0;
 
-    // Convert matrix to Vec for gnuplot
-    let mut z_data: Vec<f64> = Vec::with_capacity(x_width * y_width);
-    for iy in 0..y_width {
-        for ix in 0..x_width {
-            z_data.push(grid_map.data[(ix, iy)]);
+    let to_svg_x = |x: f64| plot_left + (x - grid_map.min_x) * scale;
+    let to_svg_y = |y: f64| plot_top + plot_height - (y - grid_map.min_y) * scale;
+    let cell_size = grid_map.resolution * scale;
+    let origin_x = grid_map.min_x + grid_map.origin_ix as f64 * grid_map.resolution;
+    let origin_y = grid_map.min_y + grid_map.origin_iy as f64 * grid_map.resolution;
+
+    let mut svg = String::new();
+    svg.push_str(&format!(
+        "<?xml version='1.0' encoding='UTF-8'?>\n<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>\n"
+    ));
+    svg.push_str("<rect width='100%' height='100%' fill='white'/>\n");
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='38' text-anchor='middle' font-size='24' font-family='sans-serif' font-weight='700' fill='#111827'>Ray Casting Grid Map</text>\n",
+        width / 2.0
+    ));
+    svg.push_str(&format!(
+        "<rect x='{plot_left:.1}' y='{plot_top:.1}' width='{plot_width:.1}' height='{plot_height:.1}' fill='#fffdf7' stroke='#d6d3d1' stroke-width='2'/>\n"
+    ));
+
+    let x_tick_start = (grid_map.min_x / 10.0).ceil() as i32;
+    let x_tick_end = (grid_map.max_x / 10.0).floor() as i32;
+    for tick in x_tick_start..=x_tick_end {
+        let x = tick as f64 * 10.0;
+        let sx = to_svg_x(x);
+        svg.push_str(&format!(
+            "<line x1='{sx:.2}' y1='{plot_top:.2}' x2='{sx:.2}' y2='{:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_top + plot_height
+        ));
+        svg.push_str(&format!(
+            "<text x='{sx:.2}' y='{:.2}' text-anchor='middle' font-size='14' font-family='sans-serif' fill='#374151'>{x:.0}</text>\n",
+            plot_top + plot_height + 24.0
+        ));
+    }
+
+    let y_tick_start = (grid_map.min_y / 10.0).ceil() as i32;
+    let y_tick_end = (grid_map.max_y / 10.0).floor() as i32;
+    for tick in y_tick_start..=y_tick_end {
+        let y = tick as f64 * 10.0;
+        let sy = to_svg_y(y);
+        svg.push_str(&format!(
+            "<line x1='{plot_left:.2}' y1='{sy:.2}' x2='{:.2}' y2='{sy:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_left + plot_width
+        ));
+        svg.push_str(&format!(
+            "<text x='{:.2}' y='{:.2}' text-anchor='end' font-size='14' font-family='sans-serif' fill='#374151'>{y:.0}</text>\n",
+            plot_left - 10.0,
+            sy + 5.0
+        ));
+    }
+
+    for iy in 0..grid_map.y_width {
+        for ix in 0..grid_map.x_width {
+            let value = grid_map.data[(ix, iy)];
+            let x = grid_map.min_x + ix as f64 * grid_map.resolution;
+            let y = grid_map.min_y + iy as f64 * grid_map.resolution;
+            let sx = to_svg_x(x);
+            let sy = to_svg_y(y + grid_map.resolution);
+            let (fill, opacity) = occupancy_style(value);
+            svg.push_str(&format!(
+                "<rect x='{sx:.2}' y='{sy:.2}' width='{cell_size:.2}' height='{cell_size:.2}' fill='{fill}' fill-opacity='{opacity:.3}' stroke='none'/>\n"
+            ));
         }
     }
 
-    fig.axes2d()
-        .set_title("Ray Casting Grid Map", &[])
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(AutoOption::Fix(1.0))
-        .image(
-            z_data.iter().cloned(),
-            x_width,
-            y_width,
-            Some((
-                grid_map.min_x,
-                grid_map.min_y,
-                grid_map.max_x,
-                grid_map.max_y,
-            )),
-            &[PlotOption::Caption("Occupancy")],
-        )
-        .points(
-            ox,
-            oy,
-            &[
-                PlotOption::Caption("Obstacles"),
-                PlotOption::Color("red"),
-                gnuplot::PointSymbol('O'),
-                gnuplot::PointSize(1.0),
-            ],
-        );
+    for (x, y) in ox.iter().zip(oy.iter()) {
+        svg.push_str(&format!(
+            "<circle cx='{:.2}' cy='{:.2}' r='3.8' fill='#111827' stroke='white' stroke-width='1.2'/>\n",
+            to_svg_x(*x),
+            to_svg_y(*y)
+        ));
+    }
+    svg.push_str(&format!(
+        "<circle cx='{:.2}' cy='{:.2}' r='6' fill='#2563eb' stroke='white' stroke-width='2'/>\n",
+        to_svg_x(origin_x),
+        to_svg_y(origin_y)
+    ));
 
-    fig.show_and_keep_running().unwrap();
-    fig.save_to_svg("./img/mapping/ray_casting_grid_map.svg", 640, 480)
+    svg.push_str(&format!(
+        "<rect x='{legend_x:.1}' y='{legend_y:.1}' width='182' height='156' rx='18' fill='white' stroke='#d6d3d1'/>\n"
+    ));
+    let legend_rows = [
+        ("#b91c1c", "Occupied cell"),
+        ("#bfdbfe", "Free space"),
+        ("#f8fafc", "Unknown cell"),
+    ];
+    for (index, (color, label)) in legend_rows.iter().enumerate() {
+        let row_y = legend_y + 28.0 + index as f64 * 26.0;
+        svg.push_str(&format!(
+            "<rect x='{:.1}' y='{:.1}' width='22' height='14' rx='4' fill='{color}' stroke='#cbd5e1'/>\n",
+            legend_x + 14.0,
+            row_y - 10.0
+        ));
+        svg.push_str(&format!(
+            "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' fill='#111827'>{label}</text>\n",
+            legend_x + 48.0,
+            row_y + 1.0
+        ));
+    }
+    let obstacle_row_y = legend_y + 112.0;
+    svg.push_str(&format!(
+        "<circle cx='{:.1}' cy='{obstacle_row_y:.1}' r='4.0' fill='#111827' stroke='white' stroke-width='1.2'/>\n",
+        legend_x + 25.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' fill='#111827'>Obstacle points</text>\n",
+        legend_x + 48.0,
+        obstacle_row_y + 1.0
+    ));
+    let sensor_row_y = legend_y + 138.0;
+    svg.push_str(&format!(
+        "<circle cx='{:.1}' cy='{sensor_row_y:.1}' r='5.5' fill='#2563eb' stroke='white' stroke-width='1.5'/>\n",
+        legend_x + 25.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' fill='#111827'>Sensor origin</text>\n",
+        legend_x + 48.0,
+        sensor_row_y + 1.0
+    ));
+
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='15' font-family='sans-serif' font-weight='700' fill='#111827'>Occupancy bands</text>\n",
+        legend_x + 18.0,
+        legend_y + 190.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>1.0 obstacle</text>\n",
+        legend_x + 18.0,
+        legend_y + 216.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>0.5 free</text>\n",
+        legend_x + 18.0,
+        legend_y + 238.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>0.0 unknown</text>\n",
+        legend_x + 18.0,
+        legend_y + 260.0
+    ));
+
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827'>x [m]</text>\n",
+        plot_left + plot_width / 2.0,
+        plot_top + plot_height + 52.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827' transform='rotate(-90, {:.1}, {:.1})'>y [m]</text>\n",
+        plot_left - 48.0,
+        plot_top + plot_height / 2.0,
+        plot_left - 48.0,
+        plot_top + plot_height / 2.0
+    ));
+    svg.push_str("</svg>\n");
+
+    svg
+}
+
+fn save_ray_casting_grid_map_svg(
+    filename: &str,
+    grid_map: &RayCastingGridMap,
+    ox: &[f64],
+    oy: &[f64],
+) -> std::io::Result<()> {
+    let svg = build_ray_casting_grid_map_svg(grid_map, ox, oy);
+    let mut file = File::create(filename)?;
+    file.write_all(svg.as_bytes())?;
+    Ok(())
+}
+
+/// Draw heatmap of the grid map
+fn draw_heatmap(grid_map: &RayCastingGridMap, ox: &[f64], oy: &[f64]) {
+    save_ray_casting_grid_map_svg("./img/mapping/ray_casting_grid_map.svg", grid_map, ox, oy)
         .unwrap();
     println!("Plot saved to ./img/mapping/ray_casting_grid_map.svg");
 }
@@ -292,4 +449,20 @@ fn main() {
     draw_heatmap(&grid_map, &ox, &oy);
 
     println!("Done!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ray_casting_svg_has_white_background() {
+        let grid_map = RayCastingGridMap::new(&[-1.0, 1.0], &[0.0, 0.0], 1.0, PI / 4.0);
+        let svg = build_ray_casting_grid_map_svg(&grid_map, &[-1.0, 1.0], &[0.0, 0.0]);
+
+        assert!(svg.contains("<rect width='100%' height='100%' fill='white'/>"));
+        assert!(svg.contains("Ray Casting Grid Map"));
+        assert!(svg.contains("Occupied cell"));
+        assert!(svg.contains("Sensor origin"));
+    }
 }
