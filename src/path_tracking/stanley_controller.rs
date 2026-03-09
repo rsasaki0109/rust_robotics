@@ -7,8 +7,8 @@
 //!     - [Stanley: The robot that won the DARPA grand challenge](http://isl.ecst.csuchico.edu/DOCS/darpa2005/DARPA%202005%20Stanley.pdf)
 //!     - [Autonomous Automobile Path Tracking](https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomous_Automobile_Path_Tracking.pdf)
 
+use crate::common::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 use std::f64::consts::PI;
-use crate::common::{Point2D, Path2D, State2D, ControlInput, PathTracker};
 
 /// Vehicle state for Stanley Controller
 #[derive(Debug, Clone, Copy)]
@@ -22,7 +22,13 @@ pub struct VehicleState {
 
 impl VehicleState {
     pub fn new(x: f64, y: f64, yaw: f64, v: f64, wheelbase: f64) -> Self {
-        VehicleState { x, y, yaw, v, wheelbase }
+        VehicleState {
+            x,
+            y,
+            yaw,
+            v,
+            wheelbase,
+        }
     }
 
     pub fn update(&mut self, a: f64, delta: f64, dt: f64) {
@@ -172,8 +178,8 @@ impl StanleyController {
         let target_point = &self.path.points[min_idx];
         let diff_x = fx - target_point.x;
         let diff_y = fy - target_point.y;
-        let error_front_axle = -(state.yaw + 0.5 * PI).cos() * diff_x
-            - (state.yaw + 0.5 * PI).sin() * diff_y;
+        let error_front_axle =
+            -(state.yaw + 0.5 * PI).cos() * diff_x - (state.yaw + 0.5 * PI).sin() * diff_y;
 
         (min_idx, error_front_axle)
     }
@@ -214,7 +220,12 @@ impl StanleyController {
     }
 
     /// Legacy planning interface
-    pub fn planning(&mut self, waypoints: Vec<(f64, f64)>, target_speed: f64, ds: f64) -> Option<Vec<(f64, f64)>> {
+    pub fn planning(
+        &mut self,
+        waypoints: Vec<(f64, f64)>,
+        target_speed: f64,
+        ds: f64,
+    ) -> Option<Vec<(f64, f64)>> {
         if waypoints.len() < 2 {
             return None;
         }
@@ -226,7 +237,10 @@ impl StanleyController {
 
         // Set path
         let path = Path2D::from_points(
-            cx.iter().zip(cy.iter()).map(|(&x, &y)| Point2D::new(x, y)).collect()
+            cx.iter()
+                .zip(cy.iter())
+                .map(|(&x, &y)| Point2D::new(x, y))
+                .collect(),
         );
         self.set_path_with_yaw(path, cyaw);
 
@@ -298,7 +312,7 @@ impl PathTracker for StanleyController {
 
 // Cubic spline helper functions for legacy interface
 
-fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> SplineCourse {
     let sp = CubicSpline2D::new(x, y);
     let mut s = 0.0;
     let mut course_x = Vec::new();
@@ -331,6 +345,8 @@ struct CubicSpline {
     x: Vec<f64>,
 }
 
+type SplineCourse = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 impl CubicSpline {
     fn new(x: &[f64], y: &[f64]) -> Self {
         let n = x.len();
@@ -344,9 +360,7 @@ impl CubicSpline {
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
 
-        for i in 0..n {
-            a[i] = y[i];
-        }
+        a[..n].copy_from_slice(&y[..n]);
 
         let mut alpha = vec![0.0; n - 1];
         for i in 1..n - 1 {
@@ -369,7 +383,13 @@ impl CubicSpline {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline { a, b, c, d, x: x.to_vec() }
+        CubicSpline {
+            a,
+            b,
+            c,
+            d,
+            x: x.to_vec(),
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -505,14 +525,10 @@ mod tests {
     #[test]
     fn test_stanley_planning() {
         let mut controller = StanleyController::with_params(0.5, 2.9);
-        let waypoints = vec![
-            (0.0, 0.0),
-            (50.0, 0.0),
-            (100.0, 0.0),
-        ];
+        let waypoints = vec![(0.0, 0.0), (50.0, 0.0), (100.0, 0.0)];
 
         let result = controller.planning(waypoints, 5.0, 0.5);
         assert!(result.is_some());
-        assert!(result.unwrap().len() > 0);
+        assert!(!result.unwrap().is_empty());
     }
 }

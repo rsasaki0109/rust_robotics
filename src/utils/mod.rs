@@ -6,4 +6,4 @@ pub mod visualization;
 
 pub use grid_map::*;
 pub use grid_map_planner::*;
-pub use visualization::{Visualizer, PathStyle, PointStyle, colors};
+pub use visualization::{colors, PathStyle, PointStyle, Visualizer};

@@ -1,11 +1,13 @@
+#![allow(dead_code, clippy::too_many_arguments)]
+
 // Histogram Filter 2D Localization
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
+use gnuplot::{AxesCommon, Caption, Color, Figure};
 use nalgebra::{DMatrix, Vector2, Vector4};
 use rand_distr::{Distribution, Normal};
-use gnuplot::{Figure, Caption, Color, AxesCommon};
 
 // Simulation parameters
 const DT: f64 = 0.1; // time step [s]
@@ -130,8 +132,16 @@ impl HistogramFilter {
     }
 
     /// Create histogram filter with initial position
-    fn new_with_initial_pos(min_x: f64, min_y: f64, max_x: f64, max_y: f64, resolution: f64,
-                             init_x: f64, init_y: f64, init_std: f64) -> Self {
+    fn new_with_initial_pos(
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+        resolution: f64,
+        init_x: f64,
+        init_y: f64,
+        init_std: f64,
+    ) -> Self {
         let mut hf = HistogramFilter::new(min_x, min_y, max_x, max_y, resolution);
 
         // Set Gaussian distribution around initial position
@@ -183,8 +193,7 @@ impl HistogramFilter {
                 let nix = ix as i32 + shift_x;
                 let niy = iy as i32 + shift_y;
 
-                if nix >= 0 && nix < x_width as i32 &&
-                   niy >= 0 && niy < y_width as i32 {
+                if nix >= 0 && nix < x_width as i32 && niy >= 0 && niy < y_width as i32 {
                     new_data[(nix as usize, niy as usize)] = old_data[(ix, iy)];
                 }
             }
@@ -229,7 +238,8 @@ impl HistogramFilter {
                         let nj = iy as i32 + kj as i32 - center;
 
                         if ni >= 0 && ni < x_width as i32 && nj >= 0 && nj < y_width as i32 {
-                            sum += self.grid_map.data[(ni as usize, nj as usize)] * kernel[(ki, kj)];
+                            sum +=
+                                self.grid_map.data[(ni as usize, nj as usize)] * kernel[(ki, kj)];
                         }
                     }
                 }
@@ -242,7 +252,7 @@ impl HistogramFilter {
     }
 
     /// Observation update: multiply grid probabilities by observation likelihoods
-    fn observation_update(&mut self, z: &[(f64, f64, f64)], rfid: &[(f64, f64)]) {
+    fn observation_update(&mut self, z: &[(f64, f64, f64)], _rfid: &[(f64, f64)]) {
         for (z_d, z_id_x, z_id_y) in z {
             for ix in 0..self.grid_map.x_width {
                 for iy in 0..self.grid_map.y_width {
@@ -325,7 +335,11 @@ fn motion_model(x: Vector4<f64>, u: Vector2<f64>, dt: f64) -> Vector4<f64> {
 }
 
 /// Get observations from RFID landmarks
-fn get_observations(x_true: &Vector4<f64>, rfid: &[(f64, f64)], normal: &Normal<f64>) -> Vec<(f64, f64, f64)> {
+fn get_observations(
+    x_true: &Vector4<f64>,
+    rfid: &[(f64, f64)],
+    normal: &Normal<f64>,
+) -> Vec<(f64, f64, f64)> {
     let mut z = Vec::new();
 
     for (lx, ly) in rfid {
@@ -345,20 +359,21 @@ fn main() {
     println!("Histogram Filter 2D Localization start!");
 
     // RFID landmark positions [x, y]
-    let rfid: Vec<(f64, f64)> = vec![
-        (10.0, 0.0),
-        (10.0, 10.0),
-        (0.0, 15.0),
-        (-5.0, 20.0),
-    ];
+    let rfid: Vec<(f64, f64)> = vec![(10.0, 0.0), (10.0, 10.0), (0.0, 15.0), (-5.0, 20.0)];
 
     // Grid area (matching Python version: -15 to 15 for x, -5 to 25 for y)
     let area = (-15.0, -5.0, 15.0, 25.0); // (min_x, min_y, max_x, max_y)
 
     // Initialize histogram filter with initial position at origin
     let mut hf = HistogramFilter::new_with_initial_pos(
-        area.0, area.1, area.2, area.3, XY_RESOLUTION,
-        0.0, 0.0, 1.0  // initial position (x, y) and initial standard deviation
+        area.0,
+        area.1,
+        area.2,
+        area.3,
+        XY_RESOLUTION,
+        0.0,
+        0.0,
+        1.0, // initial position (x, y) and initial standard deviation
     );
 
     // State: [x, y, yaw, v]
@@ -423,7 +438,16 @@ fn main() {
                 .set_y_label("y [m]", &[])
                 .set_x_range(gnuplot::Fix(area.0 - 2.0), gnuplot::Fix(area.2 + 2.0))
                 .set_y_range(gnuplot::Fix(area.1 - 2.0), gnuplot::Fix(area.3 + 2.0))
-                .points(&rfid_x, &rfid_y, &[Caption("RFID"), Color("black"), gnuplot::PointSymbol('O'), gnuplot::PointSize(2.0)])
+                .points(
+                    &rfid_x,
+                    &rfid_y,
+                    &[
+                        Caption("RFID"),
+                        Color("black"),
+                        gnuplot::PointSymbol('O'),
+                        gnuplot::PointSize(2.0),
+                    ],
+                )
                 .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
                 .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")]);
 
@@ -459,13 +483,28 @@ fn main() {
             heatmap_data.iter(),
             x_width,
             y_width,
-            Some((min_x, min_y, min_x + x_width as f64 * resolution, min_y + y_width as f64 * resolution)),
+            Some((
+                min_x,
+                min_y,
+                min_x + x_width as f64 * resolution,
+                min_y + y_width as f64 * resolution,
+            )),
             &[],
         )
-        .points(&rfid_x, &rfid_y, &[Caption("RFID"), Color("black"), gnuplot::PointSymbol('O'), gnuplot::PointSize(2.0)])
+        .points(
+            &rfid_x,
+            &rfid_y,
+            &[
+                Caption("RFID"),
+                Color("black"),
+                gnuplot::PointSymbol('O'),
+                gnuplot::PointSize(2.0),
+            ],
+        )
         .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
         .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("orange")]);
 
-    fig.save_to_svg("./img/localization/histogram_filter.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/localization/histogram_filter.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/localization/histogram_filter.svg");
 }

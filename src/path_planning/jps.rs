@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_if)]
+
 //! Jump Point Search (JPS) path planning algorithm
 //!
 //! JPS is an optimization of A* for uniform-cost grids that reduces the
@@ -63,7 +65,6 @@ struct PriorityNode {
     cost: f64,
     priority: f64,
     index: usize,
-    direction: Option<Direction>,
 }
 
 impl Eq for PriorityNode {}
@@ -169,14 +170,7 @@ impl JPSPlanner {
     }
 
     /// Jump in a given direction from (x, y) until we find a jump point or hit an obstacle
-    fn jump(
-        &self,
-        x: i32,
-        y: i32,
-        dir: Direction,
-        goal_x: i32,
-        goal_y: i32,
-    ) -> Option<(i32, i32)> {
+    fn jump(&self, x: i32, y: i32, dir: Direction, goal_x: i32, goal_y: i32) -> Option<(i32, i32)> {
         let nx = x + dir.dx;
         let ny = y + dir.dy;
 
@@ -468,7 +462,6 @@ impl PathPlanner for JPSPlanner {
             cost: 0.0,
             priority: self.calc_heuristic(start_x, start_y, goal_x, goal_y),
             index: start_index,
-            direction: None,
         });
 
         while let Some(current) = open_set.pop() {
@@ -516,7 +509,6 @@ impl PathPlanner for JPSPlanner {
                     cost: new_cost,
                     priority,
                     index: new_index,
-                    direction: Some(dir),
                 });
             }
         }
@@ -591,7 +583,7 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
 
         // Check that path starts near start and ends near goal
         let first = &path.points[0];
@@ -614,7 +606,7 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
     }
 
     #[test]
@@ -626,7 +618,7 @@ mod tests {
         assert!(result.is_some());
 
         let (rx, ry) = result.unwrap();
-        assert!(rx.len() > 0);
+        assert!(!rx.is_empty());
         assert_eq!(rx.len(), ry.len());
     }
 
@@ -694,6 +686,10 @@ mod tests {
         assert!(path.len() >= 2, "Path should have at least start and goal");
         // Verify path is roughly diagonal (total length should be close to sqrt(2) * 16 ≈ 22.6)
         let total_len = path.total_length();
-        assert!(total_len < 30.0, "Path should be efficient, got length {}", total_len);
+        assert!(
+            total_len < 30.0,
+            "Path should be efficient, got length {}",
+            total_len
+        );
     }
 }

@@ -3,8 +3,8 @@
 //! Implements state estimation using the Extended Kalman Filter algorithm
 //! for robot localization with nonlinear motion and observation models.
 
+use crate::common::{RoboticsError, StateEstimator};
 use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
-use crate::common::{StateEstimator, RoboticsError};
 
 /// State representation for EKF (x, y, yaw, velocity)
 pub type EKFState = Vector4<f64>;
@@ -91,17 +91,9 @@ impl EKFLocalizer {
     fn motion_model(x: &EKFState, u: &EKFControl, dt: f64) -> EKFState {
         let yaw = x[2];
         let f = Matrix4::new(
-            1., 0., 0., 0.,
-            0., 1., 0., 0.,
-            0., 0., 1., 0.,
-            0., 0., 0., 1.,
+            1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.,
         );
-        let b = Matrix4x2::new(
-            dt * yaw.cos(), 0.,
-            dt * yaw.sin(), 0.,
-            0., dt,
-            1., 0.,
-        );
+        let b = Matrix4x2::new(dt * yaw.cos(), 0., dt * yaw.sin(), 0., 0., dt, 1., 0.);
         f * x + b * u
     }
 
@@ -110,28 +102,34 @@ impl EKFLocalizer {
         let yaw = x[2];
         let v = u[0];
         Matrix4::new(
-            1., 0., -dt * v * yaw.sin(), dt * yaw.cos(),
-            0., 1., dt * v * yaw.cos(), dt * yaw.sin(),
-            0., 0., 1., 0.,
-            0., 0., 0., 1.,
+            1.,
+            0.,
+            -dt * v * yaw.sin(),
+            dt * yaw.cos(),
+            0.,
+            1.,
+            dt * v * yaw.cos(),
+            dt * yaw.sin(),
+            0.,
+            0.,
+            1.,
+            0.,
+            0.,
+            0.,
+            0.,
+            1.,
         )
     }
 
     /// Observation model: predict measurement from state
     fn observation_model(x: &EKFState) -> EKFMeasurement {
-        let h = Matrix2x4::new(
-            1., 0., 0., 0.,
-            0., 1., 0., 0.,
-        );
+        let h = Matrix2x4::new(1., 0., 0., 0., 0., 1., 0., 0.);
         h * x
     }
 
     /// Jacobian of observation model
     fn jacobian_h() -> Matrix2x4<f64> {
-        Matrix2x4::new(
-            1., 0., 0., 0.,
-            0., 1., 0., 0.,
-        )
+        Matrix2x4::new(1., 0., 0., 0., 0., 1., 0., 0.)
     }
 
     /// Full EKF estimation step (predict + update)
@@ -152,8 +150,9 @@ impl EKFLocalizer {
         let y = measurement - z_pred;
         let s = j_h * p_pred * j_h.transpose() + self.config.r;
 
-        let s_inv = s.try_inverse()
-            .ok_or_else(|| RoboticsError::NumericalError("Failed to invert S matrix".to_string()))?;
+        let s_inv = s.try_inverse().ok_or_else(|| {
+            RoboticsError::NumericalError("Failed to invert S matrix".to_string())
+        })?;
 
         let k = p_pred * j_h.transpose() * s_inv;
         self.state = x_pred + k * y;
@@ -208,7 +207,7 @@ impl StateEstimator for EKFLocalizer {
 
         if let Some(s_inv) = s.try_inverse() {
             let k = self.covariance * j_h.transpose() * s_inv;
-            self.state = self.state + k * y;
+            self.state += k * y;
             self.covariance = (Matrix4::identity() - k * j_h) * self.covariance;
         }
     }

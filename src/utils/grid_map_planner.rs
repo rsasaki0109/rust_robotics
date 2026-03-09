@@ -14,7 +14,12 @@ pub struct Node {
 
 impl Node {
     pub fn new(x: i32, y: i32, cost: f64, parent_index: Option<usize>) -> Self {
-        Node { x, y, cost, parent_index }
+        Node {
+            x,
+            y,
+            cost,
+            parent_index,
+        }
     }
 }
 
@@ -34,12 +39,7 @@ pub fn get_motion_model_8() -> Vec<(i32, i32, f64)> {
 
 /// 4-connected motion model (dx, dy, cost)
 pub fn get_motion_model_4() -> Vec<(i32, i32, f64)> {
-    vec![
-        (1, 0, 1.0),
-        (0, 1, 1.0),
-        (-1, 0, 1.0),
-        (0, -1, 1.0),
-    ]
+    vec![(1, 0, 1.0), (0, 1, 1.0), (-1, 0, 1.0), (0, -1, 1.0)]
 }
 
 /// Occupancy grid map for path planning
