@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::too_many_arguments)]
 
 // Histogram Filter 2D Localization
 // author: Atsushi Sakai (@Atsushi_twi)

@@ -322,6 +322,6 @@ mod tests {
 
         let result = controller.planning(waypoints, 5.0);
         assert!(result.is_some());
-        assert!(result.unwrap().len() > 0);
+        assert!(!result.unwrap().is_empty());
     }
 }

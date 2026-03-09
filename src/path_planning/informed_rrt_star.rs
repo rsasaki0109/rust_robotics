@@ -290,9 +290,8 @@ impl InformedRRTStar {
         }
 
         let l2 = (w[0] - v[0]).powi(2) + (w[1] - v[1]).powi(2);
-        let t = (((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2)
-            .max(0.0)
-            .min(1.0);
+        let t =
+            (((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2).clamp(0.0, 1.0);
         let projection = [v[0] + t * (w[0] - v[0]), v[1] + t * (w[1] - v[1])];
         (p[0] - projection[0]).powi(2) + (p[1] - projection[1]).powi(2)
     }

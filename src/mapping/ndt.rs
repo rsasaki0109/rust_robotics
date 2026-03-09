@@ -325,7 +325,7 @@ fn main() {
         // 2) For each grid cell cluster, plot them in blue "x"
         //    We stored ndt_map.grid_index_map => index -> Vec<usize>
         //    We'll gather them in a separate pass so they can be plotted group by group.
-        for (_grid_idx, point_inds) in &ndt_map.grid_index_map {
+        for point_inds in ndt_map.grid_index_map.values() {
             if point_inds.is_empty() {
                 continue;
             }

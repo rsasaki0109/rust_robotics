@@ -327,16 +327,14 @@ fn main() {
 
     // 障害物の位置（境界）
     let mut ox: Vec<i32> = (0..MAP_SIZE)
-        .map(|x| x)
-        .chain(std::iter::repeat(MAP_SIZE).take((MAP_SIZE + 1) as usize))
+        .chain(std::iter::repeat_n(MAP_SIZE, (MAP_SIZE + 1) as usize))
         .chain((0..=MAP_SIZE).rev())
-        .chain(std::iter::repeat(0).take((MAP_SIZE + 1) as usize))
+        .chain(std::iter::repeat_n(0, (MAP_SIZE + 1) as usize))
         .collect();
 
-    let mut oy: Vec<i32> = std::iter::repeat(0)
-        .take((MAP_SIZE + 1) as usize)
-        .chain((0..MAP_SIZE).map(|y| y))
-        .chain(std::iter::repeat(MAP_SIZE).take((MAP_SIZE + 1) as usize))
+    let mut oy: Vec<i32> = std::iter::repeat_n(0, (MAP_SIZE + 1) as usize)
+        .chain(0..MAP_SIZE)
+        .chain(std::iter::repeat_n(MAP_SIZE, (MAP_SIZE + 1) as usize))
         .chain((0..=MAP_SIZE).rev())
         .collect();
 

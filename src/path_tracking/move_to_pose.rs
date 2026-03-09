@@ -200,8 +200,8 @@ pub fn demo_move_to_pose() {
         let traj_x = path.x_coords();
         let traj_y = path.y_coords();
         axes.lines(&traj_x, &traj_y, &[Caption("Trajectory"), Color("green")]);
-        axes.points(&[start.x], &[start.y], &[Caption("Start"), Color("blue")]);
-        axes.points(&[goal.x], &[goal.y], &[Caption("Goal"), Color("red")]);
+        axes.points([start.x], [start.y], &[Caption("Start"), Color("blue")]);
+        axes.points([goal.x], [goal.y], &[Caption("Goal"), Color("red")]);
 
         let arrow_start_x = vec![start.x, start.x + start.yaw.cos()];
         let arrow_start_y = vec![start.y, start.y + start.yaw.sin()];
