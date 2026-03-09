@@ -1,16 +1,20 @@
-#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+#![allow(dead_code)]
 
 // Model Predictive Control (MPC) for path tracking
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 //
-// Note: This is a simplified MPC implementation without a QP solver.
-// Uses iterative linearization and gradient descent.
+// This version follows the PythonRobotics structure more closely:
+// - speed profile generation
+// - yaw smoothing
+// - iterative linear MPC around an operational point
+// - custom SVG output so the example works without gnuplot
 
-use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
-use nalgebra::{Matrix4, Matrix4x2, Vector2, Vector4};
+use nalgebra::{Matrix2, Matrix4, Matrix4x2, Vector2, Vector4};
 use std::f64::consts::PI;
+use std::fs::File;
+use std::io::Write;
 
 // Vehicle parameters
 const WB: f64 = 2.5; // wheelbase [m]
@@ -20,23 +24,32 @@ const MAX_SPEED: f64 = 55.0 / 3.6; // max speed [m/s]
 const MIN_SPEED: f64 = -20.0 / 3.6; // min speed (reverse) [m/s]
 const MAX_ACCEL: f64 = 1.0; // max acceleration [m/ss]
 
-// MPC parameters
+// MPC parameters, aligned with PythonRobotics
 const T: usize = 5; // prediction horizon
 const DT: f64 = 0.2; // time step [s]
+const TARGET_SPEED: f64 = 10.0 / 3.6; // [m/s]
+const GOAL_DIS: f64 = 1.5; // goal distance threshold
+const STOP_SPEED: f64 = 0.5 / 3.6; // stop speed threshold
+const MAX_ITER: usize = 3; // iterative linear MPC outer iterations
+const DU_TH: f64 = 0.1; // outer-loop convergence threshold
+const N_IND_SEARCH: usize = 10; // nearest-index search window
+const PATH_RESOLUTION: f64 = 0.5; // [m]
+const MAX_SIM_STEPS: usize = 2000;
+
+// Inner projected-gradient solver settings
+const QP_MAX_ITERS: usize = 40;
+const LINE_SEARCH_ITERS: usize = 8;
+const GRAD_TOL: f64 = 1.0e-3;
+const COST_TOL: f64 = 1.0e-5;
 
 // Cost weights
-const Q: [f64; 4] = [1.0, 1.0, 0.5, 0.5]; // state cost [x, y, v, yaw]
-const R: [f64; 2] = [0.01, 0.01]; // control cost [accel, steer]
-const RD: [f64; 2] = [0.01, 1.0]; // control rate cost
-
-const TARGET_SPEED: f64 = 10.0 / 3.6; // target speed [m/s]
-const GOAL_DIS: f64 = 1.5; // goal distance threshold
-const MAX_ITER: usize = 3; // max MPC iterations
-
-const SHOW_ANIMATION: bool = false;
+const Q: [f64; 4] = [1.0, 1.0, 0.5, 0.5];
+const QF: [f64; 4] = Q;
+const R: [f64; 2] = [0.01, 0.01];
+const RD: [f64; 2] = [0.01, 1.0];
 
 /// Vehicle state
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct State {
     x: f64,
     y: f64,
@@ -46,14 +59,13 @@ struct State {
 
 impl State {
     fn new(x: f64, y: f64, v: f64, yaw: f64) -> Self {
-        State { x, y, v, yaw }
+        Self { x, y, v, yaw }
     }
 
     fn to_vector(self) -> Vector4<f64> {
         Vector4::new(self.x, self.y, self.v, self.yaw)
     }
 
-    /// Update state using bicycle model
     fn update(&mut self, accel: f64, steer: f64) {
         let steer = steer.clamp(-MAX_STEER, MAX_STEER);
 
@@ -66,49 +78,87 @@ impl State {
     }
 }
 
-/// Normalize angle to [-pi, pi]
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle % (2.0 * PI);
-    if a > PI {
-        a -= 2.0 * PI;
-    } else if a < -PI {
-        a += 2.0 * PI;
-    }
-    a
+#[derive(Debug)]
+struct MpcResult {
+    controls: Vec<Vector2<f64>>,
+    predicted: Vec<Vector4<f64>>,
 }
 
-/// Calculate angle difference (handles wrap-around)
+#[derive(Debug)]
+struct SimulationResult {
+    cx: Vec<f64>,
+    cy: Vec<f64>,
+    hist_x: Vec<f64>,
+    hist_y: Vec<f64>,
+    predicted_x: Vec<f64>,
+    predicted_y: Vec<f64>,
+    goal: (f64, f64),
+    reached_goal: bool,
+    target_index: usize,
+    final_index: usize,
+    final_state: State,
+}
+
+fn normalize_angle(angle: f64) -> f64 {
+    let mut value = angle % (2.0 * PI);
+    if value > PI {
+        value -= 2.0 * PI;
+    } else if value < -PI {
+        value += 2.0 * PI;
+    }
+    value
+}
+
 fn angle_diff(a: f64, b: f64) -> f64 {
     normalize_angle(a - b)
 }
 
-/// Get linearized state-space matrices at operating point
+fn state_error(state: Vector4<f64>, reference: Vector4<f64>) -> Vector4<f64> {
+    let mut error = state - reference;
+    error[3] = angle_diff(state[3], reference[3]);
+    error
+}
+
+fn control_cost_weight() -> Matrix2<f64> {
+    Matrix2::from_diagonal(&Vector2::new(R[0], R[1]))
+}
+
+fn control_rate_weight() -> Matrix2<f64> {
+    Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1]))
+}
+
+fn state_cost_weight() -> Matrix4<f64> {
+    Matrix4::from_diagonal(&Vector4::new(Q[0], Q[1], Q[2], Q[3]))
+}
+
+fn terminal_cost_weight() -> Matrix4<f64> {
+    Matrix4::from_diagonal(&Vector4::new(QF[0], QF[1], QF[2], QF[3]))
+}
+
 fn get_linear_model_matrix(
     v: f64,
-    phi: f64,
-    delta: f64,
+    yaw: f64,
+    steer: f64,
 ) -> (Matrix4<f64>, Matrix4x2<f64>, Vector4<f64>) {
-    // A matrix (state transition)
     let a = Matrix4::new(
         1.0,
         0.0,
-        DT * phi.cos(),
-        -DT * v * phi.sin(),
+        DT * yaw.cos(),
+        -DT * v * yaw.sin(),
         0.0,
         1.0,
-        DT * phi.sin(),
-        DT * v * phi.cos(),
+        DT * yaw.sin(),
+        DT * v * yaw.cos(),
         0.0,
         0.0,
         1.0,
         0.0,
         0.0,
         0.0,
-        DT * delta.tan() / WB,
+        DT * steer.tan() / WB,
         1.0,
     );
 
-    // B matrix (control input)
     let b = Matrix4x2::new(
         0.0,
         0.0,
@@ -117,15 +167,14 @@ fn get_linear_model_matrix(
         DT,
         0.0,
         0.0,
-        DT * v / (WB * delta.cos().powi(2)),
+        DT * v / (WB * steer.cos().powi(2)),
     );
 
-    // C vector (constant term for linearization offset)
     let c = Vector4::new(
-        DT * v * phi.sin() * phi,
-        -DT * v * phi.cos() * phi,
+        DT * v * yaw.sin() * yaw,
+        -DT * v * yaw.cos() * yaw,
         0.0,
-        -DT * v * delta / (WB * delta.cos().powi(2)),
+        -DT * v * steer / (WB * steer.cos().powi(2)),
     );
 
     (a, b, c)
@@ -171,7 +220,7 @@ impl CubicSpline1D {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline1D {
+        Self {
             x: x.to_vec(),
             a,
             b,
@@ -220,7 +269,7 @@ impl CubicSpline2D {
         let sx = CubicSpline1D::new(&s, x);
         let sy = CubicSpline1D::new(&s, y);
 
-        CubicSpline2D { s, sx, sy }
+        Self { s, sx, sy }
     }
 
     fn calc_position(&self, s: f64) -> (f64, f64) {
@@ -234,271 +283,672 @@ impl CubicSpline2D {
     }
 }
 
-/// Calculate reference trajectory for MPC horizon
+fn smooth_yaw(yaw: &mut [f64]) {
+    for i in 0..yaw.len().saturating_sub(1) {
+        let mut dyaw = yaw[i + 1] - yaw[i];
+        while dyaw >= PI / 2.0 {
+            yaw[i + 1] -= 2.0 * PI;
+            dyaw = yaw[i + 1] - yaw[i];
+        }
+        while dyaw <= -PI / 2.0 {
+            yaw[i + 1] += 2.0 * PI;
+            dyaw = yaw[i + 1] - yaw[i];
+        }
+    }
+}
+
+fn calc_speed_profile(cx: &[f64], cy: &[f64], cyaw: &[f64], target_speed: f64) -> Vec<f64> {
+    let mut speed_profile = vec![target_speed; cx.len()];
+    let mut direction = 1.0;
+
+    for i in 0..cx.len().saturating_sub(1) {
+        let dx = cx[i + 1] - cx[i];
+        let dy = cy[i + 1] - cy[i];
+        let move_direction = dy.atan2(dx);
+
+        if dx.abs() > f64::EPSILON && dy.abs() > f64::EPSILON {
+            let dangle = angle_diff(move_direction, cyaw[i]).abs();
+            direction = if dangle >= PI / 4.0 { -1.0 } else { 1.0 };
+        }
+
+        speed_profile[i] = direction * target_speed;
+    }
+
+    if let Some(last) = speed_profile.last_mut() {
+        *last = 0.0;
+    }
+
+    speed_profile
+}
+
+fn calc_nearest_index(
+    state: &State,
+    cx: &[f64],
+    cy: &[f64],
+    cyaw: &[f64],
+    pind: usize,
+) -> (usize, f64) {
+    let start = pind.min(cx.len().saturating_sub(1));
+    let end = (start + N_IND_SEARCH).min(cx.len());
+
+    let mut best_index = start;
+    let mut best_distance_sq = f64::INFINITY;
+
+    for i in start..end {
+        let dx = state.x - cx[i];
+        let dy = state.y - cy[i];
+        let distance_sq = dx * dx + dy * dy;
+        if distance_sq < best_distance_sq {
+            best_distance_sq = distance_sq;
+            best_index = i;
+        }
+    }
+
+    let mut best_distance = best_distance_sq.sqrt();
+    let dxl = cx[best_index] - state.x;
+    let dyl = cy[best_index] - state.y;
+    let angle = angle_diff(cyaw[best_index], dyl.atan2(dxl));
+    if angle < 0.0 {
+        best_distance *= -1.0;
+    }
+
+    (best_index, best_distance)
+}
+
 fn calc_ref_trajectory(
     state: &State,
-    csp: &CubicSpline2D,
-    ref_s: &mut f64,
-) -> (Vec<Vector4<f64>>, Vec<f64>) {
-    let mut xref = Vec::with_capacity(T + 1);
-    let mut sref = Vec::with_capacity(T + 1);
-
-    // Find nearest point on path
-    let mut min_d = f64::INFINITY;
-    let mut best_s = *ref_s;
-    let ds = 0.1;
-    let mut s = (*ref_s - 5.0).max(0.0);
-    while s <= (*ref_s + 20.0).min(*csp.s.last().unwrap_or(&0.0)) {
-        let (px, py) = csp.calc_position(s);
-        let d = ((state.x - px).powi(2) + (state.y - py).powi(2)).sqrt();
-        if d < min_d {
-            min_d = d;
-            best_s = s;
-        }
-        s += ds;
-    }
-    *ref_s = best_s;
-
-    // Generate reference trajectory over horizon
-    let mut s = *ref_s;
-    for _ in 0..=T {
-        let (rx, ry) = csp.calc_position(s.min(*csp.s.last().unwrap_or(&0.0)));
-        let ryaw = csp.calc_yaw(s.min(*csp.s.last().unwrap_or(&0.0)));
-
-        xref.push(Vector4::new(rx, ry, TARGET_SPEED, ryaw));
-        sref.push(s);
-
-        s += TARGET_SPEED * DT;
+    cx: &[f64],
+    cy: &[f64],
+    cyaw: &[f64],
+    speed_profile: &[f64],
+    pind: usize,
+) -> (Vec<Vector4<f64>>, usize) {
+    let ncourse = cx.len();
+    let (mut ind, _) = calc_nearest_index(state, cx, cy, cyaw, pind);
+    if pind >= ind {
+        ind = pind;
     }
 
-    (xref, sref)
+    let mut xref = vec![Vector4::zeros(); T + 1];
+    xref[0] = Vector4::new(cx[ind], cy[ind], speed_profile[ind], cyaw[ind]);
+
+    let mut travel = 0.0;
+    for point in xref.iter_mut().take(T + 1).skip(1) {
+        travel += state.v.abs() * DT;
+        let dind = (travel / PATH_RESOLUTION).round() as usize;
+        let index = (ind + dind).min(ncourse - 1);
+        *point = Vector4::new(cx[index], cy[index], speed_profile[index], cyaw[index]);
+    }
+
+    (xref, ind)
 }
 
-/// Simplified MPC solver using gradient descent
-fn mpc_solve(state: &State, xref: &[Vector4<f64>], u_prev: &[Vector2<f64>]) -> Vec<Vector2<f64>> {
-    let mut u = u_prev.to_vec();
-    if u.len() < T {
-        u.resize(T, Vector2::zeros());
+fn predict_motion(state: State, controls: &[Vector2<f64>]) -> Vec<Vector4<f64>> {
+    let mut predicted = vec![Vector4::zeros(); T + 1];
+    predicted[0] = state.to_vector();
+
+    let mut current = state;
+    for (i, control) in controls.iter().enumerate().take(T) {
+        current.update(control[0], control[1]);
+        predicted[i + 1] = current.to_vector();
     }
 
-    let q_mat = Matrix4::from_diagonal(&Vector4::new(Q[0], Q[1], Q[2], Q[3]));
-    let r_mat = nalgebra::Matrix2::from_diagonal(&Vector2::new(R[0], R[1]));
+    predicted
+}
 
-    // Iterative optimization
+fn apply_control_constraints(controls: &mut [Vector2<f64>]) {
+    for i in 0..controls.len() {
+        controls[i][0] = controls[i][0].clamp(-MAX_ACCEL, MAX_ACCEL);
+        controls[i][1] = controls[i][1].clamp(-MAX_STEER, MAX_STEER);
+
+        if i > 0 {
+            let delta = controls[i][1] - controls[i - 1][1];
+            let max_delta = MAX_DSTEER * DT;
+            if delta.abs() > max_delta {
+                controls[i][1] = controls[i - 1][1] + max_delta * delta.signum();
+            }
+        }
+    }
+}
+
+type LinearizedRollout = (
+    Vec<Vector4<f64>>,
+    Vec<Matrix4<f64>>,
+    Vec<Matrix4x2<f64>>,
+    Vec<Vector4<f64>>,
+);
+
+fn linearized_rollout(
+    x0: &State,
+    xbar: &[Vector4<f64>],
+    controls: &[Vector2<f64>],
+) -> LinearizedRollout {
+    let mut x = vec![Vector4::zeros(); T + 1];
+    let mut a_seq = Vec::with_capacity(T);
+    let mut b_seq = Vec::with_capacity(T);
+    let mut c_seq = Vec::with_capacity(T);
+
+    x[0] = x0.to_vector();
+    for t in 0..T {
+        let (a, b, c) = get_linear_model_matrix(xbar[t][2], xbar[t][3], 0.0);
+        let mut next = a * x[t] + b * controls[t] + c;
+        next[3] = normalize_angle(next[3]);
+
+        a_seq.push(a);
+        b_seq.push(b);
+        c_seq.push(c);
+        x[t + 1] = next;
+    }
+
+    (x, a_seq, b_seq, c_seq)
+}
+
+fn compute_cost(x: &[Vector4<f64>], xref: &[Vector4<f64>], controls: &[Vector2<f64>]) -> f64 {
+    let q = state_cost_weight();
+    let qf = terminal_cost_weight();
+    let r = control_cost_weight();
+    let rd = control_rate_weight();
+
+    let mut cost = 0.0;
+    for t in 0..T {
+        cost += controls[t].dot(&(r * controls[t]));
+        if t != 0 {
+            let err = state_error(x[t], xref[t]);
+            cost += err.dot(&(q * err));
+        }
+        if t < T - 1 {
+            let du = controls[t + 1] - controls[t];
+            cost += du.dot(&(rd * du));
+        }
+    }
+
+    let terminal_error = state_error(x[T], xref[T]);
+    cost + terminal_error.dot(&(qf * terminal_error))
+}
+
+fn optimize_linearized_controls(
+    xref: &[Vector4<f64>],
+    xbar: &[Vector4<f64>],
+    state: &State,
+    initial_controls: &[Vector2<f64>],
+) -> Vec<Vector2<f64>> {
+    let q = state_cost_weight();
+    let qf = terminal_cost_weight();
+    let r = control_cost_weight();
+    let rd = control_rate_weight();
+
+    let mut controls = initial_controls.to_vec();
+    controls.resize(T, Vector2::zeros());
+    apply_control_constraints(&mut controls);
+
+    let mut previous_cost = f64::INFINITY;
+
+    for _ in 0..QP_MAX_ITERS {
+        let (x, a_seq, b_seq, _) = linearized_rollout(state, xbar, &controls);
+        let current_cost = compute_cost(&x, xref, &controls);
+
+        let mut gradients = [Vector2::zeros(); T];
+        let mut lambda = (qf * state_error(x[T], xref[T])) * 2.0;
+
+        for t in (0..T).rev() {
+            let mut grad = (r * controls[t]) * 2.0 + b_seq[t].transpose() * lambda;
+
+            if t > 0 {
+                grad += (rd * (controls[t] - controls[t - 1])) * 2.0;
+            }
+            if t < T - 1 {
+                grad -= (rd * (controls[t + 1] - controls[t])) * 2.0;
+            }
+
+            gradients[t] = grad;
+
+            let lx = if t == 0 {
+                Vector4::zeros()
+            } else {
+                (q * state_error(x[t], xref[t])) * 2.0
+            };
+            lambda = lx + a_seq[t].transpose() * lambda;
+        }
+
+        let gradient_norm = gradients
+            .iter()
+            .map(Vector2::norm_squared)
+            .sum::<f64>()
+            .sqrt();
+
+        if gradient_norm <= GRAD_TOL || (previous_cost - current_cost).abs() <= COST_TOL {
+            break;
+        }
+
+        previous_cost = current_cost;
+        let current_controls = controls.clone();
+        let mut step = 0.25;
+        let mut improved = false;
+
+        for _ in 0..LINE_SEARCH_ITERS {
+            let mut candidate = current_controls.clone();
+            for t in 0..T {
+                candidate[t] -= gradients[t] * step;
+            }
+            apply_control_constraints(&mut candidate);
+
+            let (candidate_x, _, _, _) = linearized_rollout(state, xbar, &candidate);
+            let candidate_cost = compute_cost(&candidate_x, xref, &candidate);
+            if candidate_cost < current_cost {
+                controls = candidate;
+                improved = true;
+                break;
+            }
+
+            step *= 0.5;
+        }
+
+        if !improved {
+            break;
+        }
+    }
+
+    controls
+}
+
+fn iterative_linear_mpc_control(
+    xref: &[Vector4<f64>],
+    state: &State,
+    warm_start: &[Vector2<f64>],
+) -> MpcResult {
+    let mut controls = warm_start.to_vec();
+    controls.resize(T, Vector2::zeros());
+    apply_control_constraints(&mut controls);
+
+    let mut predicted = predict_motion(*state, &controls);
     for _ in 0..MAX_ITER {
-        // Forward simulation
-        let mut x_pred = vec![state.to_vector()];
-        for i in 0..T {
-            let xi = x_pred[i];
-            let ui = u[i];
+        let previous_controls = controls.clone();
+        controls = optimize_linearized_controls(xref, &predicted, state, &controls);
+        predicted = predict_motion(*state, &controls);
 
-            let (a, b, c) = get_linear_model_matrix(xi[2], xi[3], ui[1]);
-            let mut x_next = a * xi + b * ui + c;
-            // Normalize yaw angle in prediction
-            x_next[3] = normalize_angle(x_next[3]);
-            x_pred.push(x_next);
-        }
+        let du = controls
+            .iter()
+            .zip(previous_controls.iter())
+            .map(|(current, previous)| {
+                (current[0] - previous[0]).abs() + (current[1] - previous[1]).abs()
+            })
+            .sum::<f64>();
 
-        // Backward pass - compute gradients
-        let mut du = [Vector2::zeros(); T];
-
-        for i in 0..T {
-            // Calculate state error with proper angle wrapping for yaw
-            let mut x_error = x_pred[i + 1] - xref[i + 1];
-            // Handle yaw angle wrap-around (index 3 is yaw)
-            x_error[3] = angle_diff(x_pred[i + 1][3], xref[i + 1][3]);
-
-            let (_, b, _) = get_linear_model_matrix(x_pred[i][2], x_pred[i][3], u[i][1]);
-
-            // Gradient of cost w.r.t. control
-            let grad_state = b.transpose() * q_mat * x_error;
-            let grad_control = r_mat * u[i];
-
-            // Control rate penalty
-            let mut grad_rate = Vector2::zeros();
-            if i > 0 {
-                grad_rate += nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1]))
-                    * (u[i] - u[i - 1]);
-            }
-            if i < T - 1 {
-                grad_rate -= nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1]))
-                    * (u[i + 1] - u[i]);
-            }
-
-            du[i] = grad_state + grad_control + grad_rate;
-        }
-
-        // Update controls with step size
-        let alpha = 0.1;
-        for i in 0..T {
-            u[i] -= alpha * du[i];
-
-            // Apply constraints
-            u[i][0] = u[i][0].clamp(-MAX_ACCEL, MAX_ACCEL);
-            u[i][1] = u[i][1].clamp(-MAX_STEER, MAX_STEER);
-
-            // Steering rate constraint
-            if i > 0 {
-                let d_steer = u[i][1] - u[i - 1][1];
-                if d_steer.abs() > MAX_DSTEER * DT {
-                    u[i][1] = u[i - 1][1] + MAX_DSTEER * DT * d_steer.signum();
-                }
-            }
+        if du <= DU_TH {
+            break;
         }
     }
 
-    u
+    MpcResult {
+        controls,
+        predicted,
+    }
 }
 
-fn main() {
-    println!("MPC Path Tracking start!");
+fn check_goal(state: &State, goal: (f64, f64), target_index: usize, final_index: usize) -> bool {
+    let dx = state.x - goal.0;
+    let dy = state.y - goal.1;
+    let distance = (dx * dx + dy * dy).sqrt();
 
-    // Reference path waypoints
-    let ax = vec![0.0, 60.0, 125.0, 50.0, 75.0, 35.0, -10.0];
-    let ay = vec![0.0, 0.0, 50.0, 65.0, 30.0, -10.0, -20.0];
+    let near_goal = distance <= GOAL_DIS;
+    let near_end = final_index.abs_diff(target_index) < 5;
+    let stopped = state.v.abs() <= STOP_SPEED;
 
-    // Create reference path
-    let csp = CubicSpline2D::new(&ax, &ay);
+    near_goal && near_end && stopped
+}
 
-    // Generate dense path for visualization
+fn generate_reference_course(ax: &[f64], ay: &[f64]) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let csp = CubicSpline2D::new(ax, ay);
+    let s_max = *csp.s.last().unwrap_or(&0.0);
+
     let mut cx = Vec::new();
     let mut cy = Vec::new();
     let mut cyaw = Vec::new();
+
     let mut s = 0.0;
-    let s_max = *csp.s.last().unwrap_or(&0.0);
     while s <= s_max {
         let (x, y) = csp.calc_position(s);
         cx.push(x);
         cy.push(y);
         cyaw.push(csp.calc_yaw(s));
-        s += 0.1;
+        s += PATH_RESOLUTION;
     }
 
-    // Initial state
+    if cx.is_empty() || cy.is_empty() || cyaw.is_empty() {
+        cx.push(ax[0]);
+        cy.push(ay[0]);
+        cyaw.push(0.0);
+    }
+
+    smooth_yaw(&mut cyaw);
+    (cx, cy, cyaw)
+}
+
+fn run_mpc_simulation() -> SimulationResult {
+    let ax = vec![0.0, 60.0, 125.0, 50.0, 75.0, 35.0, -10.0];
+    let ay = vec![0.0, 0.0, 50.0, 65.0, 30.0, -10.0, -20.0];
+
+    let (cx, cy, cyaw) = generate_reference_course(&ax, &ay);
+    let speed_profile = calc_speed_profile(&cx, &cy, &cyaw, TARGET_SPEED);
+
     let mut state = State::new(cx[0], cy[0], 0.0, cyaw[0]);
-    let mut ref_s = 0.0;
+    if state.yaw - cyaw[0] >= PI {
+        state.yaw -= 2.0 * PI;
+    } else if state.yaw - cyaw[0] <= -PI {
+        state.yaw += 2.0 * PI;
+    }
 
-    // Control history
-    let mut u_history: Vec<Vector2<f64>> = vec![Vector2::zeros(); T];
+    let mut target_index = 0;
+    let final_index = cx.len() - 1;
+    let goal = (cx[final_index], cy[final_index]);
 
-    // Trajectory history
+    let mut warm_start = vec![Vector2::zeros(); T];
+
     let mut hist_x = vec![state.x];
     let mut hist_y = vec![state.y];
-    let mut hist_yaw = vec![state.yaw];
-    let mut hist_v = vec![state.v];
+    let mut predicted = vec![state.to_vector()];
+    let mut reached_goal = false;
 
-    let mut fig = Figure::new();
+    for _ in 0..MAX_SIM_STEPS {
+        let (xref, new_index) =
+            calc_ref_trajectory(&state, &cx, &cy, &cyaw, &speed_profile, target_index);
+        target_index = new_index;
 
-    // Simulation loop
-    let goal_x = *cx.last().unwrap_or(&0.0);
-    let goal_y = *cy.last().unwrap_or(&0.0);
-
-    while ((state.x - goal_x).powi(2) + (state.y - goal_y).powi(2)).sqrt() > GOAL_DIS {
-        // Calculate reference trajectory
-        let (xref, _) = calc_ref_trajectory(&state, &csp, &mut ref_s);
-
-        // MPC control
-        let u_opt = mpc_solve(&state, &xref, &u_history);
-
-        // Apply first control
-        let accel = u_opt[0][0];
-        let steer = u_opt[0][1];
+        let mpc_result = iterative_linear_mpc_control(&xref, &state, &warm_start);
+        let accel = mpc_result.controls[0][0];
+        let steer = mpc_result.controls[0][1];
 
         state.update(accel, steer);
-
-        // Shift control history
-        u_history = u_opt[1..].to_vec();
-        u_history.push(*u_opt.last().unwrap_or(&Vector2::zeros()));
-
-        // Store history
         hist_x.push(state.x);
         hist_y.push(state.y);
-        hist_yaw.push(state.yaw);
-        hist_v.push(state.v);
+        predicted = mpc_result.predicted;
 
-        // Visualization
-        if SHOW_ANIMATION && hist_x.len().is_multiple_of(5) {
-            fig.clear_axes();
+        warm_start = mpc_result.controls[1..].to_vec();
+        warm_start.push(
+            mpc_result
+                .controls
+                .last()
+                .copied()
+                .unwrap_or(Vector2::zeros()),
+        );
 
-            // Predicted trajectory
-            let mut pred_x = vec![state.x];
-            let mut pred_y = vec![state.y];
-            let mut pred_state = state;
-            for u in &u_opt {
-                pred_state.update(u[0], u[1]);
-                pred_x.push(pred_state.x);
-                pred_y.push(pred_state.y);
-            }
-
-            fig.axes2d()
-                .set_title(
-                    &format!("MPC Path Tracking - Speed: {:.2} m/s", state.v),
-                    &[],
-                )
-                .set_x_label("x [m]", &[])
-                .set_y_label("y [m]", &[])
-                .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-                .lines(&cx, &cy, &[Caption("Reference"), Color("gray")])
-                .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
-                .lines(&pred_x, &pred_y, &[Caption("Prediction"), Color("green")])
-                .points(
-                    [state.x],
-                    [state.y],
-                    &[
-                        Caption("Vehicle"),
-                        Color("red"),
-                        PointSymbol('*'),
-                        PointSize(3.0),
-                    ],
-                )
-                .points(
-                    [goal_x],
-                    [goal_y],
-                    &[
-                        Caption("Goal"),
-                        Color("magenta"),
-                        PointSymbol('O'),
-                        PointSize(2.0),
-                    ],
-                );
-
-            fig.show_and_keep_running().unwrap();
-        }
-
-        // Safety check
-        if hist_x.len() > 5000 {
-            println!("Max iterations reached!");
+        if check_goal(&state, goal, target_index, final_index) {
+            reached_goal = true;
             break;
         }
     }
 
-    println!("Goal reached!");
-    println!("Final position: ({:.2}, {:.2})", state.x, state.y);
+    SimulationResult {
+        cx,
+        cy,
+        hist_x,
+        hist_y,
+        predicted_x: predicted.iter().map(|p| p[0]).collect(),
+        predicted_y: predicted.iter().map(|p| p[1]).collect(),
+        goal,
+        reached_goal,
+        target_index,
+        final_index,
+        final_state: state,
+    }
+}
 
-    // Save final plot
-    fig.clear_axes();
+fn save_tracking_svg(filename: &str, result: &SimulationResult) -> std::io::Result<()> {
+    let width = 900.0;
+    let height = 680.0;
+    let margin = 70.0;
 
-    fig.axes2d()
-        .set_title("MPC Path Tracking - Complete", &[])
-        .set_x_label("x [m]", &[])
-        .set_y_label("y [m]", &[])
-        .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
-        .lines(&cx, &cy, &[Caption("Reference"), Color("gray")])
-        .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
-        .points(
-            [goal_x],
-            [goal_y],
-            &[
-                Caption("Goal"),
-                Color("magenta"),
-                PointSymbol('O'),
-                PointSize(2.0),
-            ],
-        );
+    let all_x = result
+        .cx
+        .iter()
+        .chain(result.hist_x.iter())
+        .chain(result.predicted_x.iter())
+        .copied();
+    let all_y = result
+        .cy
+        .iter()
+        .chain(result.hist_y.iter())
+        .chain(result.predicted_y.iter())
+        .copied();
 
-    fig.save_to_svg("./img/path_tracking/mpc.svg", 640, 480)
-        .unwrap();
+    let min_x = all_x.clone().fold(f64::INFINITY, f64::min) - 5.0;
+    let max_x = all_x.fold(f64::NEG_INFINITY, f64::max) + 5.0;
+    let min_y = all_y.clone().fold(f64::INFINITY, f64::min) - 5.0;
+    let max_y = all_y.fold(f64::NEG_INFINITY, f64::max) + 5.0;
+
+    let plot_width = width - 2.0 * margin;
+    let plot_height = height - 2.0 * margin;
+    let scale_x = plot_width / (max_x - min_x).max(1.0);
+    let scale_y = plot_height / (max_y - min_y).max(1.0);
+    let scale = scale_x.min(scale_y);
+
+    let to_svg_x = |x: f64| margin + (x - min_x) * scale;
+    let to_svg_y = |y: f64| height - margin - (y - min_y) * scale;
+
+    let mut file = File::create(filename)?;
+
+    writeln!(
+        file,
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
+<rect width="100%" height="100%" fill="white"/>
+<text x="{:.1}" y="38" text-anchor="middle" font-size="22" font-family="sans-serif" font-weight="700">MPC Path Tracking</text>"#,
+        width / 2.0
+    )?;
+
+    for i in 0..=10 {
+        let x = margin + plot_width * (i as f64) / 10.0;
+        let y = margin + plot_height * (i as f64) / 10.0;
+        writeln!(
+            file,
+            r##"<line x1="{x:.1}" y1="{margin:.1}" x2="{x:.1}" y2="{:.1}" stroke="#ece7dc" stroke-width="1"/>"##,
+            height - margin
+        )?;
+        writeln!(
+            file,
+            r##"<line x1="{margin:.1}" y1="{y:.1}" x2="{:.1}" y2="{y:.1}" stroke="#ece7dc" stroke-width="1"/>"##,
+            width - margin
+        )?;
+    }
+
+    writeln!(
+        file,
+        r##"<rect x="{margin:.1}" y="{margin:.1}" width="{plot_width:.1}" height="{plot_height:.1}" fill="none" stroke="#1f2937" stroke-width="2"/>"##
+    )?;
+
+    let mut reference_path = String::new();
+    for (i, (&x, &y)) in result.cx.iter().zip(result.cy.iter()).enumerate() {
+        let sx = to_svg_x(x);
+        let sy = to_svg_y(y);
+        if i == 0 {
+            reference_path.push_str(&format!("M {:.2},{:.2}", sx, sy));
+        } else {
+            reference_path.push_str(&format!(" L {:.2},{:.2}", sx, sy));
+        }
+    }
+    writeln!(
+        file,
+        r##"<path d="{reference_path}" fill="none" stroke="#94a3b8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>"##
+    )?;
+
+    let mut history_path = String::new();
+    for (i, (&x, &y)) in result.hist_x.iter().zip(result.hist_y.iter()).enumerate() {
+        let sx = to_svg_x(x);
+        let sy = to_svg_y(y);
+        if i == 0 {
+            history_path.push_str(&format!("M {:.2},{:.2}", sx, sy));
+        } else {
+            history_path.push_str(&format!(" L {:.2},{:.2}", sx, sy));
+        }
+    }
+    writeln!(
+        file,
+        r##"<path d="{history_path}" fill="none" stroke="#2563eb" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>"##
+    )?;
+
+    if result.predicted_x.len() > 1 {
+        let mut predicted_path = String::new();
+        for (i, (&x, &y)) in result
+            .predicted_x
+            .iter()
+            .zip(result.predicted_y.iter())
+            .enumerate()
+        {
+            let sx = to_svg_x(x);
+            let sy = to_svg_y(y);
+            if i == 0 {
+                predicted_path.push_str(&format!("M {:.2},{:.2}", sx, sy));
+            } else {
+                predicted_path.push_str(&format!(" L {:.2},{:.2}", sx, sy));
+            }
+        }
+        writeln!(
+            file,
+            r##"<path d="{predicted_path}" fill="none" stroke="#16a34a" stroke-width="6" stroke-linecap="round" stroke-dasharray="16 10"/>"##
+        )?;
+    }
+
+    let start_x = to_svg_x(result.hist_x[0]);
+    let start_y = to_svg_y(result.hist_y[0]);
+    let goal_x = to_svg_x(result.goal.0);
+    let goal_y = to_svg_y(result.goal.1);
+    let final_x = to_svg_x(result.final_state.x);
+    let final_y = to_svg_y(result.final_state.y);
+
+    writeln!(
+        file,
+        r##"<circle cx="{start_x:.2}" cy="{start_y:.2}" r="10" fill="#1d4ed8" stroke="white" stroke-width="3"/>"##
+    )?;
+    writeln!(
+        file,
+        r##"<circle cx="{goal_x:.2}" cy="{goal_y:.2}" r="10" fill="#d946ef" stroke="white" stroke-width="3"/>"##
+    )?;
+    writeln!(
+        file,
+        r##"<circle cx="{final_x:.2}" cy="{final_y:.2}" r="8" fill="#f97316" stroke="white" stroke-width="2"/>"##
+    )?;
+
+    let legend_x = width - 290.0;
+    let legend_y = 82.0;
+    writeln!(
+        file,
+        r##"<rect x="{legend_x:.1}" y="{legend_y:.1}" width="220" height="132" rx="18" fill="#fffaf0" stroke="#d6d3d1"/>"##
+    )?;
+    writeln!(
+        file,
+        r##"<line x1="{:.1}" y1="{:.1}" x2="{:.1}" y2="{:.1}" stroke="#94a3b8" stroke-width="8" stroke-linecap="round"/>"##,
+        legend_x + 20.0,
+        legend_y + 28.0,
+        legend_x + 70.0,
+        legend_y + 28.0
+    )?;
+    writeln!(
+        file,
+        r##"<text x="{:.1}" y="{:.1}" font-size="20" font-family="sans-serif" fill="#1f2937">Reference</text>"##,
+        legend_x + 88.0,
+        legend_y + 35.0
+    )?;
+    writeln!(
+        file,
+        r##"<line x1="{:.1}" y1="{:.1}" x2="{:.1}" y2="{:.1}" stroke="#2563eb" stroke-width="8" stroke-linecap="round"/>"##,
+        legend_x + 20.0,
+        legend_y + 58.0,
+        legend_x + 70.0,
+        legend_y + 58.0
+    )?;
+    writeln!(
+        file,
+        r##"<text x="{:.1}" y="{:.1}" font-size="20" font-family="sans-serif" fill="#1f2937">Trajectory</text>"##,
+        legend_x + 88.0,
+        legend_y + 65.0
+    )?;
+    writeln!(
+        file,
+        r##"<line x1="{:.1}" y1="{:.1}" x2="{:.1}" y2="{:.1}" stroke="#16a34a" stroke-width="6" stroke-linecap="round" stroke-dasharray="16 10"/>"##,
+        legend_x + 20.0,
+        legend_y + 88.0,
+        legend_x + 70.0,
+        legend_y + 88.0
+    )?;
+    writeln!(
+        file,
+        r##"<text x="{:.1}" y="{:.1}" font-size="20" font-family="sans-serif" fill="#1f2937">Prediction</text>"##,
+        legend_x + 88.0,
+        legend_y + 95.0
+    )?;
+    writeln!(
+        file,
+        r##"<text x="{:.1}" y="{:.1}" font-size="18" font-family="monospace" fill="#475569">goal_reached: {}</text>"##,
+        legend_x + 20.0,
+        legend_y + 122.0,
+        result.reached_goal
+    )?;
+
+    writeln!(
+        file,
+        r##"<text x="{:.1}" y="{:.1}" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#1f2937">x [m]</text>"##,
+        width / 2.0,
+        height - 18.0
+    )?;
+    writeln!(
+        file,
+        r##"<text x="24" y="{:.1}" text-anchor="middle" font-size="16" font-family="sans-serif" fill="#1f2937" transform="rotate(-90, 24, {:.1})">y [m]</text>"##,
+        height / 2.0,
+        height / 2.0
+    )?;
+
+    writeln!(file, "</svg>")?;
+    Ok(())
+}
+
+pub fn main() {
+    println!("MPC Path Tracking start!");
+
+    let result = run_mpc_simulation();
+
+    let goal_distance = ((result.final_state.x - result.goal.0).powi(2)
+        + (result.final_state.y - result.goal.1).powi(2))
+    .sqrt();
+
+    println!(
+        "Final position: ({:.2}, {:.2}), speed: {:.2} m/s, goal distance: {:.2} m",
+        result.final_state.x, result.final_state.y, result.final_state.v, goal_distance
+    );
+    println!(
+        "Reached goal: {}, target index: {}, final index: {}",
+        result.reached_goal, result.target_index, result.final_index
+    );
+
+    save_tracking_svg("./img/path_tracking/mpc.svg", &result).unwrap();
     println!("Plot saved to ./img/path_tracking/mpc.svg");
-
     println!("Done!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_speed_profile_stops_at_goal() {
+        let cx = vec![0.0, 1.0, 2.0];
+        let cy = vec![0.0, 0.0, 0.0];
+        let cyaw = vec![0.0, 0.0, 0.0];
+        let speed = calc_speed_profile(&cx, &cy, &cyaw, TARGET_SPEED);
+
+        assert_eq!(speed.len(), 3);
+        assert_eq!(speed[2], 0.0);
+        assert!(speed[0] > 0.0);
+    }
+
+    #[test]
+    fn test_mpc_simulation_reaches_goal() {
+        let result = run_mpc_simulation();
+        let goal_distance = ((result.final_state.x - result.goal.0).powi(2)
+            + (result.final_state.y - result.goal.1).powi(2))
+        .sqrt();
+
+        assert!(result.reached_goal);
+        assert!(goal_distance <= GOAL_DIS + 0.25);
+        assert!(result.hist_x.len() < MAX_SIM_STEPS);
+    }
 }
