@@ -116,7 +116,7 @@ cargo run --bin unscented_kalman_filter
 
 Grid-based probabilistic localization using RFID landmarks. The algorithm maintains a probability distribution over a 2D grid and updates it based on motion and observations.
 
-Blue: True path, Yellow: Dead Reckoning, Green: Histogram Filter estimate, Black: RFID landmarks
+Blue: True path, Orange: Dead Reckoning, Green: Histogram Filter estimate, Black: RFID landmarks
 
 - [src](./src/localization/histogram_filter.rs)
 
