@@ -1,7 +1,7 @@
 //! Common traits defining interfaces for robotics algorithms
 
-use crate::common::types::*;
 use crate::common::error::RoboticsError;
+use crate::common::types::*;
 
 /// Trait for path planning algorithms
 pub trait PathPlanner {
@@ -92,8 +92,12 @@ pub trait MotionModel {
     fn propagate(&self, state: &Self::State, control: &Self::Control, dt: f64) -> Self::State;
 
     /// Compute Jacobian with respect to state (for EKF)
-    fn jacobian_state(&self, state: &Self::State, control: &Self::Control, dt: f64)
-        -> nalgebra::DMatrix<f64>;
+    fn jacobian_state(
+        &self,
+        state: &Self::State,
+        control: &Self::Control,
+        dt: f64,
+    ) -> nalgebra::DMatrix<f64>;
 }
 
 /// Trait for observation/measurement models

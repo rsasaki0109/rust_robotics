@@ -2,8 +2,8 @@
 //!
 //! Provides a unified interface for plotting using gnuplot.
 
-use gnuplot::{Figure, Caption, Color, PointSymbol, PointSize, LineWidth, AxesCommon, AutoOption};
-use crate::common::{Point2D, Pose2D, Path2D, Obstacles};
+use crate::common::{Obstacles, Path2D, Point2D, Pose2D};
+use gnuplot::{AutoOption, AxesCommon, Caption, Color, Figure, LineWidth, PointSize, PointSymbol};
 
 /// Color palette for consistent styling
 pub mod colors {
@@ -95,8 +95,16 @@ impl PointStyle {
 
 /// Plot command to be rendered
 enum PlotCommand {
-    Path { x: Vec<f64>, y: Vec<f64>, style: PathStyle },
-    Points { x: Vec<f64>, y: Vec<f64>, style: PointStyle },
+    Path {
+        x: Vec<f64>,
+        y: Vec<f64>,
+        style: PathStyle,
+    },
+    Points {
+        x: Vec<f64>,
+        y: Vec<f64>,
+        style: PointStyle,
+    },
 }
 
 /// Main visualizer struct
@@ -171,7 +179,11 @@ impl Visualizer {
     pub fn plot_path(&mut self, path: &Path2D, style: &PathStyle) -> &mut Self {
         let x: Vec<f64> = path.points.iter().map(|p| p.x).collect();
         let y: Vec<f64> = path.points.iter().map(|p| p.y).collect();
-        self.commands.push(PlotCommand::Path { x, y, style: style.clone() });
+        self.commands.push(PlotCommand::Path {
+            x,
+            y,
+            style: style.clone(),
+        });
         self
     }
 
@@ -180,7 +192,7 @@ impl Visualizer {
         self.commands.push(PlotCommand::Path {
             x: x.to_vec(),
             y: y.to_vec(),
-            style: style.clone()
+            style: style.clone(),
         });
         self
     }
@@ -231,7 +243,11 @@ impl Visualizer {
     pub fn plot_points(&mut self, points: &[Point2D], style: &PointStyle) -> &mut Self {
         let x: Vec<f64> = points.iter().map(|p| p.x).collect();
         let y: Vec<f64> = points.iter().map(|p| p.y).collect();
-        self.commands.push(PlotCommand::Points { x, y, style: style.clone() });
+        self.commands.push(PlotCommand::Points {
+            x,
+            y,
+            style: style.clone(),
+        });
         self
     }
 
@@ -277,7 +293,10 @@ impl Visualizer {
 
     /// Plot start position
     pub fn plot_start(&mut self, point: Point2D) -> &mut Self {
-        self.plot_point(point, &PointStyle::new(colors::START, "Start").with_size(1.5))
+        self.plot_point(
+            point,
+            &PointStyle::new(colors::START, "Start").with_size(1.5),
+        )
     }
 
     /// Plot goal position
@@ -294,13 +313,17 @@ impl Visualizer {
     /// Save plot to PNG file
     pub fn save_png(&mut self, path: &str, width: u32, height: u32) -> Result<(), String> {
         self.apply_settings();
-        self.figure.save_to_png(path, width, height).map_err(|e| e.to_string())
+        self.figure
+            .save_to_png(path, width, height)
+            .map_err(|e| e.to_string())
     }
 
     /// Save plot to SVG file
     pub fn save_svg(&mut self, path: &str, width: u32, height: u32) -> Result<(), String> {
         self.apply_settings();
-        self.figure.save_to_svg(path, width, height).map_err(|e| e.to_string())
+        self.figure
+            .save_to_svg(path, width, height)
+            .map_err(|e| e.to_string())
     }
 
     fn apply_settings(&mut self) {
@@ -310,19 +333,27 @@ impl Visualizer {
         for cmd in &self.commands {
             match cmd {
                 PlotCommand::Path { x, y, style } => {
-                    axes.lines(x, y, &[
-                        Caption(&style.caption),
-                        Color(&style.color),
-                        LineWidth(style.line_width),
-                    ]);
+                    axes.lines(
+                        x,
+                        y,
+                        &[
+                            Caption(&style.caption),
+                            Color(&style.color),
+                            LineWidth(style.line_width),
+                        ],
+                    );
                 }
                 PlotCommand::Points { x, y, style } => {
-                    axes.points(x, y, &[
-                        Caption(&style.caption),
-                        Color(&style.color),
-                        PointSymbol(style.symbol),
-                        PointSize(style.size),
-                    ]);
+                    axes.points(
+                        x,
+                        y,
+                        &[
+                            Caption(&style.caption),
+                            Color(&style.color),
+                            PointSymbol(style.symbol),
+                            PointSize(style.size),
+                        ],
+                    );
                 }
             }
         }
@@ -388,8 +419,7 @@ mod tests {
 
     #[test]
     fn test_path_style() {
-        let style = PathStyle::new(colors::RED, "Test Path")
-            .with_line_width(3.0);
+        let style = PathStyle::new(colors::RED, "Test Path").with_line_width(3.0);
         assert_eq!(style.line_width, 3.0);
         assert_eq!(style.color, colors::RED);
     }

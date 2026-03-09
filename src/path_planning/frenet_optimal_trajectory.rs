@@ -3,7 +3,7 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
 use std::f64::consts::PI;
 
 // Parameters
@@ -52,9 +52,15 @@ impl QuinticPolynomial {
 
         // Solve for a3, a4, a5
         let a = nalgebra::Matrix3::new(
-            t3, t4, t5,
-            3.0 * t2, 4.0 * t3, 5.0 * t4,
-            6.0 * time, 12.0 * t2, 20.0 * t3,
+            t3,
+            t4,
+            t5,
+            3.0 * t2,
+            4.0 * t3,
+            5.0 * t4,
+            6.0 * time,
+            12.0 * t2,
+            20.0 * t3,
         );
 
         let b = nalgebra::Vector3::new(
@@ -63,7 +69,10 @@ impl QuinticPolynomial {
             axe - 2.0 * a2,
         );
 
-        let x = a.try_inverse().map(|inv| inv * b).unwrap_or(nalgebra::Vector3::zeros());
+        let x = a
+            .try_inverse()
+            .map(|inv| inv * b)
+            .unwrap_or(nalgebra::Vector3::zeros());
 
         QuinticPolynomial {
             a0,
@@ -76,11 +85,20 @@ impl QuinticPolynomial {
     }
 
     fn calc_point(&self, t: f64) -> f64 {
-        self.a0 + self.a1 * t + self.a2 * t.powi(2) + self.a3 * t.powi(3) + self.a4 * t.powi(4) + self.a5 * t.powi(5)
+        self.a0
+            + self.a1 * t
+            + self.a2 * t.powi(2)
+            + self.a3 * t.powi(3)
+            + self.a4 * t.powi(4)
+            + self.a5 * t.powi(5)
     }
 
     fn calc_first_derivative(&self, t: f64) -> f64 {
-        self.a1 + 2.0 * self.a2 * t + 3.0 * self.a3 * t.powi(2) + 4.0 * self.a4 * t.powi(3) + 5.0 * self.a5 * t.powi(4)
+        self.a1
+            + 2.0 * self.a2 * t
+            + 3.0 * self.a3 * t.powi(2)
+            + 4.0 * self.a4 * t.powi(3)
+            + 5.0 * self.a5 * t.powi(4)
     }
 
     fn calc_second_derivative(&self, t: f64) -> f64 {
@@ -111,17 +129,14 @@ impl QuarticPolynomial {
         let t3 = t2 * time;
 
         // Solve for a3, a4
-        let a = nalgebra::Matrix2::new(
-            3.0 * t2, 4.0 * t3,
-            6.0 * time, 12.0 * t2,
-        );
+        let a = nalgebra::Matrix2::new(3.0 * t2, 4.0 * t3, 6.0 * time, 12.0 * t2);
 
-        let b = nalgebra::Vector2::new(
-            vxe - a1 - 2.0 * a2 * time,
-            axe - 2.0 * a2,
-        );
+        let b = nalgebra::Vector2::new(vxe - a1 - 2.0 * a2 * time, axe - 2.0 * a2);
 
-        let x = a.try_inverse().map(|inv| inv * b).unwrap_or(nalgebra::Vector2::zeros());
+        let x = a
+            .try_inverse()
+            .map(|inv| inv * b)
+            .unwrap_or(nalgebra::Vector2::zeros());
 
         QuarticPolynomial {
             a0,
@@ -152,23 +167,23 @@ impl QuarticPolynomial {
 /// Frenet path
 #[derive(Clone)]
 struct FrenetPath {
-    t: Vec<f64>,      // time
-    d: Vec<f64>,      // lateral position
-    d_d: Vec<f64>,    // lateral velocity
-    d_dd: Vec<f64>,   // lateral acceleration
-    d_ddd: Vec<f64>,  // lateral jerk
-    s: Vec<f64>,      // longitudinal position
-    s_d: Vec<f64>,    // longitudinal velocity
-    s_dd: Vec<f64>,   // longitudinal acceleration
-    s_ddd: Vec<f64>,  // longitudinal jerk
-    cd: f64,          // lateral cost
-    cv: f64,          // velocity cost
-    cf: f64,          // total cost
-    x: Vec<f64>,      // cartesian x
-    y: Vec<f64>,      // cartesian y
-    yaw: Vec<f64>,    // heading
-    ds: Vec<f64>,     // arc length
-    c: Vec<f64>,      // curvature
+    t: Vec<f64>,     // time
+    d: Vec<f64>,     // lateral position
+    d_d: Vec<f64>,   // lateral velocity
+    d_dd: Vec<f64>,  // lateral acceleration
+    d_ddd: Vec<f64>, // lateral jerk
+    s: Vec<f64>,     // longitudinal position
+    s_d: Vec<f64>,   // longitudinal velocity
+    s_dd: Vec<f64>,  // longitudinal acceleration
+    s_ddd: Vec<f64>, // longitudinal jerk
+    cd: f64,         // lateral cost
+    cv: f64,         // velocity cost
+    cf: f64,         // total cost
+    x: Vec<f64>,     // cartesian x
+    y: Vec<f64>,     // cartesian y
+    yaw: Vec<f64>,   // heading
+    ds: Vec<f64>,    // arc length
+    c: Vec<f64>,     // curvature
 }
 
 impl FrenetPath {
@@ -341,7 +356,11 @@ fn calc_frenet_paths(c_speed: f64, c_d: f64, c_d_d: f64, c_d_dd: f64, s0: f64) -
             }
 
             // Longitudinal motion (velocity keeping - quartic polynomial)
-            for tv in [TARGET_SPEED - D_T_S * N_S_SAMPLE as f64, TARGET_SPEED, TARGET_SPEED + D_T_S * N_S_SAMPLE as f64] {
+            for tv in [
+                TARGET_SPEED - D_T_S * N_S_SAMPLE as f64,
+                TARGET_SPEED,
+                TARGET_SPEED + D_T_S * N_S_SAMPLE as f64,
+            ] {
                 let mut tfp = fp.clone();
 
                 let lon_qp = QuarticPolynomial::new(s0, c_speed, 0.0, tv, 0.0, ti);
@@ -467,7 +486,9 @@ fn frenet_optimal_planning(
     check_paths(&mut fplist, ob);
 
     // Find minimum cost path
-    fplist.into_iter().min_by(|a, b| a.cf.partial_cmp(&b.cf).unwrap())
+    fplist
+        .into_iter()
+        .min_by(|a, b| a.cf.partial_cmp(&b.cf).unwrap())
 }
 
 fn main() {
@@ -544,9 +565,27 @@ fn main() {
                     .set_y_label("y [m]", &[])
                     .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
                     .lines(&ref_x, &ref_y, &[Caption("Reference"), Color("gray")])
-                    .points(&ob_x, &ob_y, &[Caption("Obstacles"), Color("black"), PointSymbol('O'), PointSize(2.0)])
+                    .points(
+                        &ob_x,
+                        &ob_y,
+                        &[
+                            Caption("Obstacles"),
+                            Color("black"),
+                            PointSymbol('O'),
+                            PointSize(2.0),
+                        ],
+                    )
                     .lines(&fp.x, &fp.y, &[Caption("Trajectory"), Color("green")])
-                    .points(&[fp.x[0]], &[fp.y[0]], &[Caption("Vehicle"), Color("red"), PointSymbol('*'), PointSize(3.0)]);
+                    .points(
+                        &[fp.x[0]],
+                        &[fp.y[0]],
+                        &[
+                            Caption("Vehicle"),
+                            Color("red"),
+                            PointSymbol('*'),
+                            PointSize(3.0),
+                        ],
+                    );
 
                 fig.show_and_keep_running().unwrap();
             }
@@ -571,9 +610,23 @@ fn main() {
         .set_x_label("x [m]", &[])
         .set_y_label("y [m]", &[])
         .lines(&ref_x, &ref_y, &[Caption("Reference"), Color("gray")])
-        .points(&ob_x, &ob_y, &[Caption("Obstacles"), Color("black"), PointSymbol('O'), PointSize(2.0)])
+        .points(
+            &ob_x,
+            &ob_y,
+            &[
+                Caption("Obstacles"),
+                Color("black"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
+        )
         .lines(&h_x, &h_y, &[Caption("Trajectory"), Color("green")]);
 
-    fig.save_to_svg("./img/path_planning/frenet_optimal_trajectory.svg", 640, 480).unwrap();
+    fig.save_to_svg(
+        "./img/path_planning/frenet_optimal_trajectory.svg",
+        640,
+        480,
+    )
+    .unwrap();
     println!("Plot saved to ./img/path_planning/frenet_optimal_trajectory.svg");
 }

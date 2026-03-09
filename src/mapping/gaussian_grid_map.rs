@@ -3,8 +3,8 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
+use gnuplot::{AutoOption, AxesCommon, Figure, PlotOption};
 use nalgebra::DMatrix;
-use gnuplot::{Figure, AxesCommon, AutoOption, PlotOption};
 use std::f64::consts::PI;
 
 // Parameters
@@ -45,7 +45,9 @@ impl GaussianGridMap {
                 let y = min_y + iy as f64 * resolution;
 
                 // Find minimum distance to obstacles
-                let min_dist = ox.iter().zip(oy.iter())
+                let min_dist = ox
+                    .iter()
+                    .zip(oy.iter())
                     .map(|(ox_i, oy_i)| ((x - ox_i).powi(2) + (y - oy_i).powi(2)).sqrt())
                     .fold(f64::INFINITY, f64::min);
 
@@ -102,12 +104,12 @@ fn normal_cdf(x: f64, mean: f64, std_dev: f64) -> f64 {
 /// Error function approximation (Horner's method)
 fn erf(x: f64) -> f64 {
     // Approximation constants
-    let a1 =  0.254829592;
+    let a1 = 0.254829592;
     let a2 = -0.284496736;
-    let a3 =  1.421413741;
+    let a3 = 1.421413741;
     let a4 = -1.453152027;
-    let a5 =  1.061405429;
-    let p  =  0.3275911;
+    let a5 = 1.061405429;
+    let p = 0.3275911;
 
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let x = x.abs();
@@ -151,17 +153,28 @@ fn draw_heatmap(grid_map: &GaussianGridMap, ox: &[f64], oy: &[f64]) {
             z_data.iter().cloned(),
             x_width,
             y_width,
-            Some((grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y)),
-            &[PlotOption::Caption("Probability")]
+            Some((
+                grid_map.min_x,
+                grid_map.min_y,
+                grid_map.max_x,
+                grid_map.max_y,
+            )),
+            &[PlotOption::Caption("Probability")],
         )
         .points(
             ox,
             oy,
-            &[PlotOption::Caption("Obstacles"), PlotOption::Color("white"), gnuplot::PointSymbol('O'), gnuplot::PointSize(1.5)]
+            &[
+                PlotOption::Caption("Obstacles"),
+                PlotOption::Color("white"),
+                gnuplot::PointSymbol('O'),
+                gnuplot::PointSize(1.5),
+            ],
         );
 
     fig.show_and_keep_running().unwrap();
-    fig.save_to_svg("./img/mapping/gaussian_grid_map.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/mapping/gaussian_grid_map.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/mapping/gaussian_grid_map.svg");
 }
 
@@ -170,15 +183,11 @@ fn main() {
 
     // Define obstacles (sample points)
     let ox: Vec<f64> = vec![
-        0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
-        0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
     ];
     let oy: Vec<f64> = vec![
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        5.0, 5.0, 5.0, 5.0, 5.0, 5.0,
-        0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
         0.0, 1.0, 2.0, 3.0, 4.0, 5.0,
     ];
 
@@ -187,8 +196,10 @@ fn main() {
 
     println!("Grid map created:");
     println!("  Size: {} x {}", grid_map.x_width, grid_map.y_width);
-    println!("  Bounds: ({:.1}, {:.1}) to ({:.1}, {:.1})",
-             grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y);
+    println!(
+        "  Bounds: ({:.1}, {:.1}) to ({:.1}, {:.1})",
+        grid_map.min_x, grid_map.min_y, grid_map.max_x, grid_map.max_y
+    );
 
     // Draw heatmap
     draw_heatmap(&grid_map, &ox, &oy);

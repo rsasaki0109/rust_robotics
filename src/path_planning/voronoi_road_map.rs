@@ -3,10 +3,10 @@
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
 use rand::Rng;
-use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::cmp::Ordering;
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 // Parameters
 const N_KNN: usize = 10; // number of edges per node
@@ -52,7 +52,10 @@ impl Eq for QueueItem {}
 
 impl Ord for QueueItem {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -73,7 +76,8 @@ impl KDTree {
     }
 
     fn query_knn(&self, x: f64, y: f64, k: usize) -> Vec<(usize, f64)> {
-        let mut distances: Vec<(usize, f64)> = self.points
+        let mut distances: Vec<(usize, f64)> = self
+            .points
             .iter()
             .enumerate()
             .map(|(i, (px, py))| {
@@ -97,7 +101,15 @@ impl KDTree {
 
 /// Simple Voronoi diagram computation using Fortune's algorithm approximation
 /// This is a simplified version that extracts vertices from obstacle positions
-fn compute_voronoi_vertices(ox: &[f64], oy: &[f64], min_x: f64, max_x: f64, min_y: f64, max_y: f64, robot_radius: f64) -> Vec<(f64, f64)> {
+fn compute_voronoi_vertices(
+    ox: &[f64],
+    oy: &[f64],
+    min_x: f64,
+    max_x: f64,
+    min_y: f64,
+    max_y: f64,
+    robot_radius: f64,
+) -> Vec<(f64, f64)> {
     let mut vertices = Vec::new();
     let n = ox.len();
 
@@ -132,7 +144,9 @@ fn compute_voronoi_vertices(ox: &[f64], oy: &[f64], min_x: f64, max_x: f64, min_
                 if let Some((cx, cy)) = circumcenter(ox[i], oy[i], ox[j], oy[j], ox[k], oy[k]) {
                     // Check if circumcenter is inside bounds and far from obstacles
                     if cx > min_x && cx < max_x && cy > min_y && cy < max_y {
-                        let min_dist = ox.iter().zip(oy.iter())
+                        let min_dist = ox
+                            .iter()
+                            .zip(oy.iter())
                             .map(|(&px, &py)| ((cx - px).powi(2) + (cy - py).powi(2)).sqrt())
                             .fold(f64::INFINITY, f64::min);
 
@@ -148,9 +162,9 @@ fn compute_voronoi_vertices(ox: &[f64], oy: &[f64], min_x: f64, max_x: f64, min_
     // Remove duplicates
     let mut unique_vertices = Vec::new();
     for (x, y) in vertices {
-        let is_dup = unique_vertices.iter().any(|(vx, vy): &(f64, f64)| {
-            ((x - vx).powi(2) + (y - vy).powi(2)).sqrt() < 1.0
-        });
+        let is_dup = unique_vertices
+            .iter()
+            .any(|(vx, vy): &(f64, f64)| ((x - vx).powi(2) + (y - vy).powi(2)).sqrt() < 1.0);
         if !is_dup {
             unique_vertices.push((x, y));
         }
@@ -167,8 +181,14 @@ fn circumcenter(x1: f64, y1: f64, x2: f64, y2: f64, x3: f64, y3: f64) -> Option<
         return None; // Collinear points
     }
 
-    let ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / d;
-    let uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / d;
+    let ux = ((x1 * x1 + y1 * y1) * (y2 - y3)
+        + (x2 * x2 + y2 * y2) * (y3 - y1)
+        + (x3 * x3 + y3 * y3) * (y1 - y2))
+        / d;
+    let uy = ((x1 * x1 + y1 * y1) * (x3 - x2)
+        + (x2 * x2 + y2 * y2) * (x1 - x3)
+        + (x3 * x3 + y3 * y3) * (x2 - x1))
+        / d;
 
     Some((ux, uy))
 }
@@ -199,7 +219,8 @@ impl VoronoiPlanner {
         let max_y = oy.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
         // Get Voronoi vertices as sample points
-        let voronoi_vertices = compute_voronoi_vertices(ox, oy, min_x, max_x, min_y, max_y, robot_radius);
+        let voronoi_vertices =
+            compute_voronoi_vertices(ox, oy, min_x, max_x, min_y, max_y, robot_radius);
 
         let mut sample_x: Vec<f64> = voronoi_vertices.iter().map(|(x, _)| *x).collect();
         let mut sample_y: Vec<f64> = voronoi_vertices.iter().map(|(_, y)| *y).collect();
@@ -211,11 +232,7 @@ impl VoronoiPlanner {
         sample_y.push(goal.1);
 
         // Generate road map
-        let road_map = Self::generate_road_map(
-            &sample_x, &sample_y,
-            robot_radius,
-            &obstacle_tree,
-        );
+        let road_map = Self::generate_road_map(&sample_x, &sample_y, robot_radius, &obstacle_tree);
 
         VoronoiPlanner {
             sample_x,
@@ -233,7 +250,11 @@ impl VoronoiPlanner {
         obstacle_tree: &KDTree,
     ) -> Vec<Vec<usize>> {
         let sample_tree = KDTree::new(
-            sample_x.iter().zip(sample_y.iter()).map(|(&x, &y)| (x, y)).collect()
+            sample_x
+                .iter()
+                .zip(sample_y.iter())
+                .map(|(&x, &y)| (x, y))
+                .collect(),
         );
 
         let mut road_map: Vec<Vec<usize>> = vec![Vec::new(); sample_x.len()];
@@ -250,12 +271,8 @@ impl VoronoiPlanner {
                     continue;
                 }
 
-                if !Self::is_collision(
-                    x, y,
-                    sample_x[j], sample_y[j],
-                    robot_radius,
-                    obstacle_tree,
-                ) {
+                if !Self::is_collision(x, y, sample_x[j], sample_y[j], robot_radius, obstacle_tree)
+                {
                     road_map[i].push(j);
                 }
             }
@@ -266,8 +283,10 @@ impl VoronoiPlanner {
 
     /// Check if path between two points collides with obstacles
     fn is_collision(
-        x1: f64, y1: f64,
-        x2: f64, y2: f64,
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
         robot_radius: f64,
         obstacle_tree: &KDTree,
     ) -> bool {
@@ -306,7 +325,8 @@ impl VoronoiPlanner {
         let start_idx = n - 2;
         let goal_idx = n - 1;
 
-        let mut nodes: Vec<Node> = self.sample_x
+        let mut nodes: Vec<Node> = self
+            .sample_x
             .iter()
             .zip(self.sample_y.iter())
             .map(|(&x, &y)| Node::new(x, y))
@@ -315,7 +335,10 @@ impl VoronoiPlanner {
         nodes[start_idx].cost = 0.0;
 
         let mut open_set = BinaryHeap::new();
-        open_set.push(QueueItem { cost: 0.0, index: start_idx });
+        open_set.push(QueueItem {
+            cost: 0.0,
+            index: start_idx,
+        });
 
         let mut closed_set: HashMap<usize, bool> = HashMap::new();
 
@@ -449,7 +472,6 @@ fn main() {
     let (sample_x, sample_y) = planner.get_samples();
     let edges = planner.get_edges();
 
-
     // Prepare edge data as disconnected line segments using NaN separator
     let mut edge_x = Vec::new();
     let mut edge_y = Vec::new();
@@ -473,10 +495,46 @@ fn main() {
         axes.lines(&edge_x, &edge_y, &[Color("gray")]);
 
         // Draw obstacles and samples
-        axes.points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
-            .points(sample_x, sample_y, &[Caption("Voronoi Vertices"), Color("cyan"), PointSymbol('o'), PointSize(1.0)])
-            .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
-            .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
+        axes.points(
+            &ox,
+            &oy,
+            &[
+                Caption("Obstacles"),
+                Color("black"),
+                PointSymbol('.'),
+                PointSize(0.5),
+            ],
+        )
+        .points(
+            sample_x,
+            sample_y,
+            &[
+                Caption("Voronoi Vertices"),
+                Color("cyan"),
+                PointSymbol('o'),
+                PointSize(1.0),
+            ],
+        )
+        .points(
+            &[start.0],
+            &[start.1],
+            &[
+                Caption("Start"),
+                Color("blue"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
+        )
+        .points(
+            &[goal.0],
+            &[goal.1],
+            &[
+                Caption("Goal"),
+                Color("red"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
+        );
 
         // Draw path
         if let Some((path_x, path_y)) = &path {
@@ -491,7 +549,8 @@ fn main() {
         fig.show_and_keep_running().unwrap();
     }
 
-    fig.save_to_svg("./img/path_planning/voronoi_road_map.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/path_planning/voronoi_road_map.svg", 640, 480)
+        .unwrap();
     fig.close();
     println!("Plot saved to ./img/path_planning/voronoi_road_map.svg");
 
