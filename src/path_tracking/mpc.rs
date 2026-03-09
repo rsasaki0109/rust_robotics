@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 // Model Predictive Control (MPC) for path tracking
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -6,8 +8,8 @@
 // Note: This is a simplified MPC implementation without a QP solver.
 // Uses iterative linearization and gradient descent.
 
-use nalgebra::{Matrix4, Vector4, Matrix4x2, Vector2, DMatrix, DVector};
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
+use nalgebra::{Matrix4, Matrix4x2, Vector2, Vector4};
 use std::f64::consts::PI;
 
 // Vehicle parameters
@@ -19,8 +21,6 @@ const MIN_SPEED: f64 = -20.0 / 3.6; // min speed (reverse) [m/s]
 const MAX_ACCEL: f64 = 1.0; // max acceleration [m/ss]
 
 // MPC parameters
-const NX: usize = 4; // state dimension [x, y, v, yaw]
-const NU: usize = 2; // control dimension [accel, steer]
 const T: usize = 5; // prediction horizon
 const DT: f64 = 0.2; // time step [s]
 
@@ -49,12 +49,8 @@ impl State {
         State { x, y, v, yaw }
     }
 
-    fn to_vector(&self) -> Vector4<f64> {
+    fn to_vector(self) -> Vector4<f64> {
         Vector4::new(self.x, self.y, self.v, self.yaw)
-    }
-
-    fn from_vector(v: &Vector4<f64>) -> Self {
-        State::new(v[0], v[1], v[2], v[3])
     }
 
     /// Update state using bicycle model
@@ -87,21 +83,41 @@ fn angle_diff(a: f64, b: f64) -> f64 {
 }
 
 /// Get linearized state-space matrices at operating point
-fn get_linear_model_matrix(v: f64, phi: f64, delta: f64) -> (Matrix4<f64>, Matrix4x2<f64>, Vector4<f64>) {
+fn get_linear_model_matrix(
+    v: f64,
+    phi: f64,
+    delta: f64,
+) -> (Matrix4<f64>, Matrix4x2<f64>, Vector4<f64>) {
     // A matrix (state transition)
     let a = Matrix4::new(
-        1.0, 0.0, DT * phi.cos(), -DT * v * phi.sin(),
-        0.0, 1.0, DT * phi.sin(), DT * v * phi.cos(),
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, DT * delta.tan() / WB, 1.0,
+        1.0,
+        0.0,
+        DT * phi.cos(),
+        -DT * v * phi.sin(),
+        0.0,
+        1.0,
+        DT * phi.sin(),
+        DT * v * phi.cos(),
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        DT * delta.tan() / WB,
+        1.0,
     );
 
     // B matrix (control input)
     let b = Matrix4x2::new(
-        0.0, 0.0,
-        0.0, 0.0,
-        DT, 0.0,
-        0.0, DT * v / (WB * delta.cos().powi(2)),
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        DT,
+        0.0,
+        0.0,
+        DT * v / (WB * delta.cos().powi(2)),
     );
 
     // C vector (constant term for linearization offset)
@@ -127,7 +143,7 @@ struct CubicSpline1D {
 impl CubicSpline1D {
     fn new(x: &[f64], y: &[f64]) -> Self {
         let n = x.len();
-        let mut a = y.to_vec();
+        let a = y.to_vec();
         let mut b = vec![0.0; n];
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
@@ -155,7 +171,13 @@ impl CubicSpline1D {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline1D { x: x.to_vec(), a, b, c, d }
+        CubicSpline1D {
+            x: x.to_vec(),
+            a,
+            b,
+            c,
+            d,
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -210,15 +232,14 @@ impl CubicSpline2D {
         let dy = self.sy.calc_d(s);
         dy.atan2(dx)
     }
-
-    fn calc_curvature(&self, _s: f64) -> f64 {
-        // Simplified curvature calculation
-        0.0
-    }
 }
 
 /// Calculate reference trajectory for MPC horizon
-fn calc_ref_trajectory(state: &State, csp: &CubicSpline2D, ref_s: &mut f64) -> (Vec<Vector4<f64>>, Vec<f64>) {
+fn calc_ref_trajectory(
+    state: &State,
+    csp: &CubicSpline2D,
+    ref_s: &mut f64,
+) -> (Vec<Vector4<f64>>, Vec<f64>) {
     let mut xref = Vec::with_capacity(T + 1);
     let mut sref = Vec::with_capacity(T + 1);
 
@@ -254,11 +275,7 @@ fn calc_ref_trajectory(state: &State, csp: &CubicSpline2D, ref_s: &mut f64) -> (
 }
 
 /// Simplified MPC solver using gradient descent
-fn mpc_solve(
-    state: &State,
-    xref: &[Vector4<f64>],
-    u_prev: &[Vector2<f64>],
-) -> Vec<Vector2<f64>> {
+fn mpc_solve(state: &State, xref: &[Vector4<f64>], u_prev: &[Vector2<f64>]) -> Vec<Vector2<f64>> {
     let mut u = u_prev.to_vec();
     if u.len() < T {
         u.resize(T, Vector2::zeros());
@@ -283,7 +300,7 @@ fn mpc_solve(
         }
 
         // Backward pass - compute gradients
-        let mut du = vec![Vector2::zeros(); T];
+        let mut du = [Vector2::zeros(); T];
 
         for i in 0..T {
             // Calculate state error with proper angle wrapping for yaw
@@ -300,10 +317,12 @@ fn mpc_solve(
             // Control rate penalty
             let mut grad_rate = Vector2::zeros();
             if i > 0 {
-                grad_rate += nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1])) * (u[i] - u[i - 1]);
+                grad_rate += nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1]))
+                    * (u[i] - u[i - 1]);
             }
             if i < T - 1 {
-                grad_rate -= nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1])) * (u[i + 1] - u[i]);
+                grad_rate -= nalgebra::Matrix2::from_diagonal(&Vector2::new(RD[0], RD[1]))
+                    * (u[i + 1] - u[i]);
             }
 
             du[i] = grad_state + grad_control + grad_rate;
@@ -398,7 +417,7 @@ fn main() {
         hist_v.push(state.v);
 
         // Visualization
-        if SHOW_ANIMATION && hist_x.len() % 5 == 0 {
+        if SHOW_ANIMATION && hist_x.len().is_multiple_of(5) {
             fig.clear_axes();
 
             // Predicted trajectory
@@ -412,15 +431,36 @@ fn main() {
             }
 
             fig.axes2d()
-                .set_title(&format!("MPC Path Tracking - Speed: {:.2} m/s", state.v), &[])
+                .set_title(
+                    &format!("MPC Path Tracking - Speed: {:.2} m/s", state.v),
+                    &[],
+                )
                 .set_x_label("x [m]", &[])
                 .set_y_label("y [m]", &[])
                 .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
                 .lines(&cx, &cy, &[Caption("Reference"), Color("gray")])
                 .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
                 .lines(&pred_x, &pred_y, &[Caption("Prediction"), Color("green")])
-                .points(&[state.x], &[state.y], &[Caption("Vehicle"), Color("red"), PointSymbol('*'), PointSize(3.0)])
-                .points(&[goal_x], &[goal_y], &[Caption("Goal"), Color("magenta"), PointSymbol('O'), PointSize(2.0)]);
+                .points(
+                    [state.x],
+                    [state.y],
+                    &[
+                        Caption("Vehicle"),
+                        Color("red"),
+                        PointSymbol('*'),
+                        PointSize(3.0),
+                    ],
+                )
+                .points(
+                    [goal_x],
+                    [goal_y],
+                    &[
+                        Caption("Goal"),
+                        Color("magenta"),
+                        PointSymbol('O'),
+                        PointSize(2.0),
+                    ],
+                );
 
             fig.show_and_keep_running().unwrap();
         }
@@ -445,9 +485,19 @@ fn main() {
         .set_aspect_ratio(gnuplot::AutoOption::Fix(1.0))
         .lines(&cx, &cy, &[Caption("Reference"), Color("gray")])
         .lines(&hist_x, &hist_y, &[Caption("Trajectory"), Color("blue")])
-        .points(&[goal_x], &[goal_y], &[Caption("Goal"), Color("magenta"), PointSymbol('O'), PointSize(2.0)]);
+        .points(
+            [goal_x],
+            [goal_y],
+            &[
+                Caption("Goal"),
+                Color("magenta"),
+                PointSymbol('O'),
+                PointSize(2.0),
+            ],
+        );
 
-    fig.save_to_svg("./img/path_tracking/mpc.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/path_tracking/mpc.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/path_tracking/mpc.svg");
 
     println!("Done!");

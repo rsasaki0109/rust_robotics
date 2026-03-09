@@ -12,7 +12,7 @@ cargo build
 
 Run (Example)
 ```
-cargo run --bin a_star
+cargo run --example a_star
 cargo run --bin rrt
 cargo run --bin inverted_pendulum_lqr
 cargo run --bin two_joint_arm_control
@@ -64,6 +64,11 @@ cargo run --bin two_joint_arm_control
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
       * [Two Joint Arm Control](#two-joint-arm-control)
+   * [Aerial Navigation](#aerial-navigation)
+      * [3D Grid A*](#3d-grid-a)
+   * [Mission Planning](#mission-planning)
+      * [Behavior Tree](#behavior-tree)
+      * [State Machine](#state-machine)
 
 # Localization
 ## Extended Kalman Filter Localization
@@ -73,7 +78,7 @@ cargo run --bin two_joint_arm_control
 
 Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
 
-- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/ekf.rs)
+- [src](./src/bin/ekf.rs)
 
 ```
 cargo run --bin ekf
@@ -251,7 +256,7 @@ Blue: Start, Red: Goal, Green: Path
 - [src](./src/path_planning/bezier_path_planning.rs)
 
 ```
-cargo run --bin bezier_path_planning
+cargo run --bin bezier_planning
 ```
 
 ## Cubic Spline
@@ -387,7 +392,7 @@ Blue: Start, Red: Goal, Green: Path
 - [src](./src/path_planning/reeds_shepp_path.rs)
 
 ```
-cargo run --bin reeds_shepp_path
+cargo run --bin reeds_shepp
 ```
 
 ## PRM (Probabilistic Road-Map)
@@ -552,7 +557,29 @@ Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target pos
 cargo run --bin two_joint_arm_control
 ```
 
+# Aerial Navigation
+
+## 3D Grid A*
+
+Bounded 3D voxel-grid planning for aerial robots. The planner supports 6-connected or 26-connected motion and returns a collision-free waypoint sequence.
+
+- [src](./src/aerial_navigation/grid_a_star_3d.rs)
+
+```
+cargo run --bin grid_a_star_3d
+```
+
 # Mission Planning
+
+## Behavior Tree
+
+Behavior tree runtime for mission-level decision making with sequence, selector, condition, and action nodes backed by a shared blackboard.
+
+- [src](./src/mission_planning/behavior_tree.rs)
+
+```
+cargo run --bin behavior_tree
+```
 
 ## State Machine
 
@@ -565,5 +592,3 @@ Finite state machine for robot behavior management with states, transitions, gua
 ```
 cargo run --bin state_machine
 ```
-
-

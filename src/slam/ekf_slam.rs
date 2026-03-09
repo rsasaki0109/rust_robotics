@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // EKF SLAM (Extended Kalman Filter SLAM)
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -115,17 +117,19 @@ fn jacob_motion(x: &Vector3<f64>, u: &Vector2<f64>) -> (Matrix3<f64>, nalgebra::
 
     // Jacobian with respect to state (G matrix)
     let g = Matrix3::new(
-        1.0, 0.0, -DT * v * yaw.sin(),
-        0.0, 1.0, DT * v * yaw.cos(),
-        0.0, 0.0, 1.0,
+        1.0,
+        0.0,
+        -DT * v * yaw.sin(),
+        0.0,
+        1.0,
+        DT * v * yaw.cos(),
+        0.0,
+        0.0,
+        1.0,
     );
 
     // Jacobian with respect to control (V matrix): 3x2
-    let v_mat = nalgebra::Matrix3x2::new(
-        DT * yaw.cos(), 0.0,
-        DT * yaw.sin(), 0.0,
-        0.0, DT,
-    );
+    let v_mat = nalgebra::Matrix3x2::new(DT * yaw.cos(), 0.0, DT * yaw.sin(), 0.0, 0.0, DT);
 
     (g, v_mat)
 }
@@ -150,23 +154,17 @@ fn jacob_observation(
     let d = d2.sqrt();
 
     // Jacobian with respect to robot pose [x, y, yaw]
-    let h_robot = nalgebra::Matrix2x3::new(
-        -dx / d, -dy / d, 0.0,
-        dy / d2, -dx / d2, -1.0,
-    );
+    let h_robot = nalgebra::Matrix2x3::new(-dx / d, -dy / d, 0.0, dy / d2, -dx / d2, -1.0);
 
     // Jacobian with respect to landmark position [lm_x, lm_y]
-    let h_lm = Matrix2::new(
-        dx / d, dy / d,
-        -dy / d2, dx / d2,
-    );
+    let h_lm = Matrix2::new(dx / d, dy / d, -dy / d2, dx / d2);
 
     (h_robot, h_lm)
 }
 
 /// EKF SLAM prediction step
 fn ekf_slam_predict(state: &mut EKFSLAMState, u: &Vector2<f64>) {
-    let n = state.x.len();
+    let _n = state.x.len();
 
     // Get current robot pose
     let robot_pose = state.get_robot_pose();
@@ -278,10 +276,13 @@ fn calc_innovation(
 
     // Innovation covariance
     let r = get_r();
-    let s = &h_full * &state.p * h_full.transpose()
-        + DMatrix::from_fn(2, 2, |i, j| r[(i, j)]);
+    let s = &h_full * &state.p * h_full.transpose() + DMatrix::from_fn(2, 2, |i, j| r[(i, j)]);
 
-    (y, Matrix2::new(s[(0, 0)], s[(0, 1)], s[(1, 0)], s[(1, 1)]), h_full)
+    (
+        y,
+        Matrix2::new(s[(0, 0)], s[(0, 1)], s[(1, 0)], s[(1, 1)]),
+        h_full,
+    )
 }
 
 /// Search for corresponding landmark using Mahalanobis distance
@@ -348,16 +349,10 @@ fn add_new_landmark(state: &mut EKFSLAMState, z: &Vector2<f64>) {
     let s = (robot_pose[2] + z[1]).sin();
 
     // G_r: Jacobian w.r.t. robot pose [x, y, yaw]
-    let g_r = nalgebra::Matrix2x3::new(
-        1.0, 0.0, -z[0] * s,
-        0.0, 1.0, z[0] * c,
-    );
+    let g_r = nalgebra::Matrix2x3::new(1.0, 0.0, -z[0] * s, 0.0, 1.0, z[0] * c);
 
     // G_z: Jacobian w.r.t. observation [d, angle]
-    let g_z = Matrix2::new(
-        c, -z[0] * s,
-        s, z[0] * c,
-    );
+    let g_z = Matrix2::new(c, -z[0] * s, s, z[0] * c);
 
     // Initial landmark covariance
     let p_rr = state.p.fixed_view::<3, 3>(0, 0);
@@ -402,7 +397,9 @@ fn ekf_slam_update(state: &mut EKFSLAMState, z: &Vector2<f64>, lm_idx: usize) {
 
     // Kalman gain
     let s_dmatrix = DMatrix::from_fn(2, 2, |i, j| s[(i, j)]);
-    let s_inv = s_dmatrix.try_inverse().unwrap_or_else(|| DMatrix::identity(2, 2));
+    let s_inv = s_dmatrix
+        .try_inverse()
+        .unwrap_or_else(|| DMatrix::identity(2, 2));
     let k = &state.p * h_full.transpose() * s_inv;
 
     // State update
@@ -473,7 +470,7 @@ pub fn ekf_slam_known_correspondences(
         state.x = new_x;
 
         let mut new_p = DMatrix::identity(n, n) * 1e6; // Large initial uncertainty
-        // Copy robot covariance
+                                                       // Copy robot covariance
         for i in 0..STATE_SIZE {
             for j in 0..STATE_SIZE {
                 new_p[(i, j)] = state.p[(i, j)];
@@ -543,7 +540,10 @@ fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64
 }
 
 /// Simulate observations from true robot pose to landmarks (with IDs - known correspondences)
-fn get_observations_with_id(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
+fn get_observations_with_id(
+    x_true: &Vector3<f64>,
+    landmarks: &[(f64, f64)],
+) -> Vec<(f64, f64, usize)> {
     let normal = Normal::new(0.0, 1.0).unwrap();
     let r = get_r();
     let mut z = Vec::new();

@@ -1,6 +1,8 @@
-use std::f64::consts::PI;
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
+use gnuplot::{AxesCommon, Caption, Color, Figure};
 use rand::Rng;
-use gnuplot::{Figure, Caption, Color, AxesCommon};
+use std::f64::consts::PI;
 
 #[derive(Clone, Debug)]
 pub struct Node {
@@ -62,7 +64,8 @@ impl InformedRRTStar {
         let mut path = None;
 
         // Computing the sampling space
-        let c_min = ((self.start.x - self.goal.x).powi(2) + (self.start.y - self.goal.y).powi(2)).sqrt();
+        let c_min =
+            ((self.start.x - self.goal.x).powi(2) + (self.start.y - self.goal.y).powi(2)).sqrt();
         let x_center = [
             (self.start.x + self.goal.x) / 2.0,
             (self.start.y + self.goal.y) / 2.0,
@@ -78,10 +81,7 @@ impl InformedRRTStar {
         // Rotation matrix for ellipse
         let cos_theta = e_theta.cos();
         let sin_theta = e_theta.sin();
-        let rotation_matrix = [
-            [cos_theta, -sin_theta],
-            [sin_theta, cos_theta],
-        ];
+        let rotation_matrix = [[cos_theta, -sin_theta], [sin_theta, cos_theta]];
 
         for i in 0..self.max_iter {
             if i % 100 == 0 {
@@ -108,20 +108,20 @@ impl InformedRRTStar {
                 self.node_list.push(new_node);
                 self.rewire(new_node_index, &near_inds);
 
-                if self.is_near_goal(&self.node_list[new_node_index]) {
-                    if self.check_segment_collision(
+                if self.is_near_goal(&self.node_list[new_node_index])
+                    && self.check_segment_collision(
                         self.node_list[new_node_index].x,
                         self.node_list[new_node_index].y,
                         self.goal.x,
                         self.goal.y,
-                    ) {
-                        let temp_path = self.get_final_course(new_node_index);
-                        let temp_path_len = self.get_path_len(&temp_path);
-                        if temp_path_len < c_best {
-                            path = Some(temp_path);
-                            c_best = temp_path_len;
-                            println!("Found better path with cost: {:.2}", c_best);
-                        }
+                    )
+                {
+                    let temp_path = self.get_final_course(new_node_index);
+                    let temp_path_len = self.get_path_len(&temp_path);
+                    if temp_path_len < c_best {
+                        path = Some(temp_path);
+                        c_best = temp_path_len;
+                        println!("Found better path with cost: {:.2}", c_best);
                     }
                 }
             }
@@ -174,22 +174,25 @@ impl InformedRRTStar {
         near_inds
     }
 
-    fn informed_sample(&self, c_max: f64, c_min: f64, x_center: &[f64; 2], rotation_matrix: &[[f64; 2]; 2]) -> [f64; 2] {
+    fn informed_sample(
+        &self,
+        c_max: f64,
+        c_min: f64,
+        x_center: &[f64; 2],
+        rotation_matrix: &[[f64; 2]; 2],
+    ) -> [f64; 2] {
         if c_max < f64::INFINITY {
-            let r = [
-                c_max / 2.0,
-                (c_max * c_max - c_min * c_min).sqrt() / 2.0,
-            ];
+            let r = [c_max / 2.0, (c_max * c_max - c_min * c_min).sqrt() / 2.0];
 
             let x_ball = self.sample_unit_ball();
-            
+
             // Transform unit ball sample
             let scaled = [r[0] * x_ball[0], r[1] * x_ball[1]];
             let rotated = [
                 rotation_matrix[0][0] * scaled[0] + rotation_matrix[0][1] * scaled[1],
                 rotation_matrix[1][0] * scaled[0] + rotation_matrix[1][1] * scaled[1],
             ];
-            
+
             [rotated[0] + x_center[0], rotated[1] + x_center[1]]
         } else {
             self.sample_free_space()
@@ -203,10 +206,7 @@ impl InformedRRTStar {
 
         let (a, b) = if b < a { (b, a) } else { (a, b) };
 
-        let sample = (
-            b * (2.0 * PI * a / b).cos(),
-            b * (2.0 * PI * a / b).sin(),
-        );
+        let sample = (b * (2.0 * PI * a / b).cos(), b * (2.0 * PI * a / b).sin());
         [sample.0, sample.1]
     }
 
@@ -270,7 +270,8 @@ impl InformedRRTStar {
             let near_node = &self.node_list[i];
             let new_node = &self.node_list[new_node_index];
 
-            let d = ((near_node.x - new_node.x).powi(2) + (near_node.y - new_node.y).powi(2)).sqrt();
+            let d =
+                ((near_node.x - new_node.x).powi(2) + (near_node.y - new_node.y).powi(2)).sqrt();
             let s_cost = new_node.cost + d;
 
             if near_node.cost > s_cost {
@@ -289,7 +290,8 @@ impl InformedRRTStar {
         }
 
         let l2 = (w[0] - v[0]).powi(2) + (w[1] - v[1]).powi(2);
-        let t = (((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2).max(0.0).min(1.0);
+        let t =
+            (((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2).clamp(0.0, 1.0);
         let projection = [v[0] + t * (w[0] - v[0]), v[1] + t * (w[1] - v[1])];
         (p[0] - projection[0]).powi(2) + (p[1] - projection[1]).powi(2)
     }
@@ -337,7 +339,7 @@ impl InformedRRTStar {
         for node in &self.node_list {
             if let Some(parent_index) = node.parent {
                 let parent = &self.node_list[parent_index];
-                axes.lines(&[parent.x, node.x], &[parent.y, node.y], &[Color("blue")]);
+                axes.lines([parent.x, node.x], [parent.y, node.y], &[Color("blue")]);
             }
         }
 
@@ -345,12 +347,24 @@ impl InformedRRTStar {
         if !path.is_empty() {
             let path_x: Vec<f64> = path.iter().map(|node| node[0]).collect();
             let path_y: Vec<f64> = path.iter().map(|node| node[1]).collect();
-            axes.lines(&path_x, &path_y, &[Caption("Informed RRT* Path"), Color("red")]);
+            axes.lines(
+                &path_x,
+                &path_y,
+                &[Caption("Informed RRT* Path"), Color("red")],
+            );
         }
 
         // Plot start and goal
-        axes.points(&[self.start.x], &[self.start.y], &[Caption("Start"), Color("green")]);
-        axes.points(&[self.goal.x], &[self.goal.y], &[Caption("Goal"), Color("blue")]);
+        axes.points(
+            &[self.start.x],
+            &[self.start.y],
+            &[Caption("Start"), Color("green")],
+        );
+        axes.points(
+            &[self.goal.x],
+            &[self.goal.y],
+            &[Caption("Goal"), Color("blue")],
+        );
 
         axes.set_title("Informed RRT* Path Planning", &[])
             .set_x_label("X [m]", &[])
@@ -380,13 +394,13 @@ fn main() {
     ];
 
     let mut rrt = InformedRRTStar::new(
-        (0.0, 0.0),    // start
-        (5.0, 10.0),   // goal
+        (0.0, 0.0),  // start
+        (5.0, 10.0), // goal
         obstacle_list,
-        (-2.0, 15.0),  // rand_area
-        0.5,           // expand_dis
-        10,            // goal_sample_rate
-        300,           // max_iter
+        (-2.0, 15.0), // rand_area
+        0.5,          // expand_dis
+        10,           // goal_sample_rate
+        300,          // max_iter
     );
 
     if let Some(path) = rrt.planning() {

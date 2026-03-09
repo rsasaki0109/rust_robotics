@@ -1,6 +1,6 @@
 //! Common types used throughout rust_robotics
 
-use nalgebra::{Vector2, Vector3, Vector4, Matrix2, Matrix4};
+use nalgebra::{Matrix2, Matrix4, Vector2, Vector3, Vector4};
 
 /// 2D point representation
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -29,7 +29,10 @@ impl Point2D {
 
 impl From<(f64, f64)> for Point2D {
     fn from(tuple: (f64, f64)) -> Self {
-        Self { x: tuple.0, y: tuple.1 }
+        Self {
+            x: tuple.0,
+            y: tuple.1,
+        }
     }
 }
 
@@ -53,11 +56,16 @@ impl Point3D {
     }
 
     pub fn origin() -> Self {
-        Self { x: 0.0, y: 0.0, z: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 
     pub fn distance(&self, other: &Point3D) -> f64 {
-        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2)).sqrt()
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
+            .sqrt()
     }
 
     pub fn to_vector(&self) -> Vector3<f64> {
@@ -79,7 +87,11 @@ impl Pose2D {
     }
 
     pub fn origin() -> Self {
-        Self { x: 0.0, y: 0.0, yaw: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.0,
+        }
     }
 
     pub fn position(&self) -> Point2D {
@@ -103,7 +115,11 @@ impl Pose2D {
 
 impl From<Vector3<f64>> for Pose2D {
     fn from(v: Vector3<f64>) -> Self {
-        Self { x: v[0], y: v[1], yaw: v[2] }
+        Self {
+            x: v[0],
+            y: v[1],
+            yaw: v[2],
+        }
     }
 }
 
@@ -122,7 +138,12 @@ impl State2D {
     }
 
     pub fn origin() -> Self {
-        Self { x: 0.0, y: 0.0, yaw: 0.0, v: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.0,
+            v: 0.0,
+        }
     }
 
     pub fn pose(&self) -> Pose2D {
@@ -140,15 +161,20 @@ impl State2D {
 
 impl From<Vector4<f64>> for State2D {
     fn from(v: Vector4<f64>) -> Self {
-        Self { x: v[0], y: v[1], yaw: v[2], v: v[3] }
+        Self {
+            x: v[0],
+            y: v[1],
+            yaw: v[2],
+            v: v[3],
+        }
     }
 }
 
 /// Control input for differential drive robot
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ControlInput {
-    pub v: f64,      // linear velocity
-    pub omega: f64,  // angular velocity
+    pub v: f64,     // linear velocity
+    pub omega: f64, // angular velocity
 }
 
 impl ControlInput {
@@ -167,7 +193,10 @@ impl ControlInput {
 
 impl From<Vector2<f64>> for ControlInput {
     fn from(v: Vector2<f64>) -> Self {
-        Self { v: v[0], omega: v[1] }
+        Self {
+            v: v[0],
+            omega: v[1],
+        }
     }
 }
 
@@ -188,7 +217,9 @@ impl Path2D {
 
     pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
         assert_eq!(x.len(), y.len());
-        let points = x.iter().zip(y.iter())
+        let points = x
+            .iter()
+            .zip(y.iter())
             .map(|(&x, &y)| Point2D::new(x, y))
             .collect();
         Self { points }
@@ -218,9 +249,7 @@ impl Path2D {
         if self.points.len() < 2 {
             return 0.0;
         }
-        self.points.windows(2)
-            .map(|w| w[0].distance(&w[1]))
-            .sum()
+        self.points.windows(2).map(|w| w[0].distance(&w[1])).sum()
     }
 }
 
@@ -260,7 +289,9 @@ impl Obstacles {
 
     pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
         assert_eq!(x.len(), y.len());
-        let points = x.iter().zip(y.iter())
+        let points = x
+            .iter()
+            .zip(y.iter())
             .map(|(&x, &y)| Point2D::new(x, y))
             .collect();
         Self { points }
