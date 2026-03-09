@@ -316,22 +316,11 @@ const galleryItems = [
   }
 ];
 
-const repoUrl = "https://github.com/rsasaki0109/rust_robotics";
-const defaultTweet = [
-  "RustRobotics now has a visual showcase wall:",
-  "localization, SLAM, planning, control, mission logic, and aerial navigation in one scrollable page.",
-  "https://rsasaki0109.github.io/rust_robotics/",
-  "#rustlang #robotics #opensource"
-].join("\n");
-
 const galleryGrid = document.getElementById("gallery-grid");
 const filtersRoot = document.getElementById("category-filters");
 const marqueeRoot = document.getElementById("hero-marquee");
 const template = document.getElementById("card-template");
 const galleryCount = document.getElementById("gallery-count");
-const tweetCopy = document.getElementById("tweet-copy");
-const copyPostButton = document.getElementById("copy-post");
-const shareLink = document.getElementById("share-link");
 const visualCount = document.getElementById("visual-count");
 const moduleCount = document.getElementById("module-count");
 
@@ -340,8 +329,6 @@ const stats = {
   modules: 12
 };
 
-tweetCopy.textContent = defaultTweet;
-shareLink.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(defaultTweet)}`;
 visualCount.textContent = stats.visuals.toString();
 moduleCount.textContent = stats.modules.toString();
 
@@ -437,21 +424,6 @@ function renderMarquee(items) {
 
   marqueeRoot.replaceChildren(...cards);
 }
-
-copyPostButton.addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(defaultTweet);
-    copyPostButton.textContent = "Copied";
-    window.setTimeout(() => {
-      copyPostButton.textContent = "Copy post text";
-    }, 1400);
-  } catch (error) {
-    copyPostButton.textContent = "Copy failed";
-    window.setTimeout(() => {
-      copyPostButton.textContent = "Copy post text";
-    }, 1400);
-  }
-});
 
 renderMarquee(galleryItems);
 renderFilters(galleryItems);
