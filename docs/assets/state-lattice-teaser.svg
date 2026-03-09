@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">State lattice teaser</title>
+  <desc id="desc">A showcase-friendly state lattice planner card with multiple candidate trajectories.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08111a"/>
+      <stop offset="100%" stop-color="#112031"/>
+    </linearGradient>
+    <linearGradient id="chosen" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" rx="34" fill="url(#bg)"/>
+  <g opacity="0.12">
+    <circle cx="210" cy="190" r="150" fill="#35d0ba"/>
+    <circle cx="1000" cy="740" r="180" fill="#ff7a18"/>
+  </g>
+  <text x="80" y="118" fill="#f4ede3" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">State Lattice Planner</text>
+  <text x="80" y="164" fill="#9ab0bf" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --example state_lattice</text>
+  <g transform="translate(80 220)">
+    <rect width="1040" height="560" rx="28" fill="#ffffff"/>
+    <rect x="70" y="54" width="900" height="430" rx="14" fill="#f8f5ef" stroke="#d8d1c6"/>
+    <g stroke="#d8d1c6" stroke-width="2">
+      <line x1="70" y1="140" x2="970" y2="140"/>
+      <line x1="70" y1="248" x2="970" y2="248"/>
+      <line x1="70" y1="356" x2="970" y2="356"/>
+      <line x1="70" y1="464" x2="970" y2="464"/>
+      <line x1="205" y1="54" x2="205" y2="484"/>
+      <line x1="385" y1="54" x2="385" y2="484"/>
+      <line x1="565" y1="54" x2="565" y2="484"/>
+      <line x1="745" y1="54" x2="745" y2="484"/>
+      <line x1="925" y1="54" x2="925" y2="484"/>
+    </g>
+    <g stroke="#cbd5e1" stroke-width="5" fill="none" stroke-linecap="round">
+      <path d="M140 420 C260 350, 360 310, 500 290 C620 272, 770 278, 920 332"/>
+      <path d="M140 420 C270 378, 386 350, 532 344 C664 338, 790 362, 920 414"/>
+      <path d="M140 420 C286 418, 426 424, 576 444 C704 462, 820 486, 920 520"/>
+      <path d="M140 420 C250 310, 370 226, 524 178 C678 132, 816 126, 920 156"/>
+      <path d="M140 420 C246 446, 340 470, 454 520 C602 584, 760 636, 920 664"/>
+      <path d="M140 420 C248 394, 338 372, 444 316 C536 266, 608 206, 684 134"/>
+    </g>
+    <path d="M140 420 C250 356, 358 314, 496 286 C628 260, 766 268, 920 326" fill="none" stroke="url(#chosen)" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="140" cy="420" r="18" fill="#2563eb"/>
+    <circle cx="920" cy="326" r="18" fill="#16a34a"/>
+    <g fill="#1f2937" font-size="26" font-family="IBM Plex Mono, monospace">
+      <text x="116" y="456">start</text>
+      <text x="938" y="334">goal</text>
+    </g>
+    <g transform="translate(86 514)">
+      <rect width="440" height="76" rx="18" fill="#f4f0e8" stroke="#d8d1c6"/>
+      <line x1="24" y1="38" x2="90" y2="38" stroke="url(#chosen)" stroke-width="10" stroke-linecap="round"/>
+      <text x="108" y="46" fill="#1f2937" font-size="24" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">selected trajectory</text>
+      <line x1="274" y1="38" x2="338" y2="38" stroke="#94a3b8" stroke-width="8" stroke-linecap="round"/>
+      <text x="356" y="46" fill="#1f2937" font-size="24" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">lattice samples</text>
+    </g>
+  </g>
+</svg>
