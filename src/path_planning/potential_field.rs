@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::too_many_arguments)]
 
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use std::collections::VecDeque;
@@ -127,12 +127,12 @@ impl PotentialFieldPlanner {
 
         for (ix, column) in pmap.iter_mut().enumerate().take(xw) {
             let x = ix as f64 * self.resolution + minx;
-            for iy in 0..yw {
+            for (iy, value) in column.iter_mut().enumerate().take(yw) {
                 let y = iy as f64 * self.resolution + miny;
                 let ug = self.calc_attractive_potential(x, y, gx, gy);
                 let uo = self.calc_repulsive_potential(x, y, ox, oy);
                 let uf = ug + uo;
-                column[iy] = uf;
+                *value = uf;
             }
         }
 

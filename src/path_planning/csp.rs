@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // https://github.com/AtsushiSakai/PythonRobotics/tree/master/PathPlanning/CubicSpline
 // Cubic spline planner
 //

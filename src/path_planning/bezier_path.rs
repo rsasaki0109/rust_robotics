@@ -93,7 +93,7 @@ fn curvature(dx: f64, dy: f64, ddx: f64, ddy: f64) -> f64 {
 
 fn main() {
     // [x, y, yaw]
-    let start_x = (10., 1., 180.0 / 180.0 * std::f64::consts::PI);
+    let start_x = (10., 1., std::f64::consts::PI);
     let end_x = (0., -3., -45.0 / 180.0 * std::f64::consts::PI);
 
     let offset = 3.;
