@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 //! RRT (Rapidly-exploring Random Tree) path planning algorithm
 //!
 //! Sampling-based path planning algorithm that builds a tree by

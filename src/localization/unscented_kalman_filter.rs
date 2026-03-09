@@ -462,6 +462,13 @@ impl LegacyUKFState {
     }
 }
 
+#[allow(deprecated)]
+impl Default for LegacyUKFState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Legacy motion model function
 pub fn motion_model(x: &Vector4<f64>, u: &Vector2<f64>) -> Vector4<f64> {
     const DT: f64 = 0.1;
@@ -524,7 +531,7 @@ pub fn observation(
     u: &Vector2<f64>,
 ) -> (Vector2<f64>, Vector2<f64>) {
     const INPUT_NOISE_V: f64 = 1.0;
-    const INPUT_NOISE_YAW: f64 = 0.5236; // 30 degrees
+    const INPUT_NOISE_YAW: f64 = std::f64::consts::FRAC_PI_6; // 30 degrees
     const GPS_NOISE_X: f64 = 0.5;
     const GPS_NOISE_Y: f64 = 0.5;
 

@@ -260,7 +260,7 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
     }
 
     #[test]
@@ -272,7 +272,7 @@ mod tests {
         assert!(result.is_some());
 
         let (rx, ry) = result.unwrap();
-        assert!(rx.len() > 0);
+        assert!(!rx.is_empty());
         assert_eq!(rx.len(), ry.len());
     }
 }

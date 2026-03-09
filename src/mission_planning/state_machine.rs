@@ -13,9 +13,9 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Type alias for callback functions
-pub type CallbackFn = Box<dyn Fn() -> ()>;
+pub type CallbackFn = Box<dyn Fn()>;
 pub type GuardFn = Box<dyn Fn() -> bool>;
-pub type ActionFn = Box<dyn Fn() -> ()>;
+pub type ActionFn = Box<dyn Fn()>;
 
 /// Represents a state in the state machine
 #[derive(Clone, PartialEq)]
@@ -468,6 +468,12 @@ impl RobotBehavior {
 
     pub fn obstacle_detected(&self) -> bool {
         self.has_obstacle
+    }
+}
+
+impl Default for RobotBehavior {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

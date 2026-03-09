@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_if)]
+
 //! Jump Point Search (JPS) path planning algorithm
 //!
 //! JPS is an optimization of A* for uniform-cost grids that reduces the
@@ -63,7 +65,6 @@ struct PriorityNode {
     cost: f64,
     priority: f64,
     index: usize,
-    direction: Option<Direction>,
 }
 
 impl Eq for PriorityNode {}
@@ -461,7 +462,6 @@ impl PathPlanner for JPSPlanner {
             cost: 0.0,
             priority: self.calc_heuristic(start_x, start_y, goal_x, goal_y),
             index: start_index,
-            direction: None,
         });
 
         while let Some(current) = open_set.pop() {
@@ -509,7 +509,6 @@ impl PathPlanner for JPSPlanner {
                     cost: new_cost,
                     priority,
                     index: new_index,
-                    direction: Some(dir),
                 });
             }
         }
@@ -584,7 +583,7 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
 
         // Check that path starts near start and ends near goal
         let first = &path.points[0];
@@ -607,7 +606,7 @@ mod tests {
         assert!(result.is_ok());
 
         let path = result.unwrap();
-        assert!(path.len() > 0);
+        assert!(!path.is_empty());
     }
 
     #[test]
@@ -619,7 +618,7 @@ mod tests {
         assert!(result.is_some());
 
         let (rx, ry) = result.unwrap();
-        assert!(rx.len() > 0);
+        assert!(!rx.is_empty());
         assert_eq!(rx.len(), ry.len());
     }
 

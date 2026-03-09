@@ -68,8 +68,7 @@ impl Spline {
         let i = self.clone().__search_index(t);
         let x = self.x[i];
         let dx = t - x;
-        let result = self.a[i] + self.b[i] * dx + self.c[i] * dx.powi(2) + self.d[i] * dx.powi(3);
-        result
+        self.a[i] + self.b[i] * dx + self.c[i] * dx.powi(2) + self.d[i] * dx.powi(3)
     }
 
     fn calcd(self, t: f64) -> f64 {
@@ -79,16 +78,14 @@ impl Spline {
         let b = self.b[i];
         let c = self.c[i];
         let d = self.d[i];
-        let result = b + 2. * c * dx + 3. * d * dx.powi(2);
-        result
+        b + 2. * c * dx + 3. * d * dx.powi(2)
     }
 
     fn calcdd(self, t: f64) -> f64 {
         let i = self.clone().__search_index(t);
         let x = self.x[i];
         let dx = t - x;
-        let result = 2. * self.c[i] + 6. * self.d[i] * dx;
-        result
+        2. * self.c[i] + 6. * self.d[i] * dx
     }
 
     fn __search_index(self, t: f64) -> usize {
@@ -125,11 +122,11 @@ impl Spline {
     fn bisect(self, t: f64, s: usize, e: usize) -> usize {
         let mid = (s + e) / 2;
         if t == self.x[mid] || e - s <= 1 {
-            return mid;
+            mid
         } else if t > self.x[mid] {
-            return self.bisect(t, mid, e);
+            self.bisect(t, mid, e)
         } else {
-            return self.bisect(t, s, mid);
+            self.bisect(t, s, mid)
         }
     }
 }
@@ -183,15 +180,13 @@ impl Spline2D {
         let ddx = self.sx.calcdd(is);
         let dy = self.sy.clone().calcd(is);
         let ddy = self.sy.calcdd(is);
-        let k = (ddy * dx - ddx * dy) / ((dx.powi(2) + dy.powi(2)).powf(3. / 2.));
-        k
+        (ddy * dx - ddx * dy) / ((dx.powi(2) + dy.powi(2)).powf(3. / 2.))
     }
 
     fn calc_yaw(self, is: f64) -> f64 {
         let dx = self.sx.calcd(is);
         let dy = self.sy.calcd(is);
-        let yaw = dy.atan2(dx);
-        yaw
+        dy.atan2(dx)
     }
 }
 
