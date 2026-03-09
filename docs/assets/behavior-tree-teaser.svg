@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Behavior tree teaser</title>
+  <desc id="desc">A stylized behavior tree diagram for the GitHub Pages showcase.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1824"/>
+      <stop offset="100%" stop-color="#08111a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#35d0ba"/>
+      <stop offset="100%" stop-color="#7ef0cb"/>
+    </linearGradient>
+    <linearGradient id="accentWarm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" rx="34" fill="url(#bg)"/>
+  <g opacity="0.12">
+    <circle cx="170" cy="170" r="120" fill="#ff7a18"/>
+    <circle cx="1030" cy="220" r="160" fill="#35d0ba"/>
+    <circle cx="980" cy="760" r="180" fill="#ffd166"/>
+  </g>
+  <text x="80" y="118" fill="#f4ede3" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">Behavior Tree</text>
+  <text x="80" y="164" fill="#9ab0bf" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --bin behavior_tree</text>
+  <g stroke="#35506c" stroke-width="8" stroke-linecap="round">
+    <path d="M600 230v90"/>
+    <path d="M260 430h680"/>
+    <path d="M260 430v70"/>
+    <path d="M460 430v70"/>
+    <path d="M740 430v70"/>
+    <path d="M940 430v70"/>
+  </g>
+  <g filter="url(#glow)">
+    <rect x="420" y="180" width="360" height="92" rx="24" fill="url(#accentWarm)"/>
+    <text x="600" y="238" text-anchor="middle" fill="#08111a" font-size="34" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">mission_root</text>
+  </g>
+  <g>
+    <rect x="150" y="320" width="220" height="84" rx="22" fill="#10202f" stroke="#35506c" stroke-width="4"/>
+    <rect x="390" y="320" width="220" height="84" rx="22" fill="#10202f" stroke="#35506c" stroke-width="4"/>
+    <rect x="630" y="320" width="220" height="84" rx="22" fill="#10202f" stroke="#35506c" stroke-width="4"/>
+    <rect x="870" y="320" width="220" height="84" rx="22" fill="#10202f" stroke="#35506c" stroke-width="4"/>
+    <text x="260" y="374" text-anchor="middle" fill="#7ef0cb" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">sense</text>
+    <text x="500" y="374" text-anchor="middle" fill="#7ef0cb" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">plan</text>
+    <text x="740" y="374" text-anchor="middle" fill="#7ef0cb" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">act</text>
+    <text x="980" y="374" text-anchor="middle" fill="#7ef0cb" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">recover</text>
+  </g>
+  <g>
+    <rect x="120" y="500" width="280" height="94" rx="24" fill="#0d1824" stroke="#ff7a18" stroke-width="4"/>
+    <rect x="320" y="650" width="280" height="94" rx="24" fill="#0d1824" stroke="#35d0ba" stroke-width="4"/>
+    <rect x="600" y="500" width="280" height="94" rx="24" fill="#0d1824" stroke="#35d0ba" stroke-width="4"/>
+    <rect x="800" y="650" width="280" height="94" rx="24" fill="#0d1824" stroke="#ff7a18" stroke-width="4"/>
+    <text x="260" y="557" text-anchor="middle" fill="#f4ede3" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">check battery</text>
+    <text x="460" y="707" text-anchor="middle" fill="#f4ede3" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">scan obstacles</text>
+    <text x="740" y="557" text-anchor="middle" fill="#f4ede3" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">run planner</text>
+    <text x="940" y="707" text-anchor="middle" fill="#f4ede3" font-size="28" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">fallback route</text>
+  </g>
+  <g fill="#9ab0bf" font-size="24" font-family="IBM Plex Mono, monospace">
+    <text x="80" y="820">Mission planning module added in the integration phase.</text>
+    <text x="80" y="854">Diagram-only teaser until simulation screenshots land.</text>
+  </g>
+</svg>
