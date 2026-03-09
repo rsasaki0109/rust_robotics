@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 //! RRT (Rapidly-exploring Random Tree) path planning algorithm
 //!
 //! Sampling-based path planning algorithm that builds a tree by
@@ -5,7 +7,7 @@
 
 use rand::Rng;
 
-use crate::common::{Point2D, Path2D, PathPlanner, RoboticsError};
+use crate::common::{Path2D, PathPlanner, Point2D, RoboticsError};
 
 /// Internal node for RRT tree
 #[derive(Debug, Clone)]
@@ -44,7 +46,12 @@ pub struct AreaBounds {
 
 impl AreaBounds {
     pub fn new(xmin: f64, xmax: f64, ymin: f64, ymax: f64) -> Self {
-        AreaBounds { xmin, xmax, ymin, ymax }
+        AreaBounds {
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+        }
     }
 
     pub fn from_array(area: [f64; 4]) -> Self {
@@ -105,7 +112,7 @@ pub struct RRTPlanner {
     play_area: Option<AreaBounds>,
     rand_area: AreaBounds,
     node_list: Vec<RRTNode>,
-    start: RRTNode,
+    _start: RRTNode,
     goal: RRTNode,
 }
 
@@ -123,7 +130,7 @@ impl RRTPlanner {
             play_area,
             rand_area,
             node_list: Vec::new(),
-            start: RRTNode::new(0.0, 0.0),
+            _start: RRTNode::new(0.0, 0.0),
             goal: RRTNode::new(0.0, 0.0),
         }
     }
@@ -165,9 +172,7 @@ impl RRTPlanner {
 
         match self.plan(start_pt, goal_pt) {
             Ok(path) => {
-                let result: Vec<[f64; 2]> = path.points.iter()
-                    .map(|p| [p.x, p.y])
-                    .collect();
+                let result: Vec<[f64; 2]> = path.points.iter().map(|p| [p.x, p.y]).collect();
                 Some(result)
             }
             Err(_) => None,
@@ -262,8 +267,11 @@ impl RRTPlanner {
 
     fn check_if_outside_play_area(&self, node: &RRTNode) -> bool {
         if let Some(ref play_area) = self.play_area {
-            if node.x < play_area.xmin || node.x > play_area.xmax ||
-               node.y < play_area.ymin || node.y > play_area.ymax {
+            if node.x < play_area.xmin
+                || node.x > play_area.xmax
+                || node.y < play_area.ymin
+                || node.y > play_area.ymax
+            {
                 return false;
             }
         }
@@ -302,7 +310,7 @@ impl PathPlanner for RRTPlanner {
             play_area: self.play_area.clone(),
             rand_area: self.rand_area.clone(),
             node_list: vec![RRTNode::new(start.x, start.y)],
-            start: RRTNode::new(start.x, start.y),
+            _start: RRTNode::new(start.x, start.y),
             goal: RRTNode::new(goal.x, goal.y),
         };
 
@@ -320,7 +328,8 @@ impl PathPlanner for RRTPlanner {
 
                 let last = planner.node_list.last().unwrap();
                 if planner.calc_dist_to_goal(last.x, last.y) <= planner.config.expand_dis {
-                    let final_node = planner.steer(last, &planner.goal.clone(), planner.config.expand_dis);
+                    let final_node =
+                        planner.steer(last, &planner.goal.clone(), planner.config.expand_dis);
                     if planner.check_collision(&final_node) {
                         return Ok(planner.generate_final_course(planner.node_list.len() - 1));
                     }
@@ -328,7 +337,9 @@ impl PathPlanner for RRTPlanner {
             }
         }
 
-        Err(RoboticsError::PlanningError("RRT: Cannot find path within max iterations".to_string()))
+        Err(RoboticsError::PlanningError(
+            "RRT: Cannot find path within max iterations".to_string(),
+        ))
     }
 }
 

@@ -7,14 +7,11 @@
 //! - PythonRobotics State Lattice Planner by Atsushi Sakai
 //! - "State Space Sampling of Feasible Motions for High-Performance Mobile Robot Navigation"
 
-use std::f64::consts::PI;
-
 use crate::common::{error::RoboticsError, Path2D, Point2D};
 
 use super::motion_model::{normalize_angle, MotionModel, MotionModelConfig};
 use super::trajectory_generator::{
-    LookupTable, LookupTableEntry, TargetState, TrajectoryGenerator, TrajectoryGeneratorConfig,
-    TrajectoryParams,
+    LookupTable, TargetState, TrajectoryGenerator, TrajectoryGeneratorConfig, TrajectoryParams,
 };
 use nalgebra::Vector3;
 
@@ -202,7 +199,6 @@ impl StateLattice {
         for i in 0..config.ns {
             // Bias distribution toward goal angle
             let t = i as f64 / (config.ns - 1).max(1) as f64;
-            let bias = 0.5 + 0.5 * (PI * t).cos(); // More samples near edges and center
             let angle = config.a_min + (config.a_max - config.a_min) * t;
 
             // Weight toward goal angle
@@ -272,7 +268,6 @@ impl StateLattice {
 
         for &angle in angle_samples {
             // Sample at different distances
-            let p_range = config.p_max - config.p_min;
             for i in 0..3 {
                 // 3 distance samples per angle
                 let p = if i == 0 {
@@ -289,7 +284,8 @@ impl StateLattice {
                 // Sample headings
                 for j in 0..config.nh {
                     let yaw = if config.nh > 1 {
-                        config.a_min + (config.a_max - config.a_min) * j as f64 / (config.nh - 1) as f64
+                        config.a_min
+                            + (config.a_max - config.a_min) * j as f64 / (config.nh - 1) as f64
                     } else {
                         angle
                     };
@@ -410,10 +406,10 @@ impl StateLattice {
                 let goal_x = dx;
                 let goal_y = dy;
 
-                let a_cost = (a_final_x * scale - goal_x).powi(2)
-                    + (a_final_y * scale - goal_y).powi(2);
-                let b_cost = (b_final_x * scale - goal_x).powi(2)
-                    + (b_final_y * scale - goal_y).powi(2);
+                let a_cost =
+                    (a_final_x * scale - goal_x).powi(2) + (a_final_y * scale - goal_y).powi(2);
+                let b_cost =
+                    (b_final_x * scale - goal_x).powi(2) + (b_final_y * scale - goal_y).powi(2);
 
                 a_cost
                     .partial_cmp(&b_cost)

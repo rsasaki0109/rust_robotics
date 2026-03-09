@@ -2,9 +2,9 @@
 //!
 //! Demonstrates the A* path planning algorithm on a simple grid with obstacles.
 
-use rust_robotics::path_planning::a_star::{AStarPlanner, AStarConfig};
-use rust_robotics::common::{Point2D, PathPlanner};
-use rust_robotics::utils::{Visualizer, PathStyle, PointStyle, colors};
+use rust_robotics::common::{PathPlanner, Point2D};
+use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
+use rust_robotics::utils::{PathStyle, Visualizer};
 
 fn main() {
     println!("A* path planning start!!");
@@ -22,10 +22,14 @@ fn main() {
     let mut oy = Vec::new();
 
     for i in 0..11 {
-        ox.push(i as f64); oy.push(0.0);
-        ox.push(i as f64); oy.push(10.0);
-        ox.push(0.0); oy.push(i as f64);
-        ox.push(10.0); oy.push(i as f64);
+        ox.push(i as f64);
+        oy.push(0.0);
+        ox.push(i as f64);
+        oy.push(10.0);
+        ox.push(0.0);
+        oy.push(i as f64);
+        ox.push(10.0);
+        oy.push(i as f64);
     }
 
     // Add internal obstacle

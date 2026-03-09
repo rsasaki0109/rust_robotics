@@ -155,7 +155,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" class=\"legend\">JPS Path</text>\n",
-        legend_x + 50.0, legend_y + 22.0
+        legend_x + 50.0,
+        legend_y + 22.0
     ));
     svg.push_str(&format!(
         "<line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\" stroke=\"#0066CC\" stroke-width=\"2\" stroke-opacity=\"0.5\"/>\n",
@@ -163,7 +164,8 @@ fn generate_svg(
     ));
     svg.push_str(&format!(
         "<text x=\"{:.1}\" y=\"{:.1}\" class=\"legend\">A* Path</text>\n",
-        legend_x + 50.0, legend_y + 42.0
+        legend_x + 50.0,
+        legend_y + 42.0
     ));
 
     svg.push_str("</svg>\n");
@@ -263,7 +265,9 @@ fn main() {
             let svg = generate_svg(&ox, &oy, jps_path, a_star_path, start, goal);
 
             // Use absolute path from CARGO_MANIFEST_DIR
-            let abs_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            let abs_path = std::env::var_os("CARGO_MANIFEST_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
                 .join("img/path_planning/jps_result.svg");
 
             match File::create(&abs_path) {
