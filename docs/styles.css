@@ -288,7 +288,9 @@ button {
 .marquee-card img {
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
+  object-fit: contain;
+  padding: 12px;
+  background: #ffffff;
 }
 
 .marquee-card figcaption {
@@ -388,13 +390,15 @@ button {
 
 .card-media {
   overflow: hidden;
+  padding: 14px;
+  background: linear-gradient(180deg, #ffffff, #f4f0e8);
 }
 
 .card-media img {
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: cover;
-  background: rgba(255, 255, 255, 0.02);
+  object-fit: contain;
+  background: #ffffff;
   transition: transform 240ms ease;
 }
 
