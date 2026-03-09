@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">3D Grid A star teaser</title>
+  <desc id="desc">A stylized isometric aerial grid path for the GitHub Pages showcase.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a141f"/>
+      <stop offset="100%" stop-color="#071018"/>
+    </linearGradient>
+    <linearGradient id="path" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+    <linearGradient id="goal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#35d0ba"/>
+      <stop offset="100%" stop-color="#8af0dc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" rx="34" fill="url(#bg)"/>
+  <g opacity="0.1">
+    <circle cx="210" cy="170" r="140" fill="#35d0ba"/>
+    <circle cx="1010" cy="740" r="190" fill="#ff7a18"/>
+  </g>
+  <text x="80" y="118" fill="#f4ede3" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">3D Grid A*</text>
+  <text x="80" y="164" fill="#9ab0bf" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --bin grid_a_star_3d</text>
+  <g transform="translate(160 250)">
+    <g stroke="#274258" stroke-width="2" opacity="0.8">
+      <path d="M0 100 260 0 640 180 380 280Z" fill="none"/>
+      <path d="M0 180 260 80 640 260 380 360Z" fill="none"/>
+      <path d="M0 260 260 160 640 340 380 440Z" fill="none"/>
+      <path d="M0 340 260 240 640 420 380 520Z" fill="none"/>
+      <path d="M120 50 500 230"/>
+      <path d="M220 10 600 190"/>
+      <path d="M320 50 700 230"/>
+      <path d="M420 90 800 270"/>
+      <path d="M520 130 900 310"/>
+      <path d="M620 170 1000 350"/>
+    </g>
+    <g fill="#112131">
+      <path d="M260 80 320 50 320 140 260 170Z"/>
+      <path d="M420 90 500 130 500 250 420 210Z"/>
+      <path d="M520 130 620 170 620 310 520 270Z"/>
+      <path d="M200 180 260 150 260 250 200 280Z"/>
+      <path d="M640 260 720 300 720 420 640 380Z"/>
+      <path d="M760 220 840 260 840 380 760 340Z"/>
+    </g>
+    <g stroke="url(#path)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M40 320 160 260 240 280 320 230 410 260 520 210 670 270 860 200"/>
+    </g>
+    <g fill="#ff7a18">
+      <circle cx="40" cy="320" r="18"/>
+    </g>
+    <g fill="url(#goal)">
+      <circle cx="860" cy="200" r="22"/>
+    </g>
+    <g fill="#f4ede3" font-family="IBM Plex Mono, monospace" font-size="22">
+      <text x="0" y="360">start</text>
+      <text x="878" y="204">goal</text>
+    </g>
+  </g>
+  <g fill="#9ab0bf" font-size="24" font-family="IBM Plex Mono, monospace">
+    <text x="80" y="820">Aerial navigation teaser for the new 3D planner module.</text>
+    <text x="80" y="854">Designed for the showcase until rendered screenshots are added.</text>
+  </g>
+</svg>
