@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use std::collections::VecDeque;
 
@@ -123,14 +125,14 @@ impl PotentialFieldPlanner {
         // Calculate each potential
         let mut pmap = vec![vec![0.0; yw]; xw];
 
-        for ix in 0..xw {
+        for (ix, column) in pmap.iter_mut().enumerate().take(xw) {
             let x = ix as f64 * self.resolution + minx;
             for iy in 0..yw {
                 let y = iy as f64 * self.resolution + miny;
                 let ug = self.calc_attractive_potential(x, y, gx, gy);
                 let uo = self.calc_repulsive_potential(x, y, ox, oy);
                 let uf = ug + uo;
-                pmap[ix][iy] = uf;
+                column[iy] = uf;
             }
         }
 
@@ -217,7 +219,7 @@ impl PotentialFieldPlanner {
         }
 
         let mut fg = Figure::new();
-        let mut axes = fg.axes2d();
+        let axes = fg.axes2d();
 
         // Plot obstacles
         axes.points(ox, oy, &[Caption("Obstacles"), Color("black")]);
@@ -226,8 +228,8 @@ impl PotentialFieldPlanner {
         axes.lines(rx, ry, &[Caption("Potential Field Path"), Color("red")]);
 
         // Plot start and goal
-        axes.points(&[sx], &[sy], &[Caption("Start"), Color("green")]);
-        axes.points(&[gx], &[gy], &[Caption("Goal"), Color("blue")]);
+        axes.points([sx], [sy], &[Caption("Start"), Color("green")]);
+        axes.points([gx], [gy], &[Caption("Goal"), Color("blue")]);
 
         axes.set_title("Potential Field Path Planning", &[])
             .set_x_label("X [m]", &[])

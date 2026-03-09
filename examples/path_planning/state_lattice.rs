@@ -136,11 +136,13 @@ fn test_lane_sampling() {
     println!("Test 3: Lane-based Sampling");
     println!("----------------------------");
 
-    let mut config = StateLatticeConfig::default();
-    config.lane_width = 3.5;
-    config.vehicle_width = 1.8;
-    config.lane_heading = 0.0;
-    config.d = 30.0;
+    let config = StateLatticeConfig {
+        lane_width: 3.5,
+        vehicle_width: 1.8,
+        lane_heading: 0.0,
+        d: 30.0,
+        ..StateLatticeConfig::default()
+    };
 
     let planner = StateLattice::new(config);
     let states = planner.calc_lane_states();

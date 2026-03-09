@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::needless_borrows_for_generic_args)]
+
 //
 // Inverted Pendulum MPC control
 // author: Atsushi Sakai
@@ -5,7 +7,7 @@
 //
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSymbol};
-use nalgebra::{DMatrix, DVector, Matrix1, Matrix4, Vector4};
+use nalgebra::{Matrix1, Matrix4, Vector4};
 use std::f64::consts::PI;
 
 // Model parameters
@@ -103,7 +105,7 @@ impl InvertedPendulumMPC {
 
         // Simple gradient descent optimization
         for _iter in 0..50 {
-            let (states, cost) = self.simulate_prediction(x0, &u_seq, &a, &b);
+            let (_states, cost) = self.simulate_prediction(x0, &u_seq, &a, &b);
 
             if cost < best_cost {
                 best_cost = cost;
@@ -216,12 +218,10 @@ impl InvertedPendulumMPC {
             // Draw predicted trajectory
             if predicted_states.len() > 1 {
                 let pred_x: Vec<f64> = predicted_states.iter().map(|s| s[0]).collect();
-                let pred_angles: Vec<f64> = predicted_states.iter().map(|s| s[2]).collect();
-
                 // Draw predicted cart positions
                 axes.points(
                     &pred_x,
-                    &vec![0.2; pred_x.len()],
+                    vec![0.2; pred_x.len()],
                     &[Caption("Predicted Path"), Color("red"), PointSymbol('.')],
                 );
 
@@ -329,6 +329,12 @@ impl InvertedPendulumMPC {
         fg.set_terminal("pngcairo", output_path);
         fg.show().unwrap();
         println!("MPC summary plot saved to: {}", output_path);
+    }
+}
+
+impl Default for InvertedPendulumMPC {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

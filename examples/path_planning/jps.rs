@@ -265,7 +265,9 @@ fn main() {
             let svg = generate_svg(&ox, &oy, jps_path, a_star_path, start, goal);
 
             // Use absolute path from CARGO_MANIFEST_DIR
-            let abs_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            let abs_path = std::env::var_os("CARGO_MANIFEST_DIR")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
                 .join("img/path_planning/jps_result.svg");
 
             match File::create(&abs_path) {

@@ -1,10 +1,11 @@
+#![allow(dead_code)]
+
 // Frenet Optimal Trajectory planning
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
-use std::f64::consts::PI;
 
 // Parameters
 const MAX_SPEED: f64 = 50.0 / 3.6; // maximum speed [m/s]
@@ -229,7 +230,7 @@ struct CubicSpline1D {
 impl CubicSpline1D {
     fn new(x: &[f64], y: &[f64]) -> Self {
         let n = x.len();
-        let mut a = y.to_vec();
+        let a = y.to_vec();
         let mut b = vec![0.0; n];
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
@@ -365,7 +366,7 @@ fn calc_frenet_paths(c_speed: f64, c_d: f64, c_d_d: f64, c_d_dd: f64, s0: f64) -
 
                 let lon_qp = QuarticPolynomial::new(s0, c_speed, 0.0, tv, 0.0, ti);
 
-                for (i, &t) in tfp.t.iter().enumerate() {
+                for (_i, &t) in tfp.t.iter().enumerate() {
                     tfp.s.push(lon_qp.calc_point(t));
                     tfp.s_d.push(lon_qp.calc_first_derivative(t));
                     tfp.s_dd.push(lon_qp.calc_second_derivative(t));
@@ -577,8 +578,8 @@ fn main() {
                     )
                     .lines(&fp.x, &fp.y, &[Caption("Trajectory"), Color("green")])
                     .points(
-                        &[fp.x[0]],
-                        &[fp.y[0]],
+                        [fp.x[0]],
+                        [fp.y[0]],
                         &[
                             Caption("Vehicle"),
                             Color("red"),

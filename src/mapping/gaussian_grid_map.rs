@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Gaussian Grid Map
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -5,7 +7,6 @@
 
 use gnuplot::{AutoOption, AxesCommon, Figure, PlotOption};
 use nalgebra::DMatrix;
-use std::f64::consts::PI;
 
 // Parameters
 const EXTEND_AREA: f64 = 10.0; // [m] grid map extension area
@@ -135,14 +136,6 @@ fn draw_heatmap(grid_map: &GaussianGridMap, ox: &[f64], oy: &[f64]) {
             z_data.push(grid_map.data[(ix, iy)]);
         }
     }
-
-    // Create coordinate vectors
-    let x_coords: Vec<f64> = (0..x_width)
-        .map(|ix| grid_map.min_x + ix as f64 * grid_map.resolution)
-        .collect();
-    let y_coords: Vec<f64> = (0..y_width)
-        .map(|iy| grid_map.min_y + iy as f64 * grid_map.resolution)
-        .collect();
 
     fig.axes2d()
         .set_title("Gaussian Grid Map", &[])

@@ -1,6 +1,6 @@
-use gnuplot::{AxesCommon, Caption, Color, Figure};
+#![allow(dead_code, clippy::too_many_arguments)]
+
 use rand::Rng;
-use std::f64::consts::PI;
 use std::io::Write;
 
 // RRT* planner parameters

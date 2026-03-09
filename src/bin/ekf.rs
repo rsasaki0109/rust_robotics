@@ -77,8 +77,8 @@ fn main() {
         axes.lines(&est_x, &est_y, &[Caption("EKF"), Color("green")]);
         axes.lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("yellow")]);
         axes.points(
-            &[true_x[0]],
-            &[true_y[0]],
+            [true_x[0]],
+            [true_y[0]],
             &[Caption("Start"), Color("black"), PointSymbol('O')],
         );
         axes.set_title("Extended Kalman Filter Localization", &[])

@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::too_many_arguments)]
+
 // Probabilistic Road-Map (PRM) path planning
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
@@ -94,22 +96,6 @@ impl KDTree {
         distances
     }
 
-    /// Find all points within radius
-    fn query_radius(&self, x: f64, y: f64, radius: f64) -> Vec<(usize, f64)> {
-        self.points
-            .iter()
-            .enumerate()
-            .filter_map(|(i, (px, py))| {
-                let d = ((x - px).powi(2) + (y - py).powi(2)).sqrt();
-                if d <= radius {
-                    Some((i, d))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     /// Get minimum distance to any point
     fn min_distance(&self, x: f64, y: f64) -> f64 {
         self.points
@@ -124,7 +110,6 @@ pub struct PRMPlanner {
     sample_x: Vec<f64>,
     sample_y: Vec<f64>,
     road_map: Vec<Vec<usize>>,
-    obstacle_tree: KDTree,
 }
 
 impl PRMPlanner {
@@ -163,7 +148,6 @@ impl PRMPlanner {
             sample_x,
             sample_y,
             road_map,
-            obstacle_tree,
         }
     }
 
@@ -477,8 +461,8 @@ fn main() {
         ],
     )
     .points(
-        &[start.0],
-        &[start.1],
+        [start.0],
+        [start.1],
         &[
             Caption("Start"),
             Color("blue"),
@@ -487,8 +471,8 @@ fn main() {
         ],
     )
     .points(
-        &[goal.0],
-        &[goal.1],
+        [goal.0],
+        [goal.1],
         &[
             Caption("Goal"),
             Color("red"),

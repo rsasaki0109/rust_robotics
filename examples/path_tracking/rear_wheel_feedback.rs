@@ -9,7 +9,6 @@ use rust_robotics::common::{Path2D, Point2D};
 use rust_robotics::path_tracking::rear_wheel_feedback::{
     RearWheelFeedbackConfig, RearWheelFeedbackController, VehicleState,
 };
-use std::f64::consts::PI;
 
 // Cubic spline helper for path generation
 struct CubicSpline {
@@ -33,9 +32,7 @@ impl CubicSpline {
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
 
-        for i in 0..n {
-            a[i] = y[i];
-        }
+        a[..n].copy_from_slice(&y[..n]);
 
         let mut alpha = vec![0.0; n - 1];
         for i in 1..n - 1 {
@@ -202,7 +199,7 @@ fn main() {
     println!("Starting Rear Wheel Feedback Control simulation...");
 
     // Define waypoints for a curved path
-    let waypoints = vec![
+    let waypoints = [
         (0.0, 0.0),
         (10.0, -6.0),
         (20.5, 5.0),
@@ -307,13 +304,13 @@ fn main() {
 
         // Plot start and goal
         axes.points(
-            &[trajectory_x[0]],
-            &[trajectory_y[0]],
+            [trajectory_x[0]],
+            [trajectory_y[0]],
             &[Caption("Start"), Color("cyan"), PointSymbol('o')],
         );
         axes.points(
-            &[*trajectory_x.last().unwrap()],
-            &[*trajectory_y.last().unwrap()],
+            [*trajectory_x.last().unwrap()],
+            [*trajectory_y.last().unwrap()],
             &[Caption("End"), Color("magenta"), PointSymbol('x')],
         );
     }

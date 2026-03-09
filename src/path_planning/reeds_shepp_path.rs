@@ -1,3 +1,12 @@
+#![allow(
+    dead_code,
+    clippy::needless_borrows_for_generic_args,
+    clippy::new_without_default,
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    clippy::assign_op_pattern
+)]
+
 // Reeds-Shepp Path Planner
 //
 // Author: Atsushi Sakai(@Atsushi_twi)

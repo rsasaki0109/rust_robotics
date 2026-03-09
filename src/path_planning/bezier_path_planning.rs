@@ -1,10 +1,11 @@
+#![allow(dead_code, clippy::too_many_arguments, clippy::type_complexity)]
+
 // Path planning with Bezier curve.
 //
 // Author: Atsushi Sakai(@Atsushi_twi)
 //         Rust implementation
 
 use gnuplot::{AxesCommon, Caption, Color, Figure};
-use std::f64::consts::PI;
 
 // Binomial coefficient calculation (replacement for scipy.special.comb)
 fn binomial_coefficient(n: usize, k: usize) -> f64 {
@@ -265,6 +266,12 @@ impl BezierPathPlanner {
         fg.save_to_png("img/path_planning/bezier_curvature_profile.png", 800, 600)
             .unwrap();
         println!("Curvature profile saved to img/path_planning/bezier_curvature_profile.png");
+    }
+}
+
+impl Default for BezierPathPlanner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
