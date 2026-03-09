@@ -729,140 +729,293 @@ fn vec_norm(v: &[f64]) -> f64 {
     v.iter().map(|x| x * x).sum::<f64>().sqrt()
 }
 
+fn build_path_data(
+    xs: &[f64],
+    ys: &[f64],
+    to_svg_x: &impl Fn(f64) -> f64,
+    to_svg_y: &impl Fn(f64) -> f64,
+) -> String {
+    let mut path = String::new();
+
+    for (i, (&x, &y)) in xs.iter().zip(ys.iter()).enumerate() {
+        let sx = to_svg_x(x);
+        let sy = to_svg_y(y);
+        if i == 0 {
+            path.push_str(&format!("M {:.2},{:.2}", sx, sy));
+        } else {
+            path.push_str(&format!(" L {:.2},{:.2}", sx, sy));
+        }
+    }
+
+    path
+}
+
+fn build_cgmres_svg(plant: &TwoWheeledSystem, controller: &NMPCControllerCGMRES) -> String {
+    let width = 980.0;
+    let height = 680.0;
+    let margin = 62.0;
+    let side_panel_width = 250.0;
+    let available_plot_width = width - 2.0 * margin - side_panel_width;
+    let available_plot_height = height - 2.0 * margin;
+
+    let x_min = plant
+        .history_x
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .min(0.0)
+        - 0.8;
+    let x_max = plant
+        .history_x
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(0.0)
+        + 0.8;
+    let y_min = plant
+        .history_y
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .min(0.0)
+        - 0.8;
+    let y_max = plant
+        .history_y
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(0.0)
+        + 0.8;
+
+    let x_range = (x_max - x_min).max(1.0);
+    let y_range = (y_max - y_min).max(1.0);
+    let scale = (available_plot_width / x_range)
+        .min(available_plot_height / y_range)
+        .max(1.0);
+    let plot_width = x_range * scale;
+    let plot_height = y_range * scale;
+    let plot_left = margin;
+    let plot_top = margin + (available_plot_height - plot_height) / 2.0;
+    let panel_x = plot_left + plot_width + 34.0;
+
+    let to_svg_x = |x: f64| plot_left + (x - x_min) * scale;
+    let to_svg_y = |y: f64| plot_top + plot_height - (y - y_min) * scale;
+
+    let trajectory_path = build_path_data(&plant.history_x, &plant.history_y, &to_svg_x, &to_svg_y);
+    let goal_distance = (plant.x.powi(2) + plant.y.powi(2)).sqrt();
+    let reached_goal = goal_distance < 0.5 && plant.v.abs() < 0.5;
+    let max_f = controller.history_f.iter().copied().fold(0.0, f64::max);
+    let min_f = controller
+        .history_f
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min)
+        .min(max_f);
+    let final_f = controller.history_f.last().copied().unwrap_or(0.0);
+
+    let error_box_x = panel_x;
+    let error_box_y = plot_top + 182.0;
+    let error_box_w = 214.0;
+    let error_box_h = 168.0;
+
+    let mut svg = String::new();
+    svg.push_str(&format!(
+        "<?xml version='1.0' encoding='UTF-8'?>\n<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>\n"
+    ));
+    svg.push_str("<rect width='100%' height='100%' fill='white'/>\n");
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='38' text-anchor='middle' font-size='24' font-family='sans-serif' font-weight='700' fill='#111827'>C-GMRES NMPC</text>\n",
+        width / 2.0
+    ));
+    svg.push_str(&format!(
+        "<rect x='{plot_left:.1}' y='{plot_top:.1}' width='{plot_width:.1}' height='{plot_height:.1}' fill='#fffdf7' stroke='#d6d3d1' stroke-width='2'/>\n"
+    ));
+
+    for i in 0..=6 {
+        let x = plot_left + plot_width * (i as f64) / 6.0;
+        let y = plot_top + plot_height * (i as f64) / 6.0;
+        svg.push_str(&format!(
+            "<line x1='{x:.2}' y1='{plot_top:.2}' x2='{x:.2}' y2='{:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_top + plot_height
+        ));
+        svg.push_str(&format!(
+            "<line x1='{plot_left:.2}' y1='{y:.2}' x2='{:.2}' y2='{y:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_left + plot_width
+        ));
+    }
+
+    svg.push_str(&format!(
+        "<path d='{trajectory_path}' fill='none' stroke='#dc2626' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/>\n"
+    ));
+    svg.push_str(&format!(
+        "<circle cx='{:.2}' cy='{:.2}' r='7' fill='#2563eb' stroke='white' stroke-width='2'/>\n",
+        to_svg_x(plant.history_x[0]),
+        to_svg_y(plant.history_y[0])
+    ));
+    svg.push_str(&format!(
+        "<circle cx='{:.2}' cy='{:.2}' r='7' fill='#7c3aed' stroke='white' stroke-width='2'/>\n",
+        to_svg_x(0.0),
+        to_svg_y(0.0)
+    ));
+    svg.push_str(&format!(
+        "<circle cx='{:.2}' cy='{:.2}' r='6' fill='#f97316' stroke='white' stroke-width='2'/>\n",
+        to_svg_x(plant.x),
+        to_svg_y(plant.y)
+    ));
+
+    svg.push_str(&format!(
+        "<rect x='{panel_x:.1}' y='{:.1}' width='214' height='122' rx='18' fill='white' stroke='#d6d3d1'/>\n",
+        plot_top + 18.0
+    ));
+    let legend_y = plot_top + 46.0;
+    let legend_items = [
+        ("#dc2626", "Trajectory", "line"),
+        ("#2563eb", "Start", "point"),
+        ("#7c3aed", "Goal", "point"),
+        ("#f97316", "Final state", "point"),
+    ];
+    for (idx, (color, label, kind)) in legend_items.iter().enumerate() {
+        let y = legend_y + idx as f64 * 24.0;
+        if *kind == "line" {
+            svg.push_str(&format!(
+                "<line x1='{:.1}' y1='{y:.1}' x2='{:.1}' y2='{y:.1}' stroke='{color}' stroke-width='5' stroke-linecap='round'/>\n",
+                panel_x + 16.0,
+                panel_x + 44.0
+            ));
+        } else {
+            svg.push_str(&format!(
+                "<circle cx='{:.1}' cy='{y:.1}' r='5.5' fill='{color}' stroke='white' stroke-width='1.5'/>\n",
+                panel_x + 30.0
+            ));
+        }
+        svg.push_str(&format!(
+            "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' fill='#111827'>{label}</text>\n",
+            panel_x + 58.0,
+            y + 1.0
+        ));
+    }
+
+    svg.push_str(&format!(
+        "<rect x='{error_box_x:.1}' y='{error_box_y:.1}' width='{error_box_w:.1}' height='{error_box_h:.1}' rx='18' fill='#fffaf0' stroke='#d6d3d1'/>\n"
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Optimality Error</text>\n",
+        error_box_x + 16.0,
+        error_box_y + 24.0
+    ));
+
+    if !controller.history_f.is_empty() {
+        let error_min = controller
+            .history_f
+            .iter()
+            .copied()
+            .map(|v| v.max(1e-9).log10())
+            .fold(f64::INFINITY, f64::min);
+        let error_max = controller
+            .history_f
+            .iter()
+            .copied()
+            .map(|v| v.max(1e-9).log10())
+            .fold(f64::NEG_INFINITY, f64::max);
+        let graph_left = error_box_x + 18.0;
+        let graph_top = error_box_y + 40.0;
+        let graph_width = error_box_w - 36.0;
+        let graph_height = error_box_h - 62.0;
+        svg.push_str(&format!(
+            "<rect x='{graph_left:.1}' y='{graph_top:.1}' width='{graph_width:.1}' height='{graph_height:.1}' fill='white' stroke='#e5e7eb'/>\n"
+        ));
+        for i in 0..=4 {
+            let y = graph_top + graph_height * (i as f64) / 4.0;
+            svg.push_str(&format!(
+                "<line x1='{graph_left:.1}' y1='{y:.2}' x2='{:.1}' y2='{y:.2}' stroke='#f1f5f9' stroke-width='1'/>\n",
+                graph_left + graph_width
+            ));
+        }
+
+        let map_error_x = |idx: usize| {
+            graph_left
+                + if controller.history_f.len() <= 1 {
+                    0.0
+                } else {
+                    graph_width * (idx as f64) / ((controller.history_f.len() - 1) as f64)
+                }
+        };
+        let map_error_y = |value: f64| {
+            let log_v = value.max(1e-9).log10();
+            let denom = (error_max - error_min).max(1e-6);
+            graph_top + graph_height - (log_v - error_min) / denom * graph_height
+        };
+        let mut error_path = String::new();
+        for (i, value) in controller.history_f.iter().enumerate() {
+            let x = map_error_x(i);
+            let y = map_error_y(*value);
+            if i == 0 {
+                error_path.push_str(&format!("M {:.2},{:.2}", x, y));
+            } else {
+                error_path.push_str(&format!(" L {:.2},{:.2}", x, y));
+            }
+        }
+        svg.push_str(&format!(
+            "<path d='{error_path}' fill='none' stroke='#16a34a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>\n"
+        ));
+        svg.push_str(&format!(
+            "<text x='{:.1}' y='{:.1}' font-size='12' font-family='monospace' fill='#475569'>log10 ||F||</text>\n",
+            graph_left,
+            graph_top + graph_height + 18.0
+        ));
+    }
+
+    let stats_y = error_box_y + error_box_h + 24.0;
+    svg.push_str(&format!(
+        "<rect x='{panel_x:.1}' y='{stats_y:.1}' width='214' height='152' rx='18' fill='white' stroke='#d6d3d1'/>\n"
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Simulation Stats</text>\n",
+        panel_x + 16.0,
+        stats_y + 24.0
+    ));
+    let stats = [
+        format!("goal_reached: {}", reached_goal),
+        format!("goal_distance: {:.3} m", goal_distance),
+        format!("final_speed: {:.3} m/s", plant.v),
+        format!("iterations: {}", plant.history_x.len().saturating_sub(1)),
+        format!("final ||F||: {:.3}", final_f),
+        format!("max ||F||: {:.3}", max_f.max(min_f)),
+    ];
+    for (idx, line) in stats.iter().enumerate() {
+        svg.push_str(&format!(
+            "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>{line}</text>\n",
+            panel_x + 16.0,
+            stats_y + 48.0 + idx as f64 * 18.0
+        ));
+    }
+
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827'>x [m]</text>\n",
+        plot_left + plot_width / 2.0,
+        plot_top + plot_height + 52.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827' transform='rotate(-90, {:.1}, {:.1})'>y [m]</text>\n",
+        plot_left - 48.0,
+        plot_top + plot_height / 2.0,
+        plot_left - 48.0,
+        plot_top + plot_height / 2.0
+    ));
+    svg.push_str("</svg>\n");
+
+    svg
+}
+
 /// Generate SVG plot without gnuplot
 fn save_trajectory_svg(
     filename: &str,
-    history_x: &[f64],
-    history_y: &[f64],
-    title: &str,
+    plant: &TwoWheeledSystem,
+    controller: &NMPCControllerCGMRES,
 ) -> std::io::Result<()> {
-    let width = 800;
-    let height = 600;
-    let margin = 60;
-
-    // Find bounds
-    let x_min = history_x.iter().cloned().fold(f64::INFINITY, f64::min);
-    let x_max = history_x.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    let y_min = history_y.iter().cloned().fold(f64::INFINITY, f64::min);
-    let y_max = history_y.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-
-    // Include origin
-    let x_min = x_min.min(0.0) - 0.5;
-    let x_max = x_max.max(0.0) + 0.5;
-    let y_min = y_min.min(0.0) - 0.5;
-    let y_max = y_max.max(0.0) + 0.5;
-
-    let plot_width = (width - 2 * margin) as f64;
-    let plot_height = (height - 2 * margin) as f64;
-
-    let scale_x = plot_width / (x_max - x_min);
-    let scale_y = plot_height / (y_max - y_min);
-    let scale = scale_x.min(scale_y);
-
-    let to_svg_x = |x: f64| margin as f64 + (x - x_min) * scale;
-    let to_svg_y = |y: f64| (height - margin) as f64 - (y - y_min) * scale;
-
+    let svg = build_cgmres_svg(plant, controller);
     let mut file = File::create(filename)?;
-
-    writeln!(
-        file,
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="0 0 {} {}">
-<rect width="100%" height="100%" fill="white"/>"#,
-        width, height, width, height
-    )?;
-
-    // Title
-    writeln!(
-        file,
-        r#"<text x="{}" y="30" text-anchor="middle" font-size="16" font-family="sans-serif">{}</text>"#,
-        width / 2,
-        title
-    )?;
-
-    // Axes
-    writeln!(
-        file,
-        r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>"#,
-        margin,
-        height - margin,
-        width - margin,
-        height - margin
-    )?;
-    writeln!(
-        file,
-        r#"<line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>"#,
-        margin,
-        margin,
-        margin,
-        height - margin
-    )?;
-
-    // Trajectory
-    if history_x.len() > 1 {
-        let mut path = String::from("M");
-        for (i, (&x, &y)) in history_x.iter().zip(history_y.iter()).enumerate() {
-            let svg_x = to_svg_x(x);
-            let svg_y = to_svg_y(y);
-            if i == 0 {
-                path.push_str(&format!(" {:.2},{:.2}", svg_x, svg_y));
-            } else {
-                path.push_str(&format!(" L {:.2},{:.2}", svg_x, svg_y));
-            }
-        }
-        writeln!(
-            file,
-            r#"<path d="{}" fill="none" stroke="red" stroke-width="2"/>"#,
-            path
-        )?;
-    }
-
-    // Start point
-    let start_x = to_svg_x(history_x[0]);
-    let start_y = to_svg_y(history_y[0]);
-    writeln!(
-        file,
-        r#"<circle cx="{:.2}" cy="{:.2}" r="6" fill="blue"/>"#,
-        start_x, start_y
-    )?;
-    writeln!(
-        file,
-        r#"<text x="{:.2}" y="{:.2}" font-size="12" font-family="sans-serif">Start</text>"#,
-        start_x + 10.0,
-        start_y
-    )?;
-
-    // Goal (origin)
-    let goal_x = to_svg_x(0.0);
-    let goal_y = to_svg_y(0.0);
-    writeln!(
-        file,
-        r#"<circle cx="{:.2}" cy="{:.2}" r="6" fill="green"/>"#,
-        goal_x, goal_y
-    )?;
-    writeln!(
-        file,
-        r#"<text x="{:.2}" y="{:.2}" font-size="12" font-family="sans-serif">Goal</text>"#,
-        goal_x + 10.0,
-        goal_y
-    )?;
-
-    // Axis labels
-    writeln!(
-        file,
-        r#"<text x="{}" y="{}" text-anchor="middle" font-size="12" font-family="sans-serif">x [m]</text>"#,
-        width / 2,
-        height - 20
-    )?;
-    writeln!(
-        file,
-        r#"<text x="20" y="{}" text-anchor="middle" font-size="12" font-family="sans-serif" transform="rotate(-90, 20, {})">y [m]</text>"#,
-        height / 2,
-        height / 2
-    )?;
-
-    writeln!(file, "</svg>")?;
-
+    file.write_all(svg.as_bytes())?;
     Ok(())
 }
 
@@ -870,7 +1023,7 @@ pub fn main() {
     println!("CGMRES Nonlinear MPC simulation start!");
 
     let dt = 0.1;
-    let iteration_time = 30.0; // Simulation time in seconds
+    let iteration_time = 15.0; // Shorter demo horizon keeps the showcase stable
 
     let init_x = -4.5;
     let init_y = -2.5;
@@ -896,6 +1049,24 @@ pub fn main() {
             println!("Goal reached at iteration {}!", i);
             break;
         }
+
+        if controller.history_f.last().copied().unwrap_or(0.0) > 1.0e5 {
+            println!(
+                "Simulation clipped at iteration {} due to optimality blow-up.",
+                i
+            );
+            break;
+        }
+
+        if !plant.x.is_finite()
+            || !plant.y.is_finite()
+            || !plant.yaw.is_finite()
+            || !plant.v.is_finite()
+            || plant.x.abs().max(plant.y.abs()) > 12.0
+        {
+            println!("Simulation clipped at iteration {} due to divergence.", i);
+            break;
+        }
     }
 
     println!("\nSimulation completed!");
@@ -905,15 +1076,34 @@ pub fn main() {
     );
 
     // Save SVG
-    match save_trajectory_svg(
-        "./img/path_tracking/cgmres_nmpc.svg",
-        &plant.history_x,
-        &plant.history_y,
-        "CGMRES NMPC - Trajectory",
-    ) {
+    match save_trajectory_svg("./img/path_tracking/cgmres_nmpc.svg", &plant, &controller) {
         Ok(_) => println!("Plot saved to ./img/path_tracking/cgmres_nmpc.svg"),
         Err(e) => eprintln!("Failed to save plot: {}", e),
     }
 
     println!("\nDone!");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cgmres_svg_has_white_background_and_stats() {
+        let mut plant = TwoWheeledSystem::new(-1.0, -1.0, 0.0, 0.0);
+        plant.history_x = vec![-1.0, -0.5, 0.0];
+        plant.history_y = vec![-1.0, -0.2, 0.0];
+        plant.x = 0.0;
+        plant.y = 0.0;
+        plant.v = 0.1;
+
+        let mut controller = NMPCControllerCGMRES::new();
+        controller.history_f = vec![10.0, 2.0, 0.5];
+
+        let svg = build_cgmres_svg(&plant, &controller);
+        assert!(svg.contains("<rect width='100%' height='100%' fill='white'/>"));
+        assert!(svg.contains("C-GMRES NMPC"));
+        assert!(svg.contains("Simulation Stats"));
+        assert!(svg.contains("Optimality Error"));
+    }
 }
