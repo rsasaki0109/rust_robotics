@@ -27,7 +27,7 @@
   </g>
   <text x="300" y="150" fill="#ffe082" font-size="26" font-family="IBM Plex Mono, monospace">GitHub Pages showcase</text>
   <text x="300" y="248" fill="#f4ede3" font-size="78" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">Rust robotics demos</text>
-  <text x="300" y="332" fill="#f4ede3" font-size="78" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">that look built for the timeline</text>
+  <text x="300" y="332" fill="#f4ede3" font-size="78" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">in one visual wall</text>
   <text x="300" y="406" fill="#9ab0bf" font-size="28" font-family="Space Grotesk, Arial, sans-serif">Localization. SLAM. Planning. Control. Mission logic. Aerial navigation.</text>
   <g transform="translate(300 458)">
     <rect width="210" height="56" rx="28" fill="rgba(53, 208, 186, 0.16)" stroke="#35d0ba"/>
