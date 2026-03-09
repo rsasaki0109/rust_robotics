@@ -12,7 +12,7 @@ cargo build
 
 Run (Example)
 ```
-cargo run --bin a_star
+cargo run --example a_star
 cargo run --bin rrt
 cargo run --bin inverted_pendulum_lqr
 cargo run --bin two_joint_arm_control
@@ -73,7 +73,7 @@ cargo run --bin two_joint_arm_control
 
 Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
 
-- [src](https://github.com/rsasaki0109/RustRobotics/blob/master/src/bin/ekf.rs)
+- [src](./src/bin/ekf.rs)
 
 ```
 cargo run --bin ekf
@@ -251,7 +251,7 @@ Blue: Start, Red: Goal, Green: Path
 - [src](./src/path_planning/bezier_path_planning.rs)
 
 ```
-cargo run --bin bezier_path_planning
+cargo run --bin bezier_planning
 ```
 
 ## Cubic Spline
@@ -387,7 +387,7 @@ Blue: Start, Red: Goal, Green: Path
 - [src](./src/path_planning/reeds_shepp_path.rs)
 
 ```
-cargo run --bin reeds_shepp_path
+cargo run --bin reeds_shepp
 ```
 
 ## PRM (Probabilistic Road-Map)
@@ -565,5 +565,4 @@ Finite state machine for robot behavior management with states, transitions, gua
 ```
 cargo run --bin state_machine
 ```
-
 
