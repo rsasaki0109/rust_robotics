@@ -8,6 +8,8 @@
 use gnuplot::{AxesCommon, Caption, Color, Figure};
 use nalgebra::{DMatrix, Vector2, Vector4};
 use rand_distr::{Distribution, Normal};
+use std::fs::File;
+use std::io::Write;
 
 // Simulation parameters
 const DT: f64 = 0.1; // time step [s]
@@ -355,6 +357,316 @@ fn get_observations(
     z
 }
 
+fn lerp_rgb(start: (u8, u8, u8), end: (u8, u8, u8), t: f64) -> (u8, u8, u8) {
+    let t = t.clamp(0.0, 1.0);
+    let blend = |a: u8, b: u8| -> u8 { (a as f64 + (b as f64 - a as f64) * t).round() as u8 };
+    (
+        blend(start.0, end.0),
+        blend(start.1, end.1),
+        blend(start.2, end.2),
+    )
+}
+
+fn heatmap_style(probability: f64, max_probability: f64) -> (String, f64) {
+    if max_probability <= 0.0 || probability <= 0.0 {
+        return ("#fff7ed".to_string(), 0.0);
+    }
+
+    let t = (probability / max_probability).sqrt().clamp(0.0, 1.0);
+    let rgb = if t < 0.5 {
+        lerp_rgb((255, 247, 237), (254, 240, 138), t * 2.0)
+    } else {
+        lerp_rgb((254, 240, 138), (185, 28, 28), (t - 0.5) * 2.0)
+    };
+
+    (
+        format!("#{:02x}{:02x}{:02x}", rgb.0, rgb.1, rgb.2),
+        0.15 + 0.8 * t,
+    )
+}
+
+fn path_data(
+    points: &[(f64, f64)],
+    to_svg_x: &impl Fn(f64) -> f64,
+    to_svg_y: &impl Fn(f64) -> f64,
+) -> String {
+    let mut path = String::new();
+
+    for (i, (x, y)) in points.iter().enumerate() {
+        let sx = to_svg_x(*x);
+        let sy = to_svg_y(*y);
+        if i == 0 {
+            path.push_str(&format!("M {:.2},{:.2}", sx, sy));
+        } else {
+            path.push_str(&format!(" L {:.2},{:.2}", sx, sy));
+        }
+    }
+
+    path
+}
+
+fn build_histogram_filter_svg(
+    area: (f64, f64, f64, f64),
+    rfid: &[(f64, f64)],
+    history_true: &[(f64, f64)],
+    history_dr: &[(f64, f64)],
+    history_est: &[(f64, f64)],
+    x_width: usize,
+    y_width: usize,
+    min_x: f64,
+    min_y: f64,
+    resolution: f64,
+    heatmap_data: &[f64],
+) -> String {
+    let width = 920.0;
+    let height = 700.0;
+    let margin = 72.0;
+    let side_panel_width = 220.0;
+    let available_plot_width = width - 2.0 * margin - side_panel_width;
+    let available_plot_height = height - 2.0 * margin;
+    let x_range = area.2 - area.0;
+    let y_range = area.3 - area.1;
+    let scale = (available_plot_width / x_range)
+        .min(available_plot_height / y_range)
+        .max(1.0);
+    let plot_width = x_range * scale;
+    let plot_height = y_range * scale;
+    let plot_left = margin;
+    let plot_top = margin + (available_plot_height - plot_height) / 2.0;
+
+    let to_svg_x = |x: f64| plot_left + (x - area.0) * scale;
+    let to_svg_y = |y: f64| plot_top + plot_height - (y - area.1) * scale;
+
+    let max_probability = heatmap_data.iter().copied().fold(0.0, f64::max);
+    let legend_x = plot_left + plot_width + 36.0;
+    let legend_y = plot_top + 24.0;
+    let colorbar_x = legend_x + 18.0;
+    let colorbar_y = legend_y + 168.0;
+    let colorbar_height = 240.0;
+    let colorbar_width = 26.0;
+
+    let mut svg = String::new();
+    svg.push_str(&format!(
+        "<?xml version='1.0' encoding='UTF-8'?>\n<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>\n"
+    ));
+    svg.push_str("<rect width='100%' height='100%' fill='white'/>\n");
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='38' text-anchor='middle' font-size='24' font-family='sans-serif' font-weight='700' fill='#111827'>Histogram Filter Localization</text>\n",
+        width / 2.0
+    ));
+    svg.push_str(&format!(
+        "<rect x='{plot_left:.1}' y='{plot_top:.1}' width='{plot_width:.1}' height='{plot_height:.1}' fill='#fffdf7' stroke='#d6d3d1' stroke-width='2'/>\n"
+    ));
+
+    let x_tick_start = (area.0 / 5.0).ceil() as i32;
+    let x_tick_end = (area.2 / 5.0).floor() as i32;
+    for tick in x_tick_start..=x_tick_end {
+        let x = tick as f64 * 5.0;
+        let sx = to_svg_x(x);
+        svg.push_str(&format!(
+            "<line x1='{sx:.2}' y1='{plot_top:.2}' x2='{sx:.2}' y2='{:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_top + plot_height
+        ));
+        svg.push_str(&format!(
+            "<text x='{sx:.2}' y='{:.2}' text-anchor='middle' font-size='14' font-family='sans-serif' fill='#374151'>{x:.0}</text>\n",
+            plot_top + plot_height + 24.0
+        ));
+    }
+
+    let y_tick_start = (area.1 / 5.0).ceil() as i32;
+    let y_tick_end = (area.3 / 5.0).floor() as i32;
+    for tick in y_tick_start..=y_tick_end {
+        let y = tick as f64 * 5.0;
+        let sy = to_svg_y(y);
+        svg.push_str(&format!(
+            "<line x1='{plot_left:.2}' y1='{sy:.2}' x2='{:.2}' y2='{sy:.2}' stroke='#ece7dc' stroke-width='1'/>\n",
+            plot_left + plot_width
+        ));
+        svg.push_str(&format!(
+            "<text x='{:.2}' y='{:.2}' text-anchor='end' font-size='14' font-family='sans-serif' fill='#374151'>{y:.0}</text>\n",
+            plot_left - 10.0,
+            sy + 5.0
+        ));
+    }
+
+    let cell_width = resolution * scale;
+    let cell_height = resolution * scale;
+    for iy in 0..y_width {
+        for ix in 0..x_width {
+            let probability = heatmap_data[iy * x_width + ix];
+            if probability <= max_probability * 0.01 {
+                continue;
+            }
+
+            let cell_x = min_x + ix as f64 * resolution;
+            let cell_y = min_y + iy as f64 * resolution;
+            let sx = to_svg_x(cell_x);
+            let sy = to_svg_y(cell_y + resolution);
+            let (fill, opacity) = heatmap_style(probability, max_probability);
+            svg.push_str(&format!(
+                "<rect x='{sx:.2}' y='{sy:.2}' width='{cell_width:.2}' height='{cell_height:.2}' fill='{fill}' fill-opacity='{opacity:.3}' stroke='none'/>\n"
+            ));
+        }
+    }
+
+    let true_path = path_data(history_true, &to_svg_x, &to_svg_y);
+    let dr_path = path_data(history_dr, &to_svg_x, &to_svg_y);
+    let est_path = path_data(history_est, &to_svg_x, &to_svg_y);
+
+    if !true_path.is_empty() {
+        svg.push_str(&format!(
+            "<path d='{true_path}' fill='none' stroke='#2563eb' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/>\n"
+        ));
+    }
+    if !dr_path.is_empty() {
+        svg.push_str(&format!(
+            "<path d='{dr_path}' fill='none' stroke='#d97706' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>\n"
+        ));
+    }
+    if !est_path.is_empty() {
+        svg.push_str(&format!(
+            "<path d='{est_path}' fill='none' stroke='#16a34a' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/>\n"
+        ));
+    }
+
+    for (x, y) in rfid {
+        let sx = to_svg_x(*x);
+        let sy = to_svg_y(*y);
+        svg.push_str(&format!(
+            "<circle cx='{sx:.2}' cy='{sy:.2}' r='6.5' fill='#111827' stroke='white' stroke-width='2'/>\n"
+        ));
+    }
+
+    if let Some((start_x, start_y)) = history_true.first() {
+        svg.push_str(&format!(
+            "<circle cx='{:.2}' cy='{:.2}' r='7' fill='#1d4ed8' stroke='white' stroke-width='2.5'/>\n",
+            to_svg_x(*start_x),
+            to_svg_y(*start_y)
+        ));
+    }
+    if let Some((goal_x, goal_y)) = history_true.last() {
+        svg.push_str(&format!(
+            "<circle cx='{:.2}' cy='{:.2}' r='7' fill='#7c3aed' stroke='white' stroke-width='2.5'/>\n",
+            to_svg_x(*goal_x),
+            to_svg_y(*goal_y)
+        ));
+    }
+    if let Some((est_x, est_y)) = history_est.last() {
+        svg.push_str(&format!(
+            "<circle cx='{:.2}' cy='{:.2}' r='6' fill='#16a34a' stroke='white' stroke-width='2'/>\n",
+            to_svg_x(*est_x),
+            to_svg_y(*est_y)
+        ));
+    }
+
+    svg.push_str(&format!(
+        "<rect x='{legend_x:.1}' y='{legend_y:.1}' width='182' height='132' rx='18' fill='white' stroke='#d6d3d1'/>\n"
+    ));
+    let legend_items = [
+        ("#2563eb", "True Path", false),
+        ("#d97706", "Dead Reckoning", false),
+        ("#16a34a", "Histogram Estimate", false),
+        ("#111827", "RFID Landmark", true),
+    ];
+    for (index, (color, label, point)) in legend_items.iter().enumerate() {
+        let row_y = legend_y + 28.0 + index as f64 * 26.0;
+        if *point {
+            svg.push_str(&format!(
+                "<circle cx='{:.1}' cy='{row_y:.1}' r='5.5' fill='{color}' stroke='white' stroke-width='1.5'/>\n",
+                legend_x + 24.0
+            ));
+        } else {
+            svg.push_str(&format!(
+                "<line x1='{:.1}' y1='{row_y:.1}' x2='{:.1}' y2='{row_y:.1}' stroke='{color}' stroke-width='5' stroke-linecap='round'/>\n",
+                legend_x + 12.0,
+                legend_x + 38.0
+            ));
+        }
+        svg.push_str(&format!(
+            "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' fill='#111827'>{label}</text>\n",
+            legend_x + 50.0,
+            row_y + 5.0
+        ));
+    }
+
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Probability</text>\n",
+        legend_x + 18.0,
+        colorbar_y - 14.0
+    ));
+    for step in 0..32 {
+        let t0 = step as f64 / 31.0;
+        let (fill, _) = heatmap_style(t0.max(1e-6), 1.0);
+        let y = colorbar_y + colorbar_height * (1.0 - t0) - colorbar_height / 32.0;
+        svg.push_str(&format!(
+            "<rect x='{colorbar_x:.1}' y='{y:.2}' width='{colorbar_width:.1}' height='{:.2}' fill='{fill}'/>\n",
+            colorbar_height / 32.0 + 0.8
+        ));
+    }
+    svg.push_str(&format!(
+        "<rect x='{colorbar_x:.1}' y='{colorbar_y:.1}' width='{colorbar_width:.1}' height='{colorbar_height:.1}' fill='none' stroke='#9ca3af'/>\n"
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>max {:.4}</text>\n",
+        colorbar_x + colorbar_width + 14.0,
+        colorbar_y + 12.0,
+        max_probability
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' font-size='13' font-family='monospace' fill='#374151'>min 0.0000</text>\n",
+        colorbar_x + colorbar_width + 14.0,
+        colorbar_y + colorbar_height - 2.0
+    ));
+
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827'>x [m]</text>\n",
+        plot_left + plot_width / 2.0,
+        plot_top + plot_height + 52.0
+    ));
+    svg.push_str(&format!(
+        "<text x='{:.1}' y='{:.1}' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827' transform='rotate(-90, {:.1}, {:.1})'>y [m]</text>\n",
+        plot_left - 50.0,
+        plot_top + plot_height / 2.0,
+        plot_left - 50.0,
+        plot_top + plot_height / 2.0
+    ));
+    svg.push_str("</svg>\n");
+
+    svg
+}
+
+fn save_histogram_filter_svg(
+    filename: &str,
+    area: (f64, f64, f64, f64),
+    rfid: &[(f64, f64)],
+    history_true: &[(f64, f64)],
+    history_dr: &[(f64, f64)],
+    history_est: &[(f64, f64)],
+    x_width: usize,
+    y_width: usize,
+    min_x: f64,
+    min_y: f64,
+    resolution: f64,
+    heatmap_data: &[f64],
+) -> std::io::Result<()> {
+    let svg = build_histogram_filter_svg(
+        area,
+        rfid,
+        history_true,
+        history_dr,
+        history_est,
+        x_width,
+        y_width,
+        min_x,
+        min_y,
+        resolution,
+        heatmap_data,
+    );
+    let mut file = File::create(filename)?;
+    file.write_all(svg.as_bytes())?;
+    Ok(())
+}
+
 fn main() {
     println!("Histogram Filter 2D Localization start!");
 
@@ -390,6 +702,7 @@ fn main() {
     // History for plotting
     let mut h_true: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let mut h_dr: Vec<(f64, f64)> = vec![(0.0, 0.0)];
+    let mut h_est: Vec<(f64, f64)> = vec![(0.0, 0.0)];
 
     let mut time = 0.0;
     let mut fig = Figure::new();
@@ -420,6 +733,7 @@ fn main() {
         // Store history
         h_true.push((x_true[0], x_true[1]));
         h_dr.push((x_dr[0], x_dr[1]));
+        h_est.push(hf.get_estimated_position());
 
         // Animation
         if SHOW_ANIMATION {
@@ -504,7 +818,46 @@ fn main() {
         .lines(&true_x, &true_y, &[Caption("True"), Color("blue")])
         .lines(&dr_x, &dr_y, &[Caption("Dead Reckoning"), Color("orange")]);
 
-    fig.save_to_svg("./img/localization/histogram_filter.svg", 640, 480)
-        .unwrap();
+    save_histogram_filter_svg(
+        "./img/localization/histogram_filter.svg",
+        area,
+        &rfid,
+        &h_true,
+        &h_dr,
+        &h_est,
+        x_width,
+        y_width,
+        min_x,
+        min_y,
+        resolution,
+        &heatmap_data,
+    )
+    .unwrap();
     println!("Plot saved to ./img/localization/histogram_filter.svg");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_histogram_svg_uses_white_background_and_legend_box() {
+        let svg = build_histogram_filter_svg(
+            (-2.0, -2.0, 2.0, 2.0),
+            &[(0.0, 0.0)],
+            &[(0.0, 0.0), (1.0, 0.5)],
+            &[(0.0, 0.0), (0.8, 0.2)],
+            &[(0.0, 0.0), (0.9, 0.4)],
+            2,
+            2,
+            -2.0,
+            -2.0,
+            2.0,
+            &[0.0, 0.1, 0.2, 0.3],
+        );
+
+        assert!(svg.contains("<rect width='100%' height='100%' fill='white'/>"));
+        assert!(svg.contains("Histogram Estimate"));
+        assert!(svg.contains("Probability"));
+    }
 }
