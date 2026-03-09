@@ -428,11 +428,24 @@ fn create_summary_plot() {
 mod tests {
     use super::*;
     use nalgebra::Vector2;
+    use rand::{rngs::StdRng, Rng, SeedableRng};
+
+    fn generate_seeded_2d_points(n_points: usize, field_length: f64, seed: u64) -> DMatrix<f64> {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let mut points = DMatrix::zeros(2, n_points);
+
+        for j in 0..n_points {
+            points[(0, j)] = (rng.gen::<f64>() - 0.5) * field_length;
+            points[(1, j)] = (rng.gen::<f64>() - 0.5) * field_length;
+        }
+
+        points
+    }
     
     #[test]
     fn test_icp_simple_translation() {
         let n_points = 50;
-        let previous_points = generate_2d_points(n_points, 20.0);
+        let previous_points = generate_seeded_2d_points(n_points, 20.0, 7);
         let translation = Vector2::new(1.0, 2.0);
         let current_points = apply_2d_transformation(&previous_points, &translation, 0.0);
         
@@ -446,7 +459,7 @@ mod tests {
     #[test]
     fn test_icp_rotation_and_translation() {
         let n_points = 50;
-        let previous_points = generate_2d_points(n_points, 20.0);
+        let previous_points = generate_seeded_2d_points(n_points, 20.0, 42);
         let translation = Vector2::new(0.5, 1.5);
         let rotation_angle = 0.2; // ~11.5 degrees
         let current_points = apply_2d_transformation(&previous_points, &translation, rotation_angle);
