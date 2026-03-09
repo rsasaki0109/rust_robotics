@@ -3,8 +3,8 @@
   <desc id="desc">A stylized isometric aerial grid path for the GitHub Pages showcase.</desc>
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0a141f"/>
-      <stop offset="100%" stop-color="#071018"/>
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f4f0e8"/>
     </linearGradient>
     <linearGradient id="path" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#ff7a18"/>
@@ -20,8 +20,8 @@
     <circle cx="210" cy="170" r="140" fill="#35d0ba"/>
     <circle cx="1010" cy="740" r="190" fill="#ff7a18"/>
   </g>
-  <text x="80" y="118" fill="#f4ede3" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">3D Grid A*</text>
-  <text x="80" y="164" fill="#9ab0bf" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --bin grid_a_star_3d</text>
+  <text x="80" y="118" fill="#1f2937" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">3D Grid A*</text>
+  <text x="80" y="164" fill="#64748b" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --bin grid_a_star_3d</text>
   <g transform="translate(160 250)">
     <g stroke="#274258" stroke-width="2" opacity="0.8">
       <path d="M0 100 260 0 640 180 380 280Z" fill="none"/>
@@ -35,7 +35,7 @@
       <path d="M520 130 900 310"/>
       <path d="M620 170 1000 350"/>
     </g>
-    <g fill="#112131">
+    <g fill="#dbe4ef">
       <path d="M260 80 320 50 320 140 260 170Z"/>
       <path d="M420 90 500 130 500 250 420 210Z"/>
       <path d="M520 130 620 170 620 310 520 270Z"/>
@@ -52,12 +52,12 @@
     <g fill="url(#goal)">
       <circle cx="860" cy="200" r="22"/>
     </g>
-    <g fill="#f4ede3" font-family="IBM Plex Mono, monospace" font-size="22">
+    <g fill="#1f2937" font-family="IBM Plex Mono, monospace" font-size="22">
       <text x="0" y="360">start</text>
       <text x="878" y="204">goal</text>
     </g>
   </g>
-  <g fill="#9ab0bf" font-size="24" font-family="IBM Plex Mono, monospace">
+  <g fill="#64748b" font-size="24" font-family="IBM Plex Mono, monospace">
     <text x="80" y="820">Aerial navigation teaser for the new 3D planner module.</text>
     <text x="80" y="854">Designed for the showcase until rendered screenshots are added.</text>
   </g>
