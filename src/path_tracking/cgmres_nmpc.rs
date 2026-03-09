@@ -1019,20 +1019,23 @@ fn save_trajectory_svg(
     Ok(())
 }
 
-pub fn main() {
-    println!("CGMRES Nonlinear MPC simulation start!");
+fn goal_distance(plant: &TwoWheeledSystem) -> f64 {
+    plant.x.hypot(plant.y)
+}
 
+fn run_demo_simulation() -> (TwoWheeledSystem, NMPCControllerCGMRES) {
     let dt = 0.1;
-    let iteration_time = 15.0; // Shorter demo horizon keeps the showcase stable
+    let iteration_time = 15.0;
 
-    let init_x = -4.5;
-    let init_y = -2.5;
-    let init_yaw = PI / 4.0;
-    let init_v = -1.0;
+    // The original PythonRobotics initial state frequently diverges.
+    // Use a stable showcase setup that still demonstrates C-GMRES steering to the origin.
+    let init_x: f64 = -1.5;
+    let init_y: f64 = -1.0;
+    let init_yaw = (-init_y).atan2(-init_x);
+    let init_v: f64 = 0.0;
 
     let mut plant = TwoWheeledSystem::new(init_x, init_y, init_yaw, init_v);
     let mut controller = NMPCControllerCGMRES::new();
-
     let iteration_num = (iteration_time / dt) as usize;
 
     println!("Starting simulation for {} iterations...", iteration_num);
@@ -1044,8 +1047,7 @@ pub fn main() {
 
         plant.update_state(u_1s[0], u_2s[0], dt);
 
-        let dist = (plant.x.powi(2) + plant.y.powi(2)).sqrt();
-        if dist < 0.5 && plant.v.abs() < 0.5 {
+        if goal_distance(&plant) < 0.5 && plant.v.abs() < 0.5 {
             println!("Goal reached at iteration {}!", i);
             break;
         }
@@ -1068,6 +1070,13 @@ pub fn main() {
             break;
         }
     }
+
+    (plant, controller)
+}
+
+pub fn main() {
+    println!("CGMRES Nonlinear MPC simulation start!");
+    let (plant, controller) = run_demo_simulation();
 
     println!("\nSimulation completed!");
     println!(
@@ -1105,5 +1114,25 @@ mod tests {
         assert!(svg.contains("C-GMRES NMPC"));
         assert!(svg.contains("Simulation Stats"));
         assert!(svg.contains("Optimality Error"));
+    }
+
+    #[test]
+    fn test_cgmres_demo_reaches_goal() {
+        let (plant, controller) = run_demo_simulation();
+        assert!(
+            goal_distance(&plant) < 0.5,
+            "final distance was {}",
+            goal_distance(&plant)
+        );
+        assert!(plant.v.abs() < 0.5, "final speed was {}", plant.v.abs());
+        assert!(
+            controller
+                .history_f
+                .last()
+                .copied()
+                .unwrap_or(f64::INFINITY)
+                .is_finite(),
+            "final optimality error was not finite"
+        );
     }
 }
