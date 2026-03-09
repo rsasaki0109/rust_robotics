@@ -95,7 +95,7 @@ const galleryItems = [
   {
     title: "Jump Point Search",
     category: "Path Planning",
-    image: "img/path_planning/jps_result.png",
+    image: "img/path_planning/jps_result.svg",
     command: "cargo run --example jps",
     description: "Aggressive pruning with the same visual clarity as a direct A* comparison."
   },
