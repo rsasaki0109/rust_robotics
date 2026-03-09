@@ -136,7 +136,7 @@ path = "src/slam/icp_matching.rs"
 
 [[bin]]
 name = "state_machine"
-path = "src/mission_planning/state_machine.rs"
+path = "src/bin/state_machine.rs"
 
 [[bin]]
 name = "unscented_kalman_filter"
