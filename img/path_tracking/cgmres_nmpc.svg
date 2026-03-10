@@ -2,52 +2,52 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='980' height='680' viewBox='0 0 980 680'>
 <rect width='100%' height='100%' fill='white'/>
 <text x='490.0' y='38' text-anchor='middle' font-size='24' font-family='sans-serif' font-weight='700' fill='#111827'>C-GMRES NMPC</text>
-<rect x='62.0' y='126.0' width='606.0' height='427.9' fill='#fffdf7' stroke='#d6d3d1' stroke-width='2'/>
-<line x1='62.00' y1='126.03' x2='62.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='126.03' x2='668.00' y2='126.03' stroke='#ece7dc' stroke-width='1'/>
-<line x1='163.00' y1='126.03' x2='163.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='197.36' x2='668.00' y2='197.36' stroke='#ece7dc' stroke-width='1'/>
-<line x1='264.00' y1='126.03' x2='264.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='268.68' x2='668.00' y2='268.68' stroke='#ece7dc' stroke-width='1'/>
-<line x1='365.00' y1='126.03' x2='365.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
+<rect x='62.0' y='85.9' width='606.0' height='508.3' fill='#fffdf7' stroke='#d6d3d1' stroke-width='2'/>
+<line x1='62.00' y1='85.87' x2='62.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='85.87' x2='668.00' y2='85.87' stroke='#ece7dc' stroke-width='1'/>
+<line x1='163.00' y1='85.87' x2='163.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='170.58' x2='668.00' y2='170.58' stroke='#ece7dc' stroke-width='1'/>
+<line x1='264.00' y1='85.87' x2='264.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='255.29' x2='668.00' y2='255.29' stroke='#ece7dc' stroke-width='1'/>
+<line x1='365.00' y1='85.87' x2='365.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
 <line x1='62.00' y1='340.00' x2='668.00' y2='340.00' stroke='#ece7dc' stroke-width='1'/>
-<line x1='466.00' y1='126.03' x2='466.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='411.32' x2='668.00' y2='411.32' stroke='#ece7dc' stroke-width='1'/>
-<line x1='567.00' y1='126.03' x2='567.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='482.64' x2='668.00' y2='482.64' stroke='#ece7dc' stroke-width='1'/>
-<line x1='668.00' y1='126.03' x2='668.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<line x1='62.00' y1='553.97' x2='668.00' y2='553.97' stroke='#ece7dc' stroke-width='1'/>
-<path d='M 211.70,410.14 L 205.62,416.23 L 198.93,420.14 L 192.34,422.17 L 186.33,422.62 L 181.18,422.04 L 176.97,420.99 L 173.62,420.08 L 171.05,419.52 L 169.30,419.22 L 168.39,419.09 L 168.32,419.09 L 169.10,419.18 L 170.73,419.37 L 173.21,419.57 L 176.51,420.07 L 180.57,421.14 L 185.22,423.09 L 190.22,426.25 L 195.14,430.89 L 199.38,437.20 L 202.23,445.17 L 202.87,454.46 L 200.47,464.34 L 194.53,473.63 L 185.02,480.73 L 172.70,483.92 L 159.30,481.75 L 147.42,473.56 L 140.11,460.15 L 140.05,444.02 L 148.34,429.22 L 163.91,420.56 L 182.55,421.75 L 198.05,433.63 L 203.65,453.24 L 195.66,472.92 L 176.32,483.60 L 153.94,478.63 L 140.43,459.06 L 144.57,434.76 L 165.64,420.40 L 191.28,426.45 L 203.87,450.57 L 192.78,476.34 L 164.79,483.56 L 141.80,464.66 L 144.39,434.16 L 172.16,419.34 L 199.93,435.86 L 199.31,469.02 L 168.98,484.38 L 140.83,463.82 L 147.98,428.83 L 183.77,421.33 L 204.36,452.58 L 181.52,483.19 L 144.43,470.97 L 144.92,431.10 L 184.17,420.23 L 204.51,456.47 L 173.20,485.09 L 138.44,459.32 L 157.47,419.50 L 200.11,433.87 L 191.00,478.80 L 144.34,476.69 L 143.92,429.13 L 192.29,427.72 L 193.65,476.95 L 143.55,477.38 L 144.35,426.44 L 195.80,432.58 L 183.70,483.85 L 130.88,477.36' fill='none' stroke='#dc2626' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/>
-<circle cx='211.70' cy='410.14' r='7' fill='#2563eb' stroke='white' stroke-width='2'/>
-<circle cx='599.12' cy='194.91' r='7' fill='#7c3aed' stroke='white' stroke-width='2'/>
-<circle cx='130.88' cy='477.36' r='6' fill='#f97316' stroke='white' stroke-width='2'/>
-<rect x='702.0' y='144.0' width='214' height='122' rx='18' fill='white' stroke='#d6d3d1'/>
-<line x1='718.0' y1='172.0' x2='746.0' y2='172.0' stroke='#dc2626' stroke-width='5' stroke-linecap='round'/>
-<text x='760.0' y='173.0' font-size='16' font-family='sans-serif' fill='#111827'>Trajectory</text>
-<circle cx='732.0' cy='196.0' r='5.5' fill='#2563eb' stroke='white' stroke-width='1.5'/>
-<text x='760.0' y='197.0' font-size='16' font-family='sans-serif' fill='#111827'>Start</text>
-<circle cx='732.0' cy='220.0' r='5.5' fill='#7c3aed' stroke='white' stroke-width='1.5'/>
-<text x='760.0' y='221.0' font-size='16' font-family='sans-serif' fill='#111827'>Goal</text>
-<circle cx='732.0' cy='244.0' r='5.5' fill='#f97316' stroke='white' stroke-width='1.5'/>
-<text x='760.0' y='245.0' font-size='16' font-family='sans-serif' fill='#111827'>Final state</text>
-<rect x='702.0' y='308.0' width='214.0' height='168.0' rx='18' fill='#fffaf0' stroke='#d6d3d1'/>
-<text x='718.0' y='332.0' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Optimality Error</text>
-<rect x='720.0' y='348.0' width='178.0' height='106.0' fill='white' stroke='#e5e7eb'/>
-<line x1='720.0' y1='348.03' x2='898.0' y2='348.03' stroke='#f1f5f9' stroke-width='1'/>
-<line x1='720.0' y1='374.53' x2='898.0' y2='374.53' stroke='#f1f5f9' stroke-width='1'/>
-<line x1='720.0' y1='401.03' x2='898.0' y2='401.03' stroke='#f1f5f9' stroke-width='1'/>
-<line x1='720.0' y1='427.53' x2='898.0' y2='427.53' stroke='#f1f5f9' stroke-width='1'/>
-<line x1='720.0' y1='454.03' x2='898.0' y2='454.03' stroke='#f1f5f9' stroke-width='1'/>
-<path d='M 720.00,438.87 L 722.44,438.46 L 724.88,447.67 L 727.32,448.22 L 729.75,446.30 L 732.19,444.58 L 734.63,451.07 L 737.07,454.03 L 739.51,451.87 L 741.95,449.27 L 744.38,445.48 L 746.82,441.53 L 749.26,434.88 L 751.70,411.13 L 754.14,408.05 L 756.58,415.68 L 759.01,384.91 L 761.45,395.14 L 763.89,405.31 L 766.33,413.82 L 768.77,416.57 L 771.21,418.04 L 773.64,424.59 L 776.08,413.79 L 778.52,430.02 L 780.96,419.89 L 783.40,429.04 L 785.84,422.66 L 788.27,425.05 L 790.71,416.93 L 793.15,418.36 L 795.59,411.35 L 798.03,425.15 L 800.47,425.51 L 802.90,426.73 L 805.34,428.04 L 807.78,424.84 L 810.22,428.82 L 812.66,422.26 L 815.10,420.01 L 817.53,421.11 L 819.97,423.33 L 822.41,422.49 L 824.85,423.11 L 827.29,420.17 L 829.73,418.72 L 832.16,427.08 L 834.60,422.85 L 837.04,422.11 L 839.48,416.53 L 841.92,417.50 L 844.36,416.68 L 846.79,418.33 L 849.23,411.49 L 851.67,403.94 L 854.11,412.18 L 856.55,406.97 L 858.99,407.18 L 861.42,413.42 L 863.86,410.21 L 866.30,404.12 L 868.74,404.44 L 871.18,387.03 L 873.62,395.06 L 876.05,395.27 L 878.49,391.76 L 880.93,393.45 L 883.37,399.37 L 885.81,403.63 L 888.25,399.57 L 890.68,381.49 L 893.12,384.64 L 895.56,361.15 L 898.00,348.03' fill='none' stroke='#16a34a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>
-<text x='720.0' y='472.0' font-size='12' font-family='monospace' fill='#475569'>log10 ||F||</text>
-<rect x='702.0' y='500.0' width='214' height='152' rx='18' fill='white' stroke='#d6d3d1'/>
-<text x='718.0' y='524.0' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Simulation Stats</text>
-<text x='718.0' y='548.0' font-size='13' font-family='monospace' fill='#374151'>goal_reached: false</text>
-<text x='718.0' y='566.0' font-size='13' font-family='monospace' fill='#374151'>goal_distance: 6.352 m</text>
-<text x='718.0' y='584.0' font-size='13' font-family='monospace' fill='#374151'>final_speed: 6.282 m/s</text>
-<text x='718.0' y='602.0' font-size='13' font-family='monospace' fill='#374151'>iterations: 74</text>
-<text x='718.0' y='620.0' font-size='13' font-family='monospace' fill='#374151'>final ||F||: 388780.979</text>
-<text x='718.0' y='638.0' font-size='13' font-family='monospace' fill='#374151'>max ||F||: 388780.979</text>
-<text x='365.0' y='606.0' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827'>x [m]</text>
+<line x1='466.00' y1='85.87' x2='466.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='424.71' x2='668.00' y2='424.71' stroke='#ece7dc' stroke-width='1'/>
+<line x1='567.00' y1='85.87' x2='567.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='509.42' x2='668.00' y2='509.42' stroke='#ece7dc' stroke-width='1'/>
+<line x1='668.00' y1='85.87' x2='668.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<line x1='62.00' y1='594.13' x2='668.00' y2='594.13' stroke='#ece7dc' stroke-width='1'/>
+<path d='M 218.39,437.74 L 218.39,437.74 L 218.66,437.56 L 219.68,436.88 L 221.87,435.43 L 225.33,433.20 L 230.05,430.25 L 235.96,426.69 L 243.01,422.56 L 251.05,417.88 L 259.96,412.70 L 269.58,407.02 L 279.75,400.88 L 290.33,394.34 L 301.19,387.45 L 312.20,380.30 L 323.26,372.97 L 334.28,365.54 L 345.21,358.09 L 355.98,350.71 L 366.57,343.48 L 376.94,336.48 L 387.09,329.76 L 396.98,323.39 L 406.61,317.40 L 415.97,311.84 L 425.05,306.72 L 433.82,302.04 L 442.27,297.81' fill='none' stroke='#dc2626' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'/>
+<circle cx='218.39' cy='437.74' r='7' fill='#2563eb' stroke='white' stroke-width='2'/>
+<circle cx='511.61' cy='242.26' r='7' fill='#7c3aed' stroke='white' stroke-width='2'/>
+<circle cx='442.27' cy='297.81' r='6' fill='#f97316' stroke='white' stroke-width='2'/>
+<rect x='702.0' y='103.9' width='214' height='122' rx='18' fill='white' stroke='#d6d3d1'/>
+<line x1='718.0' y1='131.9' x2='746.0' y2='131.9' stroke='#dc2626' stroke-width='5' stroke-linecap='round'/>
+<text x='760.0' y='132.9' font-size='16' font-family='sans-serif' fill='#111827'>Trajectory</text>
+<circle cx='732.0' cy='155.9' r='5.5' fill='#2563eb' stroke='white' stroke-width='1.5'/>
+<text x='760.0' y='156.9' font-size='16' font-family='sans-serif' fill='#111827'>Start</text>
+<circle cx='732.0' cy='179.9' r='5.5' fill='#7c3aed' stroke='white' stroke-width='1.5'/>
+<text x='760.0' y='180.9' font-size='16' font-family='sans-serif' fill='#111827'>Goal</text>
+<circle cx='732.0' cy='203.9' r='5.5' fill='#f97316' stroke='white' stroke-width='1.5'/>
+<text x='760.0' y='204.9' font-size='16' font-family='sans-serif' fill='#111827'>Final state</text>
+<rect x='702.0' y='267.9' width='214.0' height='168.0' rx='18' fill='#fffaf0' stroke='#d6d3d1'/>
+<text x='718.0' y='291.9' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Optimality Error</text>
+<rect x='720.0' y='307.9' width='178.0' height='106.0' fill='white' stroke='#e5e7eb'/>
+<line x1='720.0' y1='307.87' x2='898.0' y2='307.87' stroke='#f1f5f9' stroke-width='1'/>
+<line x1='720.0' y1='334.37' x2='898.0' y2='334.37' stroke='#f1f5f9' stroke-width='1'/>
+<line x1='720.0' y1='360.87' x2='898.0' y2='360.87' stroke='#f1f5f9' stroke-width='1'/>
+<line x1='720.0' y1='387.37' x2='898.0' y2='387.37' stroke='#f1f5f9' stroke-width='1'/>
+<line x1='720.0' y1='413.87' x2='898.0' y2='413.87' stroke='#f1f5f9' stroke-width='1'/>
+<path d='M 720.00,307.87 L 726.59,349.15 L 733.19,384.60 L 739.78,413.87 L 746.37,408.00 L 752.96,407.89 L 759.56,407.12 L 766.15,407.91 L 772.74,408.31 L 779.33,408.37 L 785.93,408.47 L 792.52,408.74 L 799.11,409.22 L 805.70,410.01 L 812.30,411.01 L 818.89,412.07 L 825.48,412.91 L 832.07,413.41 L 838.67,413.50 L 845.26,413.27 L 851.85,412.86 L 858.44,412.39 L 865.04,411.92 L 871.63,411.42 L 878.22,410.98 L 884.81,410.57 L 891.41,410.20 L 898.00,409.89' fill='none' stroke='#16a34a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>
+<text x='720.0' y='431.9' font-size='12' font-family='monospace' fill='#475569'>log10 ||F||</text>
+<rect x='702.0' y='459.9' width='214' height='152' rx='18' fill='white' stroke='#d6d3d1'/>
+<text x='718.0' y='483.9' font-size='16' font-family='sans-serif' font-weight='700' fill='#111827'>Simulation Stats</text>
+<text x='718.0' y='507.9' font-size='13' font-family='monospace' fill='#374151'>goal_reached: true</text>
+<text x='718.0' y='525.9' font-size='13' font-family='monospace' fill='#374151'>goal_distance: 0.455 m</text>
+<text x='718.0' y='543.9' font-size='13' font-family='monospace' fill='#374151'>final_speed: 0.459 m/s</text>
+<text x='718.0' y='561.9' font-size='13' font-family='monospace' fill='#374151'>iterations: 28</text>
+<text x='718.0' y='579.9' font-size='13' font-family='monospace' fill='#374151'>final ||F||: 0.088</text>
+<text x='718.0' y='597.9' font-size='13' font-family='monospace' fill='#374151'>max ||F||: 7.101</text>
+<text x='365.0' y='646.1' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827'>x [m]</text>
 <text x='14.0' y='340.0' text-anchor='middle' font-size='16' font-family='sans-serif' fill='#111827' transform='rotate(-90, 14.0, 340.0)'>y [m]</text>
 </svg>
