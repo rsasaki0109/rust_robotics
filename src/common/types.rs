@@ -2,6 +2,8 @@
 
 use nalgebra::{Matrix2, Matrix4, Vector2, Vector3, Vector4};
 
+use crate::common::error::{RoboticsError, RoboticsResult};
+
 /// 2D point representation
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point2D {
@@ -287,18 +289,37 @@ impl Obstacles {
         Self { points }
     }
 
-    pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
-        assert_eq!(x.len(), y.len());
+    pub fn try_from_xy(x: &[f64], y: &[f64]) -> RoboticsResult<Self> {
+        if x.len() != y.len() {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "obstacle x/y coordinates must have matching lengths, got {} and {}",
+                x.len(),
+                y.len()
+            )));
+        }
+
         let points = x
             .iter()
             .zip(y.iter())
             .map(|(&x, &y)| Point2D::new(x, y))
             .collect();
-        Self { points }
+        Ok(Self { points })
+    }
+
+    pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
+        Self::try_from_xy(x, y).expect("obstacle x/y coordinates must have matching lengths")
     }
 
     pub fn push(&mut self, point: Point2D) {
         self.points.push(point);
+    }
+
+    pub fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
     }
 
     pub fn x_coords(&self) -> Vec<f64> {
@@ -360,6 +381,23 @@ mod tests {
         let mut pose = Pose2D::new(0.0, 0.0, 4.0);
         pose.normalize_yaw();
         assert!(pose.yaw >= -std::f64::consts::PI && pose.yaw <= std::f64::consts::PI);
+    }
+
+    #[test]
+    fn test_obstacles_try_from_xy_rejects_mismatched_lengths() {
+        let err = Obstacles::try_from_xy(&[0.0, 1.0], &[0.0]).unwrap_err();
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_obstacles_len_and_is_empty() {
+        let mut obstacles = Obstacles::new();
+        assert!(obstacles.is_empty());
+        assert_eq!(obstacles.len(), 0);
+
+        obstacles.push(Point2D::new(1.0, 2.0));
+        assert!(!obstacles.is_empty());
+        assert_eq!(obstacles.len(), 1);
     }
 
     #[test]

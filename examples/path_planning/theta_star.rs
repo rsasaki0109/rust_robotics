@@ -6,7 +6,7 @@
 //! Theta* extends A* by allowing paths to connect any two visible nodes,
 //! resulting in shorter, more natural paths compared to standard A*.
 
-use rust_robotics::common::{Path2D, PathPlanner, Point2D};
+use rust_robotics::common::{Path2D, Point2D};
 use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
 use rust_robotics::path_planning::theta_star::{ThetaStarConfig, ThetaStarPlanner};
 use std::fs::File;
