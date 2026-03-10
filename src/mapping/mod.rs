@@ -1,6 +1,7 @@
 // Mapping algorithms module
 
 pub mod gaussian_grid_map;
+#[cfg(feature = "viz")]
 pub mod ndt;
 pub mod ray_casting_grid_map;
 

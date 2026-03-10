@@ -6,7 +6,9 @@
 
 use nalgebra::{Vector2, Vector4, Vector5};
 
-use crate::common::{ControlInput, Path2D, Point2D, State2D};
+use crate::common::{
+    ControlInput, Obstacles, Path2D, Point2D, RoboticsError, RoboticsResult, State2D,
+};
 
 /// Robot state for DWA: [x, y, yaw, v, omega]
 pub type DWAState = Vector5<f64>;
@@ -65,6 +67,81 @@ impl Default for DWAConfig {
             robot_radius: 1.0,
             goal_threshold: 1.0,
         }
+    }
+}
+
+impl DWAConfig {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        if !self.max_speed.is_finite()
+            || !self.min_speed.is_finite()
+            || self.min_speed > self.max_speed
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA speed range must be finite and min_speed must be <= max_speed".to_string(),
+            ));
+        }
+        if !self.max_yaw_rate.is_finite() || self.max_yaw_rate <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA max_yaw_rate must be positive and finite".to_string(),
+            ));
+        }
+        if !self.max_accel.is_finite() || self.max_accel <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA max_accel must be positive and finite".to_string(),
+            ));
+        }
+        if !self.max_delta_yaw_rate.is_finite() || self.max_delta_yaw_rate <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA max_delta_yaw_rate must be positive and finite".to_string(),
+            ));
+        }
+        if !self.v_resolution.is_finite() || self.v_resolution <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA v_resolution must be positive and finite".to_string(),
+            ));
+        }
+        if !self.yaw_rate_resolution.is_finite() || self.yaw_rate_resolution <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA yaw_rate_resolution must be positive and finite".to_string(),
+            ));
+        }
+        if !self.dt.is_finite() || self.dt <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA dt must be positive and finite".to_string(),
+            ));
+        }
+        if !self.predict_time.is_finite() || self.predict_time <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA predict_time must be positive and finite".to_string(),
+            ));
+        }
+        if !self.to_goal_cost_gain.is_finite() || self.to_goal_cost_gain < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA to_goal_cost_gain must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.speed_cost_gain.is_finite() || self.speed_cost_gain < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA speed_cost_gain must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.obstacle_cost_gain.is_finite() || self.obstacle_cost_gain < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA obstacle_cost_gain must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.robot_radius.is_finite() || self.robot_radius < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA robot_radius must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.goal_threshold.is_finite() || self.goal_threshold < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA goal_threshold must be non-negative and finite".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -131,13 +208,21 @@ pub struct DWAPlanner {
 impl DWAPlanner {
     /// Create a new DWA planner
     pub fn new(config: DWAConfig) -> Self {
-        Self {
+        Self::try_new(config).expect(
+            "invalid DWA configuration: planner parameters must be finite and within supported ranges",
+        )
+    }
+
+    /// Create a validated DWA planner
+    pub fn try_new(config: DWAConfig) -> RoboticsResult<Self> {
+        config.validate()?;
+        Ok(Self {
             config,
             state: DWAState::zeros(),
             goal: Point2D::origin(),
             obstacles: Vec::new(),
             best_trajectory: Trajectory::new(),
-        }
+        })
     }
 
     /// Create with default configuration
@@ -147,12 +232,26 @@ impl DWAPlanner {
 
     /// Set current state
     pub fn set_state(&mut self, state: DWAState) {
+        self.try_set_state(state)
+            .expect("DWA state must contain only finite values")
+    }
+
+    /// Set current state with validation
+    pub fn try_set_state(&mut self, state: DWAState) -> RoboticsResult<()> {
+        Self::validate_state(&state)?;
         self.state = state;
+        Ok(())
     }
 
     /// Set state from State2D
     pub fn set_state_from_2d(&mut self, state: &State2D, omega: f64) {
-        self.state = DWAState::new(state.x, state.y, state.yaw, state.v, omega);
+        self.try_set_state_from_2d(state, omega)
+            .expect("DWA state must contain only finite values")
+    }
+
+    /// Set state from State2D with validation
+    pub fn try_set_state_from_2d(&mut self, state: &State2D, omega: f64) -> RoboticsResult<()> {
+        self.try_set_state(DWAState::new(state.x, state.y, state.yaw, state.v, omega))
     }
 
     /// Get current state
@@ -160,27 +259,61 @@ impl DWAPlanner {
         &self.state
     }
 
+    /// Get current state as State2D
+    pub fn state_2d(&self) -> State2D {
+        State2D::new(self.state[0], self.state[1], self.state[2], self.state[3])
+    }
+
     /// Set goal position
     pub fn set_goal(&mut self, goal: Point2D) {
+        self.try_set_goal(goal)
+            .expect("DWA goal must contain only finite values")
+    }
+
+    /// Set goal position with validation
+    pub fn try_set_goal(&mut self, goal: Point2D) -> RoboticsResult<()> {
+        Self::validate_goal(&goal)?;
         self.goal = goal;
+        Ok(())
     }
 
     /// Set obstacles
     pub fn set_obstacles(&mut self, obstacles: Vec<Point2D>) {
+        self.try_set_obstacles(obstacles)
+            .expect("DWA obstacles must contain only finite values")
+    }
+
+    /// Set obstacles with validation
+    pub fn try_set_obstacles(&mut self, obstacles: Vec<Point2D>) -> RoboticsResult<()> {
+        Self::validate_obstacles(&obstacles)?;
         self.obstacles = obstacles;
+        Ok(())
     }
 
     /// Set obstacles from tuples
     pub fn set_obstacles_from_tuples(&mut self, obstacles: &[(f64, f64)]) {
-        self.obstacles = obstacles
-            .iter()
-            .map(|(x, y)| Point2D::new(*x, *y))
-            .collect();
+        self.try_set_obstacles(
+            obstacles
+                .iter()
+                .map(|(x, y)| Point2D::new(*x, *y))
+                .collect(),
+        )
+        .expect("DWA obstacles must contain only finite values")
+    }
+
+    /// Set obstacles from typed obstacle container
+    pub fn set_obstacles_from_obstacles(&mut self, obstacles: &Obstacles) -> RoboticsResult<()> {
+        self.try_set_obstacles(obstacles.points.clone())
     }
 
     /// Get best trajectory from last planning
     pub fn get_best_trajectory(&self) -> &Trajectory {
         &self.best_trajectory
+    }
+
+    /// Get best trajectory as a path
+    pub fn best_path(&self) -> Path2D {
+        self.best_trajectory.to_path()
     }
 
     /// Get configuration
@@ -310,6 +443,18 @@ impl DWAPlanner {
 
     /// Plan one step: find best control
     pub fn plan_step(&mut self) -> DWAControl {
+        self.try_plan_step().expect(
+            "invalid DWA planning state: configuration, state, goal, and obstacles must be valid",
+        )
+    }
+
+    /// Plan one step with validation
+    pub fn try_plan_step(&mut self) -> RoboticsResult<DWAControl> {
+        self.config.validate()?;
+        Self::validate_state(&self.state)?;
+        Self::validate_goal(&self.goal)?;
+        Self::validate_obstacles(&self.obstacles)?;
+
         let config = &self.config;
         let dw = self.calc_dynamic_window();
 
@@ -345,15 +490,27 @@ impl DWAPlanner {
             v += config.v_resolution;
         }
 
+        if best_trajectory.states.is_empty() {
+            return Err(RoboticsError::PlanningError(
+                "DWA failed to find an admissible trajectory".to_string(),
+            ));
+        }
+
         self.best_trajectory = best_trajectory;
-        self.best_trajectory.control
+        Ok(self.best_trajectory.control)
     }
 
     /// Execute one control step and update state
     pub fn step(&mut self) -> DWAControl {
-        let control = self.plan_step();
+        self.try_step()
+            .expect("invalid DWA step: planning prerequisites must be satisfied")
+    }
+
+    /// Execute one validated control step and update state
+    pub fn try_step(&mut self) -> RoboticsResult<DWAControl> {
+        let control = self.try_plan_step()?;
         self.state = self.motion(&self.state, &control);
-        control
+        Ok(control)
     }
 
     /// Check if goal is reached
@@ -372,22 +529,67 @@ impl DWAPlanner {
 
     /// Run full navigation to goal
     pub fn navigate_to_goal(&mut self, max_steps: usize) -> Vec<DWAState> {
+        self.try_navigate_to_goal(max_steps)
+            .expect("invalid DWA navigation: planning prerequisites must be satisfied")
+    }
+
+    /// Run full validated navigation to goal
+    pub fn try_navigate_to_goal(&mut self, max_steps: usize) -> RoboticsResult<Vec<DWAState>> {
         let mut path = vec![self.state];
 
         for _ in 0..max_steps {
             if self.is_goal_reached() {
                 break;
             }
-            self.step();
+            self.try_step()?;
             path.push(self.state);
         }
 
-        path
+        Ok(path)
+    }
+
+    /// Plan one step and convert directly to common ControlInput
+    pub fn try_plan_input(&mut self) -> RoboticsResult<ControlInput> {
+        let control = self.try_plan_step()?;
+        Ok(Self::control_to_input(&control))
     }
 
     /// Convert control to ControlInput
     pub fn control_to_input(control: &DWAControl) -> ControlInput {
         ControlInput::new(control[0], control[1])
+    }
+
+    fn validate_state(state: &DWAState) -> RoboticsResult<()> {
+        if state.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA state must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_goal(goal: &Point2D) -> RoboticsResult<()> {
+        if !goal.x.is_finite() || !goal.y.is_finite() {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA goal must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_obstacles(obstacles: &[Point2D]) -> RoboticsResult<()> {
+        if obstacles
+            .iter()
+            .any(|obstacle| !obstacle.x.is_finite() || !obstacle.y.is_finite())
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "DWA obstacles must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -697,5 +899,62 @@ mod tests {
         let next = motion(x, u, 0.1);
 
         assert!(next[0] > 0.0);
+    }
+
+    #[test]
+    fn test_dwa_try_new_rejects_invalid_config() {
+        let config = DWAConfig {
+            dt: 0.0,
+            ..Default::default()
+        };
+
+        let err = match DWAPlanner::try_new(config) {
+            Ok(_) => panic!("expected invalid config to be rejected"),
+            Err(err) => err,
+        };
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_dwa_state_2d_matches_internal_state() {
+        let mut dwa = DWAPlanner::with_defaults();
+        dwa.set_state(DWAState::new(1.0, 2.0, 0.3, 0.4, 0.1));
+
+        let state = dwa.state_2d();
+        assert_eq!(state.x, 1.0);
+        assert_eq!(state.y, 2.0);
+        assert_eq!(state.yaw, 0.3);
+        assert_eq!(state.v, 0.4);
+    }
+
+    #[test]
+    fn test_dwa_set_obstacles_from_obstacles() {
+        let mut dwa = DWAPlanner::with_defaults();
+        let obstacles =
+            Obstacles::from_points(vec![Point2D::new(1.0, 1.0), Point2D::new(2.0, 2.0)]);
+
+        dwa.set_obstacles_from_obstacles(&obstacles).unwrap();
+        assert_eq!(dwa.obstacles.len(), 2);
+    }
+
+    #[test]
+    fn test_dwa_try_plan_input_returns_common_control() {
+        let mut dwa = DWAPlanner::with_defaults();
+        dwa.set_state(DWAState::new(0.0, 0.0, 0.0, 0.0, 0.0));
+        dwa.set_goal(Point2D::new(10.0, 0.0));
+
+        let control = dwa.try_plan_input().unwrap();
+        assert!(control.v > 0.0);
+    }
+
+    #[test]
+    fn test_dwa_best_path_after_planning() {
+        let mut dwa = DWAPlanner::with_defaults();
+        dwa.set_state(DWAState::new(0.0, 0.0, 0.0, 0.0, 0.0));
+        dwa.set_goal(Point2D::new(3.0, 0.0));
+
+        dwa.try_plan_step().unwrap();
+        let best_path = dwa.best_path();
+        assert!(!best_path.is_empty());
     }
 }

@@ -12,7 +12,7 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-use crate::common::{Path2D, PathPlanner, Point2D, RoboticsError};
+use crate::common::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
 use crate::utils::{GridMap, Node};
 
 /// Configuration for JPS planner
@@ -33,6 +33,31 @@ impl Default for JPSConfig {
             robot_radius: 0.5,
             heuristic_weight: 1.0,
         }
+    }
+}
+
+impl JPSConfig {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        if !self.resolution.is_finite() || self.resolution <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "resolution must be positive and finite, got {}",
+                self.resolution
+            )));
+        }
+        if !self.robot_radius.is_finite() || self.robot_radius < 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "robot_radius must be non-negative and finite, got {}",
+                self.robot_radius
+            )));
+        }
+        if !self.heuristic_weight.is_finite() || self.heuristic_weight <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "heuristic_weight must be positive and finite, got {}",
+                self.heuristic_weight
+            )));
+        }
+
+        Ok(())
     }
 }
 
@@ -100,8 +125,16 @@ pub struct JPSPlanner {
 impl JPSPlanner {
     /// Create a new JPS planner with obstacle positions
     pub fn new(ox: &[f64], oy: &[f64], config: JPSConfig) -> Self {
-        let grid_map = GridMap::new(ox, oy, config.resolution, config.robot_radius);
-        JPSPlanner { grid_map, config }
+        Self::try_new(ox, oy, config).expect(
+            "invalid JPS planner input: obstacle list must be non-empty and valid, and config values must be positive/finite",
+        )
+    }
+
+    /// Create a validated JPS planner with obstacle positions
+    pub fn try_new(ox: &[f64], oy: &[f64], config: JPSConfig) -> RoboticsResult<Self> {
+        config.validate()?;
+        let grid_map = GridMap::try_new(ox, oy, config.resolution, config.robot_radius)?;
+        Ok(JPSPlanner { grid_map, config })
     }
 
     /// Create from obstacle x/y vectors with default config
@@ -114,15 +147,29 @@ impl JPSPlanner {
         Self::new(ox, oy, config)
     }
 
+    /// Create a validated JPS planner from typed obstacle points
+    pub fn from_obstacle_points(obstacles: &Obstacles, config: JPSConfig) -> RoboticsResult<Self> {
+        config.validate()?;
+        let grid_map = GridMap::from_obstacles(obstacles, config.resolution, config.robot_radius)?;
+        Ok(JPSPlanner { grid_map, config })
+    }
+
     /// Plan a path returning (rx, ry) vectors (legacy interface)
     pub fn planning(&self, sx: f64, sy: f64, gx: f64, gy: f64) -> Option<(Vec<f64>, Vec<f64>)> {
-        let start = Point2D::new(sx, sy);
-        let goal = Point2D::new(gx, gy);
-
-        match self.plan(start, goal) {
+        match self.plan_xy(sx, sy, gx, gy) {
             Ok(path) => Some((path.x_coords(), path.y_coords())),
             Err(_) => None,
         }
+    }
+
+    /// Plan a path without requiring the PathPlanner trait in scope
+    pub fn plan(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
+        self.plan_impl(start, goal)
+    }
+
+    /// Plan a path from raw coordinates without requiring the PathPlanner trait in scope
+    pub fn plan_xy(&self, sx: f64, sy: f64, gx: f64, gy: f64) -> RoboticsResult<Path2D> {
+        self.plan_impl(Point2D::new(sx, sy), Point2D::new(gx, gy))
     }
 
     /// Get reference to the grid map
@@ -388,8 +435,8 @@ impl JPSPlanner {
             if i == 0 {
                 // Add start point
                 points.push(Point2D::new(
-                    self.grid_map.calc_grid_position(x),
-                    self.grid_map.calc_grid_position(y),
+                    self.grid_map.calc_x_position(x),
+                    self.grid_map.calc_y_position(y),
                 ));
             } else {
                 // Interpolate from previous jump point to current
@@ -416,8 +463,8 @@ impl JPSPlanner {
                     }
 
                     points.push(Point2D::new(
-                        self.grid_map.calc_grid_position(cx),
-                        self.grid_map.calc_grid_position(cy),
+                        self.grid_map.calc_x_position(cx),
+                        self.grid_map.calc_y_position(cy),
                     ));
                 }
             }
@@ -425,26 +472,26 @@ impl JPSPlanner {
 
         Path2D::from_points(points)
     }
-}
 
-impl PathPlanner for JPSPlanner {
-    fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
-        let start_x = self.grid_map.calc_xy_index(start.x);
-        let start_y = self.grid_map.calc_xy_index(start.y);
-        let goal_x = self.grid_map.calc_xy_index(goal.x);
-        let goal_y = self.grid_map.calc_xy_index(goal.y);
+    fn ensure_query_is_valid(&self, x: i32, y: i32, label: &str) -> RoboticsResult<()> {
+        if self.grid_map.is_valid(x, y) {
+            return Ok(());
+        }
 
-        // Validate start and goal
-        if !self.grid_map.is_valid(start_x, start_y) {
-            return Err(RoboticsError::PlanningError(
-                "Start position is invalid".to_string(),
-            ));
-        }
-        if !self.grid_map.is_valid(goal_x, goal_y) {
-            return Err(RoboticsError::PlanningError(
-                "Goal position is invalid".to_string(),
-            ));
-        }
+        Err(RoboticsError::PlanningError(format!(
+            "{} position is invalid",
+            label
+        )))
+    }
+
+    fn plan_impl(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
+        let start_x = self.grid_map.calc_x_index(start.x);
+        let start_y = self.grid_map.calc_y_index(start.y);
+        let goal_x = self.grid_map.calc_x_index(goal.x);
+        let goal_y = self.grid_map.calc_y_index(goal.y);
+
+        self.ensure_query_is_valid(start_x, start_y, "Start")?;
+        self.ensure_query_is_valid(goal_x, goal_y, "Goal")?;
 
         let mut open_set = BinaryHeap::new();
         let mut closed_set: HashMap<i32, usize> = HashMap::new();
@@ -517,9 +564,17 @@ impl PathPlanner for JPSPlanner {
     }
 }
 
+impl PathPlanner for JPSPlanner {
+    fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
+        self.plan_impl(start, goal)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::common::Obstacles;
 
     fn create_simple_obstacles() -> (Vec<f64>, Vec<f64>) {
         let mut ox = Vec::new();
@@ -691,5 +746,54 @@ mod tests {
             "Path should be efficient, got length {}",
             total_len
         );
+    }
+
+    #[test]
+    fn test_jps_from_obstacle_points() {
+        let (ox, oy) = create_small_obstacles();
+        let obstacles = Obstacles::try_from_xy(&ox, &oy).unwrap();
+        let planner = JPSPlanner::from_obstacle_points(&obstacles, JPSConfig::default()).unwrap();
+
+        let path = planner.plan_xy(2.0, 2.0, 8.0, 8.0).unwrap();
+        assert!(!path.is_empty());
+    }
+
+    #[test]
+    fn test_jps_try_new_rejects_invalid_config() {
+        let (ox, oy) = create_small_obstacles();
+        let config = JPSConfig {
+            heuristic_weight: 0.0,
+            ..Default::default()
+        };
+
+        let err = match JPSPlanner::try_new(&ox, &oy, config) {
+            Ok(_) => panic!("expected invalid config to be rejected"),
+            Err(err) => err,
+        };
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_jps_preserves_asymmetric_world_coordinates() {
+        let mut obstacles = Obstacles::new();
+
+        for x in 10..=20 {
+            obstacles.push(Point2D::new(x as f64, -4.0));
+            obstacles.push(Point2D::new(x as f64, 6.0));
+        }
+        for y in -4..=6 {
+            obstacles.push(Point2D::new(10.0, y as f64));
+            obstacles.push(Point2D::new(20.0, y as f64));
+        }
+
+        let planner = JPSPlanner::from_obstacle_points(&obstacles, JPSConfig::default()).unwrap();
+        let path = planner.plan_xy(12.0, -2.0, 18.0, 4.0).unwrap();
+
+        let first = path.points.first().unwrap();
+        let last = path.points.last().unwrap();
+        assert!((first.x - 12.0).abs() < 1e-6);
+        assert!((first.y + 2.0).abs() < 1e-6);
+        assert!((last.x - 18.0).abs() < 1e-6);
+        assert!((last.y - 4.0).abs() < 1e-6);
     }
 }

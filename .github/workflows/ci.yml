@@ -37,6 +37,9 @@ jobs:
     - name: Run tests for all targets
       run: cargo test --all-targets
 
+    - name: Run headless core tests
+      run: cargo test --all-targets --no-default-features
+
     - name: Clippy (warnings only)
       run: cargo clippy --all-targets -- -W clippy::all
       continue-on-error: true

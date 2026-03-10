@@ -1,6 +1,7 @@
 // Localization algorithms module
 
 pub mod ekf;
+#[cfg(feature = "viz")]
 pub mod histogram_filter;
 pub mod particle_filter;
 pub mod unscented_kalman_filter;
