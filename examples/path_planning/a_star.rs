@@ -2,7 +2,7 @@
 //!
 //! Demonstrates the A* path planning algorithm on a simple grid with obstacles.
 
-use rust_robotics::common::{PathPlanner, Point2D};
+use rust_robotics::common::Point2D;
 use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
 use rust_robotics::utils::{PathStyle, Visualizer};
 
