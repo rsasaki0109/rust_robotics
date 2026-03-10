@@ -8,7 +8,9 @@ use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
 use rand::Rng;
 use std::f64::consts::PI;
 
-use crate::common::StateEstimator;
+use crate::common::{
+    ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
+};
 
 /// State representation for UKF (x, y, yaw, velocity)
 pub type UKFState = Vector4<f64>;
@@ -37,6 +39,28 @@ impl Default for UKFParams {
             beta: 2.0,
             kappa: 0.0,
         }
+    }
+}
+
+impl UKFParams {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        if !self.alpha.is_finite() || self.alpha <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF alpha must be positive and finite".to_string(),
+            ));
+        }
+        if !self.beta.is_finite() || self.beta < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF beta must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.kappa.is_finite() {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF kappa must be finite".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -72,6 +96,44 @@ impl Default for UKFConfig {
     }
 }
 
+impl UKFConfig {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        self.params.validate()?;
+
+        if self.process_noise.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF process noise must contain only finite values".to_string(),
+            ));
+        }
+        if self.process_noise.iter().any(|value| *value < 0.0) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF process noise entries must be non-negative".to_string(),
+            ));
+        }
+        if self
+            .observation_noise
+            .iter()
+            .any(|value| !value.is_finite())
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF observation noise must contain only finite values".to_string(),
+            ));
+        }
+        if self.observation_noise.iter().any(|value| *value < 0.0) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF observation noise entries must be non-negative".to_string(),
+            ));
+        }
+        if !self.dt.is_finite() || self.dt <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF dt must be positive and finite".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+}
+
 /// UKF weights for mean and covariance computation
 #[derive(Debug, Clone)]
 pub struct UKFWeights {
@@ -86,30 +148,54 @@ pub struct UKFWeights {
 impl UKFWeights {
     /// Create weights for given state dimension and parameters
     pub fn new(nx: usize, params: &UKFParams) -> Self {
+        Self::try_new(nx, params)
+            .expect("invalid UKF params: weights must be numerically well-defined")
+    }
+
+    /// Create validated weights for given state dimension and parameters
+    pub fn try_new(nx: usize, params: &UKFParams) -> RoboticsResult<Self> {
+        params.validate()?;
+        if nx == 0 {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF state dimension must be greater than zero".to_string(),
+            ));
+        }
+
         let lambda = params.alpha.powi(2) * (nx as f64 + params.kappa) - nx as f64;
+        let scale = lambda + nx as f64;
+        if !scale.is_finite() || scale <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF scaling parameters produce a non-positive sigma spread".to_string(),
+            ));
+        }
         let n_sigma = 2 * nx + 1;
 
         let mut wm = Vec::with_capacity(n_sigma);
         let mut wc = Vec::with_capacity(n_sigma);
 
         // First weight (mean point)
-        wm.push(lambda / (lambda + nx as f64));
-        wc.push((lambda / (lambda + nx as f64)) + (1.0 - params.alpha.powi(2) + params.beta));
+        wm.push(lambda / scale);
+        wc.push((lambda / scale) + (1.0 - params.alpha.powi(2) + params.beta));
 
         // Remaining weights (sigma points)
-        let weight = 1.0 / (2.0 * (nx as f64 + lambda));
+        let weight = 1.0 / (2.0 * scale);
         for _ in 0..(2 * nx) {
             wm.push(weight);
             wc.push(weight);
         }
 
-        let gamma = (nx as f64 + lambda).sqrt();
+        let gamma = scale.sqrt();
+        if !gamma.is_finite() {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF gamma must be finite".to_string(),
+            ));
+        }
 
-        Self {
+        Ok(Self {
             wm: DVector::from_vec(wm),
             wc: DVector::from_vec(wc),
             gamma,
-        }
+        })
     }
 }
 
@@ -125,6 +211,8 @@ pub struct UKFLocalizer {
     r: Matrix2<f64>,
     /// UKF weights
     weights: UKFWeights,
+    /// Dynamic covariance cache for trait-based access
+    covariance_dyn: DMatrix<f64>,
     /// Configuration
     config: UKFConfig,
     /// Last control input
@@ -134,20 +222,30 @@ pub struct UKFLocalizer {
 impl UKFLocalizer {
     /// Create a new UKF localizer
     pub fn new(config: UKFConfig) -> Self {
-        let weights = UKFWeights::new(4, &config.params);
+        Self::try_new(config)
+            .expect("invalid UKF configuration: parameters, noise values, and dt must be valid")
+    }
+
+    /// Create a validated UKF localizer
+    pub fn try_new(config: UKFConfig) -> RoboticsResult<Self> {
+        config.validate()?;
+        let weights = UKFWeights::try_new(4, &config.params)?;
 
         let q = Matrix4::from_diagonal(&config.process_noise);
         let r = Matrix2::from_diagonal(&config.observation_noise);
 
-        Self {
+        let mut ukf = Self {
             x: UKFState::zeros(),
             p: Matrix4::identity(),
             q,
             r,
             weights,
+            covariance_dyn: DMatrix::identity(4, 4),
             config,
             last_control: UKFControl::zeros(),
-        }
+        };
+        ukf.refresh_covariance_cache();
+        Ok(ukf)
     }
 
     /// Create with default configuration
@@ -157,14 +255,38 @@ impl UKFLocalizer {
 
     /// Create with initial state
     pub fn with_initial_state(initial_state: UKFState, config: UKFConfig) -> Self {
-        let mut ukf = Self::new(config);
+        Self::try_with_initial_state(initial_state, config)
+            .expect("invalid UKF initialization: state and configuration must be valid")
+    }
+
+    /// Create with validated initial state
+    pub fn try_with_initial_state(
+        initial_state: UKFState,
+        config: UKFConfig,
+    ) -> RoboticsResult<Self> {
+        Self::validate_state(&initial_state)?;
+        let mut ukf = Self::try_new(config)?;
         ukf.x = initial_state;
-        ukf
+        ukf.refresh_covariance_cache();
+        Ok(ukf)
+    }
+
+    /// Create with common State2D type
+    pub fn with_initial_state_2d(
+        initial_state: State2D,
+        config: UKFConfig,
+    ) -> RoboticsResult<Self> {
+        Self::try_with_initial_state(initial_state.to_vector(), config)
     }
 
     /// Get current state estimate
     pub fn estimate(&self) -> UKFState {
         self.x
+    }
+
+    /// Get current estimate as State2D
+    pub fn state_2d(&self) -> State2D {
+        State2D::new(self.x[0], self.x[1], self.x[2], self.x[3])
     }
 
     /// Get state covariance
@@ -311,6 +433,14 @@ impl UKFLocalizer {
 
     /// Prediction step with control input
     pub fn predict_with_control(&mut self, control: &UKFControl) {
+        self.try_predict_with_control(control)
+            .expect("invalid UKF prediction input")
+    }
+
+    /// Prediction step with validation
+    pub fn try_predict_with_control(&mut self, control: &UKFControl) -> RoboticsResult<()> {
+        Self::validate_control(control)?;
+
         // Generate sigma points
         let sigma = self.generate_sigma_points(&self.x, &self.p);
 
@@ -328,10 +458,20 @@ impl UKFLocalizer {
         self.x = Vector4::new(x_pred[0], x_pred[1], x_pred[2], x_pred[3]);
         self.p = Matrix4::from_fn(|i, j| p_pred[(i, j)]);
         self.last_control = *control;
+        self.refresh_covariance_cache();
+        Ok(())
     }
 
     /// Update step with measurement
     pub fn update_with_measurement(&mut self, z: &UKFMeasurement) {
+        self.try_update_with_measurement(z)
+            .expect("invalid UKF update input")
+    }
+
+    /// Update step with validation
+    pub fn try_update_with_measurement(&mut self, z: &UKFMeasurement) -> RoboticsResult<()> {
+        Self::validate_measurement(z)?;
+
         // Generate sigma points from current state
         let sigma = self.generate_sigma_points(&self.x, &self.p);
 
@@ -353,10 +493,9 @@ impl UKFLocalizer {
         let pxz = self.calc_cross_covariance(&sigma_dyn, &x_mean, &z_sigma, &z_pred);
 
         // Kalman gain
-        let s_inv = s
-            .clone()
-            .try_inverse()
-            .unwrap_or_else(|| DMatrix::identity(2, 2));
+        let s_inv = s.clone().try_inverse().ok_or_else(|| {
+            RoboticsError::NumericalError("Failed to invert UKF innovation covariance".to_string())
+        })?;
         let k = &pxz * &s_inv;
 
         // Innovation
@@ -370,13 +509,35 @@ impl UKFLocalizer {
         let p_dyn = DMatrix::from_fn(4, 4, |i, j| self.p[(i, j)]);
         let p_update = &p_dyn - &k * &s * k.transpose();
         self.p = Matrix4::from_fn(|i, j| p_update[(i, j)]);
+        self.refresh_covariance_cache();
+        Ok(())
     }
 
     /// Full estimation step (predict + update)
     pub fn step(&mut self, control: &UKFControl, measurement: &UKFMeasurement) -> UKFState {
-        self.predict_with_control(control);
-        self.update_with_measurement(measurement);
-        self.x
+        self.try_step(control, measurement)
+            .expect("invalid UKF step input or numerical failure")
+    }
+
+    /// Full validated estimation step (predict + update)
+    pub fn try_step(
+        &mut self,
+        control: &UKFControl,
+        measurement: &UKFMeasurement,
+    ) -> RoboticsResult<UKFState> {
+        self.try_predict_with_control(control)?;
+        self.try_update_with_measurement(measurement)?;
+        Ok(self.x)
+    }
+
+    /// Full estimation step using common crate types
+    pub fn estimate_state(
+        &mut self,
+        control: ControlInput,
+        measurement: Point2D,
+    ) -> RoboticsResult<State2D> {
+        self.try_step(&control.to_vector(), &measurement.to_vector())?;
+        Ok(self.state_2d())
     }
 
     /// Calculate position uncertainty (2-sigma ellipse parameters)
@@ -395,6 +556,40 @@ impl UKFLocalizer {
         let angle = eigen.eigenvectors[(1, big_idx)].atan2(eigen.eigenvectors[(0, big_idx)]);
 
         (a, b, angle)
+    }
+
+    fn refresh_covariance_cache(&mut self) {
+        self.covariance_dyn = DMatrix::from_fn(4, 4, |i, j| self.p[(i, j)]);
+    }
+
+    fn validate_state(state: &UKFState) -> RoboticsResult<()> {
+        if state.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF state must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_control(control: &UKFControl) -> RoboticsResult<()> {
+        if control.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF control input must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_measurement(measurement: &UKFMeasurement) -> RoboticsResult<()> {
+        if measurement.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "UKF measurement must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -416,7 +611,7 @@ impl StateEstimator for UKFLocalizer {
     }
 
     fn get_covariance(&self) -> Option<&nalgebra::DMatrix<f64>> {
-        None // Use covariance() method for fixed-size covariance
+        Some(&self.covariance_dyn)
     }
 }
 
@@ -697,6 +892,55 @@ mod tests {
 
         let state = ukf.get_state();
         assert!(state[0].is_finite());
+    }
+
+    #[test]
+    fn test_ukf_try_new_rejects_invalid_config() {
+        let config = UKFConfig {
+            dt: 0.0,
+            ..Default::default()
+        };
+
+        let err = match UKFLocalizer::try_new(config) {
+            Ok(_) => panic!("expected invalid config to be rejected"),
+            Err(err) => err,
+        };
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_ukf_with_initial_state_2d() {
+        let ukf = UKFLocalizer::with_initial_state_2d(
+            State2D::new(1.0, 2.0, 0.3, 0.4),
+            UKFConfig::default(),
+        )
+        .unwrap();
+
+        let state = ukf.state_2d();
+        assert_eq!(state.x, 1.0);
+        assert_eq!(state.y, 2.0);
+        assert_eq!(state.yaw, 0.3);
+        assert_eq!(state.v, 0.4);
+    }
+
+    #[test]
+    fn test_ukf_estimate_state_with_common_types() {
+        let mut ukf = UKFLocalizer::with_defaults();
+        let state = ukf
+            .estimate_state(ControlInput::new(1.0, 0.1), Point2D::new(0.1, 0.01))
+            .unwrap();
+
+        assert!(state.x.is_finite());
+        assert!(state.y.is_finite());
+    }
+
+    #[test]
+    fn test_ukf_get_covariance_trait_access() {
+        let ukf = UKFLocalizer::with_defaults();
+        let covariance = ukf.get_covariance().unwrap();
+
+        assert_eq!(covariance.nrows(), 4);
+        assert_eq!(covariance.ncols(), 4);
     }
 
     #[test]

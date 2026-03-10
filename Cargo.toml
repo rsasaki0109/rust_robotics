@@ -46,6 +46,10 @@ name = "headless_navigation_loop"
 path = "examples/integration/headless_navigation_loop.rs"
 
 [[example]]
+name = "headless_localizers"
+path = "examples/localization/headless_localizers.rs"
+
+[[example]]
 name = "state_lattice"
 path = "examples/path_planning/state_lattice.rs"
 required-features = ["showcase", "viz"]
