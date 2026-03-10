@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">C-GMRES NMPC teaser</title>
+  <desc id="desc">A showcase-friendly nonlinear model predictive control trajectory card.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08111a"/>
+      <stop offset="100%" stop-color="#0f1d2c"/>
+    </linearGradient>
+    <linearGradient id="path" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+    <linearGradient id="horizon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#35d0ba"/>
+      <stop offset="100%" stop-color="#8af0dc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" rx="34" fill="url(#bg)"/>
+  <g opacity="0.14">
+    <circle cx="180" cy="160" r="140" fill="#ff7a18"/>
+    <circle cx="1020" cy="200" r="180" fill="#35d0ba"/>
+  </g>
+  <text x="80" y="118" fill="#f4ede3" font-size="68" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">C-GMRES NMPC</text>
+  <text x="80" y="164" fill="#9ab0bf" font-size="26" font-family="IBM Plex Mono, monospace">cargo run --bin cgmres_nmpc</text>
+  <g transform="translate(80 220)">
+    <rect width="1040" height="560" rx="28" fill="#ffffff"/>
+    <rect x="76" y="54" width="888" height="432" rx="12" fill="#f8f5ef" stroke="#d8d1c6"/>
+    <g stroke="#d8d1c6" stroke-width="2">
+      <line x1="76" y1="486" x2="964" y2="486"/>
+      <line x1="76" y1="378" x2="964" y2="378"/>
+      <line x1="76" y1="270" x2="964" y2="270"/>
+      <line x1="76" y1="162" x2="964" y2="162"/>
+      <line x1="76" y1="54" x2="76" y2="486"/>
+      <line x1="298" y1="54" x2="298" y2="486"/>
+      <line x1="520" y1="54" x2="520" y2="486"/>
+      <line x1="742" y1="54" x2="742" y2="486"/>
+      <line x1="964" y1="54" x2="964" y2="486"/>
+    </g>
+    <g stroke="#8af0dc" stroke-width="4" stroke-linecap="round" opacity="0.55">
+      <path d="M198 420 C260 360, 332 326, 410 308"/>
+      <path d="M198 420 C280 390, 362 366, 452 346"/>
+      <path d="M198 420 C304 404, 410 396, 516 390"/>
+      <path d="M198 420 C308 428, 420 438, 544 454"/>
+      <path d="M198 420 C290 454, 382 482, 482 520"/>
+    </g>
+    <path d="M198 420 C250 372, 312 335, 378 314 C448 292, 526 286, 606 296 C688 307, 768 337, 844 378" fill="none" stroke="url(#path)" stroke-width="18" stroke-linecap="round"/>
+    <circle cx="198" cy="420" r="18" fill="#2563eb"/>
+    <circle cx="844" cy="378" r="18" fill="#16a34a"/>
+    <circle cx="606" cy="296" r="10" fill="#ff7a18"/>
+    <g fill="#1f2937" font-size="26" font-family="IBM Plex Mono, monospace">
+      <text x="170" y="456">start</text>
+      <text x="858" y="386">goal</text>
+      <text x="614" y="284">turn</text>
+    </g>
+    <g fill="#1f2937" font-size="24" font-family="IBM Plex Mono, monospace">
+      <text x="86" y="528">x [m]</text>
+      <text x="964" y="528" text-anchor="end">prediction horizon fan + closed-loop path</text>
+    </g>
+    <g transform="translate(86 548)">
+      <rect width="350" height="74" rx="18" fill="#f4f0e8" stroke="#d8d1c6"/>
+      <line x1="26" y1="37" x2="88" y2="37" stroke="url(#path)" stroke-width="10" stroke-linecap="round"/>
+      <text x="106" y="45" fill="#1f2937" font-size="24" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">trajectory</text>
+      <line x1="204" y1="37" x2="258" y2="37" stroke="#8af0dc" stroke-width="6" stroke-linecap="round"/>
+      <text x="274" y="45" fill="#1f2937" font-size="24" font-family="Space Grotesk, Arial, sans-serif" font-weight="600">prediction</text>
+    </g>
+  </g>
+</svg>
