@@ -173,7 +173,7 @@ const galleryItems = [
   {
     title: "State Lattice Planner",
     category: "Path Planning",
-    image: "assets/state-lattice-teaser.svg",
+    image: "img/path_planning/state_lattice_lane.svg",
     command: "cargo run --example state_lattice",
     description: "Lattice motion primitives turned into a high-density planner poster."
   },
@@ -237,7 +237,7 @@ const galleryItems = [
   {
     title: "C-GMRES NMPC",
     category: "Path Tracking",
-    image: "assets/cgmres-nmpc-teaser.svg",
+    image: "img/path_tracking/cgmres_nmpc.svg",
     command: "cargo run --bin cgmres_nmpc",
     description: "Nonlinear predictive control with a denser optimization feel."
   },
