@@ -1,12 +1,14 @@
+#![allow(dead_code, clippy::too_many_arguments)]
+
 // Probabilistic Road-Map (PRM) path planning
 // author: Atsushi Sakai (@Atsushi_twi)
 //         Ryohei Sasaki (@rsasaki0109)
 //         Rust port
 
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSize, PointSymbol};
 use rand::Rng;
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Ordering;
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol, PointSize};
+use std::collections::{BinaryHeap, HashMap};
 
 // Parameters
 const N_SAMPLE: usize = 500; // number of sample points
@@ -54,7 +56,10 @@ impl Eq for QueueItem {}
 impl Ord for QueueItem {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse for min-heap
-        other.cost.partial_cmp(&self.cost).unwrap_or(Ordering::Equal)
+        other
+            .cost
+            .partial_cmp(&self.cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -76,7 +81,8 @@ impl KDTree {
 
     /// Find k nearest neighbors
     fn query_knn(&self, x: f64, y: f64, k: usize) -> Vec<(usize, f64)> {
-        let mut distances: Vec<(usize, f64)> = self.points
+        let mut distances: Vec<(usize, f64)> = self
+            .points
             .iter()
             .enumerate()
             .map(|(i, (px, py))| {
@@ -88,22 +94,6 @@ impl KDTree {
         distances.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
         distances.truncate(k + 1); // +1 because point itself is included
         distances
-    }
-
-    /// Find all points within radius
-    fn query_radius(&self, x: f64, y: f64, radius: f64) -> Vec<(usize, f64)> {
-        self.points
-            .iter()
-            .enumerate()
-            .filter_map(|(i, (px, py))| {
-                let d = ((x - px).powi(2) + (y - py).powi(2)).sqrt();
-                if d <= radius {
-                    Some((i, d))
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 
     /// Get minimum distance to any point
@@ -120,7 +110,6 @@ pub struct PRMPlanner {
     sample_x: Vec<f64>,
     sample_y: Vec<f64>,
     road_map: Vec<Vec<usize>>,
-    obstacle_tree: KDTree,
 }
 
 impl PRMPlanner {
@@ -142,24 +131,23 @@ impl PRMPlanner {
 
         // Sample points
         let (sample_x, sample_y) = Self::sample_points(
-            start, goal,
-            min_x, max_x, min_y, max_y,
+            start,
+            goal,
+            min_x,
+            max_x,
+            min_y,
+            max_y,
             robot_radius,
             &obstacle_tree,
         );
 
         // Generate road map
-        let road_map = Self::generate_road_map(
-            &sample_x, &sample_y,
-            robot_radius,
-            &obstacle_tree,
-        );
+        let road_map = Self::generate_road_map(&sample_x, &sample_y, robot_radius, &obstacle_tree);
 
         PRMPlanner {
             sample_x,
             sample_y,
             road_map,
-            obstacle_tree,
         }
     }
 
@@ -207,7 +195,11 @@ impl PRMPlanner {
         obstacle_tree: &KDTree,
     ) -> Vec<Vec<usize>> {
         let sample_tree = KDTree::new(
-            sample_x.iter().zip(sample_y.iter()).map(|(&x, &y)| (x, y)).collect()
+            sample_x
+                .iter()
+                .zip(sample_y.iter())
+                .map(|(&x, &y)| (x, y))
+                .collect(),
         );
 
         let mut road_map: Vec<Vec<usize>> = vec![Vec::new(); sample_x.len()];
@@ -227,12 +219,8 @@ impl PRMPlanner {
                 }
 
                 // Check collision
-                if !Self::is_collision(
-                    x, y,
-                    sample_x[j], sample_y[j],
-                    robot_radius,
-                    obstacle_tree,
-                ) {
+                if !Self::is_collision(x, y, sample_x[j], sample_y[j], robot_radius, obstacle_tree)
+                {
                     road_map[i].push(j);
                 }
             }
@@ -243,8 +231,10 @@ impl PRMPlanner {
 
     /// Check if path between two points collides with obstacles
     fn is_collision(
-        x1: f64, y1: f64,
-        x2: f64, y2: f64,
+        x1: f64,
+        y1: f64,
+        x2: f64,
+        y2: f64,
         robot_radius: f64,
         obstacle_tree: &KDTree,
     ) -> bool {
@@ -279,7 +269,8 @@ impl PRMPlanner {
         let start_idx = n - 2;
         let goal_idx = n - 1;
 
-        let mut nodes: Vec<Node> = self.sample_x
+        let mut nodes: Vec<Node> = self
+            .sample_x
             .iter()
             .zip(self.sample_y.iter())
             .map(|(&x, &y)| Node::new(x, y))
@@ -288,7 +279,10 @@ impl PRMPlanner {
         nodes[start_idx].cost = 0.0;
 
         let mut open_set = BinaryHeap::new();
-        open_set.push(QueueItem { cost: 0.0, index: start_idx });
+        open_set.push(QueueItem {
+            cost: 0.0,
+            index: start_idx,
+        });
 
         let mut closed_set: HashMap<usize, bool> = HashMap::new();
 
@@ -446,10 +440,46 @@ fn main() {
     axes.lines(&edge_x, &edge_y, &[Color("#D3D3D3")]);
 
     // Draw obstacles and samples
-    axes.points(&ox, &oy, &[Caption("Obstacles"), Color("black"), PointSymbol('.'), PointSize(0.5)])
-        .points(sample_x, sample_y, &[Caption("Samples"), Color("gray"), PointSymbol('.'), PointSize(1.0)])
-        .points(&[start.0], &[start.1], &[Caption("Start"), Color("blue"), PointSymbol('O'), PointSize(2.0)])
-        .points(&[goal.0], &[goal.1], &[Caption("Goal"), Color("red"), PointSymbol('O'), PointSize(2.0)]);
+    axes.points(
+        &ox,
+        &oy,
+        &[
+            Caption("Obstacles"),
+            Color("black"),
+            PointSymbol('.'),
+            PointSize(0.5),
+        ],
+    )
+    .points(
+        sample_x,
+        sample_y,
+        &[
+            Caption("Samples"),
+            Color("gray"),
+            PointSymbol('.'),
+            PointSize(1.0),
+        ],
+    )
+    .points(
+        [start.0],
+        [start.1],
+        &[
+            Caption("Start"),
+            Color("blue"),
+            PointSymbol('O'),
+            PointSize(2.0),
+        ],
+    )
+    .points(
+        [goal.0],
+        [goal.1],
+        &[
+            Caption("Goal"),
+            Color("red"),
+            PointSymbol('O'),
+            PointSize(2.0),
+        ],
+    );
 
     // Draw path
     if let Some((path_x, path_y)) = &path {
@@ -463,7 +493,8 @@ fn main() {
         fig.show_and_keep_running().unwrap();
     }
 
-    fig.save_to_svg("./img/path_planning/prm.svg", 640, 480).unwrap();
+    fig.save_to_svg("./img/path_planning/prm.svg", 640, 480)
+        .unwrap();
     println!("Plot saved to ./img/path_planning/prm.svg");
 
     println!("Done!");

@@ -4,12 +4,11 @@
 //!
 //! Run with: cargo run --example rear_wheel_feedback
 
-use gnuplot::{Figure, Caption, Color, AxesCommon, PointSymbol};
+use gnuplot::{AxesCommon, Caption, Color, Figure, PointSymbol};
+use rust_robotics::common::{Path2D, Point2D};
 use rust_robotics::path_tracking::rear_wheel_feedback::{
-    RearWheelFeedbackController, RearWheelFeedbackConfig, VehicleState,
+    RearWheelFeedbackConfig, RearWheelFeedbackController, VehicleState,
 };
-use rust_robotics::common::{Point2D, Path2D};
-use std::f64::consts::PI;
 
 // Cubic spline helper for path generation
 struct CubicSpline {
@@ -33,9 +32,7 @@ impl CubicSpline {
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
 
-        for i in 0..n {
-            a[i] = y[i];
-        }
+        a[..n].copy_from_slice(&y[..n]);
 
         let mut alpha = vec![0.0; n - 1];
         for i in 1..n - 1 {
@@ -58,7 +55,13 @@ impl CubicSpline {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline { a, b, c, d, x: x.to_vec() }
+        CubicSpline {
+            a,
+            b,
+            c,
+            d,
+            x: x.to_vec(),
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -196,7 +199,7 @@ fn main() {
     println!("Starting Rear Wheel Feedback Control simulation...");
 
     // Define waypoints for a curved path
-    let waypoints = vec![
+    let waypoints = [
         (0.0, 0.0),
         (10.0, -6.0),
         (20.5, 5.0),
@@ -226,7 +229,10 @@ fn main() {
 
     // Set path
     let path = Path2D::from_points(
-        cx.iter().zip(cy.iter()).map(|(&x, &y)| Point2D::new(x, y)).collect()
+        cx.iter()
+            .zip(cy.iter())
+            .map(|(&x, &y)| Point2D::new(x, y))
+            .collect(),
     );
     controller.set_path_with_info(path, cyaw.clone(), ck);
 
@@ -262,12 +268,16 @@ fn main() {
         }
     }
 
-    println!("Simulation finished. Trajectory points: {}", trajectory_x.len());
+    println!(
+        "Simulation finished. Trajectory points: {}",
+        trajectory_x.len()
+    );
 
     // Plot results
     let mut fg = Figure::new();
     {
-        let axes = fg.axes2d()
+        let axes = fg
+            .axes2d()
             .set_title("Rear Wheel Feedback Control", &[])
             .set_x_label("x [m]", &[])
             .set_y_label("y [m]", &[])
@@ -277,17 +287,32 @@ fn main() {
         axes.lines(&cx, &cy, &[Caption("Reference Path"), Color("blue")]);
 
         // Plot vehicle trajectory
-        axes.lines(&trajectory_x, &trajectory_y, &[Caption("Vehicle Trajectory"), Color("red")]);
+        axes.lines(
+            &trajectory_x,
+            &trajectory_y,
+            &[Caption("Vehicle Trajectory"), Color("red")],
+        );
 
         // Plot waypoints
         let wp_x: Vec<f64> = waypoints.iter().map(|p| p.0).collect();
         let wp_y: Vec<f64> = waypoints.iter().map(|p| p.1).collect();
-        axes.points(&wp_x, &wp_y, &[Caption("Waypoints"), Color("green"), PointSymbol('O')]);
+        axes.points(
+            &wp_x,
+            &wp_y,
+            &[Caption("Waypoints"), Color("green"), PointSymbol('O')],
+        );
 
         // Plot start and goal
-        axes.points(&[trajectory_x[0]], &[trajectory_y[0]], &[Caption("Start"), Color("cyan"), PointSymbol('o')]);
-        axes.points(&[*trajectory_x.last().unwrap()], &[*trajectory_y.last().unwrap()],
-                   &[Caption("End"), Color("magenta"), PointSymbol('x')]);
+        axes.points(
+            [trajectory_x[0]],
+            [trajectory_y[0]],
+            &[Caption("Start"), Color("cyan"), PointSymbol('o')],
+        );
+        axes.points(
+            [*trajectory_x.last().unwrap()],
+            [*trajectory_y.last().unwrap()],
+            &[Caption("End"), Color("magenta"), PointSymbol('x')],
+        );
     }
 
     // Save as SVG
