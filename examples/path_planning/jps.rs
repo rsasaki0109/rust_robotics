@@ -4,7 +4,7 @@
 //! JPS is an optimization of A* that significantly reduces the number of
 //! nodes expanded by identifying "jump points".
 
-use rust_robotics::common::{Path2D, PathPlanner, Point2D};
+use rust_robotics::common::{Path2D, Point2D};
 use rust_robotics::path_planning::a_star::{AStarConfig, AStarPlanner};
 use rust_robotics::path_planning::jps::{JPSConfig, JPSPlanner};
 use std::fs::File;

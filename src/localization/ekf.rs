@@ -3,7 +3,9 @@
 //! Implements state estimation using the Extended Kalman Filter algorithm
 //! for robot localization with nonlinear motion and observation models.
 
-use crate::common::{RoboticsError, StateEstimator};
+use crate::common::{
+    ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
+};
 use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
 
 /// State representation for EKF (x, y, yaw, velocity)
@@ -38,6 +40,37 @@ impl Default for EKFConfig {
     }
 }
 
+impl EKFConfig {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        if self.q.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF process noise matrix must contain only finite values".to_string(),
+            ));
+        }
+        if self.r.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF measurement noise matrix must contain only finite values".to_string(),
+            ));
+        }
+        for i in 0..4 {
+            if self.q[(i, i)] < 0.0 {
+                return Err(RoboticsError::InvalidParameter(
+                    "EKF process noise diagonal entries must be non-negative".to_string(),
+                ));
+            }
+        }
+        for i in 0..2 {
+            if self.r[(i, i)] < 0.0 {
+                return Err(RoboticsError::InvalidParameter(
+                    "EKF measurement noise diagonal entries must be non-negative".to_string(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// Extended Kalman Filter for robot localization
 pub struct EKFLocalizer {
     /// Current state estimate [x, y, yaw, v]
@@ -51,11 +84,19 @@ pub struct EKFLocalizer {
 impl EKFLocalizer {
     /// Create a new EKF localizer
     pub fn new(config: EKFConfig) -> Self {
-        EKFLocalizer {
+        Self::try_new(config).expect(
+            "invalid EKF configuration: noise matrices must be finite and have non-negative diagonals",
+        )
+    }
+
+    /// Create a new validated EKF localizer
+    pub fn try_new(config: EKFConfig) -> RoboticsResult<Self> {
+        config.validate()?;
+        Ok(EKFLocalizer {
             state: EKFState::zeros(),
             covariance: Matrix4::identity(),
             config,
-        }
+        })
     }
 
     /// Create with default configuration
@@ -65,11 +106,30 @@ impl EKFLocalizer {
 
     /// Create with initial state
     pub fn with_initial_state(initial_state: EKFState, config: EKFConfig) -> Self {
-        EKFLocalizer {
+        Self::try_with_initial_state(initial_state, config)
+            .expect("invalid EKF initialization: state must be finite and config must be valid")
+    }
+
+    /// Create with validated initial state
+    pub fn try_with_initial_state(
+        initial_state: EKFState,
+        config: EKFConfig,
+    ) -> RoboticsResult<Self> {
+        config.validate()?;
+        Self::validate_state_vector(&initial_state)?;
+        Ok(EKFLocalizer {
             state: initial_state,
             covariance: Matrix4::identity(),
             config,
-        }
+        })
+    }
+
+    /// Create with common State2D type
+    pub fn with_initial_state_2d(
+        initial_state: State2D,
+        config: EKFConfig,
+    ) -> RoboticsResult<Self> {
+        Self::try_with_initial_state(initial_state.to_vector(), config)
     }
 
     /// Get reference to state covariance
@@ -77,14 +137,59 @@ impl EKFLocalizer {
         &self.covariance
     }
 
+    /// Get current estimate as State2D
+    pub fn state_2d(&self) -> State2D {
+        State2D::new(self.state[0], self.state[1], self.state[2], self.state[3])
+    }
+
     /// Set process noise covariance
     pub fn set_process_noise(&mut self, q: Matrix4<f64>) {
+        self.try_set_process_noise(q)
+            .expect("invalid EKF process noise matrix")
+    }
+
+    /// Set process noise covariance with validation
+    pub fn try_set_process_noise(&mut self, q: Matrix4<f64>) -> RoboticsResult<()> {
+        if q.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF process noise matrix must contain only finite values".to_string(),
+            ));
+        }
+        for i in 0..4 {
+            if q[(i, i)] < 0.0 {
+                return Err(RoboticsError::InvalidParameter(
+                    "EKF process noise diagonal entries must be non-negative".to_string(),
+                ));
+            }
+        }
+
         self.config.q = q;
+        Ok(())
     }
 
     /// Set measurement noise covariance
     pub fn set_measurement_noise(&mut self, r: Matrix2<f64>) {
+        self.try_set_measurement_noise(r)
+            .expect("invalid EKF measurement noise matrix")
+    }
+
+    /// Set measurement noise covariance with validation
+    pub fn try_set_measurement_noise(&mut self, r: Matrix2<f64>) -> RoboticsResult<()> {
+        if r.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF measurement noise matrix must contain only finite values".to_string(),
+            ));
+        }
+        for i in 0..2 {
+            if r[(i, i)] < 0.0 {
+                return Err(RoboticsError::InvalidParameter(
+                    "EKF measurement noise diagonal entries must be non-negative".to_string(),
+                ));
+            }
+        }
+
         self.config.r = r;
+        Ok(())
     }
 
     /// Motion model: predict state based on control input
@@ -139,6 +244,10 @@ impl EKFLocalizer {
         control: &EKFControl,
         dt: f64,
     ) -> Result<&EKFState, RoboticsError> {
+        Self::validate_measurement_vector(measurement)?;
+        Self::validate_control_vector(control)?;
+        Self::validate_dt(dt)?;
+
         // Predict
         let x_pred = Self::motion_model(&self.state, control, dt);
         let j_f = Self::jacobian_f(&x_pred, control, dt);
@@ -159,6 +268,17 @@ impl EKFLocalizer {
         self.covariance = (Matrix4::identity() - k * j_h) * p_pred;
 
         Ok(&self.state)
+    }
+
+    /// EKF estimate step using common crate types
+    pub fn estimate_state(
+        &mut self,
+        measurement: Point2D,
+        control: ControlInput,
+        dt: f64,
+    ) -> RoboticsResult<State2D> {
+        self.estimate(&measurement.to_vector(), &control.to_vector(), dt)?;
+        Ok(self.state_2d())
     }
 
     /// Legacy interface for EKF estimation (standalone function style)
@@ -184,6 +304,47 @@ impl EKFLocalizer {
         let new_p_est = (Matrix4::identity() - k * j_h) * p_pred;
 
         (new_x_est, new_p_est)
+    }
+
+    fn validate_state_vector(state: &EKFState) -> RoboticsResult<()> {
+        if state.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF state must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_measurement_vector(measurement: &EKFMeasurement) -> RoboticsResult<()> {
+        if measurement.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF measurement must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_control_vector(control: &EKFControl) -> RoboticsResult<()> {
+        if control.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "EKF control input must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_dt(dt: f64) -> RoboticsResult<()> {
+        if !dt.is_finite() || dt <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "EKF dt must be positive and finite, got {}",
+                dt
+            )));
+        }
+
+        Ok(())
     }
 }
 
@@ -279,5 +440,53 @@ mod tests {
 
         assert!(new_x[0] > 0.0);
         assert!(new_p[(0, 0)] > 0.0);
+    }
+
+    #[test]
+    fn test_ekf_try_new_rejects_invalid_config() {
+        let mut config = EKFConfig::default();
+        config.q[(0, 0)] = -1.0;
+
+        let err = match EKFLocalizer::try_new(config) {
+            Ok(_) => panic!("expected invalid config to be rejected"),
+            Err(err) => err,
+        };
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_ekf_with_initial_state_2d() {
+        let ekf = EKFLocalizer::with_initial_state_2d(
+            State2D::new(1.0, 2.0, 0.3, 0.5),
+            EKFConfig::default(),
+        )
+        .unwrap();
+
+        let state = ekf.state_2d();
+        assert_eq!(state.x, 1.0);
+        assert_eq!(state.y, 2.0);
+        assert_eq!(state.yaw, 0.3);
+        assert_eq!(state.v, 0.5);
+    }
+
+    #[test]
+    fn test_ekf_estimate_state_with_common_types() {
+        let mut ekf = EKFLocalizer::with_defaults();
+        let state = ekf
+            .estimate_state(Point2D::new(0.1, 0.0), ControlInput::new(1.0, 0.0), 0.1)
+            .unwrap();
+
+        assert!(state.x > 0.0);
+    }
+
+    #[test]
+    fn test_ekf_estimate_rejects_invalid_dt() {
+        let mut ekf = EKFLocalizer::with_defaults();
+        let err = match ekf.estimate(&EKFMeasurement::new(0.0, 0.0), &EKFControl::zeros(), 0.0) {
+            Ok(_) => panic!("expected invalid dt to be rejected"),
+            Err(err) => err,
+        };
+
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
     }
 }
