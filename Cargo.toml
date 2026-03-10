@@ -38,6 +38,10 @@ path = "examples/path_planning/jps.rs"
 required-features = ["showcase", "viz"]
 
 [[example]]
+name = "headless_grid_planners"
+path = "examples/path_planning/headless_grid_planners.rs"
+
+[[example]]
 name = "state_lattice"
 path = "examples/path_planning/state_lattice.rs"
 required-features = ["showcase", "viz"]
