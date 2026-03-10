@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">RustRobotics social preview</title>
+  <desc id="desc">Social preview banner for the RustRobotics GitHub Pages showcase.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08111a"/>
+      <stop offset="100%" stop-color="#10202f"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+    <linearGradient id="cool" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#35d0ba"/>
+      <stop offset="100%" stop-color="#8af0dc"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="34" fill="url(#bg)"/>
+  <g opacity="0.16">
+    <circle cx="180" cy="120" r="120" fill="#ff7a18"/>
+    <circle cx="1040" cy="150" r="150" fill="#35d0ba"/>
+    <circle cx="980" cy="560" r="180" fill="#ffd166"/>
+  </g>
+  <g transform="translate(62 70)">
+    <rect width="170" height="170" rx="34" fill="url(#warm)"/>
+    <text x="44" y="104" fill="#08111a" font-size="82" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">RR</text>
+  </g>
+  <text x="300" y="150" fill="#ffe082" font-size="26" font-family="IBM Plex Mono, monospace">GitHub Pages showcase</text>
+  <text x="300" y="248" fill="#f4ede3" font-size="78" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">Rust robotics demos</text>
+  <text x="300" y="332" fill="#f4ede3" font-size="78" font-family="Space Grotesk, Arial, sans-serif" font-weight="700">that look built for the timeline</text>
+  <text x="300" y="406" fill="#9ab0bf" font-size="28" font-family="Space Grotesk, Arial, sans-serif">Localization. SLAM. Planning. Control. Mission logic. Aerial navigation.</text>
+  <g transform="translate(300 458)">
+    <rect width="210" height="56" rx="28" fill="rgba(53, 208, 186, 0.16)" stroke="#35d0ba"/>
+    <rect x="226" width="190" height="56" rx="28" fill="rgba(255, 122, 24, 0.16)" stroke="#ff7a18"/>
+    <text x="105" y="36" text-anchor="middle" fill="#8af0dc" font-size="24" font-family="IBM Plex Mono, monospace">93 visuals</text>
+    <text x="321" y="36" text-anchor="middle" fill="#ffd166" font-size="24" font-family="IBM Plex Mono, monospace">12 modules</text>
+  </g>
+  <g transform="translate(860 366)">
+    <rect x="0" y="0" width="240" height="168" rx="24" fill="#10202f" stroke="#35506c"/>
+    <rect x="18" y="18" width="204" height="78" rx="18" fill="#193146"/>
+    <rect x="18" y="112" width="90" height="38" rx="19" fill="url(#cool)"/>
+    <rect x="126" y="112" width="96" height="38" rx="19" fill="url(#warm)"/>
+    <path d="M42 82 88 44 136 60 186 34" fill="none" stroke="#ffd166" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

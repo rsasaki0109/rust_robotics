@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">RustRobotics favicon</title>
+  <desc id="desc">Rounded square mark with RR lettering.</desc>
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#ffd166"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="#08111a"/>
+  <rect x="14" y="14" width="100" height="100" rx="24" fill="url(#grad)"/>
+  <path d="M38 37h22c16 0 25 9 25 22 0 9-4 16-12 20l14 17H71L59 82h-7v14H38V37Zm14 13v19h7c8 0 12-3 12-10s-4-9-12-9h-7Z" fill="#08111a"/>
+</svg>
