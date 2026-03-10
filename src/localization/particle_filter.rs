@@ -8,7 +8,9 @@ use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use std::f64::consts::PI;
 
-use crate::common::{Point2D, StateEstimator};
+use crate::common::{
+    ControlInput, Obstacles, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
+};
 
 /// State representation for Particle Filter (x, y, yaw, velocity)
 pub type PFState = Vector4<f64>;
@@ -75,28 +77,82 @@ impl Default for ParticleFilterConfig {
     }
 }
 
+impl ParticleFilterConfig {
+    pub fn validate(&self) -> RoboticsResult<()> {
+        if self.n_particles == 0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter requires at least one particle".to_string(),
+            ));
+        }
+        if !self.resample_threshold.is_finite()
+            || self.resample_threshold < 0.0
+            || self.resample_threshold > 1.0
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter resample_threshold must be within [0.0, 1.0]".to_string(),
+            ));
+        }
+        if !self.range_noise.is_finite() || self.range_noise <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter range_noise must be positive and finite".to_string(),
+            ));
+        }
+        if !self.velocity_noise.is_finite() || self.velocity_noise < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter velocity_noise must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.yaw_rate_noise.is_finite() || self.yaw_rate_noise < 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter yaw_rate_noise must be non-negative and finite".to_string(),
+            ));
+        }
+        if !self.dt.is_finite() || self.dt <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter dt must be positive and finite".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+}
+
 /// Particle Filter for robot localization
 pub struct ParticleFilterLocalizer {
     particles: Vec<Particle>,
     config: ParticleFilterConfig,
     landmarks: Vec<Point2D>,
     last_control: PFControl,
+    state_estimate: PFState,
+    covariance_dyn: nalgebra::DMatrix<f64>,
 }
 
 impl ParticleFilterLocalizer {
     /// Create a new Particle Filter localizer
     pub fn new(config: ParticleFilterConfig) -> Self {
+        Self::try_new(config).expect(
+            "invalid particle filter configuration: particle count, noises, and dt must be valid",
+        )
+    }
+
+    /// Create a validated Particle Filter localizer
+    pub fn try_new(config: ParticleFilterConfig) -> RoboticsResult<Self> {
+        config.validate()?;
         let n = config.n_particles;
         let particles = (0..n)
             .map(|_| Particle::new(0.0, 0.0, 0.0, 0.0, n))
             .collect();
 
-        ParticleFilterLocalizer {
+        let mut pf = ParticleFilterLocalizer {
             particles,
             config,
             landmarks: Vec::new(),
             last_control: PFControl::zeros(),
-        }
+            state_estimate: PFState::zeros(),
+            covariance_dyn: nalgebra::DMatrix::zeros(4, 4),
+        };
+        pf.refresh_cache();
+        Ok(pf)
     }
 
     /// Create with default configuration
@@ -106,6 +162,18 @@ impl ParticleFilterLocalizer {
 
     /// Create with initial state
     pub fn with_initial_state(initial_state: PFState, config: ParticleFilterConfig) -> Self {
+        Self::try_with_initial_state(initial_state, config)
+            .expect("invalid particle filter initialization: state and configuration must be valid")
+    }
+
+    /// Create with validated initial state
+    pub fn try_with_initial_state(
+        initial_state: PFState,
+        config: ParticleFilterConfig,
+    ) -> RoboticsResult<Self> {
+        config.validate()?;
+        Self::validate_state(&initial_state)?;
+
         let mut rng = rand::thread_rng();
         let n = config.n_particles;
         let mut particles = Vec::with_capacity(n);
@@ -118,17 +186,42 @@ impl ParticleFilterLocalizer {
             particles.push(Particle::new(x, y, yaw, v, n));
         }
 
-        ParticleFilterLocalizer {
+        let mut pf = ParticleFilterLocalizer {
             particles,
             config,
             landmarks: Vec::new(),
             last_control: PFControl::zeros(),
-        }
+            state_estimate: PFState::zeros(),
+            covariance_dyn: nalgebra::DMatrix::zeros(4, 4),
+        };
+        pf.refresh_cache();
+        Ok(pf)
+    }
+
+    /// Create with common State2D type
+    pub fn with_initial_state_2d(
+        initial_state: State2D,
+        config: ParticleFilterConfig,
+    ) -> RoboticsResult<Self> {
+        Self::try_with_initial_state(initial_state.to_vector(), config)
     }
 
     /// Set landmarks for observation
     pub fn set_landmarks(&mut self, landmarks: Vec<Point2D>) {
+        self.try_set_landmarks(landmarks)
+            .expect("particle filter landmarks must contain only finite values")
+    }
+
+    /// Set landmarks with validation
+    pub fn try_set_landmarks(&mut self, landmarks: Vec<Point2D>) -> RoboticsResult<()> {
+        Self::validate_points(&landmarks, "particle filter landmarks")?;
         self.landmarks = landmarks;
+        Ok(())
+    }
+
+    /// Set landmarks from typed point container
+    pub fn set_landmarks_from_obstacles(&mut self, landmarks: &Obstacles) -> RoboticsResult<()> {
+        self.try_set_landmarks(landmarks.points.clone())
     }
 
     /// Get landmarks
@@ -143,14 +236,44 @@ impl ParticleFilterLocalizer {
 
     /// Prediction step: propagate particles with motion model
     pub fn predict_with_control(&mut self, control: &PFControl) {
+        self.try_predict_with_control(control)
+            .expect("invalid particle filter prediction input")
+    }
+
+    /// Prediction step with validation
+    pub fn try_predict_with_control(&mut self, control: &PFControl) -> RoboticsResult<()> {
+        Self::validate_control(control)?;
+
         let mut rng = rand::thread_rng();
-        let normal_v = Normal::new(0.0, self.config.velocity_noise.powi(2)).unwrap();
-        let normal_yaw = Normal::new(0.0, self.config.yaw_rate_noise.powi(2)).unwrap();
+        let normal_v = if self.config.velocity_noise > 0.0 {
+            Some(Normal::new(0.0, self.config.velocity_noise).map_err(|_| {
+                RoboticsError::InvalidParameter(
+                    "particle filter velocity_noise must be a valid standard deviation".to_string(),
+                )
+            })?)
+        } else {
+            None
+        };
+        let normal_yaw = if self.config.yaw_rate_noise > 0.0 {
+            Some(Normal::new(0.0, self.config.yaw_rate_noise).map_err(|_| {
+                RoboticsError::InvalidParameter(
+                    "particle filter yaw_rate_noise must be a valid standard deviation".to_string(),
+                )
+            })?)
+        } else {
+            None
+        };
         let dt = self.config.dt;
 
         for particle in &mut self.particles {
-            let v_noise = normal_v.sample(&mut rng);
-            let yaw_noise = normal_yaw.sample(&mut rng);
+            let v_noise = normal_v
+                .as_ref()
+                .map(|normal| normal.sample(&mut rng))
+                .unwrap_or(0.0);
+            let yaw_noise = normal_yaw
+                .as_ref()
+                .map(|normal| normal.sample(&mut rng))
+                .unwrap_or(0.0);
 
             let v_noisy = control[0] + v_noise;
             let yaw_rate_noisy = control[1] + yaw_noise;
@@ -162,10 +285,23 @@ impl ParticleFilterLocalizer {
         }
 
         self.last_control = *control;
+        self.refresh_cache();
+        Ok(())
     }
 
     /// Update step: update weights based on observations
     pub fn update_with_observations(&mut self, observations: &PFMeasurement) {
+        self.try_update_with_observations(observations)
+            .expect("invalid particle filter observations")
+    }
+
+    /// Update step with validation
+    pub fn try_update_with_observations(
+        &mut self,
+        observations: &PFMeasurement,
+    ) -> RoboticsResult<()> {
+        Self::validate_observations(observations)?;
+
         for particle in &mut self.particles {
             let mut w = 1.0;
 
@@ -182,6 +318,8 @@ impl ParticleFilterLocalizer {
         }
 
         self.normalize_weights();
+        self.refresh_cache();
+        Ok(())
     }
 
     /// Resample particles if effective particle count is low
@@ -191,11 +329,46 @@ impl ParticleFilterLocalizer {
 
         if n_eff < threshold {
             self.resample_particles();
+            self.refresh_cache();
         }
     }
 
     /// Compute weighted state estimate
     pub fn estimate(&self) -> PFState {
+        self.state_estimate
+    }
+
+    /// Get current estimate as State2D
+    pub fn state_2d(&self) -> State2D {
+        State2D::new(
+            self.state_estimate[0],
+            self.state_estimate[1],
+            self.state_estimate[2],
+            self.state_estimate[3],
+        )
+    }
+
+    /// Compute state covariance
+    pub fn calc_covariance(&self) -> Matrix4<f64> {
+        Matrix4::from_fn(|i, j| self.covariance_dyn[(i, j)])
+    }
+
+    /// Predict with common control type
+    pub fn try_predict_input(&mut self, control: ControlInput) -> RoboticsResult<()> {
+        self.try_predict_with_control(&control.to_vector())
+    }
+
+    /// Full step with common control type returning State2D
+    pub fn try_step_state(
+        &mut self,
+        control: ControlInput,
+        observations: &PFMeasurement,
+    ) -> RoboticsResult<State2D> {
+        self.try_step(&control.to_vector(), observations)?;
+        Ok(self.state_2d())
+    }
+
+    fn compute_estimate(&self) -> PFState {
         let mut x_est = 0.0;
         let mut y_est = 0.0;
         let mut yaw_est = 0.0;
@@ -211,9 +384,7 @@ impl ParticleFilterLocalizer {
         Vector4::new(x_est, y_est, yaw_est, v_est)
     }
 
-    /// Compute state covariance
-    pub fn calc_covariance(&self) -> Matrix4<f64> {
-        let x_est = self.estimate();
+    fn compute_covariance(&self, x_est: &PFState) -> Matrix4<f64> {
         let mut cov = Matrix4::zeros();
 
         for particle in &self.particles {
@@ -247,6 +418,11 @@ impl ParticleFilterLocalizer {
         if sum_w > 0.0 {
             for particle in &mut self.particles {
                 particle.w /= sum_w;
+            }
+        } else {
+            let uniform_weight = 1.0 / self.particles.len() as f64;
+            for particle in &mut self.particles {
+                particle.w = uniform_weight;
             }
         }
     }
@@ -293,10 +469,72 @@ impl ParticleFilterLocalizer {
 
     /// Full estimation step (predict + update + resample)
     pub fn step(&mut self, control: &PFControl, observations: &PFMeasurement) -> PFState {
-        self.predict_with_control(control);
-        self.update_with_observations(observations);
+        self.try_step(control, observations)
+            .expect("invalid particle filter step input")
+    }
+
+    /// Full validated estimation step (predict + update + resample)
+    pub fn try_step(
+        &mut self,
+        control: &PFControl,
+        observations: &PFMeasurement,
+    ) -> RoboticsResult<PFState> {
+        self.try_predict_with_control(control)?;
+        self.try_update_with_observations(observations)?;
         self.resample();
-        self.estimate()
+        Ok(self.estimate())
+    }
+
+    fn refresh_cache(&mut self) {
+        self.state_estimate = self.compute_estimate();
+        let covariance = self.compute_covariance(&self.state_estimate);
+        self.covariance_dyn = nalgebra::DMatrix::from_fn(4, 4, |i, j| covariance[(i, j)]);
+    }
+
+    fn validate_state(state: &PFState) -> RoboticsResult<()> {
+        if state.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter state must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_control(control: &PFControl) -> RoboticsResult<()> {
+        if control.iter().any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter control input must contain only finite values".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn validate_points(points: &[Point2D], label: &str) -> RoboticsResult<()> {
+        if points
+            .iter()
+            .any(|point| !point.x.is_finite() || !point.y.is_finite())
+        {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "{label} must contain only finite values"
+            )));
+        }
+
+        Ok(())
+    }
+
+    fn validate_observations(observations: &PFMeasurement) -> RoboticsResult<()> {
+        if observations
+            .iter()
+            .any(|(d, x, y)| !d.is_finite() || !x.is_finite() || !y.is_finite() || *d < 0.0)
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter observations must have finite, non-negative distances".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 
@@ -315,14 +553,11 @@ impl StateEstimator for ParticleFilterLocalizer {
     }
 
     fn get_state(&self) -> &Self::State {
-        // Note: We need to return a reference, but estimate() computes on the fly
-        // This is a limitation of the trait design
-        // For now, we'll use a workaround
-        unimplemented!("Use estimate() method instead for ParticleFilter")
+        &self.state_estimate
     }
 
     fn get_covariance(&self) -> Option<&nalgebra::DMatrix<f64>> {
-        None // Use calc_covariance() for fixed-size covariance
+        Some(&self.covariance_dyn)
     }
 }
 
@@ -397,5 +632,65 @@ mod tests {
         // Covariance should be positive semi-definite (diagonal > 0)
         assert!(cov[(0, 0)] >= 0.0);
         assert!(cov[(1, 1)] >= 0.0);
+    }
+
+    #[test]
+    fn test_particle_filter_try_new_rejects_invalid_config() {
+        let config = ParticleFilterConfig {
+            n_particles: 0,
+            ..Default::default()
+        };
+
+        let err = match ParticleFilterLocalizer::try_new(config) {
+            Ok(_) => panic!("expected invalid config to be rejected"),
+            Err(err) => err,
+        };
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_particle_filter_with_initial_state_2d() {
+        let pf = ParticleFilterLocalizer::with_initial_state_2d(
+            State2D::new(1.0, 2.0, 0.3, 0.4),
+            ParticleFilterConfig::default(),
+        )
+        .unwrap();
+
+        let state = pf.state_2d();
+        assert!((state.x - 1.0).abs() < 2.0);
+        assert!((state.y - 2.0).abs() < 2.0);
+    }
+
+    #[test]
+    fn test_particle_filter_set_landmarks_from_obstacles() {
+        let mut pf = ParticleFilterLocalizer::with_defaults();
+        let landmarks =
+            Obstacles::from_points(vec![Point2D::new(1.0, 1.0), Point2D::new(2.0, 2.0)]);
+
+        pf.set_landmarks_from_obstacles(&landmarks).unwrap();
+        assert_eq!(pf.get_landmarks().len(), 2);
+    }
+
+    #[test]
+    fn test_particle_filter_try_step_state() {
+        let mut pf = ParticleFilterLocalizer::with_defaults();
+        let state = pf
+            .try_step_state(ControlInput::new(1.0, 0.1), &vec![(10.0, 10.0, 0.0)])
+            .unwrap();
+
+        assert!(state.x.is_finite());
+        assert!(state.y.is_finite());
+    }
+
+    #[test]
+    fn test_particle_filter_state_estimator_trait_access() {
+        let mut pf = ParticleFilterLocalizer::with_defaults();
+        pf.predict(&PFControl::new(1.0, 0.0), 0.1);
+        pf.update(&vec![(10.0, 0.0, 0.0)]);
+
+        let state = pf.get_state();
+        let covariance = pf.get_covariance().unwrap();
+        assert!(state[0].is_finite());
+        assert_eq!(covariance.nrows(), 4);
     }
 }
