@@ -312,11 +312,7 @@ impl PathTracker for StanleyController {
 
 // Cubic spline helper functions for legacy interface
 
-fn calc_spline_course(
-    x: &[f64],
-    y: &[f64],
-    ds: f64,
-) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> SplineCourse {
     let sp = CubicSpline2D::new(x, y);
     let mut s = 0.0;
     let mut course_x = Vec::new();
@@ -349,6 +345,8 @@ struct CubicSpline {
     x: Vec<f64>,
 }
 
+type SplineCourse = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 impl CubicSpline {
     fn new(x: &[f64], y: &[f64]) -> Self {
         let n = x.len();
@@ -362,9 +360,7 @@ impl CubicSpline {
         let mut c = vec![0.0; n];
         let mut d = vec![0.0; n];
 
-        for i in 0..n {
-            a[i] = y[i];
-        }
+        a[..n].copy_from_slice(&y[..n]);
 
         let mut alpha = vec![0.0; n - 1];
         for i in 1..n - 1 {
@@ -533,6 +529,6 @@ mod tests {
 
         let result = controller.planning(waypoints, 5.0, 0.5);
         assert!(result.is_some());
-        assert!(result.unwrap().len() > 0);
+        assert!(!result.unwrap().is_empty());
     }
 }

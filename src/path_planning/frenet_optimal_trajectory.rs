@@ -366,7 +366,7 @@ fn calc_frenet_paths(c_speed: f64, c_d: f64, c_d_d: f64, c_d_dd: f64, s0: f64) -
 
                 let lon_qp = QuarticPolynomial::new(s0, c_speed, 0.0, tv, 0.0, ti);
 
-                for (_i, &t) in tfp.t.iter().enumerate() {
+                for &t in &tfp.t {
                     tfp.s.push(lon_qp.calc_point(t));
                     tfp.s_d.push(lon_qp.calc_first_derivative(t));
                     tfp.s_dd.push(lon_qp.calc_second_derivative(t));
@@ -396,7 +396,7 @@ fn calc_frenet_paths(c_speed: f64, c_d: f64, c_d_d: f64, c_d_dd: f64, s0: f64) -
 }
 
 /// Calculate global positions from Frenet paths
-fn calc_global_paths(fplist: &mut Vec<FrenetPath>, csp: &CubicSpline2D) {
+fn calc_global_paths(fplist: &mut [FrenetPath], csp: &CubicSpline2D) {
     for fp in fplist.iter_mut() {
         for i in 0..fp.s.len() {
             let s = fp.s[i];

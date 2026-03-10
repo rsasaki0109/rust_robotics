@@ -49,7 +49,7 @@ impl State {
         State { x, y, v, yaw }
     }
 
-    fn to_vector(&self) -> Vector4<f64> {
+    fn to_vector(self) -> Vector4<f64> {
         Vector4::new(self.x, self.y, self.v, self.yaw)
     }
 
@@ -300,7 +300,7 @@ fn mpc_solve(state: &State, xref: &[Vector4<f64>], u_prev: &[Vector2<f64>]) -> V
         }
 
         // Backward pass - compute gradients
-        let mut du = vec![Vector2::zeros(); T];
+        let mut du = [Vector2::zeros(); T];
 
         for i in 0..T {
             // Calculate state error with proper angle wrapping for yaw
@@ -417,7 +417,7 @@ fn main() {
         hist_v.push(state.v);
 
         // Visualization
-        if SHOW_ANIMATION && hist_x.len() % 5 == 0 {
+        if SHOW_ANIMATION && hist_x.len().is_multiple_of(5) {
             fig.clear_axes();
 
             // Predicted trajectory

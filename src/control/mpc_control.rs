@@ -73,7 +73,7 @@ impl InvertedPendulumMPC {
                     frame_count / 5,
                     time,
                     &x,
-                    &self.prediction_history.last().unwrap(),
+                    self.prediction_history.last().unwrap(),
                 );
             }
             frame_count += 1;
@@ -147,15 +147,15 @@ impl InvertedPendulumMPC {
         let mut states = vec![x];
         let mut cost = 0.0;
 
-        for t in 0..T {
+        for &u_t in u_seq.iter().take(T) {
             // State cost
             cost += (x.transpose() * self.q * x)[0];
 
             // Control cost
-            cost += u_seq[t] * self.r[0] * u_seq[t];
+            cost += u_t * self.r[0] * u_t;
 
             // Update state
-            x = a * x + b * u_seq[t];
+            x = a * x + b * u_t;
             states.push(x);
         }
 
@@ -197,7 +197,7 @@ impl InvertedPendulumMPC {
     ) {
         let mut fg = Figure::new();
         {
-            let mut axes = fg
+            let axes = fg
                 .axes2d()
                 .set_title(
                     &format!(
@@ -213,7 +213,7 @@ impl InvertedPendulumMPC {
                 .set_aspect_ratio(gnuplot::Fix(1.0));
 
             // Draw cart and pendulum
-            self.draw_cart_pendulum(&mut axes, current_state[0], current_state[2]);
+            self.draw_cart_pendulum(axes, current_state[0], current_state[2]);
 
             // Draw predicted trajectory
             if predicted_states.len() > 1 {

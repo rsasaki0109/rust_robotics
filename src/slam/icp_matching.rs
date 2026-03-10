@@ -56,11 +56,11 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
         count += 1;
 
         if SHOW_ANIMATION && count % 5 == 0 {
-            plot_points(&previous_points, &current_pts, &mut fg, count);
+            plot_points(previous_points, &current_pts, &mut fg, count);
         }
 
-        let (indexes, error) = nearest_neighbor_association(&previous_points, &current_pts);
-        let previous_indexed = select_columns(&previous_points, &indexes);
+        let (indexes, error) = nearest_neighbor_association(previous_points, &current_pts);
+        let previous_indexed = select_columns(previous_points, &indexes);
         let (rt, tt) = svd_motion_estimation(&previous_indexed, &current_pts);
 
         // Update current points: current_points = (Rt @ current_points) + Tt

@@ -71,9 +71,9 @@ fn polar(x: f64, y: f64) -> (f64, f64) {
 
 fn left_straight_left(x: f64, y: f64, phi: f64) -> (bool, Vec<f64>, Vec<char>) {
     let (u, t) = polar(x - phi.sin(), y - 1.0 + phi.cos());
-    if 0.0 <= t && t <= PI {
+    if (0.0..=PI).contains(&t) {
         let v = mod2pi(phi - t);
-        if 0.0 <= v && v <= PI {
+        if (0.0..=PI).contains(&v) {
             return (true, vec![t, u, v], vec!['L', 'S', 'L']);
         }
     }
@@ -164,7 +164,7 @@ fn left_x_right_left_x_right(x: f64, y: f64, phi: f64) -> (bool, Vec<f64>, Vec<c
     let (u1, theta) = polar(zeta, eeta);
     let u2 = (20.0 - u1 * u1) / 16.0;
 
-    if 0.0 <= u2 && u2 <= 1.0 {
+    if (0.0..=1.0).contains(&u2) {
         let u = u2.acos();
         let a = (2.0 * u.sin() / u1).asin();
         let t = mod2pi(theta + a + PI / 2.0);

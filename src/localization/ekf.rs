@@ -207,7 +207,7 @@ impl StateEstimator for EKFLocalizer {
 
         if let Some(s_inv) = s.try_inverse() {
             let k = self.covariance * j_h.transpose() * s_inv;
-            self.state = self.state + k * y;
+            self.state += k * y;
             self.covariance = (Matrix4::identity() - k * j_h) * self.covariance;
         }
     }

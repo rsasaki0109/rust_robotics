@@ -12,6 +12,7 @@ use super::motion_model::MotionModel;
 /// - km: middle curvature
 /// - kf: final curvature
 pub type TrajectoryParams = Vector3<f64>;
+pub type GeneratedTrajectory = (Vec<f64>, Vec<f64>, Vec<f64>, TrajectoryParams);
 
 /// Target state: [x, y, yaw]
 pub type TargetState = Vector3<f64>;
@@ -217,7 +218,7 @@ impl TrajectoryGenerator {
         &self,
         target: &TargetState,
         init_params: &TrajectoryParams,
-    ) -> Option<(Vec<f64>, Vec<f64>, Vec<f64>, TrajectoryParams)> {
+    ) -> Option<GeneratedTrajectory> {
         let params = self.optimize(target, init_params)?;
         let (x, y, yaw) = self.generate(&params);
         Some((x, y, yaw, params))
