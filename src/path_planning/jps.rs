@@ -388,8 +388,8 @@ impl JPSPlanner {
             if i == 0 {
                 // Add start point
                 points.push(Point2D::new(
-                    self.grid_map.calc_grid_position(x),
-                    self.grid_map.calc_grid_position(y),
+                    self.grid_map.calc_x_position(x),
+                    self.grid_map.calc_y_position(y),
                 ));
             } else {
                 // Interpolate from previous jump point to current
@@ -416,8 +416,8 @@ impl JPSPlanner {
                     }
 
                     points.push(Point2D::new(
-                        self.grid_map.calc_grid_position(cx),
-                        self.grid_map.calc_grid_position(cy),
+                        self.grid_map.calc_x_position(cx),
+                        self.grid_map.calc_y_position(cy),
                     ));
                 }
             }
@@ -429,10 +429,10 @@ impl JPSPlanner {
 
 impl PathPlanner for JPSPlanner {
     fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
-        let start_x = self.grid_map.calc_xy_index(start.x);
-        let start_y = self.grid_map.calc_xy_index(start.y);
-        let goal_x = self.grid_map.calc_xy_index(goal.x);
-        let goal_y = self.grid_map.calc_xy_index(goal.y);
+        let start_x = self.grid_map.calc_x_index(start.x);
+        let start_y = self.grid_map.calc_y_index(start.y);
+        let goal_x = self.grid_map.calc_x_index(goal.x);
+        let goal_y = self.grid_map.calc_y_index(goal.y);
 
         // Validate start and goal
         if !self.grid_map.is_valid(start_x, start_y) {
@@ -691,5 +691,43 @@ mod tests {
             "Path should be efficient, got length {}",
             total_len
         );
+    }
+
+    #[test]
+    fn test_jps_handles_non_square_world_offsets() {
+        let mut ox = Vec::new();
+        let mut oy = Vec::new();
+
+        for x in 10..=20 {
+            ox.push(x as f64);
+            oy.push(100.0);
+            ox.push(x as f64);
+            oy.push(110.0);
+        }
+
+        for y in 100..=110 {
+            ox.push(10.0);
+            oy.push(y as f64);
+            ox.push(20.0);
+            oy.push(y as f64);
+        }
+
+        for y in 103..=106 {
+            ox.push(15.0);
+            oy.push(y as f64);
+        }
+
+        let planner = JPSPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);
+        let start = Point2D::new(12.0, 102.0);
+        let goal = Point2D::new(18.0, 108.0);
+
+        let path = planner.plan(start, goal).expect("path should exist");
+        let first = path.points.first().expect("path should include start");
+        let last = path.points.last().expect("path should include goal");
+
+        assert!((first.x - start.x).abs() < 1e-6);
+        assert!((first.y - start.y).abs() < 1e-6);
+        assert!((last.x - goal.x).abs() < 1e-6);
+        assert!((last.y - goal.y).abs() < 1e-6);
     }
 }
