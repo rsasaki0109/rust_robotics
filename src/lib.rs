@@ -7,6 +7,7 @@ extern crate self as rust_robotics;
 
 // Core modules
 pub mod common;
+pub mod prelude;
 pub mod utils;
 
 // Algorithm modules
