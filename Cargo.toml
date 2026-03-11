@@ -3,189 +3,248 @@ name = "rust_robotics"
 version = "0.1.0"
 authors = ["ryohei sasaki <rsasaki0109@gmail.com>"]
 edition = "2021"
+autobins = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["showcase", "viz"]
+showcase = []
+viz = ["dep:gnuplot", "dep:plotlib"]
+
 [dependencies]
 nalgebra = "0.33"
-plotlib = "0.5"
+plotlib = { version = "0.5", optional = true }
 rand = "0.8"
 rand_distr = "0.4"
 itertools = "0.13"
-gnuplot = "0.0.43"
+gnuplot = { version = "0.0.43", optional = true }
 ordered-float = "4.2"
 
 # Examples (refactored)
 [[example]]
 name = "a_star"
 path = "examples/path_planning/a_star.rs"
+required-features = ["showcase", "viz"]
 
 [[example]]
 name = "theta_star"
 path = "examples/path_planning/theta_star.rs"
+required-features = ["showcase", "viz"]
 
 [[example]]
 name = "jps"
 path = "examples/path_planning/jps.rs"
+required-features = ["showcase", "viz"]
 
 [[example]]
 name = "state_lattice"
 path = "examples/path_planning/state_lattice.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "ekf"
 path = "src/bin/ekf.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "dwa"
 path = "src/bin/dwa.rs"
+required-features = ["showcase", "viz"]
+
+[[bin]]
+name = "behavior_tree"
+path = "src/bin/behavior_tree.rs"
+required-features = ["showcase", "viz"]
+
+[[bin]]
+name = "grid_a_star_3d"
+path = "src/bin/grid_a_star_3d.rs"
+required-features = ["showcase", "viz"]
 
 # Legacy binaries (will be migrated to examples)
 
 [[bin]]
 name = "ndt"
 path = "src/mapping/ndt.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "rrt"
 path = "src/bin/rrt.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "dijkstra"
 path = "src/path_planning/dijkstra.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "particle_filter"
 path = "src/bin/particle_filter.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "rrt_star"
 path = "src/path_planning/rrt_star.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "potential_field"
 path = "src/path_planning/potential_field.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "informed_rrt_star"
 path = "src/path_planning/informed_rrt_star.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "quintic_polynomials"
 path = "src/path_planning/quintic_polynomials.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "csp"
 path = "src/path_planning/csp.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "cubic_spline"
 path = "src/path_planning/cubic_spline_planner.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "d_star_lite"
 path = "src/path_planning/d_star_lite.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "reeds_shepp"
 path = "src/path_planning/reeds_shepp_path.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "bezier_planning"
 path = "src/path_planning/bezier_path_planning.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "bezier_path"
 path = "src/path_planning/bezier_path.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "lqr_steer_control"
 path = "src/bin/lqr_steer_control.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "pure_pursuit"
 path = "src/bin/pure_pursuit.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "stanley_controller"
 path = "src/bin/stanley_controller.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "move_to_pose"
 path = "src/bin/move_to_pose.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "model_predictive_trajectory_generator"
 path = "src/path_tracking/model_predictive_trajectory_generator.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "inverted_pendulum_lqr"
 path = "src/control/lqr_control.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "inverted_pendulum_mpc"
 path = "src/control/mpc_control.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "two_joint_arm_control"
 path = "src/arm_navigation/two_joint_arm_control.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "icp_matching"
 path = "src/slam/icp_matching.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "state_machine"
 path = "src/bin/state_machine.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "unscented_kalman_filter"
 path = "src/bin/unscented_kalman_filter.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "histogram_filter"
 path = "src/localization/histogram_filter.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "gaussian_grid_map"
 path = "src/mapping/gaussian_grid_map.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "ray_casting_grid_map"
 path = "src/mapping/ray_casting_grid_map.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "fastslam1"
 path = "src/slam/fastslam1.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "ekf_slam"
 path = "src/slam/ekf_slam.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "graph_based_slam"
 path = "src/slam/graph_based_slam.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "prm"
 path = "src/path_planning/prm.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "voronoi_road_map"
 path = "src/path_planning/voronoi_road_map.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "frenet_optimal_trajectory"
 path = "src/path_planning/frenet_optimal_trajectory.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "mpc"
 path = "src/path_tracking/mpc.rs"
+required-features = ["showcase", "viz"]
 
 [[bin]]
 name = "cgmres_nmpc"
 path = "src/path_tracking/cgmres_nmpc.rs"
+required-features = ["showcase", "viz"]
 
 [[example]]
 name = "rear_wheel_feedback"
 path = "examples/path_tracking/rear_wheel_feedback.rs"
+required-features = ["showcase", "viz"]
