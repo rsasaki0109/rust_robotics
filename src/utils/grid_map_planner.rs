@@ -3,6 +3,8 @@
 // Provides occupancy grid representation and utility functions
 // for grid-based path planning algorithms like A*, Dijkstra, D* Lite.
 
+use crate::common::{Obstacles, RoboticsError, RoboticsResult};
+
 /// Node for grid-based path search
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -59,6 +61,20 @@ pub struct GridMap {
 impl GridMap {
     /// Create a new grid map from obstacle points
     pub fn new(ox: &[f64], oy: &[f64], resolution: f64, robot_radius: f64) -> Self {
+        Self::try_new(ox, oy, resolution, robot_radius).expect(
+            "invalid grid map input: obstacle list must be non-empty, finite, and match lengths; resolution must be > 0; robot_radius must be >= 0",
+        )
+    }
+
+    /// Create a validated grid map from obstacle points
+    pub fn try_new(
+        ox: &[f64],
+        oy: &[f64],
+        resolution: f64,
+        robot_radius: f64,
+    ) -> RoboticsResult<Self> {
+        Self::validate_inputs(ox, oy, resolution, robot_radius)?;
+
         let min_x = ox.iter().fold(f64::INFINITY, |a, &b| a.min(b)).round();
         let min_y = oy.iter().fold(f64::INFINITY, |a, &b| a.min(b)).round();
         let max_x = ox.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b)).round();
@@ -66,6 +82,12 @@ impl GridMap {
 
         let x_width = ((max_x - min_x) / resolution).round() as i32;
         let y_width = ((max_y - min_y) / resolution).round() as i32;
+
+        if x_width <= 0 || y_width <= 0 {
+            return Err(RoboticsError::InvalidParameter(
+                "obstacles must span a non-zero 2D area at the requested resolution".to_string(),
+            ));
+        }
 
         // Initialize obstacle map
         let mut obstacle_map = vec![vec![false; y_width as usize]; x_width as usize];
@@ -86,7 +108,7 @@ impl GridMap {
             }
         }
 
-        GridMap {
+        Ok(GridMap {
             resolution,
             robot_radius,
             min_x,
@@ -96,7 +118,18 @@ impl GridMap {
             x_width,
             y_width,
             obstacle_map,
-        }
+        })
+    }
+
+    /// Create a validated grid map from obstacle points
+    pub fn from_obstacles(
+        obstacles: &Obstacles,
+        resolution: f64,
+        robot_radius: f64,
+    ) -> RoboticsResult<Self> {
+        let ox = obstacles.x_coords();
+        let oy = obstacles.y_coords();
+        Self::try_new(&ox, &oy, resolution, robot_radius)
     }
 
     /// Convert world position to grid index (uses min_x as reference)
@@ -165,7 +198,88 @@ impl GridMap {
         // Collision check
         !self.obstacle_map[x as usize][y as usize]
     }
+
+    fn validate_inputs(
+        ox: &[f64],
+        oy: &[f64],
+        resolution: f64,
+        robot_radius: f64,
+    ) -> RoboticsResult<()> {
+        if ox.len() != oy.len() {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "obstacle x/y coordinates must have matching lengths, got {} and {}",
+                ox.len(),
+                oy.len()
+            )));
+        }
+        if ox.is_empty() {
+            return Err(RoboticsError::InvalidParameter(
+                "grid planners require at least one obstacle point".to_string(),
+            ));
+        }
+        if !resolution.is_finite() || resolution <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "resolution must be positive and finite, got {}",
+                resolution
+            )));
+        }
+        if !robot_radius.is_finite() || robot_radius < 0.0 {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "robot_radius must be non-negative and finite, got {}",
+                robot_radius
+            )));
+        }
+        if ox.iter().chain(oy.iter()).any(|value| !value.is_finite()) {
+            return Err(RoboticsError::InvalidParameter(
+                "obstacle coordinates must be finite".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 // Alias for backward compatibility
 pub type SearchNode = Node;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common::Point2D;
+
+    fn create_obstacles() -> Obstacles {
+        Obstacles::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(10.0, 0.0),
+            Point2D::new(0.0, 10.0),
+            Point2D::new(10.0, 10.0),
+        ])
+    }
+
+    #[test]
+    fn test_try_new_rejects_empty_obstacles() {
+        let err = GridMap::try_new(&[], &[], 1.0, 0.5).unwrap_err();
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_try_new_rejects_invalid_resolution() {
+        let obstacles = create_obstacles();
+        let ox = obstacles.x_coords();
+        let oy = obstacles.y_coords();
+
+        let err = GridMap::try_new(&ox, &oy, 0.0, 0.5).unwrap_err();
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_from_obstacles_builds_valid_map() {
+        let obstacles = create_obstacles();
+        let grid_map = GridMap::from_obstacles(&obstacles, 1.0, 0.5).unwrap();
+
+        assert_eq!(grid_map.min_x, 0.0);
+        assert_eq!(grid_map.min_y, 0.0);
+        assert_eq!(grid_map.x_width, 10);
+        assert_eq!(grid_map.y_width, 10);
+    }
+}

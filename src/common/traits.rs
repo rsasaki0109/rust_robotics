@@ -131,6 +131,7 @@ pub trait Controller {
 }
 
 /// Trait for visualizable algorithms
+#[cfg(feature = "viz")]
 pub trait Visualizable {
     /// Draw current state to visualizer
     fn visualize(&self, vis: &mut crate::utils::Visualizer);
