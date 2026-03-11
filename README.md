@@ -20,6 +20,24 @@ cargo run --bin inverted_pendulum_lqr
 cargo run --bin two_joint_arm_control
 ```
 
+## Library-First Roadmap
+
+This repository has started to grow beyond a pure showcase port of PythonRobotics.
+The next step is to make `rust_robotics` more practical as a reusable library while
+keeping examples and visualization as first-class documentation assets.
+
+- Roadmap: [docs/roadmaps/library-first-plan.md](./docs/roadmaps/library-first-plan.md)
+- ADR-001: [Adopt a library-first product direction](./docs/adr/ADR-001-library-first-product.md)
+- ADR-002: [Split the project into a workspace with explicit crate boundaries](./docs/adr/ADR-002-workspace-split-and-crate-boundaries.md)
+
+The short version of the direction is:
+
+1. make the library the product
+2. keep demos/examples as thin clients of public APIs
+3. separate visualization from headless algorithm execution
+4. publish a smaller stable subset before promising every module equally
+5. evolve toward workspace-based crate boundaries as the API matures
+
 # Table of Contents
    * [Localization](#localization)
       * [Extended Kalman Filter Localization](#extended-kalman-filter-localization)
