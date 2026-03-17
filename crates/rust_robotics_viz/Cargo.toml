@@ -1,0 +1,13 @@
+[package]
+name = "rust_robotics_viz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Visualization utilities for the RustRobotics workspace"
+
+[dependencies]
+rust_robotics_core = { workspace = true }
+gnuplot = { workspace = true }
+plotlib = { workspace = true }
