@@ -29,41 +29,46 @@ rust_robotics_viz = { workspace = true, optional = true }
 [dev-dependencies]
 gnuplot = { workspace = true }
 
-# === Headless examples (no viz feature required) ===
+# === Headless examples (require domain features but not viz) ===
 
 [[example]]
 name = "headless_grid_planners"
 path = "examples/headless_grid_planners.rs"
+required-features = ["planning"]
 
 [[example]]
 name = "headless_localizers"
 path = "examples/headless_localizers.rs"
+required-features = ["localization"]
 
 [[example]]
 name = "headless_navigation_loop"
 path = "examples/headless_navigation_loop.rs"
+required-features = ["planning", "localization", "control"]
 
-# === Visualization examples (require viz feature) ===
+# === Visualization examples (require viz + domain features) ===
 
 [[example]]
 name = "a_star"
 path = "examples/a_star.rs"
-required-features = ["viz"]
+required-features = ["planning", "viz"]
 
 [[example]]
 name = "jps"
 path = "examples/jps.rs"
+required-features = ["planning", "viz"]
 
 [[example]]
 name = "theta_star"
 path = "examples/theta_star.rs"
+required-features = ["planning", "viz"]
 
 [[example]]
 name = "state_lattice"
 path = "examples/state_lattice.rs"
-required-features = ["viz"]
+required-features = ["planning", "viz"]
 
 [[example]]
 name = "rear_wheel_feedback"
 path = "examples/rear_wheel_feedback.rs"
-required-features = ["viz"]
+required-features = ["control", "viz"]
