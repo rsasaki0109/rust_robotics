@@ -1,0 +1,37 @@
+#![forbid(unsafe_code)]
+//! Path planning algorithms for the RustRobotics workspace.
+
+pub mod grid;
+pub mod grid_nalgebra;
+
+// Grid-based planners
+pub mod a_star;
+pub mod dijkstra;
+pub mod d_star_lite;
+pub mod theta_star;
+pub mod jps;
+
+// Sampling-based planners
+pub mod rrt;
+pub mod rrt_star;
+pub mod informed_rrt_star;
+pub mod prm;
+pub mod voronoi_road_map;
+
+// Optimization-based planners
+pub mod dwa;
+pub mod potential_field;
+pub mod frenet_optimal_trajectory;
+
+// Curve-based planners
+pub mod bezier_path;
+pub mod bezier_path_planning;
+pub mod cubic_spline_planner;
+pub mod quintic_polynomials;
+pub mod reeds_shepp_path;
+
+// State lattice planner
+pub mod state_lattice;
+
+// 3D planning
+pub mod grid_a_star_3d;
