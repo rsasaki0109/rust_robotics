@@ -1,0 +1,69 @@
+[package]
+name = "rust_robotics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Umbrella crate for the RustRobotics workspace — feature-gated re-exports of all domain crates"
+
+[features]
+default = ["planning", "localization", "control", "mapping", "slam"]
+planning = ["dep:rust_robotics_planning"]
+localization = ["dep:rust_robotics_localization"]
+control = ["dep:rust_robotics_control"]
+mapping = ["dep:rust_robotics_mapping"]
+slam = ["dep:rust_robotics_slam"]
+viz = ["dep:rust_robotics_viz", "rust_robotics_control?/viz", "rust_robotics_slam?/viz"]
+full = ["planning", "localization", "control", "mapping", "slam", "viz"]
+
+[dependencies]
+rust_robotics_core = { workspace = true }
+rust_robotics_planning = { workspace = true, optional = true }
+rust_robotics_localization = { workspace = true, optional = true }
+rust_robotics_control = { workspace = true, optional = true }
+rust_robotics_mapping = { workspace = true, optional = true }
+rust_robotics_slam = { workspace = true, optional = true }
+rust_robotics_viz = { workspace = true, optional = true }
+
+[dev-dependencies]
+gnuplot = { workspace = true }
+
+# === Headless examples (no viz feature required) ===
+
+[[example]]
+name = "headless_grid_planners"
+path = "examples/headless_grid_planners.rs"
+
+[[example]]
+name = "headless_localizers"
+path = "examples/headless_localizers.rs"
+
+[[example]]
+name = "headless_navigation_loop"
+path = "examples/headless_navigation_loop.rs"
+
+# === Visualization examples (require viz feature) ===
+
+[[example]]
+name = "a_star"
+path = "examples/a_star.rs"
+required-features = ["viz"]
+
+[[example]]
+name = "jps"
+path = "examples/jps.rs"
+
+[[example]]
+name = "theta_star"
+path = "examples/theta_star.rs"
+
+[[example]]
+name = "state_lattice"
+path = "examples/state_lattice.rs"
+required-features = ["viz"]
+
+[[example]]
+name = "rear_wheel_feedback"
+path = "examples/rear_wheel_feedback.rs"
+required-features = ["viz"]
