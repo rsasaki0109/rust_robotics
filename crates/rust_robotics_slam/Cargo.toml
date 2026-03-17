@@ -1,0 +1,19 @@
+[package]
+name = "rust_robotics_slam"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "SLAM algorithms (EKF-SLAM, FastSLAM, Graph SLAM, ICP) for the RustRobotics workspace"
+
+[features]
+default = []
+viz = ["dep:gnuplot"]
+
+[dependencies]
+rust_robotics_core = { workspace = true }
+nalgebra = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
+gnuplot = { workspace = true, optional = true }
