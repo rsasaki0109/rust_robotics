@@ -31,17 +31,17 @@ jobs:
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
 
-    - name: Build all targets
-      run: cargo build --all-targets --verbose
+    - name: Build workspace
+      run: cargo build --workspace --all-targets --verbose
 
-    - name: Run tests for all targets
-      run: cargo test --all-targets
+    - name: Run workspace tests
+      run: cargo test --workspace --all-targets
 
-    - name: Run headless core tests
-      run: cargo test --all-targets --no-default-features
+    - name: Run headless tests (no default features)
+      run: cargo test --workspace --no-default-features
 
-    - name: Clippy (warnings only)
-      run: cargo clippy --all-targets -- -W clippy::all
+    - name: Clippy
+      run: cargo clippy --workspace --all-targets -- -W clippy::all
       continue-on-error: true
 
     - name: Check formatting
