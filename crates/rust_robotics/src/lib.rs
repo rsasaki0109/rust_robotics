@@ -28,3 +28,40 @@ pub use rust_robotics_viz as viz;
 pub mod prelude {
     pub use rust_robotics_core::*;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn core_types_accessible() {
+        let p = core::Point2D::new(1.0, 2.0);
+        assert!((p.x - 1.0).abs() < f64::EPSILON);
+        assert!((p.y - 2.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn prelude_reexports_work() {
+        use crate::prelude::*;
+        let pose = Pose2D::new(0.0, 0.0, 0.0);
+        assert!((pose.yaw).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    #[cfg(feature = "planning")]
+    fn planning_module_accessible() {
+        let _ = planning::grid::GridMap::new(&[0.0, 10.0], &[0.0, 10.0], 1.0, 0.5);
+    }
+
+    #[test]
+    #[cfg(feature = "localization")]
+    fn localization_module_accessible() {
+        let _config = localization::EKFConfig::default();
+    }
+
+    #[test]
+    #[cfg(feature = "control")]
+    fn control_module_accessible() {
+        let _config = control::rear_wheel_feedback::RearWheelFeedbackConfig::default();
+    }
+}
