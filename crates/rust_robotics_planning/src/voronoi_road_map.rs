@@ -399,3 +399,92 @@ impl VoronoiPlanner {
         edges
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a 60x60 rectangular boundary as obstacle points.
+    fn make_boundary() -> (Vec<f64>, Vec<f64>) {
+        let mut ox = Vec::new();
+        let mut oy = Vec::new();
+
+        // bottom and top walls
+        for i in 0..=60 {
+            let v = i as f64;
+            ox.push(v);
+            oy.push(0.0);
+            ox.push(v);
+            oy.push(60.0);
+        }
+        // left and right walls
+        for i in 0..=60 {
+            let v = i as f64;
+            ox.push(0.0);
+            oy.push(v);
+            ox.push(60.0);
+            oy.push(v);
+        }
+
+        (ox, oy)
+    }
+
+    #[test]
+    fn test_voronoi_planner_creation() {
+        let (ox, oy) = make_boundary();
+        let _planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+    }
+
+    #[test]
+    fn test_voronoi_get_samples() {
+        let (ox, oy) = make_boundary();
+        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let (sx, sy) = planner.get_samples();
+
+        // Must contain at least start and goal (the last two entries)
+        assert!(sx.len() >= 2);
+        assert_eq!(sx.len(), sy.len());
+
+        // Start and goal are appended at the end
+        let n = sx.len();
+        assert!((sx[n - 2] - 10.0).abs() < 1e-9);
+        assert!((sy[n - 2] - 10.0).abs() < 1e-9);
+        assert!((sx[n - 1] - 50.0).abs() < 1e-9);
+        assert!((sy[n - 1] - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_voronoi_plan_simple() {
+        let (ox, oy) = make_boundary();
+        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let result = planner.plan();
+
+        assert!(result.is_some(), "planner should find a path");
+        let (px, py) = result.unwrap();
+        assert!(px.len() >= 2);
+        assert_eq!(px.len(), py.len());
+
+        // Path should start near (10,10) and end near (50,50)
+        assert!((px[0] - 10.0).abs() < 1e-9);
+        assert!((py[0] - 10.0).abs() < 1e-9);
+        assert!((*px.last().unwrap() - 50.0).abs() < 1e-9);
+        assert!((*py.last().unwrap() - 50.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_voronoi_get_edges() {
+        let (ox, oy) = make_boundary();
+        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let edges = planner.get_edges();
+
+        assert!(!edges.is_empty(), "road map should contain edges");
+
+        // Every edge endpoint should be within the boundary
+        for ((x1, y1), (x2, y2)) in &edges {
+            assert!(*x1 >= 0.0 && *x1 <= 60.0);
+            assert!(*y1 >= 0.0 && *y1 <= 60.0);
+            assert!(*x2 >= 0.0 && *x2 <= 60.0);
+            assert!(*y2 >= 0.0 && *y2 <= 60.0);
+        }
+    }
+}

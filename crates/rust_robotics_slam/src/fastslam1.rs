@@ -307,3 +307,95 @@ pub fn create_particles(n_particles: usize, n_landmarks: usize) -> Vec<Particle>
         .map(|_| Particle::new(n_landmarks))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_particles() {
+        let n_particles = 50;
+        let n_landmarks = 5;
+        let particles = create_particles(n_particles, n_landmarks);
+
+        assert_eq!(particles.len(), n_particles);
+        for p in &particles {
+            assert_eq!(p.landmarks.len(), n_landmarks);
+        }
+    }
+
+    #[test]
+    fn test_get_observations() {
+        // Robot at origin facing +x
+        let x_true = Vector3::new(0.0, 0.0, 0.0);
+        // One landmark within range, one outside
+        let landmarks = vec![(5.0, 0.0), (100.0, 100.0)];
+        let observations = get_observations(&x_true, &landmarks);
+
+        // Only the first landmark should be observed (within MAX_RANGE=20)
+        assert_eq!(observations.len(), 1);
+        let (d, _angle, lm_id) = observations[0];
+        assert_eq!(lm_id, 0);
+        // Distance should be roughly 5.0 (noisy)
+        assert!((d - 5.0).abs() < 5.0, "distance {d} too far from expected 5.0");
+    }
+
+    #[test]
+    fn test_get_best_particle() {
+        let n_landmarks = 3;
+        let mut particles = create_particles(5, n_landmarks);
+        // Assign distinct weights
+        particles[0].weight = 0.1;
+        particles[1].weight = 0.5;
+        particles[2].weight = 0.9;
+        particles[3].weight = 0.3;
+        particles[4].weight = 0.2;
+
+        let best = get_best_particle(&particles);
+        assert!(
+            (best.weight - 0.9).abs() < f64::EPSILON,
+            "expected best weight 0.9, got {}",
+            best.weight
+        );
+    }
+
+    #[test]
+    fn test_fastslam_update_does_not_panic() {
+        let n_landmarks = 3;
+        let mut particles = create_particles(20, n_landmarks);
+        let u = Vector2::new(1.0, 0.1); // linear vel, angular vel
+
+        // Simulate a few observations
+        let landmarks = vec![(10.0, 0.0), (0.0, 10.0), (10.0, 10.0)];
+        let x_true = Vector3::new(0.0, 0.0, 0.0);
+
+        for _ in 0..5 {
+            let z = get_observations(&x_true, &landmarks);
+            fastslam_update(&mut particles, u, &z);
+        }
+
+        // All particles should still exist
+        assert_eq!(particles.len(), 20);
+    }
+
+    #[test]
+    fn test_particle_initial_state() {
+        let n_landmarks = 4;
+        let particles = create_particles(10, n_landmarks);
+
+        for p in &particles {
+            assert_eq!(p.x, 0.0);
+            assert_eq!(p.y, 0.0);
+            assert_eq!(p.yaw, 0.0);
+            // Weight should be 1/N_PARTICLE
+            assert!((p.weight - 1.0 / N_PARTICLE as f64).abs() < f64::EPSILON);
+            // Each landmark should have large initial covariance
+            for lm in &p.landmarks {
+                assert_eq!(lm.x, 0.0);
+                assert_eq!(lm.y, 0.0);
+                assert_eq!(lm.cov[(0, 0)], 1000.0);
+                assert_eq!(lm.cov[(1, 1)], 1000.0);
+            }
+        }
+    }
+}
