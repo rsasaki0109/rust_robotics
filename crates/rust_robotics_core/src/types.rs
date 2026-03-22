@@ -5,6 +5,7 @@ use nalgebra::{Matrix2, Matrix4, Vector2, Vector3, Vector4};
 use crate::error::{RoboticsError, RoboticsResult};
 
 /// 2D point representation
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point2D {
     pub x: f64,
@@ -45,6 +46,7 @@ impl From<Vector2<f64>> for Point2D {
 }
 
 /// 3D point representation
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point3D {
     pub x: f64,
@@ -76,6 +78,7 @@ impl Point3D {
 }
 
 /// 2D pose (position + orientation)
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Pose2D {
     pub x: f64,
@@ -126,6 +129,7 @@ impl From<Vector3<f64>> for Pose2D {
 }
 
 /// Robot state with pose and velocity
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct State2D {
     pub x: f64,
@@ -173,6 +177,7 @@ impl From<Vector4<f64>> for State2D {
 }
 
 /// Control input for differential drive robot
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ControlInput {
     pub v: f64,     // linear velocity
@@ -262,6 +267,7 @@ impl Default for Path2D {
 }
 
 /// Grid node for graph-based planners
+#[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GridNode {
     pub x: i32,

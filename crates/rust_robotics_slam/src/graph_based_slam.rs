@@ -385,3 +385,122 @@ pub fn observation(
 
     (x_true_new, z_opt, xd_new, ud)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EPS: f64 = 1e-10;
+
+    fn assert_near(a: f64, b: f64, eps: f64) {
+        assert!(
+            (a - b).abs() < eps,
+            "expected {b}, got {a} (diff={})",
+            (a - b).abs()
+        );
+    }
+
+    #[test]
+    fn test_motion_model() {
+        // Robot at origin facing +x, moving forward at 1 m/s with no rotation
+        let x = Vector3::new(0.0, 0.0, 0.0);
+        let u = [1.0, 0.0]; // v=1 m/s, yaw_rate=0
+        let x_new = motion_model(&x, &u);
+
+        // With DT=2.0, should move 2m in x, 0 in y, yaw unchanged
+        assert_near(x_new[0], 2.0, EPS);
+        assert_near(x_new[1], 0.0, EPS);
+        assert_near(x_new[2], 0.0, EPS);
+
+        // Robot facing PI/2 (north), moving forward
+        let x2 = Vector3::new(1.0, 2.0, std::f64::consts::FRAC_PI_2);
+        let u2 = [1.0, 0.0];
+        let x2_new = motion_model(&x2, &u2);
+
+        assert_near(x2_new[0], 1.0, 1e-9); // cos(pi/2) ~ 0
+        assert_near(x2_new[1], 4.0, 1e-9); // sin(pi/2) = 1, 2 + 1*2*1
+        assert_near(x2_new[2], std::f64::consts::FRAC_PI_2, EPS);
+    }
+
+    #[test]
+    fn test_calc_input() {
+        let u = calc_input();
+        assert_near(u[0], 1.0, EPS); // v = 1.0 m/s
+        assert_near(u[1], 0.1, EPS); // yaw_rate = 0.1 rad/s
+    }
+
+    #[test]
+    fn test_observation_struct() {
+        let obs = Observation {
+            d: 5.0,
+            angle: 0.3,
+            phi: 1.2,
+            id: 7,
+        };
+        assert_near(obs.d, 5.0, EPS);
+        assert_near(obs.angle, 0.3, EPS);
+        assert_near(obs.phi, 1.2, EPS);
+        assert_eq!(obs.id, 7);
+
+        // Test Clone
+        let obs2 = obs.clone();
+        assert_eq!(obs2.id, 7);
+        assert_near(obs2.d, 5.0, EPS);
+    }
+
+    #[test]
+    fn test_motion_model_zero_input() {
+        let x = Vector3::new(3.0, 4.0, 0.5);
+        let u = [0.0, 0.0];
+        let x_new = motion_model(&x, &u);
+
+        // Zero velocity and zero yaw rate should preserve state
+        assert_near(x_new[0], 3.0, EPS);
+        assert_near(x_new[1], 4.0, EPS);
+        assert_near(x_new[2], 0.5, EPS);
+    }
+
+    #[test]
+    fn test_graph_based_slam_small() {
+        // Minimal scenario: 2 poses, one with an observation, one without.
+        // This mainly verifies the function does not panic.
+        let n_poses = 3;
+        let mut x_init = DMatrix::<f64>::zeros(3, n_poses);
+        // Place poses along x-axis
+        for i in 0..n_poses {
+            x_init[(0, i)] = i as f64 * 2.0;
+            x_init[(1, i)] = 0.0;
+            x_init[(2, i)] = 0.0;
+        }
+
+        // Create observation data: poses 0 and 2 see the same landmark
+        let hz: Vec<Option<Vec<Observation>>> = vec![
+            Some(vec![Observation {
+                d: 5.0,
+                angle: 0.3,
+                phi: 0.3,
+                id: 0,
+            }]),
+            None,
+            Some(vec![Observation {
+                d: 3.0,
+                angle: -0.2,
+                phi: -0.2,
+                id: 0,
+            }]),
+        ];
+
+        let result = graph_based_slam(&x_init, &hz);
+
+        // Result should have same dimensions
+        assert_eq!(result.nrows(), 3);
+        assert_eq!(result.ncols(), n_poses);
+
+        // Values should be finite (no NaN or Inf)
+        for i in 0..result.nrows() {
+            for j in 0..result.ncols() {
+                assert!(result[(i, j)].is_finite(), "Result contains non-finite value at ({i}, {j})");
+            }
+        }
+    }
+}
