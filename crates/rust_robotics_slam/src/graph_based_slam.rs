@@ -259,10 +259,7 @@ fn fill_h_and_b(h: &mut DMatrix<f64>, b: &mut DVector<f64>, edge: &Edge) {
 }
 
 /// Graph-based SLAM optimization
-pub fn graph_based_slam(
-    x_init: &DMatrix<f64>,
-    hz: &[Option<Vec<Observation>>],
-) -> DMatrix<f64> {
+pub fn graph_based_slam(x_init: &DMatrix<f64>, hz: &[Option<Vec<Observation>>]) -> DMatrix<f64> {
     let mut x_opt = x_init.clone();
     let nt = x_opt.ncols();
     let n = nt * STATE_SIZE;
@@ -499,7 +496,10 @@ mod tests {
         // Values should be finite (no NaN or Inf)
         for i in 0..result.nrows() {
             for j in 0..result.ncols() {
-                assert!(result[(i, j)].is_finite(), "Result contains non-finite value at ({i}, {j})");
+                assert!(
+                    result[(i, j)].is_finite(),
+                    "Result contains non-finite value at ({i}, {j})"
+                );
             }
         }
     }

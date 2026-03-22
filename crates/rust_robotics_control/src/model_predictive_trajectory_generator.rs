@@ -80,7 +80,13 @@ pub fn generate_trajectory(
     (c, cyaw)
 }
 
-pub fn generate_last_state(p: (f64, f64, f64), k0: f64, ds: f64, v: f64, l: f64) -> ((f64, f64), f64) {
+pub fn generate_last_state(
+    p: (f64, f64, f64),
+    k0: f64,
+    ds: f64,
+    v: f64,
+    l: f64,
+) -> ((f64, f64), f64) {
     let s = p.0;
     let km = p.1;
     let kf = p.2;
@@ -241,7 +247,8 @@ mod tests {
 
         let init_p = nalgebra::Vector3::new(6., 0., 0.);
 
-        let (xc, _yawc, _p) = optimize_trajectory(target, init_p, h, k0, ds, v, l, max_iter, cost_th);
+        let (xc, _yawc, _p) =
+            optimize_trajectory(target, init_p, h, k0, ds, v, l, max_iter, cost_th);
 
         // Trajectory should have been generated
         assert!(!xc.is_empty());

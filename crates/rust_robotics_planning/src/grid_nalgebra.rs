@@ -8,7 +8,10 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(original_matrix: nalgebra::DMatrix<i32>, scale: usize) -> Result<Self, &'static str> {
+    pub fn new(
+        original_matrix: nalgebra::DMatrix<i32>,
+        scale: usize,
+    ) -> Result<Self, &'static str> {
         if scale < 1 {
             return Err("scale must be >= 1");
         }

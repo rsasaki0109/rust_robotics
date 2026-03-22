@@ -64,11 +64,7 @@ fn bench_grid_planners(c: &mut Criterion) {
     });
 
     group.bench_function("theta_star", |b| {
-        b.iter(|| {
-            theta_star
-                .plan(black_box(start), black_box(goal))
-                .unwrap()
-        })
+        b.iter(|| theta_star.plan(black_box(start), black_box(goal)).unwrap())
     });
 
     group.finish();

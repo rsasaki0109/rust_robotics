@@ -369,7 +369,9 @@ mod tests {
             (5.0, 10.0),
             vec![(5.0, 5.0, 0.5)],
             (-2.0, 15.0),
-            0.5, 10, 300,
+            0.5,
+            10,
+            300,
         );
         assert_eq!(rrt.expand_dis, 0.5);
         assert_eq!(rrt.max_iter, 300);
