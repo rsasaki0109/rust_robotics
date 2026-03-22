@@ -6,22 +6,22 @@ pub mod grid_nalgebra;
 
 // Grid-based planners
 pub mod a_star;
-pub mod dijkstra;
 pub mod d_star_lite;
-pub mod theta_star;
+pub mod dijkstra;
 pub mod jps;
+pub mod theta_star;
 
 // Sampling-based planners
-pub mod rrt;
-pub mod rrt_star;
 pub mod informed_rrt_star;
 pub mod prm;
+pub mod rrt;
+pub mod rrt_star;
 pub mod voronoi_road_map;
 
 // Optimization-based planners
 pub mod dwa;
-pub mod potential_field;
 pub mod frenet_optimal_trajectory;
+pub mod potential_field;
 
 // Curve-based planners
 pub mod bezier_path;
@@ -41,6 +41,7 @@ pub mod grid_a_star_3d;
 pub use a_star::{AStarConfig, AStarPlanner};
 pub use cubic_spline_planner::{CubicSplinePlanner, Spline2D};
 pub use d_star_lite::DStarLite;
+pub use dubins_path::{DubinsPath, DubinsPlanner};
 pub use dwa::{DWAConfig, DWAPlanner};
 pub use grid::GridMap;
 pub use grid_a_star_3d::{GridAStar3DConfig, GridAStar3DPlanner, Path3D};
@@ -49,7 +50,6 @@ pub use jps::{JPSConfig, JPSPlanner};
 pub use potential_field::PotentialFieldPlanner;
 pub use prm::PRMPlanner;
 pub use quintic_polynomials::{QuinticPolynomial, QuinticPolynomialsPlanner};
-pub use dubins_path::{DubinsPath, DubinsPlanner};
 pub use reeds_shepp_path::ReedsSheppPlanner;
 pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_star::RRTStar;

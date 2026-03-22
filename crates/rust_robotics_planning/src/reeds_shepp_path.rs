@@ -606,9 +606,14 @@ mod tests {
     fn test_reeds_shepp_planning() {
         let mut planner = ReedsSheppPlanner::new();
         let result = planner.planning(
-            -1.0, -4.0, (-20.0_f64).to_radians(),
-            5.0, 5.0, (25.0_f64).to_radians(),
-            0.1, 0.05,
+            -1.0,
+            -4.0,
+            (-20.0_f64).to_radians(),
+            5.0,
+            5.0,
+            (25.0_f64).to_radians(),
+            0.1,
+            0.05,
         );
         assert!(result);
         assert!(!planner.path_x.is_empty());
@@ -617,11 +622,7 @@ mod tests {
 
     #[test]
     fn test_reeds_shepp_path_planning_fn() {
-        let result = reeds_shepp_path_planning(
-            0.0, 0.0, 0.0,
-            5.0, 5.0, 0.5,
-            0.2, 0.1,
-        );
+        let result = reeds_shepp_path_planning(0.0, 0.0, 0.0, 5.0, 5.0, 0.5, 0.2, 0.1);
         assert!(result.is_some());
     }
 }

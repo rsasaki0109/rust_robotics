@@ -1,7 +1,4 @@
-#![allow(
-    dead_code,
-    clippy::legacy_numeric_constants
-)]
+#![allow(dead_code, clippy::legacy_numeric_constants)]
 
 //! D* Lite path planning algorithm
 //!
@@ -176,7 +173,8 @@ impl DStarLite {
             self.km = 0.0;
             self.rhs =
                 nalgebra::DMatrix::from_element(self.x_max as usize, self.y_max as usize, INFINITY);
-            self.g = nalgebra::DMatrix::from_element(self.x_max as usize, self.y_max as usize, INFINITY);
+            self.g =
+                nalgebra::DMatrix::from_element(self.x_max as usize, self.y_max as usize, INFINITY);
             self.rhs[(self.goal.x as usize, self.goal.y as usize)] = 0.0;
             self.u.push((self.calculate_key(&self.goal), self.goal));
             self.detected_obstacles.clear();
@@ -231,10 +229,7 @@ impl DStarLite {
     }
 
     fn plan(&mut self, start: Node, goal: Node) -> Option<Vec<(i32, i32)>> {
-        self.initialize(
-            Node::new(start.x, start.y),
-            Node::new(goal.x, goal.y),
-        );
+        self.initialize(Node::new(start.x, start.y), Node::new(goal.x, goal.y));
         self.compute_shortest_path();
         self.reconstruct_path()
     }
@@ -249,10 +244,7 @@ impl DStarLite {
         let mut current = self.start;
 
         while current.x != self.goal.x || current.y != self.goal.y {
-            path.push((
-                current.x + self.x_min_world,
-                current.y + self.y_min_world,
-            ));
+            path.push((current.x + self.x_min_world, current.y + self.y_min_world));
 
             let mut min_cost = INFINITY;
             let mut next_node = current;

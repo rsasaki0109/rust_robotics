@@ -583,7 +583,12 @@ pub fn iterative_linear_mpc_control(
     }
 }
 
-pub fn check_goal(state: &State, goal: (f64, f64), target_index: usize, final_index: usize) -> bool {
+pub fn check_goal(
+    state: &State,
+    goal: (f64, f64),
+    target_index: usize,
+    final_index: usize,
+) -> bool {
     let dx = state.x - goal.0;
     let dy = state.y - goal.1;
     let distance = (dx * dx + dy * dy).sqrt();

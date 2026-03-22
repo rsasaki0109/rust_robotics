@@ -52,7 +52,11 @@ impl DubinsPathType {
     fn segments(self) -> [SegmentType; 3] {
         match self {
             Self::LSL => [SegmentType::Left, SegmentType::Straight, SegmentType::Left],
-            Self::RSR => [SegmentType::Right, SegmentType::Straight, SegmentType::Right],
+            Self::RSR => [
+                SegmentType::Right,
+                SegmentType::Straight,
+                SegmentType::Right,
+            ],
             Self::LSR => [SegmentType::Left, SegmentType::Straight, SegmentType::Right],
             Self::RSL => [SegmentType::Right, SegmentType::Straight, SegmentType::Left],
             Self::RLR => [SegmentType::Right, SegmentType::Left, SegmentType::Right],
@@ -153,11 +157,7 @@ impl DubinsPlanner {
                 }
                 // Convert normalised lengths to world lengths.
                 let scale = 1.0 / self.curvature;
-                let world_lengths = [
-                    lengths[0] * scale,
-                    lengths[1] * scale,
-                    lengths[2] * scale,
-                ];
+                let world_lengths = [lengths[0] * scale, lengths[1] * scale, lengths[2] * scale];
                 let total = world_lengths[0] + world_lengths[1] + world_lengths[2];
 
                 if best.as_ref().is_none_or(|b| total < b.total_length) {
@@ -172,9 +172,7 @@ impl DubinsPlanner {
             }
         }
 
-        best.ok_or_else(|| {
-            RoboticsError::PlanningError("no valid Dubins path found".to_string())
-        })
+        best.ok_or_else(|| RoboticsError::PlanningError("no valid Dubins path found".to_string()))
     }
 
     /// Sample evenly-spaced points along a previously computed `DubinsPath`.
