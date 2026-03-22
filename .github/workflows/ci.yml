@@ -62,3 +62,23 @@ jobs:
 
     - name: Dependency audit
       run: cargo deny check
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install cargo-tarpaulin
+      run: cargo install cargo-tarpaulin --locked
+
+    - name: Run coverage
+      run: cargo tarpaulin --workspace --skip-clean --timeout 300 --out xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: cobertura.xml
+        fail_ci_if_error: false
