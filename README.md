@@ -102,6 +102,7 @@ cargo bench -p rust_robotics_planning --bench grid_planners
       * [Rapidly-Exploring Random Trees (RRT)](#rapidly-exploring-random-trees-rrt)
       * [RRT*](#rrt)
       * [Reeds-Shepp Path](#reeds-shepp-path)
+      * [Dubins Path](#dubins-path)
       * [PRM (Probabilistic Road-Map)](#prm-probabilistic-road-map)
       * [Voronoi Road-Map](#voronoi-road-map)
       * [Frenet Optimal Trajectory](#frenet-optimal-trajectory)
@@ -355,6 +356,12 @@ Blue: Start, Red: Goal, Green: Path, Gray: Tree
 Blue: Start, Red: Goal, Green: Path
 
 - [src](./crates/rust_robotics_planning/src/reeds_shepp_path.rs)
+
+## Dubins Path
+
+Shortest path for non-holonomic vehicles with bounded turning radius. Computes optimal paths composed of circular arcs and straight segments (6 types: LSL, RSR, LSR, RSL, RLR, LRL).
+
+- [src](./crates/rust_robotics_planning/src/dubins_path.rs)
 
 ## PRM (Probabilistic Road-Map)
 
