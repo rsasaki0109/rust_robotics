@@ -32,9 +32,9 @@ impl VehicleState {
 /// Motion model configuration
 #[derive(Debug, Clone)]
 pub struct MotionModelConfig {
-    /// Wheelbase length [m]
+    /// Wheelbase length \[m\]
     pub wheelbase: f64,
-    /// Distance step for trajectory generation [m]
+    /// Distance step for trajectory generation \[m\]
     pub ds: f64,
     /// Default velocity [m/s]
     pub default_velocity: f64,

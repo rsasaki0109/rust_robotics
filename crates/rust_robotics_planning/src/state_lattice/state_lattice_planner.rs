@@ -28,11 +28,11 @@ pub struct StateLatticeConfig {
     pub nxy: usize,
     /// Number of heading samples
     pub nh: usize,
-    /// Distance for sampling [m]
+    /// Distance for sampling \[m\]
     pub d: f64,
-    /// Minimum angle for sampling [rad]
+    /// Minimum angle for sampling \[rad\]
     pub a_min: f64,
-    /// Maximum angle for sampling [rad]
+    /// Maximum angle for sampling \[rad\]
     pub a_max: f64,
     /// Minimum position ratio
     pub p_min: f64,
@@ -44,9 +44,9 @@ pub struct StateLatticeConfig {
     pub lane_center: f64,
     /// Lane heading
     pub lane_heading: f64,
-    /// Lane width [m]
+    /// Lane width \[m\]
     pub lane_width: f64,
-    /// Vehicle width [m]
+    /// Vehicle width \[m\]
     pub vehicle_width: f64,
 
     // Biased sampling parameters
