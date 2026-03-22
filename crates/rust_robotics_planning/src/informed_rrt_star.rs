@@ -8,6 +8,8 @@
 use rand::Rng;
 use std::f64::consts::PI;
 
+use rust_robotics_core::{Path2D, Point2D, RoboticsError, RoboticsResult};
+
 #[derive(Clone, Debug)]
 pub struct Node {
     pub x: f64,
@@ -318,6 +320,31 @@ impl InformedRRTStar {
 
         path.push([self.start.x, self.start.y]);
         path
+    }
+
+    /// Plan a path from the given start to goal, returning a [`Path2D`].
+    ///
+    /// This is a convenience wrapper around [`planning()`](Self::planning) that accepts
+    /// [`Point2D`], sets the start/goal, runs the planner, and returns [`Path2D`].
+    /// Requires `&mut self` because the underlying algorithm mutates internal state.
+    pub fn plan_from(&mut self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
+        self.start = Node::new(start.x, start.y);
+        self.goal = Node::new(goal.x, goal.y);
+
+        self.planning()
+            .map(|raw_path| {
+                Path2D::from_points(
+                    raw_path
+                        .into_iter()
+                        .map(|p| Point2D::new(p[0], p[1]))
+                        .collect(),
+                )
+            })
+            .ok_or_else(|| {
+                RoboticsError::PlanningError(
+                    "InformedRRT*: Cannot find path within max iterations".to_string(),
+                )
+            })
     }
 
     /// Get the tree nodes for external inspection

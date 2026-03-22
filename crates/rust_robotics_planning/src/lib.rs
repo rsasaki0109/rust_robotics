@@ -27,6 +27,7 @@ pub mod frenet_optimal_trajectory;
 pub mod bezier_path;
 pub mod bezier_path_planning;
 pub mod cubic_spline_planner;
+pub mod dubins_path;
 pub mod quintic_polynomials;
 pub mod reeds_shepp_path;
 
@@ -48,6 +49,7 @@ pub use jps::{JPSConfig, JPSPlanner};
 pub use potential_field::PotentialFieldPlanner;
 pub use prm::PRMPlanner;
 pub use quintic_polynomials::{QuinticPolynomial, QuinticPolynomialsPlanner};
+pub use dubins_path::{DubinsPath, DubinsPlanner};
 pub use reeds_shepp_path::ReedsSheppPlanner;
 pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_star::RRTStar;
