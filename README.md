@@ -7,7 +7,7 @@ This package is a rust implementation of [PythonRobotics](https://github.com/Ats
 
 ## Build
 
-```
+```bash
 git clone https://github.com/rsasaki0109/RustRobotics.git
 cd RustRobotics
 cargo build --workspace
@@ -41,13 +41,32 @@ rust_robotics_planning = "0.1"
 rust_robotics_localization = "0.1"
 ```
 
+Types are re-exported at the crate root for convenience:
+
+```rust
+use rust_robotics_planning::{AStarPlanner, AStarConfig, DWAPlanner};
+use rust_robotics_localization::{EKFConfig, EKFLocalizer};
+use rust_robotics_control::{PurePursuitController, StanleyController};
+```
+
 ## Run (Example)
 
+```bash
+# Headless (no GUI dependencies)
+cargo run -p rust_robotics --example headless_grid_planners --features planning
+cargo run -p rust_robotics --example headless_localizers --features localization
+cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
+
+# Visualization (requires gnuplot)
+cargo run -p rust_robotics --example a_star --features "planning,viz"
+cargo run -p rust_robotics --example jps --features "planning,viz"
+cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz"
 ```
-cargo run -p rust_robotics --example a_star
-cargo run -p rust_robotics --example jps
-cargo run -p rust_robotics --example headless_localizers
-cargo run -p rust_robotics --example headless_navigation_loop
+
+## Benchmarks
+
+```bash
+cargo bench -p rust_robotics_planning --bench grid_planners
 ```
 
 # Table of Contents
