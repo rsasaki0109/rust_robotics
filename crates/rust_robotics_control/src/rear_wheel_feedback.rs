@@ -4,7 +4,7 @@
 //! that uses heading error and lateral error for computing the steering angle.
 //!
 //! Ref:
-//!     - PythonRobotics: https://github.com/AtsushiSakai/PythonRobotics
+//!     - PythonRobotics: <https://github.com/AtsushiSakai/PythonRobotics>
 //!     - B. Paden, M. Cap, S. Z. Yong, D. Yershov and E. Frazzoli,
 //!       "A Survey of Motion Planning and Control Techniques Adopted in Self-Driving Vehicles"
 
@@ -63,13 +63,13 @@ pub struct RearWheelFeedbackConfig {
     pub kth: f64,
     /// Lateral error gain (KE)
     pub ke: f64,
-    /// Vehicle wheelbase [m]
+    /// Vehicle wheelbase \[m\]
     pub wheelbase: f64,
     /// Speed proportional gain
     pub kp: f64,
-    /// Goal distance threshold [m]
+    /// Goal distance threshold \[m\]
     pub goal_threshold: f64,
-    /// Maximum steering angle [rad]
+    /// Maximum steering angle \[rad\]
     pub max_steer: f64,
 }
 

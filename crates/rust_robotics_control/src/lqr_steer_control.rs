@@ -57,7 +57,7 @@ impl From<State2D> for LQRVehicleState {
 pub struct LQRSteerConfig {
     /// Vehicle wheelbase
     pub wheelbase: f64,
-    /// Maximum steering angle [rad]
+    /// Maximum steering angle \[rad\]
     pub max_steer: f64,
     /// Speed proportional gain
     pub kp: f64,

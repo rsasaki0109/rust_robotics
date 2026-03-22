@@ -68,9 +68,7 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
         pre_error = error;
         h_matrix = Some(update_homogeneous_matrix(h_matrix, &rt, &tt));
 
-        if d_error <= EPS {
-            break;
-        } else if count >= MAX_ITER {
+        if d_error <= EPS || count >= MAX_ITER {
             break;
         }
     }
