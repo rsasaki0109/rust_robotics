@@ -40,6 +40,12 @@ jobs:
     - name: Run headless tests (no default features)
       run: cargo test --workspace --no-default-features
 
+    - name: Run headless examples
+      run: |
+        cargo run -p rust_robotics --example headless_grid_planners --features planning
+        cargo run -p rust_robotics --example headless_localizers --features localization
+        cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
+
     - name: Clippy
       run: cargo clippy --workspace --all-targets -- -W clippy::all -D warnings
 

@@ -14,3 +14,10 @@ rand = { workspace = true }
 rand_distr = { workspace = true }
 itertools = { workspace = true }
 ordered-float = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "grid_planners"
+harness = false
