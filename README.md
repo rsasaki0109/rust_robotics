@@ -131,10 +131,6 @@ Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
 
 - [src](./crates/rust_robotics_localization/src/ekf.rs)
 
-```
-cargo run -p rust_robotics --example ekf
-```
-
 ## Particle Filter Localization
 
 <img src="./img/localization/particle_filter_result.png" width="640px">
@@ -143,10 +139,6 @@ Blue: GPS, Red: Ground Truth, Green: Particle Filter, Yellow: Dead Reckoning
 
 - [src](./crates/rust_robotics_localization/src/particle_filter.rs)
 
-```
-cargo run -p rust_robotics --example particle_filter
-```
-
 ## Unscented Kalman Filter Localization
 
 <img src="./img/localization/ukf_result.png" width="640px">
@@ -154,10 +146,6 @@ cargo run -p rust_robotics --example particle_filter
 Blue: Ground Truth, Red: UKF Estimate, Black: Dead Reckoning, Green: GPS Observations, Red Ellipse: Uncertainty
 
 - [src](./crates/rust_robotics_localization/src/unscented_kalman_filter.rs)
-
-```
-cargo run -p rust_robotics --example unscented_kalman_filter
-```
 
 ## Histogram Filter Localization
 
@@ -169,20 +157,12 @@ Blue: True path, Orange: Dead Reckoning, Green: Histogram Filter estimate, Black
 
 - [src](./crates/rust_robotics_localization/src/histogram_filter.rs)
 
-```
-cargo run -p rust_robotics --example histogram_filter
-```
-
 # Mapping
 ## NDT Map
 
 <img src="./img/mapping/ndt.svg" width="640px">
 
 - [src](./crates/rust_robotics_mapping/src/ndt.rs)
-
-```
-cargo run -p rust_robotics --example ndt
-```
 
 ## Gaussian Grid Map
 
@@ -192,10 +172,6 @@ Occupancy grid mapping using Gaussian distribution. Higher probability near obst
 
 - [src](./crates/rust_robotics_mapping/src/gaussian_grid_map.rs)
 
-```
-cargo run -p rust_robotics --example gaussian_grid_map
-```
-
 ## Ray Casting Grid Map
 
 <img src="./img/mapping/ray_casting_grid_map.svg" width="640px">
@@ -203,10 +179,6 @@ cargo run -p rust_robotics --example gaussian_grid_map
 Occupancy grid mapping using ray casting. Free space (0.5), Occupied (1.0), Unknown (0.0).
 
 - [src](./crates/rust_robotics_mapping/src/ray_casting_grid_map.rs)
-
-```
-cargo run -p rust_robotics --example ray_casting_grid_map
-```
 
 # SLAM
 
@@ -218,10 +190,6 @@ Red: Reference points, Blue: Initial points, Green: Aligned points
 
 - [src](./crates/rust_robotics_slam/src/icp_matching.rs)
 
-```
-cargo run -p rust_robotics --example icp_matching
-```
-
 ## FastSLAM 1.0
 
 <img src="./img/slam/fastslam1.svg" width="640px">
@@ -232,10 +200,6 @@ Blue: True path, Yellow: Dead Reckoning, Green: FastSLAM estimate, Black: True l
 
 - [src](./crates/rust_robotics_slam/src/fastslam1.rs)
 
-```
-cargo run -p rust_robotics --example fastslam1
-```
-
 ## EKF SLAM
 
 <img src="./img/slam/ekf_slam.svg" width="640px">
@@ -244,10 +208,6 @@ Extended Kalman Filter based SLAM. Maintains a joint state vector of robot pose 
 
 - [src](./crates/rust_robotics_slam/src/ekf_slam.rs)
 
-```
-cargo run -p rust_robotics --example ekf_slam
-```
-
 ## Graph-Based SLAM
 
 <img src="./img/slam/graph_based_slam.svg" width="640px">
@@ -255,10 +215,6 @@ cargo run -p rust_robotics --example ekf_slam
 Pose graph optimization for SLAM. Constructs a graph of robot poses connected by odometry and observation constraints, then optimizes the graph using iterative methods.
 
 - [src](./crates/rust_robotics_slam/src/graph_based_slam.rs)
-
-```
-cargo run -p rust_robotics --example graph_based_slam
-```
 
 # Path Planning
 
@@ -271,7 +227,7 @@ Blue: Start, Red: Goal, Green: Path, Gray: Obstacles
 - [src](./crates/rust_robotics_planning/src/a_star.rs)
 
 ```
-cargo run -p rust_robotics --example a_star
+cargo run -p rust_robotics --example a_star --features "planning,viz"
 ```
 
 ## Theta* Algorithm
@@ -283,7 +239,7 @@ Any-angle path planning algorithm. Unlike A* which restricts movement to grid ed
 - [src](./crates/rust_robotics_planning/src/theta_star.rs)
 
 ```
-cargo run -p rust_robotics --example theta_star
+cargo run -p rust_robotics --example theta_star --features "planning,viz"
 ```
 
 ## Jump Point Search (JPS)
@@ -295,7 +251,7 @@ Optimized pathfinding algorithm for uniform-cost grids. Reduces the number of no
 - [src](./crates/rust_robotics_planning/src/jps.rs)
 
 ```
-cargo run -p rust_robotics --example jps
+cargo run -p rust_robotics --example jps --features "planning,viz"
 ```
 
 ## Bezier Path Planning
@@ -306,10 +262,6 @@ Blue: Start, Red: Goal, Green: Path
 
 - [src](./crates/rust_robotics_planning/src/bezier_path_planning.rs)
 
-```
-cargo run -p rust_robotics --example bezier_planning
-```
-
 ## Cubic Spline
 
 <img src="./img/path_planning/csp.svg" width="640px">
@@ -317,10 +269,6 @@ cargo run -p rust_robotics --example bezier_planning
 Black: Control points, Green: Path
 
 - [src](./crates/rust_robotics_planning/src/cubic_spline_planner.rs)
-
-```
-cargo run -p rust_robotics --example csp
-```
 
 ## Dynamic Window Approach
 
@@ -330,10 +278,6 @@ Black: Obstacles, Green: Trajectory, Yellow: Predicted trajectory
 
 - [src](./crates/rust_robotics_planning/src/dwa.rs)
 
-```
-cargo run -p rust_robotics --example dwa
-```
-
 ## D* Lite
 
 <img src="./img/path_planning/d_star_lite_result.png" width="640">
@@ -341,10 +285,6 @@ cargo run -p rust_robotics --example dwa
 Blue: Start, Red: Goal, Green: Path, Black: Obstacles
 
 - [src](./crates/rust_robotics_planning/src/d_star_lite.rs)
-
-```bash
-cargo run -p rust_robotics --example d_star_lite
-```
 
 D* Lite is an incremental heuristic search algorithm for path planning in dynamic environments. It's particularly efficient for replanning when the environment changes.
 
@@ -354,10 +294,6 @@ D* Lite is an incremental heuristic search algorithm for path planning in dynami
 
 - [src](./crates/rust_robotics_planning/src/dijkstra.rs)
 
-```
-cargo run -p rust_robotics --example dijkstra
-```
-
 ## Informed RRT*
 
 <img src="./img/path_planning/informed_rrt_star_result.png" width="640px">
@@ -365,10 +301,6 @@ cargo run -p rust_robotics --example dijkstra
 Blue: Start, Red: Goal, Green: Path, Black: Tree
 
 - [src](./crates/rust_robotics_planning/src/informed_rrt_star.rs)
-
-```
-cargo run -p rust_robotics --example informed_rrt_star
-```
 
 ## Model Predictive Trajectory Generator
 
@@ -378,10 +310,6 @@ Green: Path
 
 - [src](./crates/rust_robotics_control/src/model_predictive_trajectory_generator.rs)
 
-```
-cargo run -p rust_robotics --example model_predictive_trajectory_generator
-```
-
 ## Potential Field Algorithm
 
 <img src="./img/path_planning/potential_field_result.png" width="640px">
@@ -390,10 +318,6 @@ Blue: Start, Red: Goal, Green: Path, Gray: Obstacles
 
 - [src](./crates/rust_robotics_planning/src/potential_field.rs)
 
-```
-cargo run -p rust_robotics --example potential_field
-```
-
 ## Quintic Polynomials
 
 <img src="./img/path_planning/quintic_polynomials_result.png" width="640px">
@@ -401,10 +325,6 @@ cargo run -p rust_robotics --example potential_field
 Blue: Start, Red: Goal, Green: Path
 
 - [src](./crates/rust_robotics_planning/src/quintic_polynomials.rs)
-
-```
-cargo run -p rust_robotics --example quintic_polynomials
-```
 
 ## Rapidly-Exploring Random Trees (RRT)
 
@@ -416,10 +336,6 @@ Blue: Start, Red: Goal, Green: Path, Gray: Tree
 
 - [src](./crates/rust_robotics_planning/src/rrt.rs)
 
-```
-cargo run -p rust_robotics --example rrt
-```
-
 ## RRT*
 
 <img src="./img/path_planning/rrt_star_result.svg" width="640px">
@@ -430,10 +346,6 @@ Blue: Start, Red: Goal, Green: Path, Gray: Tree
 
 - [src](./crates/rust_robotics_planning/src/rrt_star.rs)
 
-```
-cargo run -p rust_robotics --example rrt_star
-```
-
 ## Reeds-Shepp Path
 
 <img src="./img/path_planning/reeds_shepp_result.png" width="640px">
@@ -441,10 +353,6 @@ cargo run -p rust_robotics --example rrt_star
 Blue: Start, Red: Goal, Green: Path
 
 - [src](./crates/rust_robotics_planning/src/reeds_shepp_path.rs)
-
-```
-cargo run -p rust_robotics --example reeds_shepp
-```
 
 ## PRM (Probabilistic Road-Map)
 
@@ -456,10 +364,6 @@ Blue: Start, Red: Goal, Green: Path, Gray: Samples and edges, Black: Obstacles
 
 - [src](./crates/rust_robotics_planning/src/prm.rs)
 
-```
-cargo run -p rust_robotics --example prm
-```
-
 ## Voronoi Road-Map
 
 <img src="./img/path_planning/voronoi_road_map.svg" width="640px">
@@ -469,10 +373,6 @@ Path planning using Voronoi diagram vertices as waypoints. Provides paths that m
 Blue: Start, Red: Goal, Green: Path, Cyan: Voronoi vertices, Black: Obstacles
 
 - [src](./crates/rust_robotics_planning/src/voronoi_road_map.rs)
-
-```
-cargo run -p rust_robotics --example voronoi_road_map
-```
 
 ## Frenet Optimal Trajectory
 
@@ -484,10 +384,6 @@ Gray: Reference path, Green: Optimal trajectory, Black: Obstacles, Red: Vehicle
 
 - [src](./crates/rust_robotics_planning/src/frenet_optimal_trajectory.rs)
 
-```
-cargo run -p rust_robotics --example frenet_optimal_trajectory
-```
-
 ## State Lattice Planner
 
 <img src="./img/path_planning/state_lattice_plan.svg" width="640px">
@@ -497,7 +393,7 @@ Lattice-based motion planning that searches over a pre-computed set of motion pr
 - [src](./crates/rust_robotics_planning/src/state_lattice/)
 
 ```
-cargo run -p rust_robotics --example state_lattice
+cargo run -p rust_robotics --example state_lattice --features "planning,viz"
 ```
 
 # Path Tracking
@@ -510,10 +406,6 @@ Black: Planned path, Green: Tracked path
 
 - [src](./crates/rust_robotics_control/src/lqr_steer_control.rs)
 
-```
-cargo run -p rust_robotics --example lqr_steer_control
-```
-
 ## Move to Pose
 
 <img src="./img/path_tracking/move_to_pose.png" width="640px">
@@ -521,10 +413,6 @@ cargo run -p rust_robotics --example lqr_steer_control
 Green: Path, Red: Start and Goal
 
 - [src](./crates/rust_robotics_control/src/move_to_pose.rs)
-
-```
-cargo run -p rust_robotics --example move_to_pose
-```
 
 ## Pure Pursuit
 
@@ -534,10 +422,6 @@ Black: Planned path, Green: Tracked path
 
 - [src](./crates/rust_robotics_control/src/pure_pursuit.rs)
 
-```
-cargo run -p rust_robotics --example pure_pursuit
-```
-
 ## Stanley Control
 
 <img src="./img/path_tracking/stanley_controller.png" width="640px">
@@ -545,10 +429,6 @@ cargo run -p rust_robotics --example pure_pursuit
 Black: Planned path, Green: Tracked path
 
 - [src](./crates/rust_robotics_control/src/stanley_controller.rs)
-
-```
-cargo run -p rust_robotics --example stanley_controller
-```
 
 ## Rear Wheel Feedback Control
 
@@ -561,7 +441,7 @@ Blue: Reference path, Red: Vehicle trajectory, Green: Waypoints
 - [src](./crates/rust_robotics_control/src/rear_wheel_feedback.rs)
 
 ```
-cargo run -p rust_robotics --example rear_wheel_feedback
+cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz"
 ```
 
 ## MPC (Model Predictive Control)
@@ -574,10 +454,6 @@ Gray: Reference path, Blue: Tracked trajectory, Green: Prediction horizon, Red: 
 
 - [src](./crates/rust_robotics_control/src/mpc.rs)
 
-```
-cargo run -p rust_robotics --example mpc
-```
-
 # Inverted Pendulum
 
 ## LQR Control
@@ -587,10 +463,6 @@ cargo run -p rust_robotics --example mpc
 Cart-pendulum animation showing LQR control stabilization. Blue: Cart, Black: Pendulum. Multiple frames overlaid to show time progression from initial angle to stabilized state.
 
 - [src](./crates/rust_robotics_control/src/lqr_control.rs)
-
-```
-cargo run -p rust_robotics --example inverted_pendulum_lqr
-```
 
 # Arm Navigation
 
@@ -604,10 +476,6 @@ Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target pos
 
 - [src](./crates/rust_robotics_control/src/two_joint_arm_control.rs)
 
-```
-cargo run -p rust_robotics --example two_joint_arm_control
-```
-
 # Aerial Navigation
 
 ## 3D Grid A*
@@ -615,10 +483,6 @@ cargo run -p rust_robotics --example two_joint_arm_control
 Bounded 3D voxel-grid planning for aerial robots. The planner supports 6-connected or 26-connected motion and returns a collision-free waypoint sequence.
 
 - [src](./crates/rust_robotics_planning/src/grid_a_star_3d.rs)
-
-```
-cargo run -p rust_robotics --example grid_a_star_3d
-```
 
 # Mission Planning
 
@@ -628,10 +492,6 @@ Behavior tree runtime for mission-level decision making with sequence, selector,
 
 - [src](./crates/rust_robotics_control/src/behavior_tree.rs)
 
-```
-cargo run -p rust_robotics --example behavior_tree
-```
-
 ## State Machine
 
 <img src="./img/mission_planning/state_machine_diagram.svg" width="640px">
@@ -639,7 +499,3 @@ cargo run -p rust_robotics --example behavior_tree
 Finite state machine for robot behavior management with states, transitions, guards, and actions
 
 - [src](./crates/rust_robotics_control/src/state_machine.rs)
-
-```
-cargo run -p rust_robotics --example state_machine
-```

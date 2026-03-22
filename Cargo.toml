@@ -25,13 +25,12 @@ rand_distr = "0.4"
 itertools = "0.13"
 ordered-float = "4.2"
 gnuplot = "0.0.43"
-plotlib = "0.5"
 
 # Internal crate dependencies
-rust_robotics_core = { path = "crates/rust_robotics_core" }
-rust_robotics_planning = { path = "crates/rust_robotics_planning" }
-rust_robotics_localization = { path = "crates/rust_robotics_localization" }
-rust_robotics_control = { path = "crates/rust_robotics_control" }
-rust_robotics_mapping = { path = "crates/rust_robotics_mapping" }
-rust_robotics_slam = { path = "crates/rust_robotics_slam" }
-rust_robotics_viz = { path = "crates/rust_robotics_viz" }
+rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.1.0" }
+rust_robotics_planning = { path = "crates/rust_robotics_planning", version = "0.1.0" }
+rust_robotics_localization = { path = "crates/rust_robotics_localization", version = "0.1.0" }
+rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.1.0" }
+rust_robotics_mapping = { path = "crates/rust_robotics_mapping", version = "0.1.0" }
+rust_robotics_slam = { path = "crates/rust_robotics_slam", version = "0.1.0" }
+rust_robotics_viz = { path = "crates/rust_robotics_viz", version = "0.1.0" }
