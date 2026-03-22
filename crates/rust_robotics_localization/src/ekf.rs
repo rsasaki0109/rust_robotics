@@ -3,10 +3,10 @@
 //! Implements state estimation using the Extended Kalman Filter algorithm
 //! for robot localization with nonlinear motion and observation models.
 
+use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
 use rust_robotics_core::{
     ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
 };
-use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
 
 /// State representation for EKF (x, y, yaw, velocity)
 pub type EKFState = Vector4<f64>;

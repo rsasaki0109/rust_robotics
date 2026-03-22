@@ -242,13 +242,19 @@ mod tests {
     fn test_quintic_polynomials_planner() {
         let mut planner = QuinticPolynomialsPlanner::new();
         let result = planner.planning(
-            10.0, 10.0,
+            10.0,
+            10.0,
             10.0_f64.to_radians(),
-            1.0, 0.1,
-            30.0, -10.0,
+            1.0,
+            0.1,
+            30.0,
+            -10.0,
             20.0_f64.to_radians(),
-            1.0, 0.1,
-            1.0, 0.5, 0.1,
+            1.0,
+            0.1,
+            1.0,
+            0.5,
+            0.1,
         );
         assert!(result);
         assert!(!planner.rx.is_empty());

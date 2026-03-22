@@ -195,7 +195,11 @@ fn occupancy_style(value: f64) -> (&'static str, f64) {
 }
 
 /// Build an SVG visualization of the ray casting grid map.
-pub fn build_ray_casting_grid_map_svg(grid_map: &RayCastingGridMap, ox: &[f64], oy: &[f64]) -> String {
+pub fn build_ray_casting_grid_map_svg(
+    grid_map: &RayCastingGridMap,
+    ox: &[f64],
+    oy: &[f64],
+) -> String {
     let width = 920.0;
     let height = 700.0;
     let margin = 72.0;

@@ -6,8 +6,8 @@
 //! author: Atsushi Sakai (@Atsushi_twi)
 //!         Ryohei Sasaki (@rsasaki0109)
 
-use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 use nalgebra::{Matrix1, Matrix1x4, Matrix4, Vector4};
+use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 use std::f64::consts::PI;
 
 /// Vehicle state for LQR controller

@@ -48,9 +48,15 @@ impl QuinticPolynomial {
         let t5 = t4 * time;
 
         let a = nalgebra::Matrix3::new(
-            t3, t4, t5,
-            3.0 * t2, 4.0 * t3, 5.0 * t4,
-            6.0 * time, 12.0 * t2, 20.0 * t3,
+            t3,
+            t4,
+            t5,
+            3.0 * t2,
+            4.0 * t3,
+            5.0 * t4,
+            6.0 * time,
+            12.0 * t2,
+            20.0 * t3,
         );
 
         let b = nalgebra::Vector3::new(
@@ -65,7 +71,9 @@ impl QuinticPolynomial {
             .unwrap_or(nalgebra::Vector3::zeros());
 
         QuinticPolynomial {
-            a0, a1, a2,
+            a0,
+            a1,
+            a2,
             a3: x[0],
             a4: x[1],
             a5: x[2],
@@ -126,7 +134,9 @@ impl QuarticPolynomial {
             .unwrap_or(nalgebra::Vector2::zeros());
 
         QuarticPolynomial {
-            a0, a1, a2,
+            a0,
+            a1,
+            a2,
             a3: x[0],
             a4: x[1],
         }
@@ -174,10 +184,23 @@ pub struct FrenetPath {
 impl FrenetPath {
     pub fn new() -> Self {
         FrenetPath {
-            t: Vec::new(), d: Vec::new(), d_d: Vec::new(), d_dd: Vec::new(), d_ddd: Vec::new(),
-            s: Vec::new(), s_d: Vec::new(), s_dd: Vec::new(), s_ddd: Vec::new(),
-            cd: 0.0, cv: 0.0, cf: 0.0,
-            x: Vec::new(), y: Vec::new(), yaw: Vec::new(), ds: Vec::new(), c: Vec::new(),
+            t: Vec::new(),
+            d: Vec::new(),
+            d_d: Vec::new(),
+            d_dd: Vec::new(),
+            d_ddd: Vec::new(),
+            s: Vec::new(),
+            s_d: Vec::new(),
+            s_dd: Vec::new(),
+            s_ddd: Vec::new(),
+            cd: 0.0,
+            cv: 0.0,
+            cf: 0.0,
+            x: Vec::new(),
+            y: Vec::new(),
+            yaw: Vec::new(),
+            ds: Vec::new(),
+            c: Vec::new(),
         }
     }
 }
@@ -234,7 +257,13 @@ impl CubicSpline1D {
             d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
         }
 
-        CubicSpline1D { x: x.to_vec(), a, b, c, d }
+        CubicSpline1D {
+            x: x.to_vec(),
+            a,
+            b,
+            c,
+            d,
+        }
     }
 
     fn calc(&self, t: f64) -> f64 {
@@ -299,7 +328,13 @@ impl CubicSpline2D {
 }
 
 /// Generate Frenet candidate paths
-pub fn calc_frenet_paths(c_speed: f64, c_d: f64, c_d_d: f64, c_d_dd: f64, s0: f64) -> Vec<FrenetPath> {
+pub fn calc_frenet_paths(
+    c_speed: f64,
+    c_d: f64,
+    c_d_d: f64,
+    c_d_dd: f64,
+    s0: f64,
+) -> Vec<FrenetPath> {
     let mut fplist = Vec::new();
 
     let mut di = -MAX_ROAD_WIDTH;
