@@ -35,3 +35,21 @@ pub mod state_lattice;
 
 // 3D planning
 pub mod grid_a_star_3d;
+
+// Re-exports
+pub use a_star::{AStarConfig, AStarPlanner};
+pub use cubic_spline_planner::{CubicSplinePlanner, Spline2D};
+pub use d_star_lite::DStarLite;
+pub use dwa::{DWAConfig, DWAPlanner};
+pub use grid::GridMap;
+pub use grid_a_star_3d::{GridAStar3DConfig, GridAStar3DPlanner, Path3D};
+pub use informed_rrt_star::InformedRRTStar;
+pub use jps::{JPSConfig, JPSPlanner};
+pub use potential_field::PotentialFieldPlanner;
+pub use prm::PRMPlanner;
+pub use quintic_polynomials::{QuinticPolynomial, QuinticPolynomialsPlanner};
+pub use reeds_shepp_path::ReedsSheppPlanner;
+pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
+pub use rrt_star::RRTStar;
+pub use theta_star::{ThetaStarConfig, ThetaStarPlanner};
+pub use voronoi_road_map::VoronoiPlanner;

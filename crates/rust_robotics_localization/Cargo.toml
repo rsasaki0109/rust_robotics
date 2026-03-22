@@ -12,3 +12,6 @@ rust_robotics_core = { workspace = true }
 nalgebra = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
+
+[dev-dependencies]
+proptest = "1.4"
