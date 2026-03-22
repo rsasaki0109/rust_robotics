@@ -6,9 +6,9 @@
 //!         Ryohei Sasaki (@rsasaki0109) - Rust port
 //!
 //! Reference:
-//! - PythonRobotics: https://github.com/AtsushiSakai/PythonRobotics
+//! - PythonRobotics: <https://github.com/AtsushiSakai/PythonRobotics>
 //! - Shunichi09/nonlinear_control: Implementing the nonlinear model predictive
-//!   control, sliding mode control https://github.com/Shunichi09/PythonLinearNonlinearControl
+//!   control, sliding mode control <https://github.com/Shunichi09/PythonLinearNonlinearControl>
 //!
 //! Note: This implementation may exhibit numerical instability in some scenarios.
 //! The C-GMRES algorithm is known to be sensitive to parameter tuning.
