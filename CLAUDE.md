@@ -52,7 +52,8 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 ## CI
 
 - GitHub Actions: `.github/workflows/ci.yml`
-- ステップ: build → test → test (no-default-features) → clippy → rustdoc → fmt
+- ステップ: build → test → test (no-default-features) → headless examples → clippy → rustdoc → fmt → cargo-deny
+- 別ジョブ: coverage (cargo-tarpaulin → Codecov)
 - Clippy/doc/fmtは `-D warnings` でエラー扱い
 
 ## 注意事項
