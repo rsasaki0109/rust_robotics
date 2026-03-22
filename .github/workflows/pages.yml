@@ -23,12 +23,19 @@ jobs:
     - name: Configure Pages
       uses: actions/configure-pages@v5
 
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Build API docs
+      run: cargo doc --workspace --no-deps
+
     - name: Build static artifact
       run: |
         rm -rf _site
         mkdir -p _site
         cp -R docs/. _site/
         cp -R img _site/img
+        cp -R target/doc _site/api
 
     - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v3
