@@ -36,7 +36,7 @@ pub struct MotionModelConfig {
     pub wheelbase: f64,
     /// Distance step for trajectory generation \[m\]
     pub ds: f64,
-    /// Default velocity [m/s]
+    /// Default velocity \[m/s\]
     pub default_velocity: f64,
 }
 
