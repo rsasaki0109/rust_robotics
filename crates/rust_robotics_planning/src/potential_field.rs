@@ -7,6 +7,8 @@
 
 use std::collections::VecDeque;
 
+use rust_robotics_core::{Path2D, Point2D, RoboticsError, RoboticsResult};
+
 // Parameters
 const KP: f64 = 5.0;
 const ETA: f64 = 100.0;
@@ -170,6 +172,26 @@ impl PotentialFieldPlanner {
             [1, -1],
             [1, 1],
         ]
+    }
+
+    /// Plan a path from start to goal while avoiding obstacles, returning a [`Path2D`].
+    ///
+    /// This is a convenience wrapper around [`planning()`](Self::planning) that accepts
+    /// [`Point2D`] and returns [`Path2D`].
+    pub fn plan_with_obstacles(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+        ox: &[f64],
+        oy: &[f64],
+    ) -> RoboticsResult<Path2D> {
+        self.planning(start.x, start.y, goal.x, goal.y, ox, oy)
+            .map(|(rx, ry)| Path2D::from_xy(&rx, &ry))
+            .ok_or_else(|| {
+                RoboticsError::PlanningError(
+                    "PotentialField: oscillation detected, no path found".to_string(),
+                )
+            })
     }
 
     fn oscillations_detection(
