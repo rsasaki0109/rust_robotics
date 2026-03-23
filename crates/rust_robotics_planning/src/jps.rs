@@ -329,42 +329,40 @@ impl JPSPlanner {
                             dirs.push(Direction::new(dir.dx, -dir.dy));
                         }
                     }
+                } else if dir.dx != 0 {
+                    if self.grid_map.is_valid(x + dir.dx, y) {
+                        dirs.push(dir);
+                    }
+                    if !self.grid_map.is_valid(x - dir.dx, y + 1) {
+                        if self.grid_map.is_valid(x, y + 1)
+                            && self.grid_map.is_valid(x + dir.dx, y + 1)
+                        {
+                            dirs.push(Direction::new(dir.dx, 1));
+                        }
+                    }
+                    if !self.grid_map.is_valid(x - dir.dx, y - 1) {
+                        if self.grid_map.is_valid(x, y - 1)
+                            && self.grid_map.is_valid(x + dir.dx, y - 1)
+                        {
+                            dirs.push(Direction::new(dir.dx, -1));
+                        }
+                    }
                 } else {
-                    if dir.dx != 0 {
-                        if self.grid_map.is_valid(x + dir.dx, y) {
-                            dirs.push(dir);
+                    if self.grid_map.is_valid(x, y + dir.dy) {
+                        dirs.push(dir);
+                    }
+                    if !self.grid_map.is_valid(x + 1, y - dir.dy) {
+                        if self.grid_map.is_valid(x + 1, y)
+                            && self.grid_map.is_valid(x + 1, y + dir.dy)
+                        {
+                            dirs.push(Direction::new(1, dir.dy));
                         }
-                        if !self.grid_map.is_valid(x - dir.dx, y + 1) {
-                            if self.grid_map.is_valid(x, y + 1)
-                                && self.grid_map.is_valid(x + dir.dx, y + 1)
-                            {
-                                dirs.push(Direction::new(dir.dx, 1));
-                            }
-                        }
-                        if !self.grid_map.is_valid(x - dir.dx, y - 1) {
-                            if self.grid_map.is_valid(x, y - 1)
-                                && self.grid_map.is_valid(x + dir.dx, y - 1)
-                            {
-                                dirs.push(Direction::new(dir.dx, -1));
-                            }
-                        }
-                    } else {
-                        if self.grid_map.is_valid(x, y + dir.dy) {
-                            dirs.push(dir);
-                        }
-                        if !self.grid_map.is_valid(x + 1, y - dir.dy) {
-                            if self.grid_map.is_valid(x + 1, y)
-                                && self.grid_map.is_valid(x + 1, y + dir.dy)
-                            {
-                                dirs.push(Direction::new(1, dir.dy));
-                            }
-                        }
-                        if !self.grid_map.is_valid(x - 1, y - dir.dy) {
-                            if self.grid_map.is_valid(x - 1, y)
-                                && self.grid_map.is_valid(x - 1, y + dir.dy)
-                            {
-                                dirs.push(Direction::new(-1, dir.dy));
-                            }
+                    }
+                    if !self.grid_map.is_valid(x - 1, y - dir.dy) {
+                        if self.grid_map.is_valid(x - 1, y)
+                            && self.grid_map.is_valid(x - 1, y + dir.dy)
+                        {
+                            dirs.push(Direction::new(-1, dir.dy));
                         }
                     }
                 }
