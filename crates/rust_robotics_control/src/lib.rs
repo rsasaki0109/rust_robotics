@@ -14,3 +14,14 @@ pub mod rear_wheel_feedback;
 pub mod stanley_controller;
 pub mod state_machine;
 pub mod two_joint_arm_control;
+
+// Re-exports
+pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
+pub use lqr_control::InvertedPendulumLQR;
+pub use lqr_steer_control::{LQRSteerConfig, LQRSteerController};
+pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController};
+pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
+pub use rear_wheel_feedback::{RearWheelFeedbackConfig, RearWheelFeedbackController};
+pub use stanley_controller::{StanleyConfig, StanleyController};
+pub use state_machine::StateMachine;
+pub use two_joint_arm_control::TwoJointArm;
