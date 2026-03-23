@@ -56,3 +56,9 @@ jobs:
 
     - name: Check formatting
       run: cargo fmt --all -- --check
+
+    - name: Install cargo-deny
+      run: cargo install cargo-deny --locked
+
+    - name: Dependency audit
+      run: cargo deny check
