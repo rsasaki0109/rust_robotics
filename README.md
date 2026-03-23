@@ -1,7 +1,9 @@
 RustRobotics
 ====
 
-GitHub Pages Showcase: https://rsasaki0109.github.io/rust_robotics/
+[![CI](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/rsasaki0109/rust_robotics/branch/main/graph/badge.svg)](https://codecov.io/gh/rsasaki0109/rust_robotics)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://rsasaki0109.github.io/rust_robotics/)
 
 This package is a rust implementation of [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics).
 

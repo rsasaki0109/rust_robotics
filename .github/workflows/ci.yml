@@ -82,3 +82,12 @@ jobs:
       with:
         files: cobertura.xml
         fail_ci_if_error: false
+
+  semver:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check semver compliance
+      uses: obi1kenobi/cargo-semver-checks-action@v2
