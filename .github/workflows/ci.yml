@@ -41,9 +41,12 @@ jobs:
       run: cargo test --workspace --no-default-features
 
     - name: Clippy
-      run: cargo clippy --workspace --all-targets -- -W clippy::all
-      continue-on-error: true
+      run: cargo clippy --workspace --all-targets -- -W clippy::all -D warnings
+
+    - name: Rustdoc warnings
+      run: cargo doc --workspace --no-deps
+      env:
+        RUSTDOCFLAGS: "-D warnings"
 
     - name: Check formatting
       run: cargo fmt --all -- --check
-      continue-on-error: true
