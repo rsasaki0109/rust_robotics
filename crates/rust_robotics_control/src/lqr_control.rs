@@ -451,6 +451,10 @@ mod tests {
 
         let (_, final_state) = controller.trajectory.last().unwrap();
         // Pendulum angle should be close to 0 (upright)
-        assert!(final_state[2].abs() < 0.1, "Pendulum did not stabilize: angle = {}", final_state[2]);
+        assert!(
+            final_state[2].abs() < 0.1,
+            "Pendulum did not stabilize: angle = {}",
+            final_state[2]
+        );
     }
 }

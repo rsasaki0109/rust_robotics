@@ -211,8 +211,12 @@ mod tests {
     fn test_bezier_path_planning() {
         let mut planner = BezierPathPlanner::new();
         let result = planner.planning(
-            10.0, 1.0, 180.0_f64.to_radians(),
-            0.0, -3.0, 45.0_f64.to_radians(),
+            10.0,
+            1.0,
+            180.0_f64.to_radians(),
+            0.0,
+            -3.0,
+            45.0_f64.to_radians(),
             3.0,
         );
         assert!(result);

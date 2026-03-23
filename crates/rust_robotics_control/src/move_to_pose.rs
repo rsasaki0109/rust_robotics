@@ -4,9 +4,9 @@
 //         Atsushi Sakai(@Atsushi_twi)
 //         Ryohei Sasaki(@rsasaki0109)
 // P. I. Corke, "Robotics, Vision & Control", Springer 2017, ISBN 978-3-319-54413-7
-use rust_robotics_core::{ControlInput, Path2D, Point2D, Pose2D};
 #[cfg(feature = "viz")]
 use gnuplot::{AxesCommon, Caption, Color, Figure};
+use rust_robotics_core::{ControlInput, Path2D, Point2D, Pose2D};
 use std::f64::consts::PI;
 
 #[derive(Debug, Clone, Copy)]

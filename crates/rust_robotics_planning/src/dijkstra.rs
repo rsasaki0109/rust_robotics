@@ -110,13 +110,13 @@ mod tests {
 
     #[test]
     fn test_dijkstra_simple() {
-        let matrix = nalgebra::DMatrix::from_row_slice(5, 5, &[
-            0, 0, 0, 0, 0,
-            0, 0, 1, 0, 0,
-            0, 0, 1, 0, 0,
-            0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0,
-        ]);
+        let matrix = nalgebra::DMatrix::from_row_slice(
+            5,
+            5,
+            &[
+                0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+        );
         let map = grid_nalgebra::Map::new(matrix, 1).unwrap();
         let result = dijkstra_plan(&map, (0, 0), (4, 4));
         assert!(result.is_some());
@@ -127,13 +127,13 @@ mod tests {
 
     #[test]
     fn test_has_collision() {
-        let matrix = nalgebra::DMatrix::from_row_slice(5, 5, &[
-            0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0,
-            0, 0, 1, 0, 0,
-            0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0,
-        ]);
+        let matrix = nalgebra::DMatrix::from_row_slice(
+            5,
+            5,
+            &[
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+        );
         let map = grid_nalgebra::Map::new(matrix, 1).unwrap();
         // Cell (2,2) is an obstacle
         assert!(has_collision(&map, 2, 2));

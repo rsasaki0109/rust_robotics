@@ -354,10 +354,14 @@ mod tests {
         let mut ox = Vec::new();
         let mut oy = Vec::new();
         for i in 0..20 {
-            ox.push(i as f64); oy.push(0.0);
-            ox.push(i as f64); oy.push(20.0);
-            ox.push(0.0); oy.push(i as f64);
-            ox.push(20.0); oy.push(i as f64);
+            ox.push(i as f64);
+            oy.push(0.0);
+            ox.push(i as f64);
+            oy.push(20.0);
+            ox.push(0.0);
+            oy.push(i as f64);
+            ox.push(20.0);
+            oy.push(i as f64);
         }
 
         let prm = PRMPlanner::new(&ox, &oy, (2.0, 2.0), (18.0, 18.0), 2.0);

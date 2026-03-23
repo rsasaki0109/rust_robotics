@@ -274,10 +274,7 @@ pub fn get_best_particle(particles: &[Particle]) -> &Particle {
 }
 
 /// Simulate observations
-pub fn get_observations(
-    x_true: &Vector3<f64>,
-    landmarks: &[(f64, f64)],
-) -> Vec<(f64, f64, usize)> {
+pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
     let normal = Normal::new(0.0, 1.0).unwrap();
     let r = get_r();
     let mut z = Vec::new();
@@ -337,7 +334,10 @@ mod tests {
         let (d, _angle, lm_id) = observations[0];
         assert_eq!(lm_id, 0);
         // Distance should be roughly 5.0 (noisy)
-        assert!((d - 5.0).abs() < 5.0, "distance {d} too far from expected 5.0");
+        assert!(
+            (d - 5.0).abs() < 5.0,
+            "distance {d} too far from expected 5.0"
+        );
     }
 
     #[test]

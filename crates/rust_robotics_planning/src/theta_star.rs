@@ -15,8 +15,8 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
 use crate::grid::{GridMap, Node};
+use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
 
 /// Configuration for Theta* planner
 #[derive(Debug, Clone)]
@@ -40,17 +40,20 @@ impl ThetaStarConfig {
     pub fn validate(&self) -> RoboticsResult<()> {
         if !self.resolution.is_finite() || self.resolution <= 0.0 {
             return Err(RoboticsError::InvalidParameter(format!(
-                "resolution must be positive and finite, got {}", self.resolution
+                "resolution must be positive and finite, got {}",
+                self.resolution
             )));
         }
         if !self.robot_radius.is_finite() || self.robot_radius < 0.0 {
             return Err(RoboticsError::InvalidParameter(format!(
-                "robot_radius must be non-negative and finite, got {}", self.robot_radius
+                "robot_radius must be non-negative and finite, got {}",
+                self.robot_radius
             )));
         }
         if !self.heuristic_weight.is_finite() || self.heuristic_weight <= 0.0 {
             return Err(RoboticsError::InvalidParameter(format!(
-                "heuristic_weight must be positive and finite, got {}", self.heuristic_weight
+                "heuristic_weight must be positive and finite, got {}",
+                self.heuristic_weight
             )));
         }
         Ok(())
@@ -59,19 +62,30 @@ impl ThetaStarConfig {
 
 #[derive(Debug)]
 struct PriorityNode {
-    x: i32, y: i32, cost: f64, priority: f64, index: usize,
+    x: i32,
+    y: i32,
+    cost: f64,
+    priority: f64,
+    index: usize,
 }
 impl Eq for PriorityNode {}
 impl PartialEq for PriorityNode {
-    fn eq(&self, other: &Self) -> bool { self.priority == other.priority }
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
 }
 impl Ord for PriorityNode {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.priority.partial_cmp(&self.priority).unwrap_or(Ordering::Equal)
+        other
+            .priority
+            .partial_cmp(&self.priority)
+            .unwrap_or(Ordering::Equal)
     }
 }
 impl PartialOrd for PriorityNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub struct ThetaStarPlanner {
@@ -91,19 +105,34 @@ impl ThetaStarPlanner {
         config.validate()?;
         let grid_map = GridMap::try_new(ox, oy, config.resolution, config.robot_radius)?;
         let motion = Self::get_motion_model();
-        Ok(ThetaStarPlanner { grid_map, config, motion })
+        Ok(ThetaStarPlanner {
+            grid_map,
+            config,
+            motion,
+        })
     }
 
     pub fn from_obstacles(ox: &[f64], oy: &[f64], resolution: f64, robot_radius: f64) -> Self {
-        let config = ThetaStarConfig { resolution, robot_radius, ..Default::default() };
+        let config = ThetaStarConfig {
+            resolution,
+            robot_radius,
+            ..Default::default()
+        };
         Self::new(ox, oy, config)
     }
 
-    pub fn from_obstacle_points(obstacles: &Obstacles, config: ThetaStarConfig) -> RoboticsResult<Self> {
+    pub fn from_obstacle_points(
+        obstacles: &Obstacles,
+        config: ThetaStarConfig,
+    ) -> RoboticsResult<Self> {
         config.validate()?;
         let grid_map = GridMap::from_obstacles(obstacles, config.resolution, config.robot_radius)?;
         let motion = Self::get_motion_model();
-        Ok(ThetaStarPlanner { grid_map, config, motion })
+        Ok(ThetaStarPlanner {
+            grid_map,
+            config,
+            motion,
+        })
     }
 
     pub fn planning(&self, sx: f64, sy: f64, gx: f64, gy: f64) -> Option<(Vec<f64>, Vec<f64>)> {
@@ -121,7 +150,9 @@ impl ThetaStarPlanner {
         self.plan_impl(Point2D::new(sx, sy), Point2D::new(gx, gy))
     }
 
-    pub fn grid_map(&self) -> &GridMap { &self.grid_map }
+    pub fn grid_map(&self) -> &GridMap {
+        &self.grid_map
+    }
 
     fn calc_heuristic(&self, n1_x: i32, n1_y: i32, n2_x: i32, n2_y: i32) -> f64 {
         self.config.heuristic_weight * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
@@ -129,9 +160,14 @@ impl ThetaStarPlanner {
 
     fn get_motion_model() -> Vec<(i32, i32, f64)> {
         vec![
-            (1, 0, 1.0), (0, 1, 1.0), (-1, 0, 1.0), (0, -1, 1.0),
-            (-1, -1, std::f64::consts::SQRT_2), (-1, 1, std::f64::consts::SQRT_2),
-            (1, -1, std::f64::consts::SQRT_2), (1, 1, std::f64::consts::SQRT_2),
+            (1, 0, 1.0),
+            (0, 1, 1.0),
+            (-1, 0, 1.0),
+            (0, -1, 1.0),
+            (-1, -1, std::f64::consts::SQRT_2),
+            (-1, 1, std::f64::consts::SQRT_2),
+            (1, -1, std::f64::consts::SQRT_2),
+            (1, 1, std::f64::consts::SQRT_2),
         ]
     }
 
@@ -144,11 +180,21 @@ impl ThetaStarPlanner {
         let sy = if y0 < y1 { 1 } else { -1 };
         let mut err = dx - dy;
         loop {
-            if !self.grid_map.is_valid(x, y) { return false; }
-            if x == x1 && y == y1 { break; }
+            if !self.grid_map.is_valid(x, y) {
+                return false;
+            }
+            if x == x1 && y == y1 {
+                break;
+            }
             let e2 = 2 * err;
-            if e2 > -dy { err -= dy; x += sx; }
-            if e2 < dx { err += dx; y += sy; }
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
         }
         true
     }
@@ -173,8 +219,13 @@ impl ThetaStarPlanner {
     }
 
     fn ensure_query_is_valid(&self, x: i32, y: i32, label: &str) -> RoboticsResult<()> {
-        if self.grid_map.is_valid(x, y) { return Ok(()); }
-        Err(RoboticsError::PlanningError(format!("{} position is invalid", label)))
+        if self.grid_map.is_valid(x, y) {
+            return Ok(());
+        }
+        Err(RoboticsError::PlanningError(format!(
+            "{} position is invalid",
+            label
+        )))
     }
 
     fn plan_impl(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
@@ -199,7 +250,9 @@ impl ThetaStarPlanner {
         best_index.insert(start_grid_index, start_index);
 
         open_set.push(PriorityNode {
-            x: start_x, y: start_y, cost: 0.0,
+            x: start_x,
+            y: start_y,
+            cost: 0.0,
             priority: self.calc_heuristic(start_x, start_y, goal_x, goal_y),
             index: start_index,
         });
@@ -209,7 +262,9 @@ impl ThetaStarPlanner {
             if current.x == goal_x && current.y == goal_y {
                 return Ok(self.build_path(current.index, &node_storage));
             }
-            if closed_set.contains_key(&current_grid_index) { continue; }
+            if closed_set.contains_key(&current_grid_index) {
+                continue;
+            }
             closed_set.insert(current_grid_index, current.index);
 
             let current_node = &node_storage[current.index];
@@ -219,13 +274,18 @@ impl ThetaStarPlanner {
                 let new_x = current.x + dx;
                 let new_y = current.y + dy;
                 let new_grid_index = self.grid_map.calc_index(new_x, new_y);
-                if !self.grid_map.is_valid(new_x, new_y) { continue; }
-                if closed_set.contains_key(&new_grid_index) { continue; }
+                if !self.grid_map.is_valid(new_x, new_y) {
+                    continue;
+                }
+                if closed_set.contains_key(&new_grid_index) {
+                    continue;
+                }
 
                 let (new_cost, new_parent_index) = if let Some(p_idx) = parent_index {
                     let parent_node = &node_storage[p_idx];
                     if self.line_of_sight(parent_node.x, parent_node.y, new_x, new_y) {
-                        let dist = self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
+                        let dist =
+                            self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
                         (parent_node.cost + dist, Some(p_idx))
                     } else {
                         let dist = self.euclidean_distance(current.x, current.y, new_x, new_y);
@@ -236,14 +296,23 @@ impl ThetaStarPlanner {
                     (current.cost + dist, Some(current.index))
                 };
 
-                let existing_g = g_values.get(&new_grid_index).copied().unwrap_or(f64::INFINITY);
+                let existing_g = g_values
+                    .get(&new_grid_index)
+                    .copied()
+                    .unwrap_or(f64::INFINITY);
                 if new_cost < existing_g {
                     g_values.insert(new_grid_index, new_cost);
                     node_storage.push(Node::new(new_x, new_y, new_cost, new_parent_index));
                     let new_index = node_storage.len() - 1;
                     best_index.insert(new_grid_index, new_index);
                     let priority = new_cost + self.calc_heuristic(new_x, new_y, goal_x, goal_y);
-                    open_set.push(PriorityNode { x: new_x, y: new_y, cost: new_cost, priority, index: new_index });
+                    open_set.push(PriorityNode {
+                        x: new_x,
+                        y: new_y,
+                        cost: new_cost,
+                        priority,
+                        index: new_index,
+                    });
                 }
             }
         }
@@ -267,12 +336,19 @@ mod tests {
         let mut ox = Vec::new();
         let mut oy = Vec::new();
         for i in 0..21 {
-            ox.push(i as f64); oy.push(0.0);
-            ox.push(i as f64); oy.push(20.0);
-            ox.push(0.0); oy.push(i as f64);
-            ox.push(20.0); oy.push(i as f64);
+            ox.push(i as f64);
+            oy.push(0.0);
+            ox.push(i as f64);
+            oy.push(20.0);
+            ox.push(0.0);
+            oy.push(i as f64);
+            ox.push(20.0);
+            oy.push(i as f64);
         }
-        for i in 5..15 { ox.push(10.0); oy.push(i as f64); }
+        for i in 5..15 {
+            ox.push(10.0);
+            oy.push(i as f64);
+        }
         (ox, oy)
     }
 
@@ -310,7 +386,8 @@ mod tests {
         assert!(
             theta_length <= a_star_length + 0.1,
             "Theta* path ({}) should not be significantly longer than A* path ({})",
-            theta_length, a_star_length
+            theta_length,
+            a_star_length
         );
     }
 
@@ -326,7 +403,8 @@ mod tests {
     fn test_theta_star_from_obstacle_points() {
         let (ox, oy) = create_simple_obstacles();
         let obstacles = Obstacles::try_from_xy(&ox, &oy).unwrap();
-        let planner = ThetaStarPlanner::from_obstacle_points(&obstacles, ThetaStarConfig::default()).unwrap();
+        let planner =
+            ThetaStarPlanner::from_obstacle_points(&obstacles, ThetaStarConfig::default()).unwrap();
         let path = planner.plan_xy(2.0, 10.0, 18.0, 10.0).unwrap();
         assert!(!path.is_empty());
     }
@@ -334,7 +412,10 @@ mod tests {
     #[test]
     fn test_theta_star_try_new_rejects_invalid_config() {
         let (ox, oy) = create_simple_obstacles();
-        let config = ThetaStarConfig { heuristic_weight: 0.0, ..Default::default() };
+        let config = ThetaStarConfig {
+            heuristic_weight: 0.0,
+            ..Default::default()
+        };
         let err = match ThetaStarPlanner::try_new(&ox, &oy, config) {
             Ok(_) => panic!("expected invalid config to be rejected"),
             Err(err) => err,
