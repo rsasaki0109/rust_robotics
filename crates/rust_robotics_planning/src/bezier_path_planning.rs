@@ -204,8 +204,92 @@ impl Default for BezierPathPlanner {
 }
 
 #[cfg(test)]
+#[allow(clippy::excessive_precision)]
 mod tests {
     use super::*;
+
+    type PathFingerprint = (f64, f64, f64, f64);
+    type CurvatureFingerprint = (f64, f64, f64);
+
+    fn assert_point_close(actual: (f64, f64), expected: (f64, f64), tolerance: f64) {
+        assert!(
+            (actual.0 - expected.0).abs() < tolerance,
+            "x mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.1 - expected.1).abs() < tolerance,
+            "y mismatch: actual={actual:?}, expected={expected:?}"
+        );
+    }
+
+    fn path_fingerprint(path: &[(f64, f64)]) -> PathFingerprint {
+        let sum_x = path.iter().map(|point| point.0).sum();
+        let sum_y = path.iter().map(|point| point.1).sum();
+        let weighted_sum_x = path
+            .iter()
+            .enumerate()
+            .map(|(index, point)| (index + 1) as f64 * point.0)
+            .sum();
+        let weighted_sum_y = path
+            .iter()
+            .enumerate()
+            .map(|(index, point)| (index + 1) as f64 * point.1)
+            .sum();
+        (sum_x, sum_y, weighted_sum_x, weighted_sum_y)
+    }
+
+    fn curvature_fingerprint(curvature: &[f64]) -> CurvatureFingerprint {
+        let sum = curvature.iter().copied().sum();
+        let weighted_sum = curvature
+            .iter()
+            .enumerate()
+            .map(|(index, value)| (index + 1) as f64 * value)
+            .sum();
+        let sum_sq = curvature.iter().map(|value| value * value).sum();
+        (sum, weighted_sum, sum_sq)
+    }
+
+    fn assert_path_fingerprint_close(
+        actual: PathFingerprint,
+        expected: PathFingerprint,
+        tolerance: f64,
+    ) {
+        assert!(
+            (actual.0 - expected.0).abs() < tolerance,
+            "sum_x mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.1 - expected.1).abs() < tolerance,
+            "sum_y mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.2 - expected.2).abs() < tolerance,
+            "weighted_sum_x mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.3 - expected.3).abs() < tolerance,
+            "weighted_sum_y mismatch: actual={actual:?}, expected={expected:?}"
+        );
+    }
+
+    fn assert_curvature_fingerprint_close(
+        actual: CurvatureFingerprint,
+        expected: CurvatureFingerprint,
+        tolerance: f64,
+    ) {
+        assert!(
+            (actual.0 - expected.0).abs() < tolerance,
+            "sum mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.1 - expected.1).abs() < tolerance,
+            "weighted_sum mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.2 - expected.2).abs() < tolerance,
+            "sum_sq mismatch: actual={actual:?}, expected={expected:?}"
+        );
+    }
 
     #[test]
     fn test_bezier_path_planning() {
@@ -216,7 +300,7 @@ mod tests {
             180.0_f64.to_radians(),
             0.0,
             -3.0,
-            45.0_f64.to_radians(),
+            (-45.0_f64).to_radians(),
             3.0,
         );
         assert!(result);
@@ -231,5 +315,115 @@ mod tests {
         let result = planner.planning_with_control_points(cp, 100);
         assert!(result);
         assert!(!planner.path.is_empty());
+    }
+
+    #[test]
+    fn test_planning_matches_upstream_main_example() {
+        let mut planner = BezierPathPlanner::new();
+        planner.planning(
+            10.0,
+            1.0,
+            180.0_f64.to_radians(),
+            0.0,
+            -3.0,
+            (-45.0_f64).to_radians(),
+            3.0,
+        );
+
+        let expected_control_points = [
+            (10.0, 1.0),
+            (6.409_890_128_576_997, 1.0),
+            (-2.538_591_035_287_97, -0.461_408_964_712_031),
+            (0.0, -3.0),
+        ];
+        let expected_samples = [
+            (0usize, 10.0, 1.0),
+            (25, 6.526_392_761_056_504, 0.726_609_535_974_175),
+            (50, 2.630_199_272_944_397, -0.068_812_597_489_713),
+            (75, -0.060_978_738_129_225, -1.349_142_512_471_283),
+            (99, 0.0, -3.0),
+        ];
+
+        assert_eq!(planner.path.len(), 100);
+        for (actual, expected) in planner
+            .control_points
+            .iter()
+            .copied()
+            .zip(expected_control_points.iter().copied())
+        {
+            assert_point_close(actual, expected, 1e-12);
+        }
+        for (index, x, y) in expected_samples {
+            assert_point_close(planner.path[index], (x, y), 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_calc_curvature_matches_upstream_main_example() {
+        let control_points = [
+            (10.0, 1.0),
+            (6.409_890_128_576_997, 1.0),
+            (-2.538_591_035_287_97, -0.461_408_964_712_031),
+            (0.0, -3.0),
+        ];
+
+        let curvature = calc_curvature(&control_points, 0.86);
+        assert!((curvature - 1.203_883_311_167_986).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_planning_with_control_points_matches_upstream_reference() {
+        let mut planner = BezierPathPlanner::new();
+        planner.planning_with_control_points(
+            vec![(-1.0, 0.0), (3.0, -3.0), (4.0, 1.0), (2.0, 1.0), (1.0, 3.0)],
+            100,
+        );
+
+        let expected_path_samples = [
+            (0usize, -1.0, 0.0),
+            (25, 1.908_827_926_528_655, -0.991_419_119_052_972),
+            (50, 2.749_694_941_997_521, 0.090_314_761_977_827),
+            (75, 2.108_174_996_479_529, 1.482_624_053_372_864),
+            (99, 1.0, 3.0),
+        ];
+        let expected_curvature_samples = [
+            (0usize, 0.114),
+            (25, 0.686_973_069_873_466),
+            (50, 0.778_736_996_781_883),
+            (75, 0.123_309_580_949_893),
+            (99, -0.268_328_157_299_975),
+        ];
+
+        assert_eq!(planner.path.len(), 100);
+        assert_eq!(planner.curvature.len(), 100);
+        for (index, x, y) in expected_path_samples {
+            assert_point_close(planner.path[index], (x, y), 1e-12);
+        }
+        for (index, expected) in expected_curvature_samples {
+            assert!(
+                (planner.curvature[index] - expected).abs() < 1e-12,
+                "curvature mismatch at {index}: actual={}, expected={expected}",
+                planner.curvature[index]
+            );
+        }
+        assert_path_fingerprint_close(
+            path_fingerprint(&planner.path),
+            (
+                178.183_164_845_750_3,
+                41.116_834_432_822_614,
+                10_028.516_464_168_946,
+                5_417.733_506_201_01,
+            ),
+            1e-9,
+        );
+        assert_curvature_fingerprint_close(
+            curvature_fingerprint(&planner.curvature),
+            (
+                39.037_977_305_450_994,
+                1_413.299_260_366_335_1,
+                30.142_637_421_645_173,
+            ),
+            1e-9,
+        );
     }
 }

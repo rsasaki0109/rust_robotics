@@ -141,19 +141,7 @@ impl RearWheelFeedbackController {
 
     /// Compute yaw angles from path points
     fn compute_path_yaw(&self, path: &Path2D) -> Vec<f64> {
-        let mut yaw = Vec::with_capacity(path.len());
-        for i in 0..path.len() {
-            if i < path.len() - 1 {
-                let dx = path.points[i + 1].x - path.points[i].x;
-                let dy = path.points[i + 1].y - path.points[i].y;
-                yaw.push(dy.atan2(dx));
-            } else if !yaw.is_empty() {
-                yaw.push(*yaw.last().unwrap());
-            } else {
-                yaw.push(0.0);
-            }
-        }
-        yaw
+        path.yaw_profile()
     }
 
     /// Compute curvature from path points
@@ -213,20 +201,11 @@ impl RearWheelFeedbackController {
     /// Find target index and compute lateral error
     fn calc_target_index(&self, state: &VehicleState) -> (usize, f64) {
         let (rx, ry) = state.rear_axle();
-
-        let mut min_dist = f64::MAX;
-        let mut min_idx = 0;
-
-        // Find nearest point on path
-        for (i, p) in self.path.points.iter().enumerate() {
-            let dx = rx - p.x;
-            let dy = ry - p.y;
-            let d = (dx * dx + dy * dy).sqrt();
-            if d < min_dist {
-                min_dist = d;
-                min_idx = i;
-            }
-        }
+        let query = Point2D::new(rx, ry);
+        let min_idx = self
+            .path
+            .nearest_point_index_from(query, self.last_target_idx)
+            .unwrap_or(0);
 
         // Calculate lateral error (signed distance from path)
         let target_point = &self.path.points[min_idx];
@@ -252,6 +231,10 @@ impl RearWheelFeedbackController {
     /// omega = v * k * cos(th_e) / (1.0 - k * e) - KTH * |v| * th_e - KE * v * sin(th_e) * e / th_e
     /// delta = atan2(L * omega / v, 1.0)
     pub fn compute_steering(&mut self, state: &VehicleState) -> f64 {
+        if self.path.is_empty() {
+            return 0.0;
+        }
+
         let (mut target_idx, e) = self.calc_target_index(state);
 
         // Don't go backwards on path

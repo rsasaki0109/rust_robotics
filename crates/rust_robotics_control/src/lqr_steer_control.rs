@@ -145,20 +145,10 @@ impl LQRSteerController {
     /// Compute yaw and curvature from path points
     fn compute_path_derivatives(&self, path: &Path2D) -> (Vec<f64>, Vec<f64>) {
         let n = path.len();
-        let mut yaw = Vec::with_capacity(n);
+        let yaw = path.yaw_profile();
         let mut curvature = Vec::with_capacity(n);
 
         for i in 0..n {
-            if i < n - 1 {
-                let dx = path.points[i + 1].x - path.points[i].x;
-                let dy = path.points[i + 1].y - path.points[i].y;
-                yaw.push(dy.atan2(dx));
-            } else if !yaw.is_empty() {
-                yaw.push(*yaw.last().unwrap());
-            } else {
-                yaw.push(0.0);
-            }
-
             // Simple curvature approximation
             if i > 0 && i < n - 1 {
                 let dyaw = Self::normalize_angle(yaw[i] - yaw[i - 1]);
@@ -210,21 +200,12 @@ impl LQRSteerController {
 
     /// Find target index and cross-track error
     fn calc_target_index(&self, state: &LQRVehicleState) -> (usize, f64) {
-        let mut min_dist = f64::MAX;
-        let mut min_idx = 0;
-
-        for (i, p) in self.path.points.iter().enumerate() {
-            let dx = state.x - p.x;
-            let dy = state.y - p.y;
-            let d = (dx * dx + dy * dy).sqrt();
-            if d < min_dist {
-                min_dist = d;
-                min_idx = i;
-            }
-        }
+        let query = Point2D::new(state.x, state.y);
+        let min_idx = self.path.nearest_point_index(query).unwrap_or(0);
+        let target = &self.path.points[min_idx];
+        let min_dist = ((state.x - target.x).powi(2) + (state.y - target.y).powi(2)).sqrt();
 
         // Calculate signed cross-track error
-        let target = &self.path.points[min_idx];
         let diff_x = target.x - state.x;
         let diff_y = target.y - state.y;
         let arcang = self.path_yaw[min_idx] - diff_y.atan2(diff_x);
@@ -269,6 +250,10 @@ impl LQRSteerController {
 
     /// Compute LQR steering control
     pub fn compute_steering(&mut self, state: &LQRVehicleState) -> f64 {
+        if self.path.is_empty() {
+            return 0.0;
+        }
+
         let (ind, e) = self.calc_target_index(state);
         let k = if ind < self.path_curvature.len() {
             self.path_curvature[ind]

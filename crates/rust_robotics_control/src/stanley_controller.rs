@@ -111,7 +111,6 @@ impl StanleyController {
 
     /// Set the reference path
     pub fn set_path(&mut self, path: Path2D) {
-        // Compute yaw angles for the path
         self.path_yaw = self.compute_path_yaw(&path);
         self.path = path;
         self.last_target_idx = 0;
@@ -131,19 +130,7 @@ impl StanleyController {
 
     /// Compute yaw angles from path points
     fn compute_path_yaw(&self, path: &Path2D) -> Vec<f64> {
-        let mut yaw = Vec::with_capacity(path.len());
-        for i in 0..path.len() {
-            if i < path.len() - 1 {
-                let dx = path.points[i + 1].x - path.points[i].x;
-                let dy = path.points[i + 1].y - path.points[i].y;
-                yaw.push(dy.atan2(dx));
-            } else if !yaw.is_empty() {
-                yaw.push(*yaw.last().unwrap());
-            } else {
-                yaw.push(0.0);
-            }
-        }
-        yaw
+        path.yaw_profile()
     }
 
     /// Normalize angle to [-PI, PI]
@@ -160,19 +147,11 @@ impl StanleyController {
     /// Find target index and cross-track error
     fn calc_target_index(&self, state: &VehicleState) -> (usize, f64) {
         let (fx, fy) = state.front_axle();
-
-        let mut min_dist = f64::MAX;
-        let mut min_idx = 0;
-
-        for (i, p) in self.path.points.iter().enumerate() {
-            let dx = fx - p.x;
-            let dy = fy - p.y;
-            let d = (dx * dx + dy * dy).sqrt();
-            if d < min_dist {
-                min_dist = d;
-                min_idx = i;
-            }
-        }
+        let query = Point2D::new(fx, fy);
+        let min_idx = self
+            .path
+            .nearest_point_index_from(query, self.last_target_idx)
+            .unwrap_or(0);
 
         // Calculate cross-track error
         let target_point = &self.path.points[min_idx];
@@ -186,6 +165,10 @@ impl StanleyController {
 
     /// Compute steering angle using Stanley control law
     pub fn compute_steering(&mut self, state: &VehicleState) -> f64 {
+        if self.path.is_empty() {
+            return 0.0;
+        }
+
         let (mut target_idx, error_front_axle) = self.calc_target_index(state);
 
         if self.last_target_idx >= target_idx {

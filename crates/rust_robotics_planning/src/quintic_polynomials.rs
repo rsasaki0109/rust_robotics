@@ -172,7 +172,7 @@ impl QuinticPolynomialsPlanner {
             self.rj.clear();
 
             let mut current_t = 0.0;
-            while current_t <= t + dt {
+            while current_t < t + dt - 1e-12 {
                 self.time.push(current_t);
                 self.rx.push(xqp.calc_point(current_t));
                 self.ry.push(yqp.calc_point(current_t));
@@ -228,14 +228,66 @@ impl Default for QuinticPolynomialsPlanner {
 }
 
 #[cfg(test)]
+#[allow(clippy::excessive_precision)]
 mod tests {
     use super::*;
+
+    fn approx_eq(a: f64, b: f64, tol: f64) -> bool {
+        (a - b).abs() < tol
+    }
+
+    fn scalar_fingerprint(values: &[f64]) -> (f64, f64) {
+        let sum: f64 = values.iter().sum();
+        let weighted_sum: f64 = values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| (index + 1) as f64 * value)
+            .sum();
+        (sum, weighted_sum)
+    }
 
     #[test]
     fn test_quintic_polynomial() {
         let qp = QuinticPolynomial::new(0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 10.0);
         assert!((qp.calc_point(0.0) - 0.0).abs() < 1e-10);
         assert!((qp.calc_point(10.0) - 10.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_quintic_polynomial_matches_upstream_simple_reference() {
+        let qp = QuinticPolynomial::new(0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 10.0);
+
+        assert!(approx_eq(qp.a0, 0.0, 1e-12));
+        assert!(approx_eq(qp.a1, 0.0, 1e-12));
+        assert!(approx_eq(qp.a2, 0.0, 1e-12));
+        assert!(approx_eq(qp.a3, 0.099_999_999_999_999_99, 1e-12));
+        assert!(approx_eq(qp.a4, -0.014_999_999_999_999_996, 1e-12));
+        assert!(approx_eq(qp.a5, 0.000_599_999_999_999_999_8, 1e-12));
+
+        let expected_states = [
+            (0.0, 0.0, 0.0, 0.0, 0.6),
+            (
+                5.0,
+                5.0,
+                1.875_000_000_000_001_3,
+                1.332_267_629_550_187_8e-15,
+                -0.299_999_999_999_999_5,
+            ),
+            (
+                10.0,
+                10.0,
+                7.105_427_357_601_002e-15,
+                3.552_713_678_800_501e-15,
+                0.600_000_000_000_000_5,
+            ),
+        ];
+
+        for (t, point, velocity, accel, jerk) in expected_states {
+            assert!(approx_eq(qp.calc_point(t), point, 1e-12));
+            assert!(approx_eq(qp.calc_first_derivative(t), velocity, 1e-12));
+            assert!(approx_eq(qp.calc_second_derivative(t), accel, 1e-12));
+            assert!(approx_eq(qp.calc_third_derivative(t), jerk, 1e-12));
+        }
     }
 
     #[test]
@@ -258,5 +310,126 @@ mod tests {
         );
         assert!(result);
         assert!(!planner.rx.is_empty());
+    }
+
+    #[test]
+    fn test_quintic_polynomials_planner_matches_upstream_main_example() {
+        let mut planner = QuinticPolynomialsPlanner::new();
+        let result = planner.planning(
+            10.0,
+            10.0,
+            10.0_f64.to_radians(),
+            1.0,
+            0.1,
+            30.0,
+            -10.0,
+            20.0_f64.to_radians(),
+            1.0,
+            0.1,
+            1.0,
+            0.5,
+            0.1,
+        );
+
+        assert!(result);
+        assert_eq!(planner.time.len(), 151);
+        assert_eq!(planner.rx.len(), 151);
+        assert_eq!(planner.ry.len(), 151);
+        assert_eq!(planner.ryaw.len(), 151);
+        assert_eq!(planner.rv.len(), 151);
+        assert_eq!(planner.ra.len(), 151);
+        assert_eq!(planner.rj.len(), 151);
+        assert!(approx_eq(*planner.time.last().unwrap(), 15.0, 1e-12));
+
+        let expected_samples = [
+            (
+                0usize,
+                0.0,
+                10.0,
+                10.0,
+                10.0_f64.to_radians(),
+                1.0,
+                0.099_999_999_999_999_99,
+                0.427_280_794_153_487_6,
+            ),
+            (
+                1,
+                0.1,
+                10.098_982_615_546_902,
+                10.017_381_774_411_378,
+                0.172_447_377_225_515_92,
+                1.009_916_853_081_542_3,
+                0.106_821_796_693_630_91,
+                0.410_270_512_683_564_35,
+            ),
+            (
+                10,
+                1.0,
+                11.042_264_078_940_175,
+                10.118_588_516_101_896,
+                0.005_806_154_972_050_835,
+                1.106_637_942_606_725_2,
+                0.354_433_544_260_436_83,
+                0.267_611_399_963_759_2,
+            ),
+            (
+                50,
+                5.0,
+                16.610_137_614_251_27,
+                6.064_611_076_798_1,
+                -0.912_947_184_636_906_5,
+                2.664_216_406_735_696_4,
+                0.467_382_916_097_198_84,
+                -0.146_179_174_681_691_67,
+            ),
+            (
+                150,
+                15.0,
+                30.000_000_000_000_007,
+                -10.0,
+                20.0_f64.to_radians(),
+                1.000_000_000_000_003,
+                0.099_999_999_999_999_62,
+                -0.433_897_236_756_954_63,
+            ),
+        ];
+
+        for (index, time, rx, ry, yaw, v, a, j) in expected_samples {
+            assert!(approx_eq(planner.time[index], time, 1e-12));
+            assert!(approx_eq(planner.rx[index], rx, 1e-12));
+            assert!(approx_eq(planner.ry[index], ry, 1e-12));
+            assert!(approx_eq(planner.ryaw[index], yaw, 1e-12));
+            assert!(approx_eq(planner.rv[index], v, 1e-12));
+            assert!(approx_eq(planner.ra[index], a, 1e-12));
+            assert!(approx_eq(planner.rj[index], j, 1e-12));
+        }
+
+        let time_fp = scalar_fingerprint(&planner.time);
+        assert!(approx_eq(time_fp.0, 1_132.500_000_000_000_2, 1e-9));
+        assert!(approx_eq(time_fp.1, 114_759.999_999_999_97, 1e-6));
+
+        let rx_fp = scalar_fingerprint(&planner.rx);
+        assert!(approx_eq(rx_fp.0, 3_084.277_101_694_296, 1e-9));
+        assert!(approx_eq(rx_fp.1, 275_626.252_367_386_25, 1e-6));
+
+        let ry_fp = scalar_fingerprint(&planner.ry);
+        assert!(approx_eq(ry_fp.0, -23.379_117_661_761_498, 1e-9));
+        assert!(approx_eq(ry_fp.1, -52_763.587_503_238_03, 1e-6));
+
+        let yaw_fp = scalar_fingerprint(&planner.ryaw);
+        assert!(approx_eq(yaw_fp.0, -91.931_046_512_332_49, 1e-9));
+        assert!(approx_eq(yaw_fp.1, -6_931.617_159_195_794, 1e-6));
+
+        let velocity_fp = scalar_fingerprint(&planner.rv);
+        assert!(approx_eq(velocity_fp.0, 302.345_686_787_654_7, 1e-9));
+        assert!(approx_eq(velocity_fp.1, 22_418.061_584_864_976, 1e-6));
+
+        let accel_fp = scalar_fingerprint(&planner.ra);
+        assert!(approx_eq(accel_fp.0, 3.130_947_174_813_961, 1e-9));
+        assert!(approx_eq(accel_fp.1, -1_921.398_399_412_191_8, 1e-6));
+
+        let jerk_fp = scalar_fingerprint(&planner.rj);
+        assert!(approx_eq(jerk_fp.0, -6.835_206_957_044_357, 1e-9));
+        assert!(approx_eq(jerk_fp.1, -1_017.425_338_206_766_7, 1e-6));
     }
 }
