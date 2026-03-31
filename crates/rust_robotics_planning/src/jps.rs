@@ -573,6 +573,103 @@ mod tests {
         (ox, oy)
     }
 
+    fn draw_horizontal_line(
+        start_x: i32,
+        start_y: i32,
+        length: i32,
+        ox: &mut Vec<f64>,
+        oy: &mut Vec<f64>,
+    ) {
+        for i in start_x..start_x + length {
+            for j in start_y..start_y + 2 {
+                ox.push(i as f64);
+                oy.push(j as f64);
+            }
+        }
+    }
+
+    fn draw_vertical_line(
+        start_x: i32,
+        start_y: i32,
+        length: i32,
+        ox: &mut Vec<f64>,
+        oy: &mut Vec<f64>,
+    ) {
+        for i in start_x..start_x + 2 {
+            for j in start_y..start_y + length {
+                ox.push(i as f64);
+                oy.push(j as f64);
+            }
+        }
+    }
+
+    fn create_upstream_jump_point_maze() -> (Vec<f64>, Vec<f64>) {
+        let mut ox = Vec::new();
+        let mut oy = Vec::new();
+
+        draw_vertical_line(0, 0, 50, &mut ox, &mut oy);
+        draw_vertical_line(48, 0, 50, &mut ox, &mut oy);
+        draw_horizontal_line(0, 0, 50, &mut ox, &mut oy);
+        draw_horizontal_line(0, 48, 50, &mut ox, &mut oy);
+
+        let vertical_x = [10, 10, 10, 15, 20, 20, 30, 30, 35, 30, 40, 45];
+        let vertical_y = [10, 30, 45, 20, 5, 40, 10, 40, 5, 40, 10, 25];
+        let vertical_len = [10, 10, 5, 10, 10, 5, 20, 10, 25, 10, 35, 15];
+        for ((x, y), len) in vertical_x
+            .iter()
+            .zip(vertical_y.iter())
+            .zip(vertical_len.iter())
+        {
+            draw_vertical_line(*x, *y, *len, &mut ox, &mut oy);
+        }
+
+        let horizontal_x = [35, 40, 15, 10, 45, 20, 10, 15, 25, 45, 10, 30, 10, 40];
+        let horizontal_y = [5, 10, 15, 20, 20, 25, 30, 35, 35, 35, 40, 40, 45, 45];
+        let horizontal_len = [10, 5, 10, 10, 5, 5, 10, 5, 10, 5, 10, 5, 5, 5];
+        for ((x, y), len) in horizontal_x
+            .iter()
+            .zip(horizontal_y.iter())
+            .zip(horizontal_len.iter())
+        {
+            draw_horizontal_line(*x, *y, *len, &mut ox, &mut oy);
+        }
+
+        (ox, oy)
+    }
+
+    fn upstream_jump_point_reference_polyline() -> Vec<Point2D> {
+        vec![
+            Point2D::new(5.0, 5.0),
+            Point2D::new(7.0, 6.0),
+            Point2D::new(9.0, 10.0),
+            Point2D::new(9.0, 15.0),
+            Point2D::new(9.0, 20.0),
+            Point2D::new(10.0, 22.0),
+            Point2D::new(11.0, 26.0),
+            Point2D::new(10.0, 29.0),
+            Point2D::new(9.0, 33.0),
+            Point2D::new(9.0, 38.0),
+            Point2D::new(10.0, 42.0),
+            Point2D::new(14.0, 44.0),
+            Point2D::new(19.0, 44.0),
+            Point2D::new(22.0, 47.0),
+            Point2D::new(25.0, 45.0),
+            Point2D::new(29.0, 43.0),
+            Point2D::new(29.0, 40.0),
+            Point2D::new(32.0, 39.0),
+            Point2D::new(35.0, 40.0),
+            Point2D::new(36.0, 44.0),
+            Point2D::new(35.0, 45.0),
+        ]
+    }
+
+    fn polyline_length(points: &[Point2D]) -> f64 {
+        points
+            .windows(2)
+            .map(|window| window[0].distance(&window[1]))
+            .sum()
+    }
+
     #[test]
     fn test_jps_finds_path() {
         let (ox, oy) = create_simple_obstacles();
@@ -734,5 +831,42 @@ mod tests {
         assert!((first.y + 2.0).abs() < 1e-6);
         assert!((last.x - 18.0).abs() < 1e-6);
         assert!((last.y - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_jps_solves_upstream_jump_point_maze() {
+        let (ox, oy) = create_upstream_jump_point_maze();
+        let planner = JPSPlanner::from_obstacles(&ox, &oy, 1.0, 0.0);
+
+        let path = planner
+            .plan(Point2D::new(5.0, 5.0), Point2D::new(35.0, 45.0))
+            .unwrap();
+
+        let first = path.points.first().unwrap();
+        let last = path.points.last().unwrap();
+        assert!((first.x - 5.0).abs() < 1e-6);
+        assert!((first.y - 5.0).abs() < 1e-6);
+        assert!((last.x - 35.0).abs() < 1e-6);
+        assert!((last.y - 45.0).abs() < 1e-6);
+
+        let upstream_reference_length = polyline_length(&upstream_jump_point_reference_polyline());
+        assert!(
+            path.total_length() <= upstream_reference_length + 1e-6,
+            "Rust JPS path should stay no worse than PythonRobotics jump-point variant reference, got {} vs {}",
+            path.total_length(),
+            upstream_reference_length,
+        );
+
+        let grid = planner.grid_map();
+        for point in &path.points {
+            let ix = grid.calc_x_index(point.x);
+            let iy = grid.calc_y_index(point.y);
+            assert!(
+                grid.is_valid(ix, iy),
+                "path point ({}, {}) should stay collision-free",
+                point.x,
+                point.y
+            );
+        }
     }
 }

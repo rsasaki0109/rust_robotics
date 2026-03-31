@@ -186,7 +186,8 @@ impl PotentialFieldPlanner {
         oy: &[f64],
     ) -> RoboticsResult<Path2D> {
         self.planning(start.x, start.y, goal.x, goal.y, ox, oy)
-            .map(|(rx, ry)| Path2D::from_xy(&rx, &ry))
+            .map(|(rx, ry)| Path2D::try_from_xy(&rx, &ry))
+            .transpose()?
             .ok_or_else(|| {
                 RoboticsError::PlanningError(
                     "PotentialField: oscillation detected, no path found".to_string(),

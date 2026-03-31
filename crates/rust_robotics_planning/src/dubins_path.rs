@@ -49,7 +49,7 @@ pub enum DubinsPathType {
 
 impl DubinsPathType {
     /// Return the three segment types for this path family.
-    fn segments(self) -> [SegmentType; 3] {
+    pub fn segments(self) -> [SegmentType; 3] {
         match self {
             Self::LSL => [SegmentType::Left, SegmentType::Straight, SegmentType::Left],
             Self::RSR => [
@@ -179,36 +179,30 @@ impl DubinsPlanner {
     ///
     /// `step` is the distance \[m\] between consecutive sample points.
     pub fn sample_path(&self, path: &DubinsPath, step: f64) -> Path2D {
-        let mut points = Vec::new();
+        let mut points = vec![Point2D::new(path.start.x, path.start.y)];
         let segments = path.path_type.segments();
-
-        let mut x = path.start.x;
-        let mut y = path.start.y;
-        let mut yaw = path.start.yaw;
-
         let step = if step <= 0.0 { 0.1 } else { step };
 
-        // For each of the three segments, step through and interpolate.
         for (i, &seg) in segments.iter().enumerate() {
-            let seg_len = path.lengths[i];
-            if seg_len < 1e-12 {
+            let seg_len = path.lengths[i] * path.curvature;
+            if seg_len.abs() < 1e-12 {
                 continue;
             }
 
-            let mut traveled = 0.0;
-            while traveled < seg_len {
-                points.push(Point2D::new(x, y));
-                let ds = step.min(seg_len - traveled);
-                let (nx, ny, nyaw) = step_segment(x, y, yaw, ds, seg, path.curvature);
-                x = nx;
-                y = ny;
-                yaw = nyaw;
-                traveled += ds;
-            }
-        }
+            let origin = *points.last().unwrap();
+            let origin_yaw = segment_end_yaw(&points, path, i);
+            let mut current_length = step;
 
-        // Push the final point.
-        points.push(Point2D::new(x, y));
+            while (current_length + step).abs() <= seg_len.abs() {
+                let (x, y, _) =
+                    interpolate_segment(current_length, seg, path.curvature, origin, origin_yaw);
+                points.push(Point2D::new(x, y));
+                current_length += step;
+            }
+
+            let (x, y, _) = interpolate_segment(seg_len, seg, path.curvature, origin, origin_yaw);
+            points.push(Point2D::new(x, y));
+        }
 
         Path2D::from_points(points)
     }
@@ -227,42 +221,53 @@ fn mod2pi(angle: f64) -> f64 {
     v
 }
 
-/// Step a single infinitesimal motion along a segment.
-fn step_segment(
-    x: f64,
-    y: f64,
-    yaw: f64,
-    ds: f64,
+fn segment_end_yaw(points: &[Point2D], path: &DubinsPath, segment_index: usize) -> f64 {
+    let segments = path.path_type.segments();
+    let mut yaw = path.start.yaw;
+    for (i, seg) in segments.iter().enumerate().take(segment_index) {
+        let normalized_len = path.lengths[i] * path.curvature;
+        yaw = match seg {
+            SegmentType::Straight => yaw,
+            SegmentType::Left => yaw + normalized_len,
+            SegmentType::Right => yaw - normalized_len,
+        };
+    }
+    if points.is_empty() {
+        path.start.yaw
+    } else {
+        yaw
+    }
+}
+
+/// Interpolate a point at a normalized segment length.
+fn interpolate_segment(
+    length: f64,
     seg: SegmentType,
     curvature: f64,
+    origin: Point2D,
+    origin_yaw: f64,
 ) -> (f64, f64, f64) {
     match seg {
         SegmentType::Straight => {
-            let nx = x + ds * yaw.cos();
-            let ny = y + ds * yaw.sin();
-            (nx, ny, yaw)
+            let nx = origin.x + length / curvature * origin_yaw.cos();
+            let ny = origin.y + length / curvature * origin_yaw.sin();
+            (nx, ny, origin_yaw)
         }
         SegmentType::Left => {
-            // Arc with positive angular change.
-            let dphi = ds * curvature;
             let r = 1.0 / curvature;
-            let cx = x - r * yaw.sin();
-            let cy = y + r * yaw.cos();
-            let new_yaw = yaw + dphi;
-            let nx = cx + r * new_yaw.sin();
-            let ny = cy - r * new_yaw.cos();
-            (nx, ny, new_yaw)
+            let ldx = length.sin() * r;
+            let ldy = (1.0 - length.cos()) * r;
+            let gdx = origin_yaw.cos() * ldx - origin_yaw.sin() * ldy;
+            let gdy = origin_yaw.sin() * ldx + origin_yaw.cos() * ldy;
+            (origin.x + gdx, origin.y + gdy, origin_yaw + length)
         }
         SegmentType::Right => {
-            // Arc with negative angular change.
-            let dphi = ds * curvature;
             let r = 1.0 / curvature;
-            let cx = x + r * yaw.sin();
-            let cy = y - r * yaw.cos();
-            let new_yaw = yaw - dphi;
-            let nx = cx - r * new_yaw.sin();
-            let ny = cy + r * new_yaw.cos();
-            (nx, ny, new_yaw)
+            let ldx = length.sin() * r;
+            let ldy = -(1.0 - length.cos()) * r;
+            let gdx = origin_yaw.cos() * ldx - origin_yaw.sin() * ldy;
+            let gdy = origin_yaw.sin() * ldx + origin_yaw.cos() * ldy;
+            (origin.x + gdx, origin.y + gdy, origin_yaw - length)
         }
     }
 }
@@ -295,8 +300,11 @@ fn lsl(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let c_ab = (2.0 + d * d - 2.0 * (ca - cb) + 2.0 * d * (sa - sb)).max(0.0);
-    let p_sq = c_ab;
+    let cos_ab = (alpha - beta).cos();
+    let p_sq = 2.0 + d * d - 2.0 * cos_ab + 2.0 * d * (sa - sb);
+    if p_sq < 0.0 {
+        return None;
+    }
     let tmp = (cb - ca).atan2(d + sa - sb);
     let t = mod2pi(-alpha + tmp);
     let p = p_sq.sqrt();
@@ -309,8 +317,11 @@ fn rsr(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let c_ab = (2.0 + d * d - 2.0 * (ca - cb) - 2.0 * d * (sa - sb)).max(0.0);
-    let p_sq = c_ab;
+    let cos_ab = (alpha - beta).cos();
+    let p_sq = 2.0 + d * d - 2.0 * cos_ab + 2.0 * d * (sb - sa);
+    if p_sq < 0.0 {
+        return None;
+    }
     let tmp = (ca - cb).atan2(d - sa + sb);
     let t = mod2pi(alpha - tmp);
     let p = p_sq.sqrt();
@@ -323,7 +334,8 @@ fn lsr(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let p_sq = -2.0 + d * d + 2.0 * (ca + cb) + 2.0 * d * (sa + sb);
+    let cos_ab = (alpha - beta).cos();
+    let p_sq = -2.0 + d * d + 2.0 * cos_ab + 2.0 * d * (sa + sb);
     if p_sq < 0.0 {
         return None;
     }
@@ -339,7 +351,8 @@ fn rsl(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let p_sq = -2.0 + d * d + 2.0 * (ca + cb) - 2.0 * d * (sa + sb);
+    let cos_ab = (alpha - beta).cos();
+    let p_sq = -2.0 + d * d + 2.0 * cos_ab - 2.0 * d * (sa + sb);
     if p_sq < 0.0 {
         return None;
     }
@@ -355,7 +368,8 @@ fn rlr(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let val = (6.0 - d * d + 2.0 * (ca - cb) + 2.0 * d * (sa - sb)) / 8.0;
+    let cos_ab = (alpha - beta).cos();
+    let val = (6.0 - d * d + 2.0 * cos_ab + 2.0 * d * (sa - sb)) / 8.0;
     if val.abs() > 1.0 {
         return None;
     }
@@ -370,7 +384,8 @@ fn lrl(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
     let sb = beta.sin();
     let ca = alpha.cos();
     let cb = beta.cos();
-    let val = (6.0 - d * d + 2.0 * (ca - cb) - 2.0 * d * (sa - sb)) / 8.0;
+    let cos_ab = (alpha - beta).cos();
+    let val = (6.0 - d * d + 2.0 * cos_ab - 2.0 * d * (sa - sb)) / 8.0;
     if val.abs() > 1.0 {
         return None;
     }
@@ -385,6 +400,7 @@ fn lrl(alpha: f64, beta: f64, d: f64) -> Option<[f64; 3]> {
 // ---------------------------------------------------------------------------
 
 #[cfg(test)]
+#[allow(clippy::excessive_precision)]
 mod tests {
     use super::*;
     use std::f64::consts::FRAC_PI_2;
@@ -394,6 +410,21 @@ mod tests {
 
     fn approx_eq(a: f64, b: f64, tol: f64) -> bool {
         (a - b).abs() < tol
+    }
+
+    fn assert_point_close(actual: &Point2D, expected: (f64, f64), tolerance: f64) {
+        assert!(
+            (actual.x - expected.0).abs() < tolerance,
+            "x mismatch: actual=({}, {}), expected={expected:?}",
+            actual.x,
+            actual.y
+        );
+        assert!(
+            (actual.y - expected.1).abs() < tolerance,
+            "y mismatch: actual=({}, {}), expected={expected:?}",
+            actual.x,
+            actual.y
+        );
     }
 
     #[test]
@@ -538,5 +569,133 @@ mod tests {
             polyline_len,
             path.total_length
         );
+    }
+
+    #[test]
+    fn test_compute_path_params_match_upstream_representative_window() {
+        let alpha = PI;
+        let beta = FRAC_PI_2;
+        let d = 5.656_854_249_492_38;
+
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::LSL),
+            Some([
+                3.353_117_643_613_227_3,
+                4.763_012_859_631_52,
+                1.359_271_336_771_462_2
+            ])
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::RSR),
+            Some([
+                3.290_698_833_617_270_2,
+                6.731_545_773_370_686,
+                4.563_282_800_357_213
+            ])
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::LSR),
+            Some([
+                3.592_361_893_573_783,
+                6.427_574_075_729_097,
+                5.163_158_220_368_679
+            ])
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::RSL),
+            Some([
+                3.786_455_298_170_522_6,
+                4.322_764_335_586_111,
+                2.215_658_971_375_626
+            ])
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::RLR),
+            None
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::LRL),
+            None
+        );
+    }
+
+    #[test]
+    fn test_compute_path_params_match_upstream_rlr_lrl_case() {
+        let alpha = 0.0;
+        let beta = 0.0;
+        let d = 0.5;
+
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::RLR),
+            Some([
+                3.016_264_822_421_727_7,
+                6.032_529_644_843_455,
+                3.016_264_822_421_727_7
+            ])
+        );
+        assert_eq!(
+            compute_path_params(alpha, beta, d, DubinsPathType::LRL),
+            Some([
+                3.016_264_822_421_727_7,
+                6.032_529_644_843_455,
+                3.016_264_822_421_727_7
+            ])
+        );
+    }
+
+    #[test]
+    fn test_dubins_plan_matches_upstream_main_example() {
+        let planner = DubinsPlanner::new(1.0);
+        let start = Pose2D::new(1.0, 1.0, 45.0_f64.to_radians());
+        let goal = Pose2D::new(-3.0, -3.0, -45.0_f64.to_radians());
+        let path = planner.plan(start, goal).unwrap();
+
+        assert_eq!(path.path_type, DubinsPathType::LSL);
+        assert!(approx_eq(path.lengths[0], 3.353_117_643_613_227, 1e-12));
+        assert!(approx_eq(path.lengths[1], 4.763_012_859_631_52, 1e-12));
+        assert!(approx_eq(path.lengths[2], 1.359_271_336_771_462, 1e-12));
+        assert!(approx_eq(path.total_length, 9.475_401_840_016_21, 1e-12));
+    }
+
+    #[test]
+    fn test_dubins_sample_path_matches_upstream_main_example() {
+        let planner = DubinsPlanner::new(1.0);
+        let start = Pose2D::new(1.0, 1.0, 45.0_f64.to_radians());
+        let goal = Pose2D::new(-3.0, -3.0, -45.0_f64.to_radians());
+        let path = planner.plan(start, goal).unwrap();
+        let sampled = planner.sample_path(&path, 0.1);
+
+        let expected_samples = [
+            (0usize, 1.0, 1.0),
+            (10, 1.269_954_482_712_928, 1.920_065_196_345_844),
+            (20, 0.641_603_345_345_556, 2.644_337_407_902_28),
+            (30, -0.307_350_274_196_291, 2.506_924_103_516_754),
+            (93, -3.0, -3.0),
+        ];
+
+        assert_eq!(sampled.len(), 94);
+        for (index, x, y) in expected_samples {
+            assert_point_close(&sampled.points[index], (x, y), 1e-12);
+        }
+
+        let sum_x: f64 = sampled.points.iter().map(|point| point.x).sum();
+        let sum_y: f64 = sampled.points.iter().map(|point| point.y).sum();
+        let weighted_sum_x: f64 = sampled
+            .points
+            .iter()
+            .enumerate()
+            .map(|(index, point)| (index + 1) as f64 * point.x)
+            .sum();
+        let weighted_sum_y: f64 = sampled
+            .points
+            .iter()
+            .enumerate()
+            .map(|(index, point)| (index + 1) as f64 * point.y)
+            .sum();
+
+        assert!(approx_eq(sum_x, -105.952_049_447_379_94, 1e-9));
+        assert!(approx_eq(sum_y, 52.686_985_733_395_81, 1e-9));
+        assert!(approx_eq(weighted_sum_x, -8_974.696_943_796_953, 1e-6));
+        assert!(approx_eq(weighted_sum_y, -1_434.362_763_693_722_6, 1e-6));
     }
 }

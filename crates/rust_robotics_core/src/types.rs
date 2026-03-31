@@ -222,14 +222,25 @@ impl Path2D {
         Self { points }
     }
 
-    pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
-        assert_eq!(x.len(), y.len());
+    pub fn try_from_xy(x: &[f64], y: &[f64]) -> RoboticsResult<Self> {
+        if x.len() != y.len() {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "path x/y coordinates must have matching lengths, got {} and {}",
+                x.len(),
+                y.len()
+            )));
+        }
+
         let points = x
             .iter()
             .zip(y.iter())
             .map(|(&x, &y)| Point2D::new(x, y))
             .collect();
-        Self { points }
+        Ok(Self { points })
+    }
+
+    pub fn from_xy(x: &[f64], y: &[f64]) -> Self {
+        Self::try_from_xy(x, y).expect("path x/y coordinates must have matching lengths")
     }
 
     pub fn push(&mut self, point: Point2D) {
@@ -258,6 +269,47 @@ impl Path2D {
         }
         self.points.windows(2).map(|w| w[0].distance(&w[1])).sum()
     }
+
+    pub fn yaw_profile(&self) -> Vec<f64> {
+        if self.points.is_empty() {
+            return Vec::new();
+        }
+
+        let mut yaw = Vec::with_capacity(self.points.len());
+        for segment in self.points.windows(2) {
+            let dx = segment[1].x - segment[0].x;
+            let dy = segment[1].y - segment[0].y;
+            yaw.push(dy.atan2(dx));
+        }
+
+        match yaw.last().copied() {
+            Some(last_yaw) => yaw.push(last_yaw),
+            None => yaw.push(0.0),
+        }
+
+        yaw
+    }
+
+    pub fn nearest_point_index(&self, query: Point2D) -> Option<usize> {
+        self.nearest_point_index_from(query, 0)
+    }
+
+    pub fn nearest_point_index_from(&self, query: Point2D, start_index: usize) -> Option<usize> {
+        self.points
+            .iter()
+            .enumerate()
+            .skip(start_index.min(self.points.len()))
+            .min_by(|(_, left), (_, right)| {
+                squared_distance(&query, left).total_cmp(&squared_distance(&query, right))
+            })
+            .map(|(index, _)| index)
+    }
+}
+
+fn squared_distance(a: &Point2D, b: &Point2D) -> f64 {
+    let dx = a.x - b.x;
+    let dy = a.y - b.y;
+    dx * dx + dy * dy
 }
 
 impl Default for Path2D {
@@ -410,5 +462,31 @@ mod tests {
     fn test_path2d_total_length() {
         let path = Path2D::from_xy(&[0.0, 1.0, 1.0], &[0.0, 0.0, 1.0]);
         assert!((path.total_length() - 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_path2d_try_from_xy_rejects_mismatched_lengths() {
+        let err = Path2D::try_from_xy(&[0.0, 1.0], &[0.0]).unwrap_err();
+        assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_path2d_yaw_profile_repeats_final_heading() {
+        let path = Path2D::from_xy(&[0.0, 1.0, 1.0], &[0.0, 0.0, 1.0]);
+        let yaw = path.yaw_profile();
+
+        assert_eq!(yaw.len(), path.len());
+        assert!(yaw[0].abs() < 1e-10);
+        assert!((yaw[1] - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+        assert!((yaw[2] - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_path2d_nearest_point_index_from_honors_start_index() {
+        let path = Path2D::from_xy(&[0.0, 1.0, 2.0, 3.0], &[0.0, 0.0, 0.0, 0.0]);
+        let query = Point2D::new(0.2, 0.0);
+
+        assert_eq!(path.nearest_point_index(query), Some(0));
+        assert_eq!(path.nearest_point_index_from(query, 2), Some(2));
     }
 }

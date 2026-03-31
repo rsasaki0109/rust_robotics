@@ -126,6 +126,10 @@ impl PurePursuitController {
 
     /// Compute steering angle for current state
     pub fn compute_steering(&mut self, state: &VehicleState) -> f64 {
+        if self.path.is_empty() {
+            return 0.0;
+        }
+
         let (target_idx, lf) = self.search_target_index(state);
 
         let (tx, ty) = if target_idx < self.path.len() {
@@ -142,37 +146,13 @@ impl PurePursuitController {
 
     /// Search for target point index on path
     fn search_target_index(&mut self, state: &VehicleState) -> (usize, f64) {
+        let query = Point2D::new(state.rear_x, state.rear_y);
         let mut ind = match self.old_nearest_index {
-            None => {
-                // Find nearest point
-                let mut min_dist = f64::MAX;
-                let mut min_idx = 0;
-                for (i, p) in self.path.points.iter().enumerate() {
-                    let d = state.calc_distance(p.x, p.y);
-                    if d < min_dist {
-                        min_dist = d;
-                        min_idx = i;
-                    }
-                }
-                min_idx
-            }
-            Some(prev_idx) => {
-                // Search from previous index
-                let mut idx = prev_idx;
-                let mut dist =
-                    state.calc_distance(self.path.points[idx].x, self.path.points[idx].y);
-
-                while idx + 1 < self.path.len() {
-                    let next_dist = state
-                        .calc_distance(self.path.points[idx + 1].x, self.path.points[idx + 1].y);
-                    if dist < next_dist {
-                        break;
-                    }
-                    idx += 1;
-                    dist = next_dist;
-                }
-                idx
-            }
+            None => self.path.nearest_point_index(query).unwrap_or(0),
+            Some(prev_idx) => self
+                .path
+                .nearest_point_index_from(query, prev_idx)
+                .unwrap_or(prev_idx),
         };
 
         self.old_nearest_index = Some(ind);

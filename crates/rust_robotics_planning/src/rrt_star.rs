@@ -13,6 +13,8 @@ use rust_robotics_core::{Path2D, Point2D, RoboticsError, RoboticsResult};
 pub struct Node {
     pub x: f64,
     pub y: f64,
+    pub path_x: Vec<f64>,
+    pub path_y: Vec<f64>,
     pub cost: f64,
     pub parent: Option<usize>,
 }
@@ -22,6 +24,8 @@ impl Node {
         Node {
             x,
             y,
+            path_x: Vec::new(),
+            path_y: Vec::new(),
             cost: 0.0,
             parent: None,
         }
@@ -76,10 +80,21 @@ impl RRTStar {
     }
 
     pub fn planning(&mut self) -> Option<Vec<[f64; 2]>> {
+        self.planning_with_sampler(|planner| planner.get_random_node())
+    }
+
+    fn reset_search(&mut self) {
         self.node_list = vec![self.start.clone()];
+    }
+
+    fn planning_with_sampler<F>(&mut self, mut sample_node: F) -> Option<Vec<[f64; 2]>>
+    where
+        F: FnMut(&RRTStar) -> Node,
+    {
+        self.reset_search();
 
         for _i in 0..self.max_iter {
-            let rnd_node = self.get_random_node();
+            let rnd_node = sample_node(self);
             let nearest_ind = self.get_nearest_node_index(&rnd_node);
             let mut new_node = self.steer(nearest_ind, &rnd_node);
 
@@ -98,12 +113,12 @@ impl RRTStar {
                     } else {
                         self.node_list.push(node.clone());
                     }
+                }
+            }
 
-                    if !self.search_until_max_iter {
-                        if let Some(last_index) = self.search_best_goal_node() {
-                            return Some(self.generate_final_course(last_index));
-                        }
-                    }
+            if !self.search_until_max_iter && new_node.is_some() {
+                if let Some(last_index) = self.search_best_goal_node() {
+                    return Some(self.generate_final_course(last_index));
                 }
             }
         }
@@ -118,10 +133,10 @@ impl RRTStar {
     fn get_random_node(&self) -> Node {
         let mut rng = rand::thread_rng();
 
-        if rng.gen_range(0..100) > self.goal_sample_rate {
+        if rng.gen_range(0..=100) > self.goal_sample_rate {
             Node::new(
-                rng.gen_range(self.min_rand..self.max_rand),
-                rng.gen_range(self.min_rand..self.max_rand),
+                rng.gen_range(self.min_rand..=self.max_rand),
+                rng.gen_range(self.min_rand..=self.max_rand),
             )
         } else {
             Node::new(self.end.x, self.end.y)
@@ -145,58 +160,58 @@ impl RRTStar {
 
     fn steer(&self, from_ind: usize, to_node: &Node) -> Option<Node> {
         let from_node = &self.node_list[from_ind];
-        let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
+        Some(self.steer_from_node(from_node, to_node, self.expand_dis, Some(from_ind)))
+    }
 
-        let extend_length = if dist > self.expand_dis {
-            self.expand_dis
-        } else {
-            dist
-        };
+    fn steer_from_node(
+        &self,
+        from_node: &Node,
+        to_node: &Node,
+        extend_length: f64,
+        parent: Option<usize>,
+    ) -> Node {
+        let mut new_node = Node::new(from_node.x, from_node.y);
+        let (dist, theta) = self.calc_distance_and_angle(&new_node, to_node);
+        let extend_length = extend_length.min(dist);
 
-        let mut new_node = Node::new(
-            from_node.x + extend_length * theta.cos(),
-            from_node.y + extend_length * theta.sin(),
-        );
-        new_node.parent = Some(from_ind);
+        new_node.path_x = vec![new_node.x];
+        new_node.path_y = vec![new_node.y];
 
-        Some(new_node)
+        let n_expand = (extend_length / self.path_resolution).floor() as i32;
+        for _ in 0..n_expand {
+            new_node.x += self.path_resolution * theta.cos();
+            new_node.y += self.path_resolution * theta.sin();
+            new_node.path_x.push(new_node.x);
+            new_node.path_y.push(new_node.y);
+        }
+
+        let (remaining_dist, _) = self.calc_distance_and_angle(&new_node, to_node);
+        if remaining_dist <= self.path_resolution {
+            new_node.path_x.push(to_node.x);
+            new_node.path_y.push(to_node.y);
+            new_node.x = to_node.x;
+            new_node.y = to_node.y;
+        }
+
+        new_node.parent = parent;
+        new_node
     }
 
     fn check_collision_free(&self, node: &Node) -> bool {
-        if let Some(parent_ind) = node.parent {
-            let parent = &self.node_list[parent_ind];
+        if node.path_x.is_empty() || node.path_y.is_empty() {
+            return true;
+        }
 
-            for &(ox, oy, size) in &self.obstacle_list {
-                let dx_list = self.get_path_x(parent, node);
-                let dy_list = self.get_path_y(parent, node);
-
-                for (&dx, &dy) in dx_list.iter().zip(dy_list.iter()) {
-                    let d = (dx - ox).powi(2) + (dy - oy).powi(2);
-                    if d <= (size + self.robot_radius).powi(2) {
-                        return false;
-                    }
+        for &(ox, oy, size) in &self.obstacle_list {
+            for (&px, &py) in node.path_x.iter().zip(node.path_y.iter()) {
+                let d = (px - ox).powi(2) + (py - oy).powi(2);
+                if d <= (size + self.robot_radius).powi(2) {
+                    return false;
                 }
             }
         }
+
         true
-    }
-
-    fn get_path_x(&self, from_node: &Node, to_node: &Node) -> Vec<f64> {
-        let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
-        let n_expand = (dist / self.path_resolution).floor() as i32;
-
-        (0..=n_expand)
-            .map(|i| from_node.x + self.path_resolution * i as f64 * theta.cos())
-            .collect()
-    }
-
-    fn get_path_y(&self, from_node: &Node, to_node: &Node) -> Vec<f64> {
-        let (dist, theta) = self.calc_distance_and_angle(from_node, to_node);
-        let n_expand = (dist / self.path_resolution).floor() as i32;
-
-        (0..=n_expand)
-            .map(|i| from_node.y + self.path_resolution * i as f64 * theta.sin())
-            .collect()
     }
 
     fn find_near_nodes(&self, new_node: &Node) -> Vec<usize> {
@@ -226,8 +241,7 @@ impl RRTStar {
         let mut costs = Vec::new();
         for &i in near_inds {
             let near_node = &self.node_list[i];
-            let mut t_node = Node::new(new_node.x, new_node.y);
-            t_node.parent = Some(i);
+            let t_node = self.steer_from_node(near_node, &new_node, f64::INFINITY, Some(i));
 
             if self.check_collision_free(&t_node) {
                 costs.push(self.calc_new_cost(near_node, &new_node));
@@ -245,8 +259,12 @@ impl RRTStar {
         let min_ind = costs.iter().position(|&x| x == min_cost)?;
         let parent_ind = near_inds[min_ind];
 
-        let mut result_node = Node::new(new_node.x, new_node.y);
-        result_node.parent = Some(parent_ind);
+        let mut result_node = self.steer_from_node(
+            &self.node_list[parent_ind],
+            &new_node,
+            f64::INFINITY,
+            Some(parent_ind),
+        );
         result_node.cost = min_cost;
 
         Some(result_node)
@@ -274,8 +292,12 @@ impl RRTStar {
         let safe_goal_inds: Vec<usize> = goal_inds
             .into_iter()
             .filter(|&goal_ind| {
-                let mut t_node = Node::new(self.end.x, self.end.y);
-                t_node.parent = Some(goal_ind);
+                let t_node = self.steer_from_node(
+                    &self.node_list[goal_ind],
+                    &self.end,
+                    f64::INFINITY,
+                    Some(goal_ind),
+                );
                 self.check_collision_free(&t_node)
             })
             .collect();
@@ -306,21 +328,14 @@ impl RRTStar {
             let near_node = self.node_list[i].clone();
             let new_node = &self.node_list[new_node_ind];
 
-            let mut edge_node = Node::new(near_node.x, near_node.y);
-            edge_node.parent = Some(new_node_ind);
+            let mut edge_node =
+                self.steer_from_node(new_node, &near_node, f64::INFINITY, Some(new_node_ind));
             edge_node.cost = self.calc_new_cost(new_node, &near_node);
 
             let no_collision = self.check_collision_free(&edge_node);
             let improved_cost = near_node.cost > edge_node.cost;
 
             if no_collision && improved_cost {
-                for node in &mut self.node_list {
-                    if let Some(parent_ind) = node.parent {
-                        if parent_ind == i {
-                            node.parent = Some(new_node_ind);
-                        }
-                    }
-                }
                 self.node_list[i] = edge_node;
                 self.propagate_cost_to_leaves(i);
             }
@@ -355,7 +370,6 @@ impl RRTStar {
         }
         path.push([node.x, node.y]);
 
-        path.reverse();
         path
     }
 
@@ -393,6 +407,7 @@ impl RRTStar {
                 Path2D::from_points(
                     raw_path
                         .into_iter()
+                        .rev()
                         .map(|p| Point2D::new(p[0], p[1]))
                         .collect(),
                 )
@@ -419,6 +434,51 @@ impl RRTStar {
 mod tests {
     use super::*;
 
+    fn assert_close(actual: f64, expected: f64) {
+        assert!(
+            (actual - expected).abs() < 1.0e-12,
+            "expected {expected}, got {actual}"
+        );
+    }
+
+    fn parse_xy_fixture(csv: &str) -> Vec<[f64; 2]> {
+        csv.lines()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                let (x, y) = line
+                    .split_once(',')
+                    .expect("xy fixture rows must contain a comma");
+                [x.parse().unwrap(), y.parse().unwrap()]
+            })
+            .collect()
+    }
+
+    fn create_pythonrobotics_main_planner() -> RRTStar {
+        RRTStar::new(
+            (0.0, 0.0),
+            (6.0, 10.0),
+            vec![
+                (5.0, 5.0, 1.0),
+                (3.0, 6.0, 2.0),
+                (3.0, 8.0, 2.0),
+                (3.0, 10.0, 2.0),
+                (7.0, 5.0, 2.0),
+                (9.0, 5.0, 2.0),
+                (8.0, 10.0, 1.0),
+                (6.0, 12.0, 1.0),
+            ],
+            (-2.0, 15.0),
+            1.0,
+            1.0,
+            20,
+            300,
+            50.0,
+            false,
+            0.8,
+        )
+    }
+
     #[test]
     fn test_rrt_star_config() {
         let rrt = RRTStar::new(
@@ -436,5 +496,183 @@ mod tests {
         );
         assert_eq!(rrt.expand_dis, 2.0);
         assert_eq!(rrt.max_iter, 500);
+    }
+
+    #[test]
+    fn test_rrt_star_upstream_no_obstacle_seeded_reference() {
+        for robot_radius in [0.0, 0.8] {
+            let mut rrt = RRTStar::new(
+                (0.0, 0.0),
+                (6.0, 10.0),
+                vec![],
+                (-2.0, 15.0),
+                30.0,
+                1.0,
+                20,
+                300,
+                50.0,
+                false,
+                robot_radius,
+            );
+            let sample = [10.455_649_682_677_358, 11.942_970_283_541_907];
+            let path = rrt
+                .planning_with_sampler(|_| Node::new(sample[0], sample[1]))
+                .unwrap();
+            assert_eq!(rrt.node_list.len(), 2);
+            assert_eq!(path, vec![[6.0, 10.0], [0.0, 0.0]]);
+            assert_close(rrt.node_list[1].x, sample[0]);
+            assert_close(rrt.node_list[1].y, sample[1]);
+            assert_close(rrt.node_list[1].cost, 15.873_095_144_943_73);
+            assert_eq!(rrt.node_list[1].parent, Some(0));
+        }
+    }
+
+    #[test]
+    fn test_rrt_star_upstream_seeded_main_prefix_matches_pythonrobotics_reference() {
+        let mut rrt = create_pythonrobotics_main_planner();
+        rrt.max_iter = 20;
+        let samples = parse_xy_fixture(include_str!("testdata/rrt_star_main_seed10_samples.csv"));
+        let mut sample_index = 0_usize;
+        let prefix_len = 20_usize;
+
+        let path = rrt.planning_with_sampler(|_| {
+            let sample = samples
+                .get(sample_index)
+                .filter(|_| sample_index < prefix_len)
+                .expect("python reference sample sequence exhausted");
+            sample_index += 1;
+            Node::new(sample[0], sample[1])
+        });
+
+        assert!(path.is_none());
+        assert_eq!(sample_index, prefix_len);
+        assert_eq!(rrt.node_list.len(), 14);
+
+        let expected_nodes = [
+            (
+                1,
+                [-0.227_015_105_864_128, 0.973_891_237_104_79],
+                1.0,
+                Some(0),
+            ),
+            (
+                2,
+                [0.340_848_395_898_016, 1.797_013_976_048_647],
+                2.0,
+                Some(1),
+            ),
+            (
+                5,
+                [2.912_922_340_312_151, 1.655_751_229_702_901],
+                5.0,
+                Some(4),
+            ),
+            (
+                10,
+                [5.856_411_905_724_674, 1.320_164_679_038_256],
+                8.0,
+                Some(9),
+            ),
+            (
+                13,
+                [8.543_112_538_843_18, 0.823_740_039_534_573],
+                11.0,
+                Some(12),
+            ),
+        ];
+        for (index, xy, cost, parent) in expected_nodes {
+            let node = &rrt.node_list[index];
+            assert_close(node.x, xy[0]);
+            assert_close(node.y, xy[1]);
+            assert_close(node.cost, cost);
+            assert_eq!(node.parent, parent);
+        }
+    }
+
+    #[test]
+    fn test_rrt_star_upstream_seeded_main_matches_pythonrobotics_reference() {
+        let mut rrt = create_pythonrobotics_main_planner();
+        let samples = parse_xy_fixture(include_str!("testdata/rrt_star_main_seed10_samples.csv"));
+        let expected_path =
+            parse_xy_fixture(include_str!("testdata/rrt_star_main_seed10_path.csv"));
+        let mut sample_index = 0_usize;
+
+        let path = rrt
+            .planning_with_sampler(|_| {
+                let sample = samples
+                    .get(sample_index)
+                    .expect("python reference sample sequence exhausted");
+                sample_index += 1;
+                Node::new(sample[0], sample[1])
+            })
+            .expect("python reference run should find a path");
+
+        assert_eq!(sample_index, samples.len());
+        assert_eq!(rrt.node_list.len(), 100);
+        assert_eq!(path.len(), expected_path.len());
+        for (actual, expected) in path.iter().zip(expected_path.iter()) {
+            assert_close(actual[0], expected[0]);
+            assert_close(actual[1], expected[1]);
+        }
+
+        let expected_nodes = [
+            (
+                1,
+                [-0.227_015_105_864_128, 0.973_891_237_104_79],
+                1.0,
+                Some(0),
+            ),
+            (
+                2,
+                [0.340_848_395_898_016, 1.797_013_976_048_647],
+                2.0,
+                Some(1),
+            ),
+            (
+                5,
+                [2.912_922_340_312_151, 1.655_751_229_702_901],
+                5.0,
+                Some(4),
+            ),
+            (
+                10,
+                [5.856_411_905_724_674, 1.320_164_679_038_256],
+                8.0,
+                Some(9),
+            ),
+            (
+                20,
+                [12.105_226_205_468_63, 1.607_428_066_363_632],
+                14.812_039_643_502_144,
+                Some(19),
+            ),
+            (
+                40,
+                [13.266_098_354_827_152, 11.032_918_978_213_733],
+                25.673_392_954_630_07,
+                Some(39),
+            ),
+            (
+                60,
+                [8.777_150_456_317_27, 12.593_447_860_337_104],
+                31.673_392_954_630_07,
+                Some(53),
+            ),
+            (
+                80,
+                [10.550_895_454_349_991, 1.108_429_868_595_935],
+                13.203_336_815_700_968,
+                Some(17),
+            ),
+            (99, [6.0, 10.0], 28.741_122_081_549_424, Some(97)),
+        ];
+
+        for (index, xy, cost, parent) in expected_nodes {
+            let node = &rrt.node_list[index];
+            assert_close(node.x, xy[0]);
+            assert_close(node.y, xy[1]);
+            assert_close(node.cost, cost);
+            assert_eq!(node.parent, parent);
+        }
     }
 }
