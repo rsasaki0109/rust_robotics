@@ -278,7 +278,7 @@ mod tests {
         let (ox, oy) = create_dummy_observation_data();
         let ndt_map = NDTMap::new(&ox, &oy, 10.0);
         assert!(!ndt_map.grid_index_map.is_empty());
-        assert!(ndt_map.grid_map.data.len() > 0);
+        assert!(!ndt_map.grid_map.data.is_empty());
     }
 
     #[test]

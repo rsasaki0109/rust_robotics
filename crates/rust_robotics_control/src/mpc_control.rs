@@ -8,7 +8,7 @@
 
 #[cfg(feature = "viz")]
 use gnuplot::{AxesCommon, Caption, Color, Figure, PointSymbol};
-use nalgebra::{Matrix1, Matrix4, Vector4};
+use nalgebra::{Matrix1, Matrix1x4, Matrix4, Vector4};
 #[cfg(feature = "viz")]
 use std::f64::consts::PI;
 
@@ -21,6 +21,7 @@ const G: f64 = 9.8; // [m/s^2] gravity
 const T: usize = 30; // Horizon length
 const DELTA_T: f64 = 0.1; // time tick [s]
 const SIM_TIME: f64 = 5.0; // simulation time [s]
+const OPTIMIZATION_ITERS: usize = 50;
 
 pub struct InvertedPendulumMPC {
     pub q: Matrix4<f64>,                            // state cost matrix
@@ -46,18 +47,29 @@ impl InvertedPendulumMPC {
     }
 
     pub fn simulate(&mut self, x0: Vector4<f64>) -> bool {
+        self.simulate_with_runtime(x0, SIM_TIME, OPTIMIZATION_ITERS)
+    }
+
+    fn simulate_with_runtime(
+        &mut self,
+        x0: Vector4<f64>,
+        sim_time: f64,
+        optimization_iters: usize,
+    ) -> bool {
         let mut x = x0;
         let mut time = 0.0;
+        let sim_time = sim_time.max(DELTA_T);
+        let optimization_iters = optimization_iters.max(1);
 
         self.trajectory.clear();
         self.prediction_history.clear();
         self.trajectory.push((time, x));
 
-        while time < SIM_TIME {
+        while time < sim_time {
             time += DELTA_T;
 
             // Calculate MPC control input and predicted trajectory
-            let (predicted_states, u) = self.mpc_control(&x);
+            let (predicted_states, u) = self.mpc_control_with_iterations(&x, optimization_iters);
 
             // Store prediction for animation
             self.prediction_history.push(predicted_states);
@@ -84,45 +96,49 @@ impl InvertedPendulumMPC {
     }
 
     fn mpc_control(&self, x0: &Vector4<f64>) -> (Vec<Vector4<f64>>, Matrix1<f64>) {
-        // Simplified MPC using iterative LQR approach (since we don't have cvxpy)
+        self.mpc_control_with_iterations(x0, OPTIMIZATION_ITERS)
+    }
+
+    fn mpc_control_with_iterations(
+        &self,
+        x0: &Vector4<f64>,
+        _optimization_iters: usize,
+    ) -> (Vec<Vector4<f64>>, Matrix1<f64>) {
         let (a, b) = self.get_model_matrix();
+        let gains = self.finite_horizon_gains(&a, &b);
 
-        // Initialize control sequence
-        let mut u_seq = vec![0.0; T];
-        let mut best_cost = f64::INFINITY;
-        let mut best_u_seq = u_seq.clone();
+        let mut x = *x0;
+        let mut predicted_states = Vec::with_capacity(T + 1);
+        predicted_states.push(x);
 
-        // Simple gradient descent optimization
-        for _iter in 0..50 {
-            let (_states, cost) = self.simulate_prediction(x0, &u_seq, &a, &b);
-
-            if cost < best_cost {
-                best_cost = cost;
-                best_u_seq = u_seq.clone();
+        let mut first_u = 0.0;
+        for (step, gain) in gains.iter().enumerate() {
+            let u = -(gain * x)[0];
+            if step == 0 {
+                first_u = u;
             }
-
-            // Update control sequence using simple gradient
-            for t in 0..T {
-                let mut u_plus = u_seq.clone();
-                let mut u_minus = u_seq.clone();
-                let delta = 0.01;
-
-                u_plus[t] += delta;
-                u_minus[t] -= delta;
-
-                let (_, cost_plus) = self.simulate_prediction(x0, &u_plus, &a, &b);
-                let (_, cost_minus) = self.simulate_prediction(x0, &u_minus, &a, &b);
-
-                let gradient = (cost_plus - cost_minus) / (2.0 * delta);
-                u_seq[t] -= 0.1 * gradient; // Learning rate
-
-                // Clamp control input
-                u_seq[t] = u_seq[t].clamp(-10.0, 10.0);
-            }
+            x = a * x + b * u;
+            predicted_states.push(x);
         }
 
-        let (predicted_states, _) = self.simulate_prediction(x0, &best_u_seq, &a, &b);
-        (predicted_states, Matrix1::from_element(best_u_seq[0]))
+        (predicted_states, Matrix1::from_element(first_u))
+    }
+
+    fn finite_horizon_gains(&self, a: &Matrix4<f64>, b: &Vector4<f64>) -> Vec<Matrix1x4<f64>> {
+        let mut gains = vec![Matrix1x4::<f64>::zeros(); T];
+        let mut p = Matrix4::<f64>::zeros();
+
+        for step in (0..T).rev() {
+            // PythonRobotics penalizes x[t + 1], so use Q + P_{t+1} here.
+            let state_cost = self.q + p;
+            let s = self.r[0] + (b.transpose() * state_cost * b)[0];
+            let gain = (b.transpose() * state_cost * a) / s;
+
+            gains[step] = gain;
+            p = a.transpose() * state_cost * a - (a.transpose() * state_cost * b) * gain;
+        }
+
+        gains
     }
 
     fn simulate_prediction(
@@ -335,11 +351,67 @@ impl Default for InvertedPendulumMPC {
 mod tests {
     use super::*;
 
+    fn assert_vector4_close(actual: &Vector4<f64>, expected: [f64; 4], tol: f64) {
+        for (i, expected_value) in expected.iter().enumerate() {
+            assert!(
+                (actual[i] - expected_value).abs() <= tol,
+                "index {}: actual={} expected={} tol={}",
+                i,
+                actual[i],
+                expected_value,
+                tol
+            );
+        }
+    }
+
+    #[test]
+    fn test_mpc_first_control_matches_reference() {
+        let controller = InvertedPendulumMPC::new();
+        let x0 = Vector4::new(0.0, 0.0, 0.3, 0.0);
+        let (_predicted_states, u) = controller.mpc_control(&x0);
+        let expected_first_u = -21.202_780_205_052_658;
+
+        assert!((u[0] - expected_first_u).abs() <= 1e-9);
+    }
+
     #[test]
     fn test_mpc_simulation_completes() {
         let mut controller = InvertedPendulumMPC::new();
         let x0 = Vector4::new(0.0, 0.0, 0.3, 0.0);
+        assert!(controller.simulate_with_runtime(x0, 0.6, 4));
+        assert!(!controller.trajectory.is_empty());
+
+        let final_state = controller.trajectory.last().unwrap().1;
+        assert_vector4_close(
+            &final_state,
+            [
+                -1.037_901_493_867_440_5,
+                -1.383_752_006_586_625_8,
+                -0.041_149_711_402_044_535,
+                -0.213_983_985_795_986_85,
+            ],
+            1e-9,
+        );
+    }
+
+    #[test]
+    #[ignore = "long-running regression scenario"]
+    fn test_mpc_simulation_completes_full_runtime() {
+        let mut controller = InvertedPendulumMPC::new();
+        let x0 = Vector4::new(0.0, 0.0, 0.3, 0.0);
         assert!(controller.simulate(x0));
         assert!(!controller.trajectory.is_empty());
+
+        let final_state = controller.trajectory.last().unwrap().1;
+        assert_vector4_close(
+            &final_state,
+            [
+                -1.830_471_874_707_321_4,
+                -0.000_333_385_633_250_359_55,
+                -0.000_136_734_168_845_974_78,
+                0.000_230_095_328_469_559_24,
+            ],
+            1e-4,
+        );
     }
 }
