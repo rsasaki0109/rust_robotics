@@ -28,6 +28,7 @@ rust_robotics_viz = { workspace = true, optional = true }
 
 [dev-dependencies]
 gnuplot = { workspace = true }
+nalgebra = { workspace = true }
 
 # === Headless examples (require domain features but not viz) ===
 
@@ -72,3 +73,8 @@ required-features = ["planning", "viz"]
 name = "rear_wheel_feedback"
 path = "examples/rear_wheel_feedback.rs"
 required-features = ["control", "viz"]
+
+[[example]]
+name = "speed_comparison"
+path = "examples/speed_comparison.rs"
+required-features = ["planning", "localization"]
