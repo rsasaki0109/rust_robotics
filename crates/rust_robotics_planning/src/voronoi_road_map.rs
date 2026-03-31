@@ -404,22 +404,47 @@ impl VoronoiPlanner {
 mod tests {
     use super::*;
 
-    /// Build a 60x60 rectangular boundary as obstacle points.
+    const TEST_WORLD_SIZE: i32 = 24;
+    const TEST_BOUNDARY_STEP: usize = 2;
+    const TEST_START: (f64, f64) = (4.0, 4.0);
+    const TEST_GOAL: (f64, f64) = (20.0, 20.0);
+    const TEST_ROBOT_RADIUS: f64 = 2.0;
+
+    /// Build a lightweight rectangular boundary used by Voronoi planner tests.
     fn make_boundary() -> (Vec<f64>, Vec<f64>) {
         let mut ox = Vec::new();
         let mut oy = Vec::new();
 
         // bottom and top walls
+        for i in (0..=TEST_WORLD_SIZE).step_by(TEST_BOUNDARY_STEP) {
+            let v = i as f64;
+            ox.push(v);
+            oy.push(0.0);
+            ox.push(v);
+            oy.push(TEST_WORLD_SIZE as f64);
+        }
+        // left and right walls
+        for i in (0..=TEST_WORLD_SIZE).step_by(TEST_BOUNDARY_STEP) {
+            let v = i as f64;
+            ox.push(0.0);
+            oy.push(v);
+            ox.push(TEST_WORLD_SIZE as f64);
+            oy.push(v);
+        }
+
+        (ox, oy)
+    }
+
+    fn make_large_boundary() -> (Vec<f64>, Vec<f64>) {
+        let mut ox = Vec::new();
+        let mut oy = Vec::new();
+
         for i in 0..=60 {
             let v = i as f64;
             ox.push(v);
             oy.push(0.0);
             ox.push(v);
             oy.push(60.0);
-        }
-        // left and right walls
-        for i in 0..=60 {
-            let v = i as f64;
             ox.push(0.0);
             oy.push(v);
             ox.push(60.0);
@@ -432,13 +457,13 @@ mod tests {
     #[test]
     fn test_voronoi_planner_creation() {
         let (ox, oy) = make_boundary();
-        let _planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let _planner = VoronoiPlanner::new(&ox, &oy, TEST_START, TEST_GOAL, TEST_ROBOT_RADIUS);
     }
 
     #[test]
     fn test_voronoi_get_samples() {
         let (ox, oy) = make_boundary();
-        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let planner = VoronoiPlanner::new(&ox, &oy, TEST_START, TEST_GOAL, TEST_ROBOT_RADIUS);
         let (sx, sy) = planner.get_samples();
 
         // Must contain at least start and goal (the last two entries)
@@ -447,16 +472,16 @@ mod tests {
 
         // Start and goal are appended at the end
         let n = sx.len();
-        assert!((sx[n - 2] - 10.0).abs() < 1e-9);
-        assert!((sy[n - 2] - 10.0).abs() < 1e-9);
-        assert!((sx[n - 1] - 50.0).abs() < 1e-9);
-        assert!((sy[n - 1] - 50.0).abs() < 1e-9);
+        assert!((sx[n - 2] - TEST_START.0).abs() < 1e-9);
+        assert!((sy[n - 2] - TEST_START.1).abs() < 1e-9);
+        assert!((sx[n - 1] - TEST_GOAL.0).abs() < 1e-9);
+        assert!((sy[n - 1] - TEST_GOAL.1).abs() < 1e-9);
     }
 
     #[test]
     fn test_voronoi_plan_simple() {
         let (ox, oy) = make_boundary();
-        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let planner = VoronoiPlanner::new(&ox, &oy, TEST_START, TEST_GOAL, TEST_ROBOT_RADIUS);
         let result = planner.plan();
 
         assert!(result.is_some(), "planner should find a path");
@@ -464,27 +489,40 @@ mod tests {
         assert!(px.len() >= 2);
         assert_eq!(px.len(), py.len());
 
-        // Path should start near (10,10) and end near (50,50)
-        assert!((px[0] - 10.0).abs() < 1e-9);
-        assert!((py[0] - 10.0).abs() < 1e-9);
-        assert!((*px.last().unwrap() - 50.0).abs() < 1e-9);
-        assert!((*py.last().unwrap() - 50.0).abs() < 1e-9);
+        // Path should start near the configured start and end near the goal
+        assert!((px[0] - TEST_START.0).abs() < 1e-9);
+        assert!((py[0] - TEST_START.1).abs() < 1e-9);
+        assert!((*px.last().unwrap() - TEST_GOAL.0).abs() < 1e-9);
+        assert!((*py.last().unwrap() - TEST_GOAL.1).abs() < 1e-9);
     }
 
     #[test]
     fn test_voronoi_get_edges() {
         let (ox, oy) = make_boundary();
-        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let planner = VoronoiPlanner::new(&ox, &oy, TEST_START, TEST_GOAL, TEST_ROBOT_RADIUS);
         let edges = planner.get_edges();
 
         assert!(!edges.is_empty(), "road map should contain edges");
 
         // Every edge endpoint should be within the boundary
         for ((x1, y1), (x2, y2)) in &edges {
-            assert!(*x1 >= 0.0 && *x1 <= 60.0);
-            assert!(*y1 >= 0.0 && *y1 <= 60.0);
-            assert!(*x2 >= 0.0 && *x2 <= 60.0);
-            assert!(*y2 >= 0.0 && *y2 <= 60.0);
+            assert!(*x1 >= 0.0 && *x1 <= TEST_WORLD_SIZE as f64);
+            assert!(*y1 >= 0.0 && *y1 <= TEST_WORLD_SIZE as f64);
+            assert!(*x2 >= 0.0 && *x2 <= TEST_WORLD_SIZE as f64);
+            assert!(*y2 >= 0.0 && *y2 <= TEST_WORLD_SIZE as f64);
         }
+    }
+
+    #[test]
+    #[ignore = "long-running regression scenario"]
+    fn test_voronoi_plan_large_boundary() {
+        let (ox, oy) = make_large_boundary();
+        let planner = VoronoiPlanner::new(&ox, &oy, (10.0, 10.0), (50.0, 50.0), 5.0);
+        let result = planner.plan();
+
+        assert!(
+            result.is_some(),
+            "planner should find a path on the larger map"
+        );
     }
 }

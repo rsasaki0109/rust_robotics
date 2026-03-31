@@ -22,7 +22,9 @@ pub mod trajectory_generator;
 
 // Re-exports
 pub use motion_model::{MotionModel, MotionModelConfig, VehicleState};
-pub use state_lattice_planner::{StateLattice, StateLatticeConfig, TargetPose, Trajectory};
+pub use state_lattice_planner::{
+    ObstacleAwarePlanResult, StateLattice, StateLatticeConfig, TargetPose, Trajectory,
+};
 pub use trajectory_generator::{
     LookupTable, LookupTableEntry, TargetState, TrajectoryGenerator, TrajectoryGeneratorConfig,
     TrajectoryParams,

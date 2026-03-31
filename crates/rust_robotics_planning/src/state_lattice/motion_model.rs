@@ -81,7 +81,7 @@ impl MotionModel {
         VehicleState {
             x: state.x + v * state.yaw.cos() * dt,
             y: state.y + v * state.yaw.sin() * dt,
-            yaw: state.yaw + v / l * delta.tan() * dt,
+            yaw: normalize_angle(state.yaw + v / l * delta.tan() * dt),
             v,
         }
     }
@@ -94,31 +94,35 @@ impl MotionModel {
         km: f64,
         kf: f64,
     ) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
-        let n = (s / self.config.ds) as usize;
-        if n == 0 {
+        if s <= 0.0 {
             return (vec![0.0], vec![0.0], vec![0.0]);
         }
 
-        let ds = self.config.ds;
         let v = self.config.default_velocity;
-        let dt = ds / v;
+        let dt = self.config.ds / v;
+        let time = s / v;
 
         let mut x_list = vec![0.0];
         let mut y_list = vec![0.0];
         let mut yaw_list = vec![0.0];
 
         let mut state = VehicleState::origin();
+        let mut step = 0usize;
 
-        for i in 0..n {
-            let t = i as f64 / n as f64;
-            let k = self.interpolate_curvature(t, k0, km, kf);
-            let delta = (self.config.wheelbase * k).atan();
+        loop {
+            let t = step as f64 * dt;
+            if t >= time {
+                break;
+            }
+            let tau = if time > 0.0 { t / time } else { 0.0 };
+            let delta = self.interpolate_curvature(tau, k0, km, kf);
 
             state = self.update(&state, v, delta, dt);
 
             x_list.push(state.x);
             y_list.push(state.y);
             yaw_list.push(state.yaw);
+            step += 1;
         }
 
         (x_list, y_list, yaw_list)
@@ -166,6 +170,286 @@ pub fn normalize_angle(angle: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    type TrajectorySample = (f64, f64, f64);
+    type TrajectoryParams = (f64, f64, f64);
+
+    #[derive(Debug, Clone, Copy)]
+    struct TrajectoryFingerprint {
+        len: usize,
+        sum_x: f64,
+        sum_y: f64,
+        sum_yaw: f64,
+        weighted_sum_x: f64,
+        weighted_sum_y: f64,
+        weighted_sum_yaw: f64,
+        sum_x_sq: f64,
+        sum_y_sq: f64,
+        sum_yaw_sq: f64,
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    struct TrajectoryFingerprintTolerance {
+        sum_x: f64,
+        sum_y: f64,
+        sum_yaw: f64,
+        weighted_sum_x: f64,
+        weighted_sum_y: f64,
+        weighted_sum_yaw: f64,
+        sum_x_sq: f64,
+        sum_y_sq: f64,
+        sum_yaw_sq: f64,
+    }
+
+    fn parse_reference_trajectory_samples(csv: &str) -> Vec<TrajectorySample> {
+        csv.lines()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                let values: Vec<f64> = line
+                    .split(',')
+                    .skip(1)
+                    .map(|value| value.parse::<f64>().unwrap())
+                    .collect();
+                assert_eq!(values.len(), 3);
+                (values[0], values[1], values[2])
+            })
+            .collect()
+    }
+
+    fn parse_grouped_reference_trajectory_samples(csv: &str) -> Vec<Vec<TrajectorySample>> {
+        let mut trajectories = Vec::new();
+        let mut current_row = None;
+        let mut current_samples = Vec::new();
+
+        for line in csv.lines().skip(1).filter(|line| !line.trim().is_empty()) {
+            let values: Vec<&str> = line.split(',').collect();
+            assert_eq!(values.len(), 5);
+
+            let row = values[0].parse::<usize>().unwrap();
+            let index = values[1].parse::<usize>().unwrap();
+            let sample = (
+                values[2].parse::<f64>().unwrap(),
+                values[3].parse::<f64>().unwrap(),
+                values[4].parse::<f64>().unwrap(),
+            );
+
+            match current_row {
+                Some(current_row_index) if current_row_index != row => {
+                    trajectories.push(std::mem::take(&mut current_samples));
+                    current_row = Some(row);
+                }
+                None => current_row = Some(row),
+                _ => {}
+            }
+
+            assert_eq!(index, current_samples.len());
+            current_samples.push(sample);
+        }
+
+        if !current_samples.is_empty() {
+            trajectories.push(current_samples);
+        }
+
+        trajectories
+    }
+
+    fn parse_terminal_trajectory_params(csv: &str) -> Vec<TrajectoryParams> {
+        csv.lines()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| {
+                let values: Vec<f64> = line
+                    .split(',')
+                    .map(|value| value.parse::<f64>().unwrap())
+                    .collect();
+                assert_eq!(values.len(), 6);
+                (values[3], values[4], values[5])
+            })
+            .collect()
+    }
+
+    fn parse_reference_trajectory_fingerprints(csv: &str) -> Vec<TrajectoryFingerprint> {
+        csv.lines()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .enumerate()
+            .map(|(index, line)| {
+                let values: Vec<&str> = line.split(',').collect();
+                assert_eq!(values.len(), 11);
+                assert_eq!(values[0].parse::<usize>().unwrap(), index);
+
+                TrajectoryFingerprint {
+                    len: values[1].parse::<usize>().unwrap(),
+                    sum_x: values[2].parse::<f64>().unwrap(),
+                    sum_y: values[3].parse::<f64>().unwrap(),
+                    sum_yaw: values[4].parse::<f64>().unwrap(),
+                    weighted_sum_x: values[5].parse::<f64>().unwrap(),
+                    weighted_sum_y: values[6].parse::<f64>().unwrap(),
+                    weighted_sum_yaw: values[7].parse::<f64>().unwrap(),
+                    sum_x_sq: values[8].parse::<f64>().unwrap(),
+                    sum_y_sq: values[9].parse::<f64>().unwrap(),
+                    sum_yaw_sq: values[10].parse::<f64>().unwrap(),
+                }
+            })
+            .collect()
+    }
+
+    fn trajectory_fingerprint(x: &[f64], y: &[f64], yaw: &[f64]) -> TrajectoryFingerprint {
+        assert_eq!(x.len(), y.len());
+        assert_eq!(x.len(), yaw.len());
+
+        let mut sum_x = 0.0;
+        let mut sum_y = 0.0;
+        let mut sum_yaw = 0.0;
+        let mut weighted_sum_x = 0.0;
+        let mut weighted_sum_y = 0.0;
+        let mut weighted_sum_yaw = 0.0;
+        let mut sum_x_sq = 0.0;
+        let mut sum_y_sq = 0.0;
+        let mut sum_yaw_sq = 0.0;
+
+        for (index, ((&x, &y), &yaw)) in x.iter().zip(y.iter()).zip(yaw.iter()).enumerate() {
+            let weight = (index + 1) as f64;
+            sum_x += x;
+            sum_y += y;
+            sum_yaw += yaw;
+            weighted_sum_x += weight * x;
+            weighted_sum_y += weight * y;
+            weighted_sum_yaw += weight * yaw;
+            sum_x_sq += x * x;
+            sum_y_sq += y * y;
+            sum_yaw_sq += yaw * yaw;
+        }
+
+        TrajectoryFingerprint {
+            len: x.len(),
+            sum_x,
+            sum_y,
+            sum_yaw,
+            weighted_sum_x,
+            weighted_sum_y,
+            weighted_sum_yaw,
+            sum_x_sq,
+            sum_y_sq,
+            sum_yaw_sq,
+        }
+    }
+
+    fn assert_trajectory_samples_match(
+        x: &[f64],
+        y: &[f64],
+        yaw: &[f64],
+        expected: &[TrajectorySample],
+        tolerance: TrajectorySample,
+    ) {
+        assert_eq!(x.len(), expected.len());
+        assert_eq!(y.len(), expected.len());
+        assert_eq!(yaw.len(), expected.len());
+
+        for (((&x, &y), &yaw), expected) in x
+            .iter()
+            .zip(y.iter())
+            .zip(yaw.iter())
+            .zip(expected.iter().copied())
+        {
+            let observed = (x, y, yaw);
+            assert!(
+                (x - expected.0).abs() < tolerance.0,
+                "x mismatch: observed={observed:?}, expected={expected:?}"
+            );
+            assert!(
+                (y - expected.1).abs() < tolerance.1,
+                "y mismatch: observed={observed:?}, expected={expected:?}"
+            );
+            assert!(
+                (yaw - expected.2).abs() < tolerance.2,
+                "yaw mismatch: observed={observed:?}, expected={expected:?}"
+            );
+        }
+    }
+
+    fn assert_trajectory_fingerprint_matches(
+        actual: &TrajectoryFingerprint,
+        expected: &TrajectoryFingerprint,
+        tolerance: TrajectoryFingerprintTolerance,
+    ) {
+        assert_eq!(actual.len, expected.len);
+        assert!(
+            (actual.sum_x - expected.sum_x).abs() < tolerance.sum_x,
+            "sum_x mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.sum_y - expected.sum_y).abs() < tolerance.sum_y,
+            "sum_y mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.sum_yaw - expected.sum_yaw).abs() < tolerance.sum_yaw,
+            "sum_yaw mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.weighted_sum_x - expected.weighted_sum_x).abs() < tolerance.weighted_sum_x,
+            "weighted_sum_x mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.weighted_sum_y - expected.weighted_sum_y).abs() < tolerance.weighted_sum_y,
+            "weighted_sum_y mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.weighted_sum_yaw - expected.weighted_sum_yaw).abs()
+                < tolerance.weighted_sum_yaw,
+            "weighted_sum_yaw mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.sum_x_sq - expected.sum_x_sq).abs() < tolerance.sum_x_sq,
+            "sum_x_sq mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.sum_y_sq - expected.sum_y_sq).abs() < tolerance.sum_y_sq,
+            "sum_y_sq mismatch: actual={actual:?}, expected={expected:?}"
+        );
+        assert!(
+            (actual.sum_yaw_sq - expected.sum_yaw_sq).abs() < tolerance.sum_yaw_sq,
+            "sum_yaw_sq mismatch: actual={actual:?}, expected={expected:?}"
+        );
+    }
+
+    fn assert_terminal_table_fingerprint_matches(
+        terminal_csv: &str,
+        fingerprint_csv: &str,
+        k0: f64,
+        tolerance: TrajectoryFingerprintTolerance,
+    ) {
+        let model = MotionModel::with_defaults();
+        let params = parse_terminal_trajectory_params(terminal_csv);
+        let expected = parse_reference_trajectory_fingerprints(fingerprint_csv);
+
+        assert_eq!(params.len(), expected.len());
+
+        for ((s, km, kf), expected) in params.iter().copied().zip(expected.iter()) {
+            let (x, y, yaw) = model.generate_trajectory(s, k0, km, kf);
+            let actual = trajectory_fingerprint(&x, &y, &yaw);
+            assert_trajectory_fingerprint_matches(&actual, expected, tolerance);
+        }
+    }
+
+    fn assert_terminal_table_exact_samples_match(
+        terminal_csv: &str,
+        sample_csv: &str,
+        k0: f64,
+        tolerance: TrajectorySample,
+    ) {
+        let model = MotionModel::with_defaults();
+        let params = parse_terminal_trajectory_params(terminal_csv);
+        let expected = parse_grouped_reference_trajectory_samples(sample_csv);
+
+        assert_eq!(params.len(), expected.len());
+
+        for ((s, km, kf), expected_samples) in params.iter().copied().zip(expected.iter()) {
+            let (x, y, yaw) = model.generate_trajectory(s, k0, km, kf);
+            assert_trajectory_samples_match(&x, &y, &yaw, expected_samples, tolerance);
+        }
+    }
 
     #[test]
     fn test_vehicle_state() {
@@ -231,5 +515,240 @@ mod tests {
         assert!((normalize_angle(-PI) - (-PI)).abs() < 1e-10);
         assert!((normalize_angle(3.0 * PI) - PI).abs() < 1e-10);
         assert!((normalize_angle(-3.0 * PI) - (-PI)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_generate_trajectory_matches_upstream_uniform1_row0_samples() {
+        let model = MotionModel::with_defaults();
+        let expected = parse_reference_trajectory_samples(include_str!(
+            "testdata/uniform1_row0_trajectory.csv"
+        ));
+        let (x, y, yaw) = model.generate_trajectory(
+            23.380_658_812_582,
+            0.0,
+            -0.101556678511287,
+            0.004757708055363,
+        );
+
+        assert_trajectory_samples_match(&x, &y, &yaw, &expected, (1e-9, 1e-9, 1e-9));
+    }
+
+    #[test]
+    fn test_generate_trajectory_matches_upstream_uniform2_row9_samples() {
+        let model = MotionModel::with_defaults();
+        let expected = parse_reference_trajectory_samples(include_str!(
+            "testdata/uniform2_row9_trajectory.csv"
+        ));
+        let (x, y, yaw) = model.generate_trajectory(
+            20.421202670847993,
+            0.1,
+            0.028733328960710,
+            -0.157833468427762,
+        );
+
+        assert_trajectory_samples_match(&x, &y, &yaw, &expected, (1e-9, 1e-9, 1e-9));
+    }
+
+    #[test]
+    fn test_generate_trajectory_matches_upstream_lane1_row2_samples() {
+        let model = MotionModel::with_defaults();
+        let expected =
+            parse_reference_trajectory_samples(include_str!("testdata/lane1_row2_trajectory.csv"));
+        let (x, y, yaw) = model.generate_trajectory(
+            15.865930382436854,
+            0.0,
+            0.147107848059632,
+            -0.569190510845161,
+        );
+
+        assert_trajectory_samples_match(&x, &y, &yaw, &expected, (1e-9, 1e-9, 1e-9));
+    }
+
+    #[test]
+    fn test_generate_trajectory_exact_samples_match_upstream_lane_state_sampling_test1_all_rows() {
+        assert_terminal_table_exact_samples_match(
+            include_str!("testdata/lane_state_sampling_test1.csv"),
+            include_str!("testdata/lane_state_sampling_test1_all_samples.csv"),
+            0.0,
+            (1e-9, 1e-9, 1e-9),
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_matches_upstream_biased1_row29_samples() {
+        let model = MotionModel::with_defaults();
+        let expected = parse_reference_trajectory_samples(include_str!(
+            "testdata/biased1_row29_trajectory.csv"
+        ));
+        let (x, y, yaw) = model.generate_trajectory(
+            19.979_736_701_974_8,
+            0.0,
+            -0.006547264051110,
+            0.119218956522636,
+        );
+
+        assert_trajectory_samples_match(&x, &y, &yaw, &expected, (1e-9, 1e-9, 1e-9));
+    }
+
+    #[test]
+    fn test_generate_trajectory_matches_upstream_biased2_row14_samples() {
+        let model = MotionModel::with_defaults();
+        let expected = parse_reference_trajectory_samples(include_str!(
+            "testdata/biased2_row14_trajectory.csv"
+        ));
+        let (x, y, yaw) = model.generate_trajectory(
+            21.125_744_384_337_9,
+            0.0,
+            0.073986407526083,
+            -0.049246868802640,
+        );
+
+        assert_trajectory_samples_match(&x, &y, &yaw, &expected, (1e-9, 1e-9, 1e-9));
+    }
+
+    #[test]
+    fn test_generate_trajectory_fingerprints_match_upstream_uniform_terminal_state_sampling_test1()
+    {
+        assert_terminal_table_fingerprint_matches(
+            include_str!("testdata/uniform_terminal_state_sampling_test1.csv"),
+            include_str!("testdata/uniform_terminal_state_sampling_test1_fingerprints.csv"),
+            0.0,
+            TrajectoryFingerprintTolerance {
+                sum_x: 1e-6,
+                sum_y: 1e-6,
+                sum_yaw: 1e-6,
+                weighted_sum_x: 1e-4,
+                weighted_sum_y: 1e-4,
+                weighted_sum_yaw: 1e-4,
+                sum_x_sq: 1e-4,
+                sum_y_sq: 1e-4,
+                sum_yaw_sq: 1e-4,
+            },
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_exact_samples_match_upstream_uniform_terminal_state_sampling_test1_all_rows(
+    ) {
+        assert_terminal_table_exact_samples_match(
+            include_str!("testdata/uniform_terminal_state_sampling_test1.csv"),
+            include_str!("testdata/uniform_terminal_state_sampling_test1_all_samples.csv"),
+            0.0,
+            (1e-9, 1e-9, 1e-9),
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_fingerprints_match_upstream_uniform_terminal_state_sampling_test2()
+    {
+        assert_terminal_table_fingerprint_matches(
+            include_str!("testdata/uniform_terminal_state_sampling_test2.csv"),
+            include_str!("testdata/uniform_terminal_state_sampling_test2_fingerprints.csv"),
+            0.1,
+            TrajectoryFingerprintTolerance {
+                sum_x: 1e-6,
+                sum_y: 1e-6,
+                sum_yaw: 1e-6,
+                weighted_sum_x: 1e-4,
+                weighted_sum_y: 1e-4,
+                weighted_sum_yaw: 1e-4,
+                sum_x_sq: 1e-4,
+                sum_y_sq: 1e-4,
+                sum_yaw_sq: 1e-4,
+            },
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_exact_samples_match_upstream_uniform_terminal_state_sampling_test2_all_rows(
+    ) {
+        assert_terminal_table_exact_samples_match(
+            include_str!("testdata/uniform_terminal_state_sampling_test2.csv"),
+            include_str!("testdata/uniform_terminal_state_sampling_test2_all_samples.csv"),
+            0.1,
+            (1e-9, 1e-9, 1e-9),
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_fingerprints_match_upstream_biased_terminal_state_sampling_test1() {
+        assert_terminal_table_fingerprint_matches(
+            include_str!("testdata/biased_terminal_state_sampling_test1.csv"),
+            include_str!("testdata/biased_terminal_state_sampling_test1_fingerprints.csv"),
+            0.0,
+            TrajectoryFingerprintTolerance {
+                sum_x: 1e-6,
+                sum_y: 1e-6,
+                sum_yaw: 1e-6,
+                weighted_sum_x: 1e-4,
+                weighted_sum_y: 1e-4,
+                weighted_sum_yaw: 1e-4,
+                sum_x_sq: 1e-4,
+                sum_y_sq: 1e-4,
+                sum_yaw_sq: 1e-4,
+            },
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_exact_samples_match_upstream_biased_terminal_state_sampling_test1_all_rows(
+    ) {
+        assert_terminal_table_exact_samples_match(
+            include_str!("testdata/biased_terminal_state_sampling_test1.csv"),
+            include_str!("testdata/biased_terminal_state_sampling_test1_all_samples.csv"),
+            0.0,
+            (1e-9, 1e-9, 1e-9),
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_fingerprints_match_upstream_biased_terminal_state_sampling_test2() {
+        assert_terminal_table_fingerprint_matches(
+            include_str!("testdata/biased_terminal_state_sampling_test2.csv"),
+            include_str!("testdata/biased_terminal_state_sampling_test2_fingerprints.csv"),
+            0.0,
+            TrajectoryFingerprintTolerance {
+                sum_x: 1e-6,
+                sum_y: 1e-6,
+                sum_yaw: 1e-6,
+                weighted_sum_x: 1e-4,
+                weighted_sum_y: 1e-4,
+                weighted_sum_yaw: 1e-4,
+                sum_x_sq: 1e-4,
+                sum_y_sq: 1e-4,
+                sum_yaw_sq: 1e-4,
+            },
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_fingerprints_match_upstream_lane_state_sampling_test1() {
+        assert_terminal_table_fingerprint_matches(
+            include_str!("testdata/lane_state_sampling_test1.csv"),
+            include_str!("testdata/lane_state_sampling_test1_fingerprints.csv"),
+            0.0,
+            TrajectoryFingerprintTolerance {
+                sum_x: 1e-6,
+                sum_y: 1e-6,
+                sum_yaw: 1e-6,
+                weighted_sum_x: 1e-4,
+                weighted_sum_y: 1e-4,
+                weighted_sum_yaw: 1e-4,
+                sum_x_sq: 1e-4,
+                sum_y_sq: 1e-4,
+                sum_yaw_sq: 1e-4,
+            },
+        );
+    }
+
+    #[test]
+    fn test_generate_trajectory_exact_samples_match_upstream_biased_terminal_state_sampling_test2_all_rows(
+    ) {
+        assert_terminal_table_exact_samples_match(
+            include_str!("testdata/biased_terminal_state_sampling_test2.csv"),
+            include_str!("testdata/biased_terminal_state_sampling_test2_all_samples.csv"),
+            0.0,
+            (1e-9, 1e-9, 1e-9),
+        );
     }
 }

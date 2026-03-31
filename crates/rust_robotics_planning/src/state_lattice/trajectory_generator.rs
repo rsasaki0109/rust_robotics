@@ -5,7 +5,9 @@
 
 use nalgebra::{Matrix3, Vector3};
 
-use super::motion_model::MotionModel;
+use super::motion_model::{normalize_angle, MotionModel};
+
+const DEFAULT_LOOKUP_TABLE_CSV: &str = include_str!("lookup_table.csv");
 
 /// Trajectory parameters: [s, km, kf]
 /// - s: arc length
@@ -89,7 +91,7 @@ impl TrajectoryGenerator {
         Vector3::new(
             x_final - target[0],
             y_final - target[1],
-            yaw_final - target[2],
+            normalize_angle(yaw_final - target[2]),
         )
     }
 
@@ -103,16 +105,29 @@ impl TrajectoryGenerator {
     fn calc_jacobian(&self, params: &TrajectoryParams, target: &TargetState) -> Matrix3<f64> {
         let h = &self.config.h;
         let mut jacobian = Matrix3::zeros();
+        let diff_current = self.calc_diff(params, target);
 
         for i in 0..3 {
             let mut params_plus = *params;
             params_plus[i] += h[i];
+            let mut params_minus = *params;
+            params_minus[i] -= h[i];
 
             let diff_plus = self.calc_diff(&params_plus, target);
-            let diff_current = self.calc_diff(params, target);
+            let diff_minus = self.calc_diff(&params_minus, target);
 
             for j in 0..3 {
-                jacobian[(j, i)] = (diff_plus[j] - diff_current[j]) / h[i];
+                let delta = if i == 0 && params_minus[i] <= 0.0 {
+                    diff_plus[j] - diff_current[j]
+                } else {
+                    diff_plus[j] - diff_minus[j]
+                };
+                let denom = if i == 0 && params_minus[i] <= 0.0 {
+                    h[i]
+                } else {
+                    2.0 * h[i]
+                };
+                jacobian[(j, i)] = delta / denom;
             }
         }
 
@@ -126,7 +141,7 @@ impl TrajectoryGenerator {
         dp: &Vector3<f64>,
         target: &TargetState,
     ) -> f64 {
-        let alphas = [1.0, 0.75, 0.5, 0.25, 0.1];
+        let alphas = [1.0, 1.5];
         let mut best_alpha = 1.0;
         let mut min_cost = f64::MAX;
 
@@ -173,21 +188,11 @@ impl TrajectoryGenerator {
                     params[0] = 0.1;
                 }
             } else {
-                let grad = jacobian.transpose() * diff;
-                let step = 0.01;
-                params -= step * grad;
-
-                if params[0] < 0.1 {
-                    params[0] = 0.1;
-                }
+                return None;
             }
         }
 
-        if self.calc_cost(&params, target) < self.config.cost_threshold * 2.0 {
-            Some(params)
-        } else {
-            None
-        }
+        None
     }
 
     /// Generate optimized trajectory to reach target
@@ -287,25 +292,7 @@ impl LookupTable {
 
     /// Generate default lookup table with common trajectories
     pub fn generate_default() -> Self {
-        let generator = TrajectoryGenerator::with_defaults();
-        let mut entries = Vec::new();
-
-        let s_values = [1.0, 5.0, 10.0, 15.0, 20.0, 25.0, 30.0];
-        let k_values = [-0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2];
-        for &s in &s_values {
-            for &km in &k_values {
-                for &kf in &k_values {
-                    let (x_final, y_final, yaw_final) = generator
-                        .motion_model
-                        .generate_trajectory_final_state(s, 0.0, km, kf);
-                    entries.push(LookupTableEntry::new(
-                        x_final, y_final, yaw_final, s, km, kf,
-                    ));
-                }
-            }
-        }
-
-        Self { entries }
+        Self::from_csv(DEFAULT_LOOKUP_TABLE_CSV)
     }
 
     /// Find nearest entry to target state
@@ -419,9 +406,44 @@ mod tests {
     }
 
     #[test]
+    fn test_optimize_matches_upstream_lane_reference() {
+        let generator = TrajectoryGenerator::with_defaults();
+        let target = Vector3::new(10.0, 9.0, 0.0);
+        let init_params = Vector3::new(13.45362404707371, 0.1482242831571022, -0.5606578442626601);
+
+        let params = generator.optimize(&target, &init_params).unwrap();
+
+        assert!((params[0] - 14.806296460297).abs() < 1e-9);
+        assert!((params[1] - 0.148478839778).abs() < 1e-9);
+        assert!((params[2] - -0.57288113757).abs() < 1e-9);
+    }
+
+    #[test]
     fn test_lookup_table_default() {
         let table = LookupTable::generate_default();
         assert!(!table.is_empty());
+        assert_eq!(table.len(), 81);
+    }
+
+    #[test]
+    fn test_lookup_table_default_matches_upstream_reference_rows() {
+        let table = LookupTable::generate_default();
+        let first = &table.entries[0];
+        let last = table.entries.last().unwrap();
+
+        assert!((first.x - 1.0).abs() < 1e-12);
+        assert!((first.y - 0.0).abs() < 1e-12);
+        assert!((first.yaw - 0.0).abs() < 1e-12);
+        assert!((first.s - 1.0).abs() < 1e-12);
+        assert!((first.km - 0.0).abs() < 1e-12);
+        assert!((first.kf - 0.0).abs() < 1e-12);
+
+        assert!((last.x - 24.960019173190652).abs() < 1e-12);
+        assert!((last.y - 17.98909417109214).abs() < 1e-12);
+        assert!((last.yaw - 0.011594018486178026).abs() < 1e-12);
+        assert!((last.s - 33.0995680641525).abs() < 1e-12);
+        assert!((last.km - 0.05634561447882407).abs() < 1e-12);
+        assert!((last.kf - -0.22402297280749597).abs() < 1e-12);
     }
 
     #[test]
