@@ -918,6 +918,7 @@ name = "rust_robotics"
 version = "0.1.0"
 dependencies = [
  "gnuplot",
+ "nalgebra",
  "rust_robotics_control",
  "rust_robotics_core",
  "rust_robotics_localization",
