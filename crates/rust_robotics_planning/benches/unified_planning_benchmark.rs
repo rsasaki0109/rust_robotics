@@ -176,7 +176,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "A*",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("A*", None));
@@ -192,7 +192,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "BFS",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("BFS", None));
@@ -208,7 +208,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "DFS",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("DFS", None));
@@ -224,7 +224,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "GreedyBestFirst",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("GreedyBestFirst", None));
@@ -241,7 +241,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "BidirectionalA*",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("BidirectionalA*", None));
@@ -257,7 +257,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "BidirectionalBFS",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("BidirectionalBFS", None));
@@ -274,7 +274,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "JPS",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("JPS", None));
@@ -291,7 +291,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "Theta*",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("Theta*", None));
@@ -307,7 +307,7 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
     ) {
         planners.push((
             "FlowField",
-            Some(Box::new(move |s, g| p.plan(s, g).unwrap())),
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
         ));
     } else {
         planners.push(("FlowField", None));
