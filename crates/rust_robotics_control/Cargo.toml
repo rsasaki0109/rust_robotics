@@ -17,3 +17,4 @@ nalgebra = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 gnuplot = { workspace = true, optional = true }
+clarabel = "0.11"
