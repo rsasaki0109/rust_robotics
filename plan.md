@@ -179,21 +179,33 @@ Run command: `cargo bench --bench jps_crossover_benchmark -p rust_robotics_plann
 
 **Conclusion**: On open grids, JPS is always slower than A* and the gap widens with grid size. A* traces the diagonal in O(n), JPS jump scan overhead dominates.
 
-#### Maze Grid (walls with gaps): JPS always wins, advantage grows
+#### Dense Grid (~20% random obstacles): JPS always loses (~2x)
 
 | Size | A* (µs) | JPS (µs) | JPS/A* |
 |---|---|---|---|
-| 50 | 228 | 210 | 1.08x faster |
-| 100 | 1,891 | 1,772 | 1.07x faster |
-| 200 | 9,271 | 8,580 | 1.08x faster |
-| 500 | 62,388 | 50,400 | 1.24x faster |
-| 1000 | 278,651 | 213,517 | 1.30x faster |
+| 50 | 322 | 526 | 1.6x slower |
+| 100 | 1,587 | 2,930 | 1.8x slower |
+| 200 | 7,377 | 15,319 | 2.1x slower |
+| 500 | 46,454 | 98,998 | 2.1x slower |
+| 1000 | 229,400 | 440,560 | 1.9x slower |
 
-**Conclusion**: On mazes, JPS beats A* at all sizes. The advantage grows from 1.08x (50x50) to 1.30x (1000x1000), but never reaches the dramatic speedups claimed in literature (10-40x). The no-corner-cutting grid semantics limit jump distances.
+**Conclusion**: On dense random obstacles, JPS is consistently ~2x slower than A*. Random obstacle placement breaks jump symmetry, making forced-neighbor overhead dominant.
 
-#### Dense Grid: goal at (size-2, size-2) was blocked for size >= 100
+#### Maze Grid (walls with gaps): JPS wins, the only favorable scenario
 
-Root cause: deterministic hash-based obstacle placement. Fixed by using (size-3, size-3) as goal. Re-running.
+| Size | A* (µs) | JPS (µs) | JPS/A* |
+|---|---|---|---|
+| 50 | 321 | 254 | 1.26x faster |
+| 100 | 1,857 | 1,711 | 1.09x faster |
+| 200 | 9,255 | 8,858 | 1.04x faster |
+| 500 | 60,656 | 50,042 | 1.21x faster |
+| 1000 | 284,500 | 223,360 | 1.27x faster |
+
+**Conclusion**: Maze is the only scenario where JPS beats A*. The advantage is modest (1.04-1.27x) and never reaches the 10-40x speedups claimed in literature. The no-corner-cutting grid semantics limit jump distances.
+
+#### Overall JPS Crossover Verdict
+
+JPS wins **only on structured mazes** with max 1.27x speedup. It loses on open grids (up to 45x slower) and dense grids (~2x slower). There is **no grid-size crossover** on open or dense maps — JPS gets worse, not better, as grids grow.
 
 ### 2. Lazy Theta* Implementation (COMPLETED)
 
@@ -279,7 +291,7 @@ Based on the benchmark results, these are concrete areas where algorithms can be
 
 #### 1. JPS Grid Size Crossover Analysis
 **Status**: COMPLETED (see above)
-**Result**: JPS wins on mazes (1.08-1.30x), loses on open grids (3.9-44x). No dramatic crossover found.
+**Result**: JPS wins only on mazes (1.04-1.27x), loses on open (3.9-45x) and dense (~2x). No crossover found.
 **Potential contribution**: Quantified JPS break-even analysis. Prior literature (Harabor 2011) only shows JPS winning on large maps.
 
 #### 2. BidirectionalA* Overhead Reduction
