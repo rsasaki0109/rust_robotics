@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Path planning algorithms for the RustRobotics workspace.
 
+pub mod experiments;
 pub mod grid;
 pub mod grid_nalgebra;
 
@@ -19,6 +20,7 @@ pub mod greedy_best_first_search;
 pub mod hybrid_a_star;
 pub mod jps;
 pub mod sipp;
+pub mod lazy_theta_star;
 pub mod theta_star;
 
 // Sampling-based planners
@@ -36,12 +38,15 @@ pub mod rrt_star_reeds_shepp;
 pub mod voronoi_road_map;
 
 // Optimization-based planners
+pub mod path_smoothing;
+
 pub mod dwa;
 pub mod dynamic_movement_primitives;
 pub mod elastic_bands;
 pub mod frenet_optimal_trajectory;
 pub mod lqr_planner;
 pub mod model_predictive_trajectory_generator;
+pub mod moving_ai;
 pub mod particle_swarm_optimization;
 pub mod potential_field;
 pub mod time_based_path_planning;
@@ -100,5 +105,6 @@ pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_star::RRTStar;
 pub use sipp::{SippConfig, SippPlanner};
 pub use state_lattice::{ObstacleAwarePlanResult, StateLattice, StateLatticeConfig};
+pub use lazy_theta_star::{LazyThetaStarConfig, LazyThetaStarPlanner};
 pub use theta_star::{ThetaStarConfig, ThetaStarPlanner};
 pub use voronoi_road_map::VoronoiPlanner;

@@ -172,30 +172,65 @@ impl ThetaStarPlanner {
     }
 
     fn line_of_sight(&self, x0: i32, y0: i32, x1: i32, y1: i32) -> bool {
+        if !self.grid_map.is_valid(x0, y0) || !self.grid_map.is_valid(x1, y1) {
+            return false;
+        }
+
+        if x0 == x1 && y0 == y1 {
+            return true;
+        }
+
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        let step_x = dx.signum();
+        let step_y = dy.signum();
+        let abs_dx = dx.abs() as f64;
+        let abs_dy = dy.abs() as f64;
+
         let mut x = x0;
         let mut y = y0;
-        let dx = (x1 - x0).abs();
-        let dy = (y1 - y0).abs();
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let sy = if y0 < y1 { 1 } else { -1 };
-        let mut err = dx - dy;
-        loop {
-            if !self.grid_map.is_valid(x, y) {
+        let mut t_max_x = if step_x != 0 {
+            0.5 / abs_dx
+        } else {
+            f64::INFINITY
+        };
+        let mut t_max_y = if step_y != 0 {
+            0.5 / abs_dy
+        } else {
+            f64::INFINITY
+        };
+        let t_delta_x = if step_x != 0 {
+            1.0 / abs_dx
+        } else {
+            f64::INFINITY
+        };
+        let t_delta_y = if step_y != 0 {
+            1.0 / abs_dy
+        } else {
+            f64::INFINITY
+        };
+
+        while x != x1 || y != y1 {
+            let advance_x = t_max_x <= t_max_y;
+            let advance_y = t_max_y <= t_max_x;
+            let next_x = if advance_x { x + step_x } else { x };
+            let next_y = if advance_y { y + step_y } else { y };
+
+            if !self.grid_map.is_valid_step(x, y, next_x, next_y) {
                 return false;
             }
-            if x == x1 && y == y1 {
-                break;
+
+            x = next_x;
+            y = next_y;
+
+            if advance_x {
+                t_max_x += t_delta_x;
             }
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
-            }
-            if e2 < dx {
-                err += dx;
-                y += sy;
+            if advance_y {
+                t_max_y += t_delta_y;
             }
         }
+
         true
     }
 
@@ -274,7 +309,7 @@ impl ThetaStarPlanner {
                 let new_x = current.x + dx;
                 let new_y = current.y + dy;
                 let new_grid_index = self.grid_map.calc_index(new_x, new_y);
-                if !self.grid_map.is_valid(new_x, new_y) {
+                if !self.grid_map.is_valid_offset(current.x, current.y, dx, dy) {
                     continue;
                 }
                 if closed_set.contains_key(&new_grid_index) {
@@ -397,6 +432,51 @@ mod tests {
         let planner = ThetaStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);
         assert!(planner.line_of_sight(2, 2, 5, 5));
         assert!(!planner.line_of_sight(5, 10, 15, 10));
+    }
+
+    #[test]
+    fn test_line_of_sight_blocks_corner_cutting() {
+        let open_obstacles = Obstacles::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.0),
+            Point2D::new(2.0, 0.0),
+            Point2D::new(3.0, 0.0),
+            Point2D::new(0.0, 1.0),
+            Point2D::new(3.0, 1.0),
+            Point2D::new(0.0, 2.0),
+            Point2D::new(3.0, 2.0),
+            Point2D::new(0.0, 3.0),
+            Point2D::new(1.0, 3.0),
+            Point2D::new(2.0, 3.0),
+            Point2D::new(3.0, 3.0),
+        ]);
+        let open_planner =
+            ThetaStarPlanner::from_obstacle_points(&open_obstacles, ThetaStarConfig::default())
+                .unwrap();
+
+        assert!(open_planner.line_of_sight(1, 1, 2, 1));
+
+        let blocked_obstacles = Obstacles::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.0),
+            Point2D::new(2.0, 0.0),
+            Point2D::new(3.0, 0.0),
+            Point2D::new(0.0, 1.0),
+            Point2D::new(3.0, 1.0),
+            Point2D::new(0.0, 2.0),
+            Point2D::new(3.0, 2.0),
+            Point2D::new(0.0, 3.0),
+            Point2D::new(1.0, 3.0),
+            Point2D::new(2.0, 3.0),
+            Point2D::new(3.0, 3.0),
+            Point2D::new(1.0, 2.0),
+            Point2D::new(2.0, 1.0),
+        ]);
+        let planner =
+            ThetaStarPlanner::from_obstacle_points(&blocked_obstacles, ThetaStarConfig::default())
+                .unwrap();
+
+        assert!(!planner.line_of_sight(1, 1, 2, 2));
     }
 
     #[test]

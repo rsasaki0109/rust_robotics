@@ -4,6 +4,7 @@
 pub mod cubature_kalman_filter;
 pub mod ekf;
 pub mod ensemble_kalman_filter;
+pub mod experiments;
 pub mod histogram_filter;
 pub mod particle_filter;
 pub mod unscented_kalman_filter;
