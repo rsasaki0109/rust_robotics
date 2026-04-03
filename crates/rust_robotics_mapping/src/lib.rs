@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Mapping algorithms for the RustRobotics workspace.
 
+pub mod experiments;
+
 pub mod circle_fitting;
 pub mod distance_map;
 pub mod gaussian_grid_map;

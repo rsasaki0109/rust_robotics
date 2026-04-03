@@ -257,7 +257,7 @@ impl GreedyBestFirstPlanner {
                 let new_grid_index = self.grid_map.calc_index(new_x, new_y);
 
                 // Skip if not valid or already visited
-                if !self.grid_map.is_valid(new_x, new_y) {
+                if !self.grid_map.is_valid_offset(current.x, current.y, dx, dy) {
                     continue;
                 }
                 if closed_set.contains_key(&new_grid_index) {

@@ -199,6 +199,34 @@ impl GridMap {
         !self.obstacle_map[x as usize][y as usize]
     }
 
+    /// Check whether a single adjacent step is valid.
+    ///
+    /// Diagonal steps are rejected when either orthogonal side cell is
+    /// blocked, matching no-corner-cutting grid semantics.
+    pub fn is_valid_step(&self, from_x: i32, from_y: i32, to_x: i32, to_y: i32) -> bool {
+        if !self.is_valid(from_x, from_y) || !self.is_valid(to_x, to_y) {
+            return false;
+        }
+
+        let dx = to_x - from_x;
+        let dy = to_y - from_y;
+
+        if dx.abs() > 1 || dy.abs() > 1 || (dx == 0 && dy == 0) {
+            return false;
+        }
+
+        if dx != 0 && dy != 0 {
+            self.is_valid(from_x + dx, from_y) && self.is_valid(from_x, from_y + dy)
+        } else {
+            true
+        }
+    }
+
+    /// Check whether an adjacent `(dx, dy)` move is valid from the given cell.
+    pub fn is_valid_offset(&self, x: i32, y: i32, dx: i32, dy: i32) -> bool {
+        self.is_valid_step(x, y, x + dx, y + dy)
+    }
+
     fn validate_inputs(
         ox: &[f64],
         oy: &[f64],
@@ -281,5 +309,49 @@ mod tests {
         assert_eq!(grid_map.min_y, 0.0);
         assert_eq!(grid_map.x_width, 10);
         assert_eq!(grid_map.y_width, 10);
+    }
+
+    #[test]
+    fn test_is_valid_step_blocks_corner_cutting() {
+        let open_obstacles = Obstacles::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.0),
+            Point2D::new(2.0, 0.0),
+            Point2D::new(3.0, 0.0),
+            Point2D::new(0.0, 1.0),
+            Point2D::new(3.0, 1.0),
+            Point2D::new(0.0, 2.0),
+            Point2D::new(3.0, 2.0),
+            Point2D::new(0.0, 3.0),
+            Point2D::new(1.0, 3.0),
+            Point2D::new(2.0, 3.0),
+            Point2D::new(3.0, 3.0),
+        ]);
+        let open_grid_map = GridMap::from_obstacles(&open_obstacles, 1.0, 0.0).unwrap();
+
+        assert!(open_grid_map.is_valid_step(1, 1, 2, 1));
+        assert!(open_grid_map.is_valid_step(1, 1, 2, 2));
+
+        let blocked_obstacles = Obstacles::from_points(vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.0),
+            Point2D::new(2.0, 0.0),
+            Point2D::new(3.0, 0.0),
+            Point2D::new(0.0, 1.0),
+            Point2D::new(3.0, 1.0),
+            Point2D::new(0.0, 2.0),
+            Point2D::new(3.0, 2.0),
+            Point2D::new(0.0, 3.0),
+            Point2D::new(1.0, 3.0),
+            Point2D::new(2.0, 3.0),
+            Point2D::new(3.0, 3.0),
+            Point2D::new(1.0, 2.0),
+            Point2D::new(2.0, 1.0),
+        ]);
+        let grid_map = GridMap::from_obstacles(&blocked_obstacles, 1.0, 0.0).unwrap();
+
+        assert!(grid_map.is_valid(1, 1));
+        assert!(grid_map.is_valid(2, 2));
+        assert!(!grid_map.is_valid_step(1, 1, 2, 2));
     }
 }

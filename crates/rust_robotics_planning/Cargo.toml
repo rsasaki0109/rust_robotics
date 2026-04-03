@@ -25,3 +25,7 @@ harness = false
 [[bench]]
 name = "unified_planning_benchmark"
 harness = false
+
+[[bench]]
+name = "jps_crossover_benchmark"
+harness = false

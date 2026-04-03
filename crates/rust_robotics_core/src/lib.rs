@@ -2,9 +2,11 @@
 //! Core types, traits, and error definitions for the RustRobotics workspace.
 
 pub mod error;
+pub mod experiments;
 pub mod traits;
 pub mod types;
 
 pub use error::*;
+pub use experiments::*;
 pub use traits::*;
 pub use types::*;

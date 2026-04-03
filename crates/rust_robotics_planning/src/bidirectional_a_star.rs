@@ -161,8 +161,8 @@ impl BidirectionalAStarPlanner {
         node_storage: &[Node],
         target_x: i32,
         target_y: i32,
-    ) -> i32 {
-        *open_set
+    ) -> (i32, f64) {
+        open_set
             .iter()
             .min_by(|a, b| {
                 let na = &node_storage[*a.1];
@@ -171,8 +171,50 @@ impl BidirectionalAStarPlanner {
                 let fb = nb.cost + self.calc_heuristic(nb.x, nb.y, target_x, target_y);
                 fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
             })
-            .map(|(k, _)| k)
+            .map(|(k, idx)| {
+                let node = &node_storage[*idx];
+                (
+                    *k,
+                    node.cost + self.calc_heuristic(node.x, node.y, target_x, target_y),
+                )
+            })
             .unwrap()
+    }
+
+    fn best_known_index(
+        open_set: &HashMap<i32, usize>,
+        closed_set: &HashMap<i32, usize>,
+        node_storage: &[Node],
+        grid_index: i32,
+    ) -> Option<usize> {
+        match (open_set.get(&grid_index), closed_set.get(&grid_index)) {
+            (Some(&open_idx), Some(&closed_idx)) => {
+                if node_storage[open_idx].cost <= node_storage[closed_idx].cost {
+                    Some(open_idx)
+                } else {
+                    Some(closed_idx)
+                }
+            }
+            (Some(&open_idx), None) => Some(open_idx),
+            (None, Some(&closed_idx)) => Some(closed_idx),
+            (None, None) => None,
+        }
+    }
+
+    fn update_best_meeting(
+        best_meeting: &mut Option<(usize, usize, f64)>,
+        forward_index: usize,
+        forward_cost: f64,
+        backward_index: usize,
+        backward_cost: f64,
+    ) {
+        let total_cost = forward_cost + backward_cost;
+        if best_meeting
+            .as_ref()
+            .is_none_or(|(_, _, best_cost)| total_cost < *best_cost)
+        {
+            *best_meeting = Some((forward_index, backward_index, total_cost));
+        }
     }
 
     /// Build a path segment by tracing parent pointers from `start_index` back to the root.
@@ -191,6 +233,23 @@ impl BidirectionalAStarPlanner {
         }
 
         points
+    }
+
+    fn build_meeting_path(
+        &self,
+        forward_index: usize,
+        backward_index: usize,
+        node_storage_a: &[Node],
+        node_storage_b: &[Node],
+    ) -> Path2D {
+        let mut forward_points = self.trace_path(forward_index, node_storage_a);
+        forward_points.reverse();
+
+        let backward_points = self.trace_path(backward_index, node_storage_b);
+
+        let mut all_points = forward_points;
+        all_points.extend(backward_points.into_iter().skip(1));
+        Path2D::from_points(all_points)
     }
 
     fn ensure_query_is_valid(&self, x: i32, y: i32, label: &str) -> RoboticsResult<()> {
@@ -233,124 +292,184 @@ impl BidirectionalAStarPlanner {
         let goal_grid_index = self.grid_map.calc_index(goal_x, goal_y);
         open_set_b.insert(goal_grid_index, 0);
 
+        let mut best_meeting: Option<(usize, usize, f64)> = None;
+
         loop {
             if open_set_a.is_empty() || open_set_b.is_empty() {
-                return Err(RoboticsError::PlanningError("No path found".to_string()));
+                return best_meeting
+                    .map(|(forward_idx, backward_idx, _)| {
+                        self.build_meeting_path(
+                            forward_idx,
+                            backward_idx,
+                            &node_storage_a,
+                            &node_storage_b,
+                        )
+                    })
+                    .ok_or_else(|| RoboticsError::PlanningError("No path found".to_string()));
             }
 
-            // --- Expand forward (A) ---
-            // Use the current best of B as heuristic target for A
-            let current_b_idx = {
-                let key = self.best_open_key(&open_set_b, &node_storage_b, start_x, start_y);
-                node_storage_b[open_set_b[&key]].x // just need position for heuristic
-            };
-            let current_b_y = {
-                let key = self.best_open_key(&open_set_b, &node_storage_b, start_x, start_y);
-                node_storage_b[open_set_b[&key]].y
-            };
+            let (c_id_a, min_f_a) =
+                self.best_open_key(&open_set_a, &node_storage_a, goal_x, goal_y);
+            let (c_id_b, min_f_b) =
+                self.best_open_key(&open_set_b, &node_storage_b, start_x, start_y);
 
-            let c_id_a =
-                self.best_open_key(&open_set_a, &node_storage_a, current_b_idx, current_b_y);
-            let current_a_storage_idx = open_set_a[&c_id_a];
-            let current_a_x = node_storage_a[current_a_storage_idx].x;
-            let current_a_y = node_storage_a[current_a_storage_idx].y;
-            let current_a_cost = node_storage_a[current_a_storage_idx].cost;
-
-            // --- Expand backward (B) ---
-            let c_id_b = self.best_open_key(&open_set_b, &node_storage_b, current_a_x, current_a_y);
-            let current_b_storage_idx = open_set_b[&c_id_b];
-            let current_b_x = node_storage_b[current_b_storage_idx].x;
-            let current_b_y2 = node_storage_b[current_b_storage_idx].y;
-            let current_b_cost = node_storage_b[current_b_storage_idx].cost;
-
-            // Check meeting condition: both searches picked the same cell
-            if current_a_x == current_b_x && current_a_y == current_b_y2 {
-                // Build forward path (from meeting point back to start), then reverse
-                let mut forward_points = self.trace_path(current_a_storage_idx, &node_storage_a);
-                forward_points.reverse();
-
-                // Build backward path (from meeting point back to goal)
-                let backward_points = self.trace_path(current_b_storage_idx, &node_storage_b);
-
-                // Join: forward (start..meeting) + backward (meeting..goal)
-                // The meeting point is the last element of forward and first of backward,
-                // so skip the first element of backward to avoid duplication.
-                let mut all_points = forward_points;
-                all_points.extend(backward_points.into_iter().skip(1));
-
-                return Ok(Path2D::from_points(all_points));
+            if let Some((forward_idx, backward_idx, best_cost)) = best_meeting {
+                if min_f_a >= best_cost && min_f_b >= best_cost {
+                    return Ok(self.build_meeting_path(
+                        forward_idx,
+                        backward_idx,
+                        &node_storage_a,
+                        &node_storage_b,
+                    ));
+                }
             }
 
-            // Move A and B to closed sets
-            open_set_a.remove(&c_id_a);
-            open_set_b.remove(&c_id_b);
-            closed_set_a.insert(c_id_a, current_a_storage_idx);
-            closed_set_b.insert(c_id_b, current_b_storage_idx);
+            if min_f_a <= min_f_b {
+                let current_a_storage_idx = open_set_a.remove(&c_id_a).unwrap();
+                let current_a_x = node_storage_a[current_a_storage_idx].x;
+                let current_a_y = node_storage_a[current_a_storage_idx].y;
+                let current_a_cost = node_storage_a[current_a_storage_idx].cost;
 
-            // Expand neighbors for both directions
-            for &(dx, dy, move_cost) in &self.motion {
-                // --- Forward neighbor ---
-                let new_a_x = current_a_x + dx;
-                let new_a_y = current_a_y + dy;
-                let new_a_grid_index = self.grid_map.calc_index(new_a_x, new_a_y);
-
-                if self.grid_map.is_valid(new_a_x, new_a_y)
-                    && !closed_set_a.contains_key(&new_a_grid_index)
-                {
-                    let new_cost = current_a_cost + move_cost;
-                    if let Some(&existing_idx) = open_set_a.get(&new_a_grid_index) {
-                        if node_storage_a[existing_idx].cost > new_cost {
-                            // Found a better path; add new node entry
-                            node_storage_a.push(Node::new(
-                                new_a_x,
-                                new_a_y,
-                                new_cost,
-                                Some(current_a_storage_idx),
-                            ));
-                            let new_idx = node_storage_a.len() - 1;
-                            open_set_a.insert(new_a_grid_index, new_idx);
-                        }
-                    } else {
-                        node_storage_a.push(Node::new(
-                            new_a_x,
-                            new_a_y,
-                            new_cost,
-                            Some(current_a_storage_idx),
-                        ));
-                        let new_idx = node_storage_a.len() - 1;
-                        open_set_a.insert(new_a_grid_index, new_idx);
+                if let Some(&existing_closed_idx) = closed_set_a.get(&c_id_a) {
+                    if node_storage_a[existing_closed_idx].cost <= current_a_cost {
+                        continue;
                     }
                 }
 
-                // --- Backward neighbor ---
-                let new_b_x = current_b_x + dx;
-                let new_b_y = current_b_y2 + dy;
-                let new_b_grid_index = self.grid_map.calc_index(new_b_x, new_b_y);
-
-                if self.grid_map.is_valid(new_b_x, new_b_y)
-                    && !closed_set_b.contains_key(&new_b_grid_index)
+                if let Some(other_idx) =
+                    Self::best_known_index(&open_set_b, &closed_set_b, &node_storage_b, c_id_a)
                 {
-                    let new_cost = current_b_cost + move_cost;
-                    if let Some(&existing_idx) = open_set_b.get(&new_b_grid_index) {
-                        if node_storage_b[existing_idx].cost > new_cost {
-                            node_storage_b.push(Node::new(
-                                new_b_x,
-                                new_b_y,
-                                new_cost,
-                                Some(current_b_storage_idx),
-                            ));
-                            let new_idx = node_storage_b.len() - 1;
-                            open_set_b.insert(new_b_grid_index, new_idx);
+                    Self::update_best_meeting(
+                        &mut best_meeting,
+                        current_a_storage_idx,
+                        current_a_cost,
+                        other_idx,
+                        node_storage_b[other_idx].cost,
+                    );
+                }
+
+                closed_set_a.insert(c_id_a, current_a_storage_idx);
+
+                for &(dx, dy, move_cost) in &self.motion {
+                    let new_a_x = current_a_x + dx;
+                    let new_a_y = current_a_y + dy;
+                    let new_a_grid_index = self.grid_map.calc_index(new_a_x, new_a_y);
+
+                    if !self
+                        .grid_map
+                        .is_valid_offset(current_a_x, current_a_y, dx, dy)
+                    {
+                        continue;
+                    }
+
+                    if let Some(&closed_idx) = closed_set_a.get(&new_a_grid_index) {
+                        if node_storage_a[closed_idx].cost <= current_a_cost + move_cost {
+                            continue;
                         }
-                    } else {
-                        node_storage_b.push(Node::new(
-                            new_b_x,
-                            new_b_y,
-                            new_cost,
-                            Some(current_b_storage_idx),
-                        ));
-                        let new_idx = node_storage_b.len() - 1;
-                        open_set_b.insert(new_b_grid_index, new_idx);
+                    }
+
+                    if let Some(&open_idx) = open_set_a.get(&new_a_grid_index) {
+                        if node_storage_a[open_idx].cost <= current_a_cost + move_cost {
+                            continue;
+                        }
+                    }
+
+                    node_storage_a.push(Node::new(
+                        new_a_x,
+                        new_a_y,
+                        current_a_cost + move_cost,
+                        Some(current_a_storage_idx),
+                    ));
+                    let new_idx = node_storage_a.len() - 1;
+                    open_set_a.insert(new_a_grid_index, new_idx);
+
+                    if let Some(other_idx) = Self::best_known_index(
+                        &open_set_b,
+                        &closed_set_b,
+                        &node_storage_b,
+                        new_a_grid_index,
+                    ) {
+                        Self::update_best_meeting(
+                            &mut best_meeting,
+                            new_idx,
+                            node_storage_a[new_idx].cost,
+                            other_idx,
+                            node_storage_b[other_idx].cost,
+                        );
+                    }
+                }
+            } else {
+                let current_b_storage_idx = open_set_b.remove(&c_id_b).unwrap();
+                let current_b_x = node_storage_b[current_b_storage_idx].x;
+                let current_b_y = node_storage_b[current_b_storage_idx].y;
+                let current_b_cost = node_storage_b[current_b_storage_idx].cost;
+
+                if let Some(&existing_closed_idx) = closed_set_b.get(&c_id_b) {
+                    if node_storage_b[existing_closed_idx].cost <= current_b_cost {
+                        continue;
+                    }
+                }
+
+                if let Some(other_idx) =
+                    Self::best_known_index(&open_set_a, &closed_set_a, &node_storage_a, c_id_b)
+                {
+                    Self::update_best_meeting(
+                        &mut best_meeting,
+                        other_idx,
+                        node_storage_a[other_idx].cost,
+                        current_b_storage_idx,
+                        current_b_cost,
+                    );
+                }
+
+                closed_set_b.insert(c_id_b, current_b_storage_idx);
+
+                for &(dx, dy, move_cost) in &self.motion {
+                    let new_b_x = current_b_x + dx;
+                    let new_b_y = current_b_y + dy;
+                    let new_b_grid_index = self.grid_map.calc_index(new_b_x, new_b_y);
+
+                    if !self
+                        .grid_map
+                        .is_valid_offset(current_b_x, current_b_y, dx, dy)
+                    {
+                        continue;
+                    }
+
+                    if let Some(&closed_idx) = closed_set_b.get(&new_b_grid_index) {
+                        if node_storage_b[closed_idx].cost <= current_b_cost + move_cost {
+                            continue;
+                        }
+                    }
+
+                    if let Some(&open_idx) = open_set_b.get(&new_b_grid_index) {
+                        if node_storage_b[open_idx].cost <= current_b_cost + move_cost {
+                            continue;
+                        }
+                    }
+
+                    node_storage_b.push(Node::new(
+                        new_b_x,
+                        new_b_y,
+                        current_b_cost + move_cost,
+                        Some(current_b_storage_idx),
+                    ));
+                    let new_idx = node_storage_b.len() - 1;
+                    open_set_b.insert(new_b_grid_index, new_idx);
+
+                    if let Some(other_idx) = Self::best_known_index(
+                        &open_set_a,
+                        &closed_set_a,
+                        &node_storage_a,
+                        new_b_grid_index,
+                    ) {
+                        Self::update_best_meeting(
+                            &mut best_meeting,
+                            other_idx,
+                            node_storage_a[other_idx].cost,
+                            new_idx,
+                            node_storage_b[new_idx].cost,
+                        );
                     }
                 }
             }
@@ -367,6 +486,7 @@ impl PathPlanner for BidirectionalAStarPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::moving_ai::{MovingAiMap, MovingAiScenario};
 
     use rust_robotics_core::Obstacles;
 
@@ -516,5 +636,45 @@ mod tests {
         assert!((first.y + 2.0).abs() < 1e-6);
         assert!((last.x - 18.0).abs() < 1e-6);
         assert!((last.y - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_bidirectional_a_star_matches_moving_ai_arena2_bucket_80_optimal_length() {
+        let map = MovingAiMap::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map"))
+            .expect("arena2 MovingAI map should parse");
+        let scenario =
+            MovingAiScenario::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map.scen"))
+                .expect("arena2 MovingAI scenarios should parse")
+                .into_iter()
+                .find(|row| row.bucket == 80)
+                .expect("arena2 MovingAI bucket 80 scenario should exist");
+
+        let planner = BidirectionalAStarPlanner::from_obstacle_points(
+            &map.to_obstacles(),
+            BidirectionalAStarConfig {
+                resolution: 1.0,
+                robot_radius: 0.5,
+                heuristic_weight: 1.0,
+            },
+        )
+        .expect("Bidirectional A* planner should build from arena2 obstacles");
+
+        let start = map
+            .planning_point(scenario.start_x, scenario.start_y)
+            .expect("arena2 start should be valid");
+        let goal = map
+            .planning_point(scenario.goal_x, scenario.goal_y)
+            .expect("arena2 goal should be valid");
+
+        let path = planner
+            .plan(start, goal)
+            .expect("Bidirectional A* should solve the arena2 bucket 80 scenario");
+
+        assert!(
+            (path.total_length() - scenario.optimal_length).abs() < 1e-6,
+            "Bidirectional A* path length {} should match MovingAI optimal {}",
+            path.total_length(),
+            scenario.optimal_length
+        );
     }
 }
