@@ -3,7 +3,7 @@
 //! Grid-based path planning that searches from both start and goal
 //! simultaneously, meeting in the middle.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 
 use crate::grid::{GridMap, Node};
 use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
@@ -137,6 +137,71 @@ impl BidirectionalBFSPlanner {
         points
     }
 
+    fn best_open_key(&self, open_set: &HashMap<i32, usize>, node_storage: &[Node]) -> (i32, f64) {
+        open_set
+            .iter()
+            .min_by(|a, b| {
+                node_storage[*a.1]
+                    .cost
+                    .partial_cmp(&node_storage[*b.1].cost)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|(k, idx)| (*k, node_storage[*idx].cost))
+            .unwrap()
+    }
+
+    fn best_known_index(
+        open_set: &HashMap<i32, usize>,
+        closed_set: &HashMap<i32, usize>,
+        node_storage: &[Node],
+        grid_index: i32,
+    ) -> Option<usize> {
+        match (open_set.get(&grid_index), closed_set.get(&grid_index)) {
+            (Some(&open_idx), Some(&closed_idx)) => {
+                if node_storage[open_idx].cost <= node_storage[closed_idx].cost {
+                    Some(open_idx)
+                } else {
+                    Some(closed_idx)
+                }
+            }
+            (Some(&open_idx), None) => Some(open_idx),
+            (None, Some(&closed_idx)) => Some(closed_idx),
+            (None, None) => None,
+        }
+    }
+
+    fn update_best_meeting(
+        best_meeting: &mut Option<(usize, usize, f64)>,
+        forward_index: usize,
+        forward_cost: f64,
+        backward_index: usize,
+        backward_cost: f64,
+    ) {
+        let total_cost = forward_cost + backward_cost;
+        if best_meeting
+            .as_ref()
+            .is_none_or(|(_, _, best_cost)| total_cost < *best_cost)
+        {
+            *best_meeting = Some((forward_index, backward_index, total_cost));
+        }
+    }
+
+    fn build_meeting_path(
+        &self,
+        forward_index: usize,
+        backward_index: usize,
+        fwd_storage: &[Node],
+        bwd_storage: &[Node],
+    ) -> Path2D {
+        let mut path = self.build_half_path(forward_index, fwd_storage);
+        let mut bwd_path = self.build_half_path(backward_index, bwd_storage);
+        bwd_path.reverse();
+        if !bwd_path.is_empty() {
+            path.extend_from_slice(&bwd_path[1..]);
+        }
+        Path2D::from_points(path)
+    }
+
     fn ensure_query_is_valid(&self, x: i32, y: i32, label: &str) -> RoboticsResult<()> {
         if self.grid_map.is_valid(x, y) {
             return Ok(());
@@ -157,100 +222,176 @@ impl BidirectionalBFSPlanner {
         self.ensure_query_is_valid(goal_x, goal_y, "Goal")?;
 
         // Forward search (from start)
-        let mut fwd_queue = VecDeque::new();
+        let mut fwd_open: HashMap<i32, usize> = HashMap::new();
         let mut fwd_closed: HashMap<i32, usize> = HashMap::new();
         let mut fwd_storage: Vec<Node> = Vec::new();
 
         fwd_storage.push(Node::new(start_x, start_y, 0.0, None));
-        fwd_queue.push_back(0usize);
-        fwd_closed.insert(self.grid_map.calc_index(start_x, start_y), 0);
+        fwd_open.insert(self.grid_map.calc_index(start_x, start_y), 0);
 
         // Backward search (from goal)
-        let mut bwd_queue = VecDeque::new();
+        let mut bwd_open: HashMap<i32, usize> = HashMap::new();
         let mut bwd_closed: HashMap<i32, usize> = HashMap::new();
         let mut bwd_storage: Vec<Node> = Vec::new();
 
         bwd_storage.push(Node::new(goal_x, goal_y, 0.0, None));
-        bwd_queue.push_back(0usize);
-        bwd_closed.insert(self.grid_map.calc_index(goal_x, goal_y), 0);
+        bwd_open.insert(self.grid_map.calc_index(goal_x, goal_y), 0);
+
+        let mut best_meeting: Option<(usize, usize, f64)> = None;
 
         loop {
-            // Expand forward
-            if let Some(fwd_idx) = fwd_queue.pop_front() {
+            if fwd_open.is_empty() || bwd_open.is_empty() {
+                return best_meeting
+                    .map(|(fwd_idx, bwd_idx, _)| {
+                        self.build_meeting_path(fwd_idx, bwd_idx, &fwd_storage, &bwd_storage)
+                    })
+                    .ok_or_else(|| RoboticsError::PlanningError("No path found".to_string()));
+            }
+
+            let (fwd_key, min_cost_fwd) = self.best_open_key(&fwd_open, &fwd_storage);
+            let (bwd_key, min_cost_bwd) = self.best_open_key(&bwd_open, &bwd_storage);
+
+            if let Some((fwd_idx, bwd_idx, best_cost)) = best_meeting {
+                if min_cost_fwd >= best_cost && min_cost_bwd >= best_cost {
+                    return Ok(self.build_meeting_path(
+                        fwd_idx,
+                        bwd_idx,
+                        &fwd_storage,
+                        &bwd_storage,
+                    ));
+                }
+            }
+
+            if min_cost_fwd <= min_cost_bwd {
+                let fwd_idx = fwd_open.remove(&fwd_key).unwrap();
                 let fwd_node = &fwd_storage[fwd_idx];
                 let fx = fwd_node.x;
                 let fy = fwd_node.y;
                 let fcost = fwd_node.cost;
                 let fwd_grid_index = self.grid_map.calc_index(fx, fy);
 
-                // Check meeting condition
-                if let Some(&bwd_idx) = bwd_closed.get(&fwd_grid_index) {
-                    let mut path = self.build_half_path(fwd_idx, &fwd_storage);
-                    let mut bwd_path = self.build_half_path(bwd_idx, &bwd_storage);
-                    bwd_path.reverse();
-                    if !bwd_path.is_empty() {
-                        path.extend_from_slice(&bwd_path[1..]);
+                if let Some(&existing_closed_idx) = fwd_closed.get(&fwd_grid_index) {
+                    if fwd_storage[existing_closed_idx].cost <= fcost {
+                        continue;
                     }
-                    return Ok(Path2D::from_points(path));
                 }
+
+                if let Some(bwd_idx) =
+                    Self::best_known_index(&bwd_open, &bwd_closed, &bwd_storage, fwd_grid_index)
+                {
+                    Self::update_best_meeting(
+                        &mut best_meeting,
+                        fwd_idx,
+                        fcost,
+                        bwd_idx,
+                        bwd_storage[bwd_idx].cost,
+                    );
+                }
+
+                fwd_closed.insert(fwd_grid_index, fwd_idx);
 
                 for &(dx, dy, move_cost) in &self.motion {
                     let nx = fx + dx;
                     let ny = fy + dy;
                     let new_grid_index = self.grid_map.calc_index(nx, ny);
 
-                    if !self.grid_map.is_valid(nx, ny) || fwd_closed.contains_key(&new_grid_index) {
+                    if !self.grid_map.is_valid_offset(fx, fy, dx, dy) {
                         continue;
+                    }
+
+                    if let Some(&closed_idx) = fwd_closed.get(&new_grid_index) {
+                        if fwd_storage[closed_idx].cost <= fcost + move_cost {
+                            continue;
+                        }
+                    }
+
+                    if let Some(&open_idx) = fwd_open.get(&new_grid_index) {
+                        if fwd_storage[open_idx].cost <= fcost + move_cost {
+                            continue;
+                        }
                     }
 
                     fwd_storage.push(Node::new(nx, ny, fcost + move_cost, Some(fwd_idx)));
                     let new_idx = fwd_storage.len() - 1;
-                    fwd_closed.insert(new_grid_index, new_idx);
-                    fwd_queue.push_back(new_idx);
+                    fwd_open.insert(new_grid_index, new_idx);
+
+                    if let Some(bwd_idx) =
+                        Self::best_known_index(&bwd_open, &bwd_closed, &bwd_storage, new_grid_index)
+                    {
+                        Self::update_best_meeting(
+                            &mut best_meeting,
+                            new_idx,
+                            fwd_storage[new_idx].cost,
+                            bwd_idx,
+                            bwd_storage[bwd_idx].cost,
+                        );
+                    }
                 }
             } else {
-                return Err(RoboticsError::PlanningError(
-                    "No path found (forward queue empty)".to_string(),
-                ));
-            }
-
-            // Expand backward
-            if let Some(bwd_idx) = bwd_queue.pop_front() {
+                let bwd_idx = bwd_open.remove(&bwd_key).unwrap();
                 let bwd_node = &bwd_storage[bwd_idx];
                 let bx = bwd_node.x;
                 let by = bwd_node.y;
                 let bcost = bwd_node.cost;
                 let bwd_grid_index = self.grid_map.calc_index(bx, by);
 
-                // Check meeting condition
-                if let Some(&fwd_idx) = fwd_closed.get(&bwd_grid_index) {
-                    let mut path = self.build_half_path(fwd_idx, &fwd_storage);
-                    let mut bwd_path = self.build_half_path(bwd_idx, &bwd_storage);
-                    bwd_path.reverse();
-                    if !bwd_path.is_empty() {
-                        path.extend_from_slice(&bwd_path[1..]);
+                if let Some(&existing_closed_idx) = bwd_closed.get(&bwd_grid_index) {
+                    if bwd_storage[existing_closed_idx].cost <= bcost {
+                        continue;
                     }
-                    return Ok(Path2D::from_points(path));
                 }
+
+                if let Some(fwd_idx) =
+                    Self::best_known_index(&fwd_open, &fwd_closed, &fwd_storage, bwd_grid_index)
+                {
+                    Self::update_best_meeting(
+                        &mut best_meeting,
+                        fwd_idx,
+                        fwd_storage[fwd_idx].cost,
+                        bwd_idx,
+                        bcost,
+                    );
+                }
+
+                bwd_closed.insert(bwd_grid_index, bwd_idx);
 
                 for &(dx, dy, move_cost) in &self.motion {
                     let nx = bx + dx;
                     let ny = by + dy;
                     let new_grid_index = self.grid_map.calc_index(nx, ny);
 
-                    if !self.grid_map.is_valid(nx, ny) || bwd_closed.contains_key(&new_grid_index) {
+                    if !self.grid_map.is_valid_offset(bx, by, dx, dy) {
                         continue;
+                    }
+
+                    if let Some(&closed_idx) = bwd_closed.get(&new_grid_index) {
+                        if bwd_storage[closed_idx].cost <= bcost + move_cost {
+                            continue;
+                        }
+                    }
+
+                    if let Some(&open_idx) = bwd_open.get(&new_grid_index) {
+                        if bwd_storage[open_idx].cost <= bcost + move_cost {
+                            continue;
+                        }
                     }
 
                     bwd_storage.push(Node::new(nx, ny, bcost + move_cost, Some(bwd_idx)));
                     let new_idx = bwd_storage.len() - 1;
-                    bwd_closed.insert(new_grid_index, new_idx);
-                    bwd_queue.push_back(new_idx);
+                    bwd_open.insert(new_grid_index, new_idx);
+
+                    if let Some(fwd_idx) =
+                        Self::best_known_index(&fwd_open, &fwd_closed, &fwd_storage, new_grid_index)
+                    {
+                        Self::update_best_meeting(
+                            &mut best_meeting,
+                            fwd_idx,
+                            fwd_storage[fwd_idx].cost,
+                            new_idx,
+                            bwd_storage[new_idx].cost,
+                        );
+                    }
                 }
-            } else {
-                return Err(RoboticsError::PlanningError(
-                    "No path found (backward queue empty)".to_string(),
-                ));
             }
         }
     }
@@ -265,6 +406,7 @@ impl PathPlanner for BidirectionalBFSPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::moving_ai::{MovingAiMap, MovingAiScenario};
 
     fn create_simple_obstacles() -> (Vec<f64>, Vec<f64>) {
         let mut ox = Vec::new();
@@ -362,5 +504,44 @@ mod tests {
 
         let result = planner.planning(2.0, 2.0, 8.0, 8.0);
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_bidirectional_bfs_matches_moving_ai_arena2_bucket_80_optimal_length() {
+        let map = MovingAiMap::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map"))
+            .expect("arena2 MovingAI map should parse");
+        let scenario =
+            MovingAiScenario::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map.scen"))
+                .expect("arena2 MovingAI scenarios should parse")
+                .into_iter()
+                .find(|row| row.bucket == 80)
+                .expect("arena2 MovingAI bucket 80 scenario should exist");
+
+        let planner = BidirectionalBFSPlanner::from_obstacle_points(
+            &map.to_obstacles(),
+            BidirectionalBFSConfig {
+                resolution: 1.0,
+                robot_radius: 0.5,
+            },
+        )
+        .expect("Bidirectional BFS planner should build from arena2 obstacles");
+
+        let start = map
+            .planning_point(scenario.start_x, scenario.start_y)
+            .expect("arena2 start should be valid");
+        let goal = map
+            .planning_point(scenario.goal_x, scenario.goal_y)
+            .expect("arena2 goal should be valid");
+
+        let path = planner
+            .plan(start, goal)
+            .expect("Bidirectional BFS should solve the arena2 bucket 80 scenario");
+
+        assert!(
+            (path.total_length() - scenario.optimal_length).abs() < 1e-6,
+            "Bidirectional BFS path length {} should match MovingAI optimal {}",
+            path.total_length(),
+            scenario.optimal_length
+        );
     }
 }

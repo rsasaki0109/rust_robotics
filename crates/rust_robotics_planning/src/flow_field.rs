@@ -1,13 +1,14 @@
 //! Flow Field path planning algorithm
 //!
 //! Computes a vector field that points toward the goal from every
-//! reachable cell using BFS-based integration.  An agent follows
+//! reachable cell using weighted shortest-path integration. An agent follows
 //! the field from its start position to the goal.
 //!
 //! Reference: Leif Erkenbrach, "Flow Field Pathfinding" (2013)
 //! <https://leifnode.com/2013/12/flow-field-pathfinding/>
 
-use std::collections::VecDeque;
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
 
 use crate::grid::GridMap;
 use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
@@ -57,7 +58,7 @@ struct FlowDir {
 
 /// Result of computing a flow field toward a specific goal.
 ///
-/// The integration field stores the BFS distance (using 10/14 costs for
+/// The integration field stores the shortest-path distance (using 10/14 costs for
 /// cardinal/diagonal moves) from every reachable cell to the goal.  The
 /// vector field stores, for each cell, the offset to its best neighbour.
 #[derive(Debug, Clone)]
@@ -190,7 +191,7 @@ impl FlowFieldPlanner {
         (x as usize) * (self.grid_map.y_width as usize) + (y as usize)
     }
 
-    /// Build the integration field (BFS from goal) and derive the vector
+    /// Build the integration field (Dijkstra from goal) and derive the vector
     /// field.
     fn build_field(&self, gx: i32, gy: i32) -> FlowFieldResult {
         let w = self.grid_map.x_width as usize;
@@ -200,31 +201,36 @@ impl FlowFieldPlanner {
         let mut integration = vec![u32::MAX; total];
         let mut directions = vec![FlowDir { dx: 0, dy: 0 }; total];
 
-        // BFS (Dijkstra-like with uniform-ish costs) from goal.
+        // Dijkstra from goal so the integration field respects 10/14 move costs.
         let goal_idx = self.flat_index(gx, gy);
         integration[goal_idx] = 0;
 
-        let mut queue: VecDeque<(i32, i32)> = VecDeque::new();
-        queue.push_back((gx, gy));
+        let mut open = BinaryHeap::new();
+        open.push((Reverse(0_u32), gx, gy));
 
-        while let Some((cx, cy)) = queue.pop_front() {
+        while let Some((Reverse(curr_cost), cx, cy)) = open.pop() {
+            if curr_cost != integration[self.flat_index(cx, cy)] {
+                continue;
+            }
+
             let curr_cost = integration[self.flat_index(cx, cy)];
             for &(dx, dy, move_cost) in &self.motion {
                 let nx = cx + dx;
                 let ny = cy + dy;
-                if !self.grid_map.is_valid(nx, ny) {
+                if !self.grid_map.is_valid_offset(cx, cy, dx, dy) {
                     continue;
                 }
                 let ni = self.flat_index(nx, ny);
-                let new_cost = curr_cost + move_cost;
+                let new_cost = curr_cost.saturating_add(move_cost);
                 if new_cost < integration[ni] {
                     integration[ni] = new_cost;
-                    queue.push_back((nx, ny));
+                    open.push((Reverse(new_cost), nx, ny));
                 }
             }
         }
 
-        // Derive vector field: each cell points to its lowest-cost neighbour.
+        // Derive vector field: each cell points to the neighbour that minimizes
+        // remaining path cost including the step into that neighbour.
         for ix in 0..self.grid_map.x_width {
             for iy in 0..self.grid_map.y_width {
                 if !self.grid_map.is_valid(ix, iy) {
@@ -240,22 +246,30 @@ impl FlowFieldPlanner {
                     continue;
                 }
 
-                let mut best_cost = integration[idx];
+                let current_path_cost = integration[idx];
+                let mut best_neighbor_cost = u32::MAX;
                 let mut best_dx = 0i32;
                 let mut best_dy = 0i32;
-                for &(dx, dy, _) in &self.motion {
+                for &(dx, dy, move_cost) in &self.motion {
                     let nx = ix + dx;
                     let ny = iy + dy;
                     if nx < 0
                         || ny < 0
                         || nx >= self.grid_map.x_width
                         || ny >= self.grid_map.y_width
+                        || !self.grid_map.is_valid_offset(ix, iy, dx, dy)
                     {
                         continue;
                     }
                     let ni = self.flat_index(nx, ny);
-                    if integration[ni] < best_cost {
-                        best_cost = integration[ni];
+                    if integration[ni] == u32::MAX {
+                        continue;
+                    }
+                    let candidate_path_cost = integration[ni].saturating_add(move_cost);
+                    if candidate_path_cost == current_path_cost
+                        && integration[ni] < best_neighbor_cost
+                    {
+                        best_neighbor_cost = integration[ni];
                         best_dx = dx;
                         best_dy = dy;
                     }
@@ -342,6 +356,7 @@ impl PathPlanner for FlowFieldPlanner {
 mod tests {
     use super::*;
 
+    use crate::moving_ai::{MovingAiMap, MovingAiScenario};
     use rust_robotics_core::Obstacles;
 
     /// 10x10 box with boundary obstacles and a vertical wall at x=5.
@@ -522,5 +537,48 @@ mod tests {
                 window[1]
             );
         }
+    }
+
+    #[test]
+    fn test_flow_field_matches_moving_ai_random512_bucket_80_optimal_length() {
+        let map = MovingAiMap::parse_str(include_str!(
+            "../benchdata/moving_ai/random/random512-10-0.map"
+        ))
+        .expect("random512 map should parse");
+        let scenario = MovingAiScenario::parse_str(include_str!(
+            "../benchdata/moving_ai/random/random512-10-0.map.scen"
+        ))
+        .expect("random512 scenario should parse")
+        .into_iter()
+        .find(|entry| entry.bucket == 80)
+        .expect("random512 MovingAI bucket 80 scenario should exist");
+
+        let obstacles = map.to_obstacles();
+        let planner = FlowFieldPlanner::from_obstacle_points(
+            &obstacles,
+            FlowFieldConfig {
+                resolution: 1.0,
+                robot_radius: 0.0,
+            },
+        )
+        .expect("flow field planner should build from random512 obstacles");
+
+        let start = map
+            .planning_point(scenario.start_x, scenario.start_y)
+            .expect("random512 start should map to planner coordinates");
+        let goal = map
+            .planning_point(scenario.goal_x, scenario.goal_y)
+            .expect("random512 goal should map to planner coordinates");
+
+        let path = planner
+            .plan(start, goal)
+            .expect("FlowField should solve the random512 bucket 80 scenario");
+
+        assert!(
+            (path.total_length() - scenario.optimal_length).abs() < 1e-6,
+            "FlowField path length {} should match MovingAI optimal {}",
+            path.total_length(),
+            scenario.optimal_length
+        );
     }
 }

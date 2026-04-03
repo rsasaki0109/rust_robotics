@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
 //! Control and path tracking algorithms for the RustRobotics workspace.
 
+pub mod experiments;
+
 pub mod arm_obstacle_navigation;
 pub mod behavior_tree;
 pub mod cgmres_nmpc;

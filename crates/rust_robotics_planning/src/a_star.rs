@@ -261,7 +261,7 @@ impl AStarPlanner {
                 let new_grid_index = self.grid_map.calc_index(new_x, new_y);
 
                 // Skip if not valid or already visited
-                if !self.grid_map.is_valid(new_x, new_y) {
+                if !self.grid_map.is_valid_offset(current.x, current.y, dx, dy) {
                     continue;
                 }
                 if closed_set.contains_key(&new_grid_index) {
@@ -296,6 +296,7 @@ impl PathPlanner for AStarPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::moving_ai::{MovingAiMap, MovingAiScenario};
 
     use rust_robotics_core::Obstacles;
 
@@ -401,5 +402,45 @@ mod tests {
         assert!((first.y + 2.0).abs() < 1e-6);
         assert!((last.x - 18.0).abs() < 1e-6);
         assert!((last.y - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_a_star_matches_moving_ai_arena2_bucket_80_optimal_length() {
+        let map = MovingAiMap::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map"))
+            .expect("arena2 MovingAI map should parse");
+        let scenario =
+            MovingAiScenario::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map.scen"))
+                .expect("arena2 MovingAI scenarios should parse")
+                .into_iter()
+                .find(|row| row.bucket == 80)
+                .expect("arena2 MovingAI bucket 80 scenario should exist");
+
+        let planner = AStarPlanner::from_obstacle_points(
+            &map.to_obstacles(),
+            AStarConfig {
+                resolution: 1.0,
+                robot_radius: 0.5,
+                heuristic_weight: 1.0,
+            },
+        )
+        .expect("A* planner should build from arena2 obstacles");
+
+        let start = map
+            .planning_point(scenario.start_x, scenario.start_y)
+            .expect("arena2 start should be valid");
+        let goal = map
+            .planning_point(scenario.goal_x, scenario.goal_y)
+            .expect("arena2 goal should be valid");
+
+        let path = planner
+            .plan(start, goal)
+            .expect("A* should solve the arena2 bucket 80 scenario");
+
+        assert!(
+            (path.total_length() - scenario.optimal_length).abs() < 1e-6,
+            "A* path length {} should match MovingAI optimal {} when corner cutting is disabled",
+            path.total_length(),
+            scenario.optimal_length
+        );
     }
 }
