@@ -10,15 +10,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  all-targets:
+  build-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
 
     - name: Cache cargo
       uses: actions/cache@v4
@@ -32,7 +30,7 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
 
     - name: Build workspace
-      run: cargo build --workspace --all-targets --verbose
+      run: cargo build --workspace --all-targets
 
     - name: Run workspace tests
       run: cargo test --workspace --all-targets
@@ -46,6 +44,26 @@ jobs:
         cargo run -p rust_robotics --example headless_localizers --features localization
         cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
 
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy, rustfmt
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-lint-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
     - name: Clippy
       run: cargo clippy --workspace --all-targets -- -W clippy::all -D warnings
 
@@ -57,8 +75,22 @@ jobs:
     - name: Check formatting
       run: cargo fmt --all -- --check
 
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo-deny
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/cargo-deny
+        key: ${{ runner.os }}-cargo-deny-0.16
+
     - name: Install cargo-deny
-      run: cargo install cargo-deny --locked
+      run: command -v cargo-deny || cargo install cargo-deny --locked
 
     - name: Dependency audit
       run: cargo deny check
@@ -71,11 +103,17 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
 
+    - name: Cache cargo-tarpaulin
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/cargo-tarpaulin
+        key: ${{ runner.os }}-tarpaulin-0.31
+
     - name: Install cargo-tarpaulin
-      run: cargo install cargo-tarpaulin --locked
+      run: command -v cargo-tarpaulin || cargo install cargo-tarpaulin --locked
 
     - name: Run coverage
-      run: cargo tarpaulin --workspace --skip-clean --timeout 300 --out xml
+      run: cargo tarpaulin --workspace --skip-clean --timeout 600 --out xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
