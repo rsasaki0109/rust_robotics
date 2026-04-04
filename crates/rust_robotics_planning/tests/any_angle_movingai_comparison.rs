@@ -73,6 +73,7 @@ struct PlanResult {
 }
 
 #[test]
+#[ignore = "long-running: MovingAI 5 families, use --release --ignored"]
 fn any_angle_movingai_comparison() {
     println!();
     println!("==========================================================================");
