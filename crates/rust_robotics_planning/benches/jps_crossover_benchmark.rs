@@ -47,14 +47,18 @@ fn maze_obstacles(size: i32) -> Obstacles {
     let mut pos = wall_spacing;
     while pos < size - wall_spacing {
         if is_horizontal {
-            let gap_start = ((pos as u64).wrapping_mul(2654435761) % (size as u64 - gap_size as u64 - 4)) as i32 + 2;
+            let gap_start = ((pos as u64).wrapping_mul(2654435761)
+                % (size as u64 - gap_size as u64 - 4)) as i32
+                + 2;
             for x in 2..size - 1 {
                 if x < gap_start || x >= gap_start + gap_size {
                     obs.push(Point2D::new(x as f64, pos as f64));
                 }
             }
         } else {
-            let gap_start = ((pos as u64).wrapping_mul(2246822519) % (size as u64 - gap_size as u64 - 4)) as i32 + 2;
+            let gap_start = ((pos as u64).wrapping_mul(2246822519)
+                % (size as u64 - gap_size as u64 - 4)) as i32
+                + 2;
             for y in 2..size - 1 {
                 if y < gap_start || y >= gap_start + gap_size {
                     obs.push(Point2D::new(pos as f64, y as f64));

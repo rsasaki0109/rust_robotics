@@ -103,9 +103,7 @@ pub struct EnhancedLazyThetaStarPlanner {
 
 impl EnhancedLazyThetaStarPlanner {
     pub fn new(ox: &[f64], oy: &[f64], config: EnhancedLazyThetaStarConfig) -> Self {
-        Self::try_new(ox, oy, config).expect(
-            "invalid Enhanced Lazy Theta* planner input",
-        )
+        Self::try_new(ox, oy, config).expect("invalid Enhanced Lazy Theta* planner input")
     }
 
     pub fn try_new(
@@ -167,8 +165,7 @@ impl EnhancedLazyThetaStarPlanner {
     }
 
     fn calc_heuristic(&self, n1_x: i32, n1_y: i32, n2_x: i32, n2_y: i32) -> f64 {
-        self.config.heuristic_weight
-            * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
+        self.config.heuristic_weight * (((n1_x - n2_x).pow(2) + (n1_y - n2_y).pow(2)) as f64).sqrt()
     }
 
     fn get_motion_model() -> Vec<(i32, i32, f64)> {
@@ -285,13 +282,31 @@ impl EnhancedLazyThetaStarPlanner {
         // Ring 2: distance 2, sqrt(5), 2*sqrt(2)
         let offsets: [(i32, i32); 24] = [
             // Ring 1 (8)
-            (1, 0), (0, 1), (-1, 0), (0, -1),
-            (1, 1), (1, -1), (-1, 1), (-1, -1),
+            (1, 0),
+            (0, 1),
+            (-1, 0),
+            (0, -1),
+            (1, 1),
+            (1, -1),
+            (-1, 1),
+            (-1, -1),
             // Ring 2 (16)
-            (2, 0), (0, 2), (-2, 0), (0, -2),
-            (2, 1), (2, -1), (-2, 1), (-2, -1),
-            (1, 2), (1, -2), (-1, 2), (-1, -2),
-            (2, 2), (2, -2), (-2, 2), (-2, -2),
+            (2, 0),
+            (0, 2),
+            (-2, 0),
+            (0, -2),
+            (2, 1),
+            (2, -1),
+            (-2, 1),
+            (-2, -1),
+            (1, 2),
+            (1, -2),
+            (-1, 2),
+            (-1, -2),
+            (2, 2),
+            (2, -2),
+            (-2, 2),
+            (-2, -2),
         ];
 
         for &(dx, dy) in &offsets {
@@ -386,12 +401,9 @@ impl EnhancedLazyThetaStarPlanner {
 
                 if needs_correction {
                     // Enhanced fallback: search wider parent candidates
-                    if let Some((best_parent_idx, best_g)) = self.enhanced_best_parent(
-                        current.x,
-                        current.y,
-                        &closed_set,
-                        &node_storage,
-                    ) {
+                    if let Some((best_parent_idx, best_g)) =
+                        self.enhanced_best_parent(current.x, current.y, &closed_set, &node_storage)
+                    {
                         node_storage.push(Node::new(
                             current.x,
                             current.y,
@@ -406,12 +418,9 @@ impl EnhancedLazyThetaStarPlanner {
                     // LOS succeeded — still try any-angle improvement via closed neighbors
                     // This is the key enhancement: even when the optimistic parent is valid,
                     // there might be a better parent among closed-set ancestors.
-                    if let Some((better_idx, better_g)) = self.enhanced_best_parent(
-                        current.x,
-                        current.y,
-                        &closed_set,
-                        &node_storage,
-                    ) {
+                    if let Some((better_idx, better_g)) =
+                        self.enhanced_best_parent(current.x, current.y, &closed_set, &node_storage)
+                    {
                         if better_g < current_node.cost {
                             node_storage.push(Node::new(
                                 current.x,
@@ -450,8 +459,7 @@ impl EnhancedLazyThetaStarPlanner {
                 // Optimistic parent assignment (same as Lazy Theta*)
                 let (new_cost, new_parent_index) = if let Some(p_idx) = current_parent {
                     let parent_node = &node_storage[p_idx];
-                    let dist =
-                        self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
+                    let dist = self.euclidean_distance(parent_node.x, parent_node.y, new_x, new_y);
                     let cost_via_parent = parent_node.cost + dist;
 
                     let dist_via_current =
@@ -477,8 +485,7 @@ impl EnhancedLazyThetaStarPlanner {
                     node_storage.push(Node::new(new_x, new_y, new_cost, new_parent_index));
                     let new_index = node_storage.len() - 1;
                     best_index.insert(new_grid_index, new_index);
-                    let priority =
-                        new_cost + self.calc_heuristic(new_x, new_y, goal_x, goal_y);
+                    let priority = new_cost + self.calc_heuristic(new_x, new_y, goal_x, goal_y);
                     open_set.push(PriorityNode {
                         x: new_x,
                         y: new_y,

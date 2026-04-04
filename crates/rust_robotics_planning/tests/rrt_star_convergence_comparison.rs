@@ -7,7 +7,9 @@
 //! and non-holonomic constraints, so they're not directly comparable with
 //! the standard (x,y) planners and are excluded.
 
-use rust_robotics_planning::batch_informed_rrt_star::{BatchInformedRRTStar, BatchInformedRRTStarConfig};
+use rust_robotics_planning::batch_informed_rrt_star::{
+    BatchInformedRRTStar, BatchInformedRRTStarConfig,
+};
 use rust_robotics_planning::informed_rrt_star::InformedRRTStar;
 use rust_robotics_planning::rrt_star::RRTStar;
 
@@ -42,17 +44,17 @@ struct ConvergenceResult {
 fn run_rrt_star(max_iter: i32) -> ConvergenceResult {
     let obstacles = circle_obstacles();
     let mut planner = RRTStar::new(
-        (0.0, 0.0),            // start
-        (6.0, 10.0),           // goal
+        (0.0, 0.0),  // start
+        (6.0, 10.0), // goal
         obstacles,
-        (-2.0, 15.0),          // rand_area
-        3.0,                   // expand_dis
-        0.5,                   // path_resolution
-        20,                    // goal_sample_rate
-        max_iter,              // max_iter
-        50.0,                  // connect_circle_dist
-        true,                  // search_until_max_iter
-        0.0,                   // robot_radius
+        (-2.0, 15.0), // rand_area
+        3.0,          // expand_dis
+        0.5,          // path_resolution
+        20,           // goal_sample_rate
+        max_iter,     // max_iter
+        50.0,         // connect_circle_dist
+        true,         // search_until_max_iter
+        0.0,          // robot_radius
     );
     let path = planner.planning();
     ConvergenceResult {
