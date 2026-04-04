@@ -134,6 +134,7 @@ impl LazyThetaStarPlanner {
         })
     }
 
+    #[deprecated(note = "use plan() or plan_xy() instead")]
     pub fn planning(&self, sx: f64, sy: f64, gx: f64, gy: f64) -> Option<(Vec<f64>, Vec<f64>)> {
         match self.plan_xy(sx, sy, gx, gy) {
             Ok(path) => Some((path.x_coords(), path.y_coords())),
@@ -468,6 +469,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_lazy_theta_star_legacy_interface() {
         let (ox, oy) = create_simple_obstacles();
         let planner = LazyThetaStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);

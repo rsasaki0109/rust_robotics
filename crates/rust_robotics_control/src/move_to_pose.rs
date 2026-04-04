@@ -224,7 +224,7 @@ pub fn demo_move_to_pose() {
 
     let output_path = "img/path_tracking/move_to_pose.png";
     fg.set_terminal("pngcairo", output_path);
-    fg.show().unwrap();
+    fg.show().expect("failed to render gnuplot figure for move_to_pose");
     println!("Move to pose visualization saved to: {}", output_path);
     println!("Move to Pose complete!");
 }
