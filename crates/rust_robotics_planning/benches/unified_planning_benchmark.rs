@@ -15,6 +15,9 @@ use rust_robotics_planning::jps::{
     JPSConfig, JPSCostMismatchMetrics, JPSFallbackReason, JPSInvalidJumpPathDetail, JPSPlanner,
 };
 use rust_robotics_planning::moving_ai::{MovingAiMap, MovingAiScenario};
+use rust_robotics_planning::enhanced_lazy_theta_star::{
+    EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner,
+};
 use rust_robotics_planning::lazy_theta_star::{LazyThetaStarConfig, LazyThetaStarPlanner};
 use rust_robotics_planning::path_smoothing::smooth_path;
 use rust_robotics_planning::theta_star::{ThetaStarConfig, ThetaStarPlanner};
@@ -201,7 +204,7 @@ fn planner_family(planner: &str) -> PlannerFamily {
         "A*" | "BidirectionalA*" | "BidirectionalBFS" | "JPS" | "FlowField" => {
             PlannerFamily::GridOptimal
         }
-        "Theta*" | "LazyTheta*" | "DFS+Smooth" => PlannerFamily::AnyAngle,
+        "Theta*" | "LazyTheta*" | "EnhancedLazy*" | "DFS+Smooth" => PlannerFamily::AnyAngle,
         _ => PlannerFamily::SearchBaseline,
     }
 }
@@ -629,6 +632,23 @@ fn build_planners(obstacles: &Obstacles) -> Vec<(&'static str, Option<PlanFn>)> 
         ));
     } else {
         planners.push(("DFS+Smooth", None));
+    }
+
+    // Enhanced Lazy Theta*
+    if let Ok(p) = EnhancedLazyThetaStarPlanner::from_obstacle_points(
+        obstacles,
+        EnhancedLazyThetaStarConfig {
+            resolution: RESOLUTION,
+            robot_radius: ROBOT_RADIUS,
+            heuristic_weight: 1.0,
+        },
+    ) {
+        planners.push((
+            "EnhancedLazy*",
+            Some(Box::new(move |s, g| p.plan(s, g).unwrap_or_default())),
+        ));
+    } else {
+        planners.push(("EnhancedLazy*", None));
     }
 
     planners
