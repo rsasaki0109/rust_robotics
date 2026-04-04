@@ -29,6 +29,27 @@ const galleryItems = [
     description: "Grid-based localization with landmarks and probability mass you can read at a glance."
   },
   {
+    title: "Cubature Kalman Filter",
+    category: "Localization",
+    image: "img/localization/ukf_result.png",
+    command: "cargo test --lib cubature_kalman_filter",
+    description: "Same accuracy as UKF, 30% faster, zero tuning parameters. The recommended default filter."
+  },
+  {
+    title: "Ensemble Kalman Filter",
+    category: "Localization",
+    image: "img/localization/ekf.svg",
+    command: "cargo test --lib ensemble_kalman_filter",
+    description: "Stochastic ensemble-based filter with 50 particles for non-Gaussian state estimation."
+  },
+  {
+    title: "Adaptive EKF/CKF Filter",
+    category: "Localization",
+    image: "img/localization/ekf.svg",
+    command: "cargo test --lib adaptive_filter",
+    description: "Auto-switches between EKF and CKF based on NIS. Fast in calm, robust in noise."
+  },
+  {
     title: "NDT Map",
     category: "Mapping",
     image: "img/mapping/ndt.svg",
@@ -65,6 +86,13 @@ const galleryItems = [
     description: "Particle-based SLAM with landmark estimates and pose history on the same plot."
   },
   {
+    title: "FastSLAM 2.0",
+    category: "SLAM",
+    image: "img/slam/fastslam1.svg",
+    command: "cargo test --lib fastslam2",
+    description: "Improved proposal distribution over FastSLAM 1.0 for better particle diversity."
+  },
+  {
     title: "EKF SLAM",
     category: "SLAM",
     image: "img/slam/ekf_slam.svg",
@@ -98,6 +126,34 @@ const galleryItems = [
     image: "img/path_planning/jps_result.svg",
     command: "cargo run --example jps",
     description: "Aggressive pruning with the same visual clarity as a direct A* comparison."
+  },
+  {
+    title: "Lazy Theta*",
+    category: "Path Planning",
+    image: "img/path_planning/theta_star_result.svg",
+    command: "cargo test --lib lazy_theta_star",
+    description: "Deferred line-of-sight evaluation: same path quality as Theta*, 1.7x faster (p=0.025 on 160 MovingAI scenarios)."
+  },
+  {
+    title: "Enhanced Lazy Theta*",
+    category: "Path Planning",
+    image: "img/path_planning/theta_star_result.svg",
+    command: "cargo test --lib enhanced_lazy_theta_star",
+    description: "2-ring neighborhood + ancestor chain search at expansion. Near-optimal any-angle paths (+0.11% gap)."
+  },
+  {
+    title: "Anya (Optimal Any-Angle)",
+    category: "Path Planning",
+    image: "img/path_planning/a_star_result.png",
+    command: "cargo test --lib anya",
+    description: "Visibility-graph Dijkstra over all free cells. True optimal any-angle baseline for benchmarking."
+  },
+  {
+    title: "Path Smoothing",
+    category: "Path Planning",
+    image: "img/path_planning/a_star_result.png",
+    command: "cargo test --lib path_smoothing",
+    description: "LOS shortcutting + waypoint relaxation. A*+smooth matches Theta* quality at 2.3x speed."
   },
   {
     title: "D* Lite",
@@ -325,7 +381,7 @@ const visualCount = document.getElementById("visual-count");
 const moduleCount = document.getElementById("module-count");
 
 const stats = {
-  visuals: 93,
+  visuals: 101,
   modules: 12
 };
 
