@@ -336,17 +336,7 @@ impl LazyThetaStarPlanner {
             if let Some(parent_idx) = current_node.parent_index {
                 let parent_node = &node_storage[parent_idx];
                 // Verify line-of-sight to the actual parent
-                let los_ok = if !self.line_of_sight(parent_node.x, parent_node.y, current.x, current.y) {
-                    false
-                } else if let Some(grandparent_idx) = parent_node.parent_index {
-                    // Also verify the optimistic grandparent shortcut
-                    let grandparent = &node_storage[grandparent_idx];
-                    // If parent was set to grandparent optimistically, verify that LOS
-                    self.line_of_sight(grandparent.x, grandparent.y, current.x, current.y)
-                        || true // Parent itself has LOS, which is enough
-                } else {
-                    true
-                };
+                let los_ok = self.line_of_sight(parent_node.x, parent_node.y, current.x, current.y);
 
                 if !los_ok {
                     // Line-of-sight to parent failed: find best grid neighbor in closed set

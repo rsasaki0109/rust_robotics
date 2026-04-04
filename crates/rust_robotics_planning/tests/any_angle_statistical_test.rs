@@ -7,7 +7,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use rust_robotics_core::Point2D;
 use rust_robotics_planning::enhanced_lazy_theta_star::{
     EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner,
 };
@@ -260,7 +259,7 @@ fn any_angle_statistical_test() {
             .zip(r.theta_lengths.iter())
             .map(|(l, t)| l / t)
             .collect();
-        let ones: Vec<f64> = vec![1.0; lazy_ratios.len()];
+        let _ones: Vec<f64> = vec![1.0; lazy_ratios.len()];
 
         let (_, z, p) = mann_whitney_u(&r.lazy_lengths, &r.theta_lengths);
         let sig = if p < 0.05 && z > 0.0 { "*" } else { "" }; // z > 0 means lazy < theta
