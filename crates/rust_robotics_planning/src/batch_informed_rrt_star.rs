@@ -226,8 +226,8 @@ impl BatchInformedRRTStar {
 
             // Collect indices of leaf nodes (not parents, not root) that exceed c_best.
             let mut to_remove = Vec::new();
-            for i in 1..n {
-                if !is_parent[i] {
+            for (i, &is_par) in is_parent.iter().enumerate().skip(1) {
+                if !is_par {
                     let heuristic = self.node_list[i].cost + self.dist_to_goal(&self.node_list[i]);
                     if heuristic > c_best {
                         to_remove.push(i);

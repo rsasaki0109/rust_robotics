@@ -711,7 +711,7 @@ mod tests {
         let goal = Pose2D::new(3.0, 3.0, PI / 2.0);
         let path = planner.plan(start, goal).unwrap();
 
-        let (xs, ys, yaws) = sample_dubins_with_yaw(&path, 0.1);
+        let (xs, _ys, yaws) = sample_dubins_with_yaw(&path, 0.1);
 
         assert!(xs.len() > 2);
         // End yaw should be near PI/2

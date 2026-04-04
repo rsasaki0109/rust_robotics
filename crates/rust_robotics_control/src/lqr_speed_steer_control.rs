@@ -176,6 +176,7 @@ impl LQRSpeedSteerController {
         let mut profile = vec![target_speed; n];
         let mut direction = 1.0;
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..n.saturating_sub(1) {
             if i < self.path_yaw.len() - 1 {
                 let dyaw = (self.path_yaw[i + 1] - self.path_yaw[i]).abs();

@@ -411,6 +411,7 @@ struct VelocityProfile {
     vels: [f64; 7],
     /// Arc-length traversed in each section.
     seg_lengths: [f64; 7],
+    #[allow(dead_code)]
     max_vel: f64,
     v0: f64,
     max_accel: f64,

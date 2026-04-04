@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Localization algorithms for the RustRobotics workspace.
 
+pub mod adaptive_filter;
 pub mod cubature_kalman_filter;
 pub mod ekf;
 pub mod ensemble_kalman_filter;
