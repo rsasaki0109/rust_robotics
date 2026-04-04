@@ -423,6 +423,44 @@ impl Covariance4D {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Display implementations
+// ---------------------------------------------------------------------------
+
+impl std::fmt::Display for Point2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({:.3}, {:.3})", self.x, self.y)
+    }
+}
+
+impl std::fmt::Display for Point3D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({:.3}, {:.3}, {:.3})", self.x, self.y, self.z)
+    }
+}
+
+impl std::fmt::Display for Pose2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(x={:.3}, y={:.3}, yaw={:.3})", self.x, self.y, self.yaw)
+    }
+}
+
+impl std::fmt::Display for State2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "(x={:.3}, y={:.3}, yaw={:.3}, v={:.3})",
+            self.x, self.y, self.yaw, self.v
+        )
+    }
+}
+
+impl std::fmt::Display for ControlInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(v={:.3}, omega={:.3})", self.v, self.omega)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

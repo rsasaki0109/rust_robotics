@@ -161,7 +161,10 @@ impl InvertedPendulumLQR {
         let k = (1.0 / denominator[0]) * bt_p * a;
 
         let closed_loop = a - b * k;
-        let eigenvalues = closed_loop.eigenvalues().unwrap();
+        // Matrix4 is always square, so eigenvalue computation cannot fail
+        let eigenvalues = closed_loop
+            .eigenvalues()
+            .expect("eigenvalue computation failed on 4x4 matrix");
 
         (k, p, eigenvalues)
     }
@@ -334,9 +337,11 @@ impl InvertedPendulumLQR {
         }
 
         let output_path = format!("img/inverted_pendulum/{}", filename);
-        std::fs::create_dir_all("img/inverted_pendulum").unwrap();
+        std::fs::create_dir_all("img/inverted_pendulum")
+            .expect("failed to create img/inverted_pendulum directory");
         fg.set_terminal("pngcairo size 800,600", &output_path);
-        fg.show().unwrap();
+        fg.show()
+            .expect("failed to render gnuplot figure for inverted pendulum");
         println!("Inverted pendulum visualization saved to: {}", output_path);
     }
 
@@ -427,7 +432,8 @@ impl InvertedPendulumLQR {
 
         let output_path = format!("img/inverted_pendulum/{}", filename);
         fg.set_terminal("pngcairo size 640,480", &output_path);
-        fg.show().unwrap();
+        fg.show()
+            .expect("failed to render gnuplot frame for inverted pendulum");
     }
 }
 
