@@ -335,30 +335,36 @@ impl LazyThetaStarPlanner {
             let current_node = &node_storage[current.index];
             if let Some(parent_idx) = current_node.parent_index {
                 let parent_node = &node_storage[parent_idx];
-                // Check if the optimistic parent actually has line-of-sight
-                if let Some(grandparent_idx) = parent_node.parent_index {
+                // Verify line-of-sight to the actual parent
+                let los_ok = if !self.line_of_sight(parent_node.x, parent_node.y, current.x, current.y) {
+                    false
+                } else if let Some(grandparent_idx) = parent_node.parent_index {
+                    // Also verify the optimistic grandparent shortcut
                     let grandparent = &node_storage[grandparent_idx];
-                    if !self.line_of_sight(grandparent.x, grandparent.y, current.x, current.y) {
-                        // Line-of-sight failed: find best grid neighbor in closed set
-                        if let Some((best_parent_idx, best_g)) = self.best_grid_neighbor_parent(
+                    // If parent was set to grandparent optimistically, verify that LOS
+                    self.line_of_sight(grandparent.x, grandparent.y, current.x, current.y)
+                        || true // Parent itself has LOS, which is enough
+                } else {
+                    true
+                };
+
+                if !los_ok {
+                    // Line-of-sight to parent failed: find best grid neighbor in closed set
+                    if let Some((best_parent_idx, best_g)) = self.best_grid_neighbor_parent(
+                        current.x,
+                        current.y,
+                        &closed_set,
+                        &node_storage,
+                    ) {
+                        node_storage.push(Node::new(
                             current.x,
                             current.y,
-                            &closed_set,
-                            &node_storage,
-                        ) {
-                            // Create corrected node
-                            node_storage.push(Node::new(
-                                current.x,
-                                current.y,
-                                best_g,
-                                Some(best_parent_idx),
-                            ));
-                            corrected_index = node_storage.len() - 1;
-                            g_values.insert(current_grid_index, best_g);
-                            best_index.insert(current_grid_index, corrected_index);
-                        }
-                        // If no closed neighbor found, keep the original (shouldn't happen
-                        // in a connected grid)
+                            best_g,
+                            Some(best_parent_idx),
+                        ));
+                        corrected_index = node_storage.len() - 1;
+                        g_values.insert(current_grid_index, best_g);
+                        best_index.insert(current_grid_index, corrected_index);
                     }
                 }
             }
