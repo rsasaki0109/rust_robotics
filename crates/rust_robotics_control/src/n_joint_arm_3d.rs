@@ -89,7 +89,10 @@ impl NLinkArm3D {
     /// Returns the end-effector position.
     pub fn end_effector(&self) -> Vector3<f64> {
         let points = self.forward_kinematics();
-        *points.last().unwrap()
+        // forward_kinematics always pushes at least the base position
+        *points
+            .last()
+            .expect("forward_kinematics always returns at least one point")
     }
 
     /// Computes the 3-by-n numerical Jacobian via finite differences.
