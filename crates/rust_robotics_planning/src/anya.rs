@@ -115,10 +115,7 @@ impl AnyaPlanner {
         Self::new(ox, oy, config)
     }
 
-    pub fn from_obstacle_points(
-        obstacles: &Obstacles,
-        config: AnyaConfig,
-    ) -> RoboticsResult<Self> {
+    pub fn from_obstacle_points(obstacles: &Obstacles, config: AnyaConfig) -> RoboticsResult<Self> {
         config.validate()?;
         let grid_map = GridMap::from_obstacles(obstacles, config.resolution, config.robot_radius)?;
         Ok(AnyaPlanner { grid_map, config })
@@ -286,8 +283,7 @@ impl AnyaPlanner {
                 let (x0, y0) = nodes[i];
                 let (x1, y1) = nodes[j];
                 if self.line_of_sight(x0, y0, x1, y1) {
-                    let dist =
-                        (((x0 - x1).pow(2) + (y0 - y1).pow(2)) as f64).sqrt();
+                    let dist = (((x0 - x1).pow(2) + (y0 - y1).pow(2)) as f64).sqrt();
                     adj[i].push((j, dist));
                     adj[j].push((i, dist));
                 }
@@ -460,8 +456,7 @@ mod tests {
     fn test_anya_from_obstacle_points() {
         let (ox, oy) = create_simple_obstacles();
         let obstacles = Obstacles::try_from_xy(&ox, &oy).unwrap();
-        let planner =
-            AnyaPlanner::from_obstacle_points(&obstacles, AnyaConfig::default()).unwrap();
+        let planner = AnyaPlanner::from_obstacle_points(&obstacles, AnyaConfig::default()).unwrap();
         let path = planner.plan_xy(2.0, 10.0, 18.0, 10.0).unwrap();
         assert!(!path.is_empty());
     }

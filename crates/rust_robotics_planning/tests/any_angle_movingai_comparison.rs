@@ -160,8 +160,7 @@ fn any_angle_movingai_comparison() {
 
         println!(
             "{:<18} {:>6} {:>10} {:>10} {:>10} {:>10} | {:>8} {:>8} {:>8}",
-            "Map/Bucket", "OptLen", "A*", "Theta*", "Lazy*", "Enh*",
-            "L/T %", "E/T %", "E/L %"
+            "Map/Bucket", "OptLen", "A*", "Theta*", "Lazy*", "Enh*", "L/T %", "E/T %", "E/L %"
         );
         println!("{}", "-".repeat(110));
 
@@ -259,7 +258,10 @@ fn any_angle_movingai_comparison() {
 
     // Summary
     println!("==========================================================================");
-    println!("  Summary ({} scenarios across 5 map families)", total_scenarios);
+    println!(
+        "  Summary ({} scenarios across 5 map families)",
+        total_scenarios
+    );
     println!("==========================================================================");
     println!(
         "  Theta* wins (shortest): {}/{}",

@@ -7,6 +7,7 @@ pub mod grid_nalgebra;
 
 // Grid-based planners
 pub mod a_star;
+pub mod anya;
 pub mod bidirectional_a_star;
 pub mod bidirectional_bfs;
 pub mod breadth_first_search;
@@ -15,14 +16,13 @@ pub mod d_star;
 pub mod d_star_lite;
 pub mod depth_first_search;
 pub mod dijkstra;
+pub mod enhanced_lazy_theta_star;
 pub mod flow_field;
 pub mod greedy_best_first_search;
 pub mod hybrid_a_star;
 pub mod jps;
-pub mod sipp;
-pub mod anya;
-pub mod enhanced_lazy_theta_star;
 pub mod lazy_theta_star;
+pub mod sipp;
 pub mod theta_star;
 
 // Sampling-based planners
@@ -92,6 +92,7 @@ pub use d_star_lite::DStarLite;
 pub use depth_first_search::{DFSConfig, DFSPlanner};
 pub use dubins_path::{DubinsPath, DubinsPlanner};
 pub use dwa::{DWAConfig, DWAPlanner};
+pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner};
 pub use flow_field::{FlowFieldConfig, FlowFieldPlanner};
 pub use greedy_best_first_search::{GreedyBestFirstConfig, GreedyBestFirstPlanner};
 pub use grid::GridMap;
@@ -99,6 +100,7 @@ pub use grid_a_star_3d::{GridAStar3DConfig, GridAStar3DPlanner, Path3D};
 pub use hybrid_a_star::{HybridAStarConfig, HybridAStarPath, HybridAStarPlanner};
 pub use informed_rrt_star::InformedRRTStar;
 pub use jps::{JPSConfig, JPSPlanner};
+pub use lazy_theta_star::{LazyThetaStarConfig, LazyThetaStarPlanner};
 pub use potential_field::PotentialFieldPlanner;
 pub use prm::PRMPlanner;
 pub use quintic_polynomials::{QuinticPolynomial, QuinticPolynomialsPlanner};
@@ -107,7 +109,5 @@ pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_star::RRTStar;
 pub use sipp::{SippConfig, SippPlanner};
 pub use state_lattice::{ObstacleAwarePlanResult, StateLattice, StateLatticeConfig};
-pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner};
-pub use lazy_theta_star::{LazyThetaStarConfig, LazyThetaStarPlanner};
 pub use theta_star::{ThetaStarConfig, ThetaStarPlanner};
 pub use voronoi_road_map::VoronoiPlanner;

@@ -134,11 +134,7 @@ fn main() -> RoboticsResult<()> {
             &PathStyle::new(colors::PURPLE, "Enhanced Lazy Theta*").with_line_width(2.0),
         );
 
-        let _ = vis.save_png(
-            "img/path_planning/any_angle_comparison.png",
-            800,
-            600,
-        );
+        let _ = vis.save_png("img/path_planning/any_angle_comparison.png", 800, 600);
         println!("\nPlot saved to: img/path_planning/any_angle_comparison.png");
         let _ = vis.show();
     }

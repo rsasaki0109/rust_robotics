@@ -7,14 +7,10 @@ use std::collections::HashSet;
 use std::time::Instant;
 
 use rust_robotics_planning::grid_based_sweep_cpp::{
-    GridBasedSweepConfig, MovingDirection, SweepDirection, plan_sweep_coverage,
+    plan_sweep_coverage, GridBasedSweepConfig, MovingDirection, SweepDirection,
 };
-use rust_robotics_planning::spiral_spanning_tree_cpp::{
-    OccupancyGrid, SpiralSpanningTreePlanner,
-};
-use rust_robotics_planning::wavefront_cpp::{
-    WavefrontCppConfig, WavefrontGrid, wavefront_cpp,
-};
+use rust_robotics_planning::spiral_spanning_tree_cpp::{OccupancyGrid, SpiralSpanningTreePlanner};
+use rust_robotics_planning::wavefront_cpp::{wavefront_cpp, WavefrontCppConfig, WavefrontGrid};
 
 /// Create a rectangular polygon (closed) for GridBasedSweep.
 fn rect_polygon(width: f64, height: f64) -> (Vec<f64>, Vec<f64>) {
@@ -155,11 +151,15 @@ fn coverage_planner_comparison() {
             let coverage = cells_visited as f64 / total as f64 * 100.0;
 
             // Path length from route
-            let length = result.route.windows(2).map(|w| {
-                let dr = (w[1].0 - w[0].0) as f64;
-                let dc = (w[1].1 - w[0].1) as f64;
-                (dr * dr + dc * dc).sqrt()
-            }).sum::<f64>();
+            let length = result
+                .route
+                .windows(2)
+                .map(|w| {
+                    let dr = (w[1].0 - w[0].0) as f64;
+                    let dc = (w[1].1 - w[0].1) as f64;
+                    (dr * dr + dc * dc).sqrt()
+                })
+                .sum::<f64>();
 
             results.push(CoverageResult {
                 name: "SpiralSTC",
