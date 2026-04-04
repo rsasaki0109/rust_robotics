@@ -129,7 +129,10 @@ fn flowfield_vs_astar_multiagent() {
             ff_wins,
         );
 
-        assert_eq!(a_star_ok, ff_ok, "both planners should find the same number of paths");
+        assert_eq!(
+            a_star_ok, ff_ok,
+            "both planners should find the same number of paths"
+        );
     }
 
     println!();

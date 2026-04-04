@@ -157,10 +157,7 @@ fn relax_waypoints(path: &Path2D, grid_map: &GridMap) -> Path2D {
 
         // Try progressively smaller steps toward midpoint
         for &step_frac in &[1.0, 0.5, 0.25, 0.125] {
-            let candidate = Point2D::new(
-                current.x + dx * step_frac,
-                current.y + dy * step_frac,
-            );
+            let candidate = Point2D::new(current.x + dx * step_frac, current.y + dy * step_frac);
 
             // Snap to grid resolution
             let snapped = Point2D::new(
@@ -241,7 +238,11 @@ mod tests {
             Point2D::new(8.0, 2.0),
         ]);
         let smoothed = smooth_path(&zigzag, &grid_map);
-        assert!(smoothed.len() <= 2, "straight line should collapse to 2 points, got {}", smoothed.len());
+        assert!(
+            smoothed.len() <= 2,
+            "straight line should collapse to 2 points, got {}",
+            smoothed.len()
+        );
         assert!((smoothed.points.first().unwrap().x - 2.0).abs() < 1e-6);
         assert!((smoothed.points.last().unwrap().x - 8.0).abs() < 1e-6);
     }

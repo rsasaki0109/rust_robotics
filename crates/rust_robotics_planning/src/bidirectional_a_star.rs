@@ -430,8 +430,7 @@ impl BidirectionalAStarPlanner {
                         Some(current_a_storage_idx),
                     ));
                     let new_idx = node_storage_a.len() - 1;
-                    let priority =
-                        new_cost + self.calc_heuristic(new_a_x, new_a_y, goal_x, goal_y);
+                    let priority = new_cost + self.calc_heuristic(new_a_x, new_a_y, goal_x, goal_y);
                     open_set_a.push(PriorityNode {
                         grid_index: new_a_grid_index,
                         x: new_a_x,
