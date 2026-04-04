@@ -399,6 +399,7 @@ impl HybridAStarPlanner {
     }
 
     /// Simulate bicycle model forward by one step
+    #[allow(clippy::too_many_arguments)]
     fn simulate_motion(
         &self,
         x: f64,
@@ -526,12 +527,10 @@ impl HybridAStarPlanner {
             .windows(2)
             .map(|w| {
                 let diff = pi_2_pi(w[1] - w[0]);
-                if diff.abs() < 1e-6 {
-                    1
-                } else if diff > 0.0 {
-                    1
-                } else {
+                if diff < -1e-6 {
                     -1
+                } else {
+                    1
                 }
             })
             .chain(std::iter::once(1))
@@ -563,6 +562,7 @@ impl HybridAStarPlanner {
         storage: &[HybridNode],
         rs_segment: Option<&HybridNode>,
     ) -> HybridAStarPath {
+        #[allow(clippy::type_complexity)]
         let mut segments: Vec<(Vec<f64>, Vec<f64>, Vec<f64>, Vec<i32>)> = Vec::new();
 
         let mut current_idx = Some(final_idx);
@@ -888,7 +888,7 @@ mod tests {
         // All yaw values should be in [-pi, pi]
         for &yaw in &path.yaw {
             assert!(
-                yaw >= -PI - 0.01 && yaw <= PI + 0.01,
+                (-PI - 0.01..=PI + 0.01).contains(&yaw),
                 "Yaw out of range: {}",
                 yaw
             );

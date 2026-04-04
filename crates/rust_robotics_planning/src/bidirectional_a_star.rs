@@ -4,10 +4,46 @@
 //! Searches simultaneously from start and goal, terminating when
 //! the two search frontiers meet.
 
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
 
 use crate::grid::{GridMap, Node};
 use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
+
+/// Node with priority for bidirectional A* open set (min-heap)
+#[derive(Debug)]
+struct PriorityNode {
+    grid_index: i32,
+    x: i32,
+    y: i32,
+    cost: f64,
+    priority: f64, // f = g + h
+    storage_index: usize,
+}
+
+impl Eq for PriorityNode {}
+
+impl PartialEq for PriorityNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.priority == other.priority
+    }
+}
+
+impl Ord for PriorityNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Reverse ordering for min-heap behavior
+        other
+            .priority
+            .partial_cmp(&self.priority)
+            .unwrap_or(Ordering::Equal)
+    }
+}
+
+impl PartialOrd for PriorityNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 /// Configuration for Bidirectional A* planner
 #[derive(Debug, Clone)]
@@ -154,48 +190,23 @@ impl BidirectionalAStarPlanner {
         ]
     }
 
-    /// Find the key in `open_set` with the lowest f-cost = g + h toward `target`.
-    fn best_open_key(
-        &self,
-        open_set: &HashMap<i32, usize>,
-        node_storage: &[Node],
-        target_x: i32,
-        target_y: i32,
-    ) -> (i32, f64) {
-        open_set
-            .iter()
-            .min_by(|a, b| {
-                let na = &node_storage[*a.1];
-                let nb = &node_storage[*b.1];
-                let fa = na.cost + self.calc_heuristic(na.x, na.y, target_x, target_y);
-                let fb = nb.cost + self.calc_heuristic(nb.x, nb.y, target_x, target_y);
-                fa.partial_cmp(&fb).unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .map(|(k, idx)| {
-                let node = &node_storage[*idx];
-                (
-                    *k,
-                    node.cost + self.calc_heuristic(node.x, node.y, target_x, target_y),
-                )
-            })
-            .unwrap()
-    }
-
+    /// Find the best known storage index for a grid cell across both open g-values
+    /// and closed set. Returns the index with the lowest g-cost.
     fn best_known_index(
-        open_set: &HashMap<i32, usize>,
+        g_values: &HashMap<i32, (f64, usize)>,
         closed_set: &HashMap<i32, usize>,
         node_storage: &[Node],
         grid_index: i32,
     ) -> Option<usize> {
-        match (open_set.get(&grid_index), closed_set.get(&grid_index)) {
-            (Some(&open_idx), Some(&closed_idx)) => {
-                if node_storage[open_idx].cost <= node_storage[closed_idx].cost {
+        match (g_values.get(&grid_index), closed_set.get(&grid_index)) {
+            (Some(&(g_cost, open_idx)), Some(&closed_idx)) => {
+                if g_cost <= node_storage[closed_idx].cost {
                     Some(open_idx)
                 } else {
                     Some(closed_idx)
                 }
             }
-            (Some(&open_idx), None) => Some(open_idx),
+            (Some(&(_, open_idx)), None) => Some(open_idx),
             (None, Some(&closed_idx)) => Some(closed_idx),
             (None, None) => None,
         }
@@ -274,28 +285,53 @@ impl BidirectionalAStarPlanner {
 
         // Forward search (from start)
         let mut node_storage_a: Vec<Node> = Vec::new();
-        let mut open_set_a: HashMap<i32, usize> = HashMap::new();
+        let mut open_set_a: BinaryHeap<PriorityNode> = BinaryHeap::new();
+        let mut g_values_a: HashMap<i32, (f64, usize)> = HashMap::new(); // grid_index -> (g_cost, storage_index)
         let mut closed_set_a: HashMap<i32, usize> = HashMap::new();
 
         // Backward search (from goal)
         let mut node_storage_b: Vec<Node> = Vec::new();
-        let mut open_set_b: HashMap<i32, usize> = HashMap::new();
+        let mut open_set_b: BinaryHeap<PriorityNode> = BinaryHeap::new();
+        let mut g_values_b: HashMap<i32, (f64, usize)> = HashMap::new();
         let mut closed_set_b: HashMap<i32, usize> = HashMap::new();
 
         // Initialize forward start node
         node_storage_a.push(Node::new(start_x, start_y, 0.0, None));
         let start_grid_index = self.grid_map.calc_index(start_x, start_y);
-        open_set_a.insert(start_grid_index, 0);
+        let start_priority = self.calc_heuristic(start_x, start_y, goal_x, goal_y);
+        open_set_a.push(PriorityNode {
+            grid_index: start_grid_index,
+            x: start_x,
+            y: start_y,
+            cost: 0.0,
+            priority: start_priority,
+            storage_index: 0,
+        });
+        g_values_a.insert(start_grid_index, (0.0, 0));
 
         // Initialize backward start node (goal)
         node_storage_b.push(Node::new(goal_x, goal_y, 0.0, None));
         let goal_grid_index = self.grid_map.calc_index(goal_x, goal_y);
-        open_set_b.insert(goal_grid_index, 0);
+        let goal_priority = self.calc_heuristic(goal_x, goal_y, start_x, start_y);
+        open_set_b.push(PriorityNode {
+            grid_index: goal_grid_index,
+            x: goal_x,
+            y: goal_y,
+            cost: 0.0,
+            priority: goal_priority,
+            storage_index: 0,
+        });
+        g_values_b.insert(goal_grid_index, (0.0, 0));
 
         let mut best_meeting: Option<(usize, usize, f64)> = None;
 
         loop {
-            if open_set_a.is_empty() || open_set_b.is_empty() {
+            // Peek both heaps to get min f-costs
+            let min_f_a = open_set_a.peek().map(|n| n.priority);
+            let min_f_b = open_set_b.peek().map(|n| n.priority);
+
+            // If either heap is empty, return best meeting or error
+            if min_f_a.is_none() || min_f_b.is_none() {
                 return best_meeting
                     .map(|(forward_idx, backward_idx, _)| {
                         self.build_meeting_path(
@@ -308,11 +344,10 @@ impl BidirectionalAStarPlanner {
                     .ok_or_else(|| RoboticsError::PlanningError("No path found".to_string()));
             }
 
-            let (c_id_a, min_f_a) =
-                self.best_open_key(&open_set_a, &node_storage_a, goal_x, goal_y);
-            let (c_id_b, min_f_b) =
-                self.best_open_key(&open_set_b, &node_storage_b, start_x, start_y);
+            let min_f_a = min_f_a.unwrap();
+            let min_f_b = min_f_b.unwrap();
 
+            // Termination: both heaps' min f-cost >= best meeting cost
             if let Some((forward_idx, backward_idx, best_cost)) = best_meeting {
                 if min_f_a >= best_cost && min_f_b >= best_cost {
                     return Ok(self.build_meeting_path(
@@ -325,19 +360,30 @@ impl BidirectionalAStarPlanner {
             }
 
             if min_f_a <= min_f_b {
-                let current_a_storage_idx = open_set_a.remove(&c_id_a).unwrap();
-                let current_a_x = node_storage_a[current_a_storage_idx].x;
-                let current_a_y = node_storage_a[current_a_storage_idx].y;
-                let current_a_cost = node_storage_a[current_a_storage_idx].cost;
+                // Expand forward search
+                let current = open_set_a.pop().unwrap();
+                let c_id_a = current.grid_index;
 
-                if let Some(&existing_closed_idx) = closed_set_a.get(&c_id_a) {
-                    if node_storage_a[existing_closed_idx].cost <= current_a_cost {
+                // Skip if already closed with equal or better cost
+                if closed_set_a.contains_key(&c_id_a) {
+                    continue;
+                }
+
+                // Skip stale entries (g-value in heap is worse than current best)
+                if let Some(&(best_g, _)) = g_values_a.get(&c_id_a) {
+                    if current.cost > best_g {
                         continue;
                     }
                 }
 
+                let current_a_storage_idx = current.storage_index;
+                let current_a_x = current.x;
+                let current_a_y = current.y;
+                let current_a_cost = current.cost;
+
+                // Check meeting with backward search
                 if let Some(other_idx) =
-                    Self::best_known_index(&open_set_b, &closed_set_b, &node_storage_b, c_id_a)
+                    Self::best_known_index(&g_values_b, &closed_set_b, &node_storage_b, c_id_a)
                 {
                     Self::update_best_meeting(
                         &mut best_meeting,
@@ -349,11 +395,13 @@ impl BidirectionalAStarPlanner {
                 }
 
                 closed_set_a.insert(c_id_a, current_a_storage_idx);
+                g_values_a.remove(&c_id_a);
 
                 for &(dx, dy, move_cost) in &self.motion {
                     let new_a_x = current_a_x + dx;
                     let new_a_y = current_a_y + dy;
                     let new_a_grid_index = self.grid_map.calc_index(new_a_x, new_a_y);
+                    let new_cost = current_a_cost + move_cost;
 
                     if !self
                         .grid_map
@@ -363,13 +411,13 @@ impl BidirectionalAStarPlanner {
                     }
 
                     if let Some(&closed_idx) = closed_set_a.get(&new_a_grid_index) {
-                        if node_storage_a[closed_idx].cost <= current_a_cost + move_cost {
+                        if node_storage_a[closed_idx].cost <= new_cost {
                             continue;
                         }
                     }
 
-                    if let Some(&open_idx) = open_set_a.get(&new_a_grid_index) {
-                        if node_storage_a[open_idx].cost <= current_a_cost + move_cost {
+                    if let Some(&(existing_g, _)) = g_values_a.get(&new_a_grid_index) {
+                        if existing_g <= new_cost {
                             continue;
                         }
                     }
@@ -377,14 +425,24 @@ impl BidirectionalAStarPlanner {
                     node_storage_a.push(Node::new(
                         new_a_x,
                         new_a_y,
-                        current_a_cost + move_cost,
+                        new_cost,
                         Some(current_a_storage_idx),
                     ));
                     let new_idx = node_storage_a.len() - 1;
-                    open_set_a.insert(new_a_grid_index, new_idx);
+                    let priority =
+                        new_cost + self.calc_heuristic(new_a_x, new_a_y, goal_x, goal_y);
+                    open_set_a.push(PriorityNode {
+                        grid_index: new_a_grid_index,
+                        x: new_a_x,
+                        y: new_a_y,
+                        cost: new_cost,
+                        priority,
+                        storage_index: new_idx,
+                    });
+                    g_values_a.insert(new_a_grid_index, (new_cost, new_idx));
 
                     if let Some(other_idx) = Self::best_known_index(
-                        &open_set_b,
+                        &g_values_b,
                         &closed_set_b,
                         &node_storage_b,
                         new_a_grid_index,
@@ -399,19 +457,30 @@ impl BidirectionalAStarPlanner {
                     }
                 }
             } else {
-                let current_b_storage_idx = open_set_b.remove(&c_id_b).unwrap();
-                let current_b_x = node_storage_b[current_b_storage_idx].x;
-                let current_b_y = node_storage_b[current_b_storage_idx].y;
-                let current_b_cost = node_storage_b[current_b_storage_idx].cost;
+                // Expand backward search
+                let current = open_set_b.pop().unwrap();
+                let c_id_b = current.grid_index;
 
-                if let Some(&existing_closed_idx) = closed_set_b.get(&c_id_b) {
-                    if node_storage_b[existing_closed_idx].cost <= current_b_cost {
+                // Skip if already closed
+                if closed_set_b.contains_key(&c_id_b) {
+                    continue;
+                }
+
+                // Skip stale entries
+                if let Some(&(best_g, _)) = g_values_b.get(&c_id_b) {
+                    if current.cost > best_g {
                         continue;
                     }
                 }
 
+                let current_b_storage_idx = current.storage_index;
+                let current_b_x = current.x;
+                let current_b_y = current.y;
+                let current_b_cost = current.cost;
+
+                // Check meeting with forward search
                 if let Some(other_idx) =
-                    Self::best_known_index(&open_set_a, &closed_set_a, &node_storage_a, c_id_b)
+                    Self::best_known_index(&g_values_a, &closed_set_a, &node_storage_a, c_id_b)
                 {
                     Self::update_best_meeting(
                         &mut best_meeting,
@@ -423,11 +492,13 @@ impl BidirectionalAStarPlanner {
                 }
 
                 closed_set_b.insert(c_id_b, current_b_storage_idx);
+                g_values_b.remove(&c_id_b);
 
                 for &(dx, dy, move_cost) in &self.motion {
                     let new_b_x = current_b_x + dx;
                     let new_b_y = current_b_y + dy;
                     let new_b_grid_index = self.grid_map.calc_index(new_b_x, new_b_y);
+                    let new_cost = current_b_cost + move_cost;
 
                     if !self
                         .grid_map
@@ -437,13 +508,13 @@ impl BidirectionalAStarPlanner {
                     }
 
                     if let Some(&closed_idx) = closed_set_b.get(&new_b_grid_index) {
-                        if node_storage_b[closed_idx].cost <= current_b_cost + move_cost {
+                        if node_storage_b[closed_idx].cost <= new_cost {
                             continue;
                         }
                     }
 
-                    if let Some(&open_idx) = open_set_b.get(&new_b_grid_index) {
-                        if node_storage_b[open_idx].cost <= current_b_cost + move_cost {
+                    if let Some(&(existing_g, _)) = g_values_b.get(&new_b_grid_index) {
+                        if existing_g <= new_cost {
                             continue;
                         }
                     }
@@ -451,14 +522,24 @@ impl BidirectionalAStarPlanner {
                     node_storage_b.push(Node::new(
                         new_b_x,
                         new_b_y,
-                        current_b_cost + move_cost,
+                        new_cost,
                         Some(current_b_storage_idx),
                     ));
                     let new_idx = node_storage_b.len() - 1;
-                    open_set_b.insert(new_b_grid_index, new_idx);
+                    let priority =
+                        new_cost + self.calc_heuristic(new_b_x, new_b_y, start_x, start_y);
+                    open_set_b.push(PriorityNode {
+                        grid_index: new_b_grid_index,
+                        x: new_b_x,
+                        y: new_b_y,
+                        cost: new_cost,
+                        priority,
+                        storage_index: new_idx,
+                    });
+                    g_values_b.insert(new_b_grid_index, (new_cost, new_idx));
 
                     if let Some(other_idx) = Self::best_known_index(
-                        &open_set_a,
+                        &g_values_a,
                         &closed_set_a,
                         &node_storage_a,
                         new_b_grid_index,
