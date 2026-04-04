@@ -658,7 +658,8 @@ fn solve_qp_clarabel(
     let settings = DefaultSettingsBuilder::default()
         .verbose(false)
         .build()
-        .unwrap();
+        // Default settings builder always succeeds
+        .expect("DefaultSettingsBuilder with defaults should not fail");
 
     let mut solver = DefaultSolver::new(&p, &q_vec, &a_csc, &b_vec, &cones, settings).ok()?;
     solver.solve();

@@ -114,7 +114,11 @@ fn quad_interp(x: (f64, f64, f64), y: (f64, f64, f64)) -> (f64, f64, f64) {
     let mat = nalgebra::Matrix3::new(x.0 * x.0, x.0, 1., x.1 * x.1, x.1, 1., x.2 * x.2, x.2, 1.);
     let vec = nalgebra::Vector3::new(y.0, y.1, y.2);
 
-    let coef = mat.try_inverse().unwrap() * vec;
+    // The Vandermonde-like matrix is invertible when x values are distinct
+    let coef = mat
+        .try_inverse()
+        .expect("interpolation matrix is singular; x values must be distinct")
+        * vec;
 
     (coef[0], coef[1], coef[2])
 }
@@ -219,7 +223,10 @@ pub fn optimize_trajectory(
         }
 
         let j = calc_j(&target, p, h, k0, ds, v, l);
-        let dp = -j.try_inverse().unwrap() * dc;
+        let dp = -j
+            .try_inverse()
+            .expect("Jacobian matrix is singular during trajectory optimization")
+            * dc;
         let alpha = selection_learning_param(p, k0, ds, v, l, &target);
 
         p += alpha * dp;
