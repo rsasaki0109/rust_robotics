@@ -3,6 +3,7 @@
 //! Based on the work by Atsushi Sakai (@Atsushi_twi).
 
 use rand::Rng;
+use rand::SeedableRng;
 
 /// Default maximum number of iterations.
 pub const DEFAULT_MAX_ITERATIONS: usize = 10;
@@ -99,7 +100,10 @@ pub fn kmeans_clustering(x: &[f64], y: &[f64], config: &KMeansConfig) -> KMeansR
     let n = x.len();
     let k = config.k;
 
-    let mut rng = rand::thread_rng();
+    // Use seeded RNG for deterministic results. Seed from data to ensure
+    // reproducibility while varying with different inputs.
+    let seed = n as u64 ^ k as u64 ^ x[0].to_bits() ^ y[0].to_bits();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let mut labels: Vec<usize> = (0..n).map(|_| rng.gen_range(0..k)).collect();
     let mut center_x = vec![0.0; k];
     let mut center_y = vec![0.0; k];
@@ -190,7 +194,7 @@ mod tests {
         points_per_cluster: usize,
         spread: f64,
     ) -> (Vec<f64>, Vec<f64>) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rngs::StdRng::seed_from_u64(42);
         let mut x = Vec::new();
         let mut y = Vec::new();
         for &(cx, cy) in centers {
