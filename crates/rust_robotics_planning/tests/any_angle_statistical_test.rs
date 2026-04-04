@@ -121,6 +121,7 @@ struct BucketResult {
 }
 
 #[test]
+#[ignore = "long-running: 250 MovingAI scenarios, use --release --ignored"]
 fn any_angle_statistical_test() {
     println!();
     println!("==========================================================================");
