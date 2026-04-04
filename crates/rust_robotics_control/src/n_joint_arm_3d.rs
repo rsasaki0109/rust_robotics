@@ -117,8 +117,8 @@ impl NLinkArm3D {
                 joint_angles: angles_minus,
             };
 
-            let diff = (arm_plus.end_effector() - arm_minus.end_effector())
-                / (2.0 * JACOBIAN_EPSILON);
+            let diff =
+                (arm_plus.end_effector() - arm_minus.end_effector()) / (2.0 * JACOBIAN_EPSILON);
             jac.set_column(j, &diff);
         }
 
@@ -234,7 +234,10 @@ mod tests {
         let mut arm = NLinkArm3D::with_angles(vec![1.0; 4], vec![0.1, 0.1, 0.1, 0.1]);
         let target = Vector3::new(3.0, 0.0, 0.0);
         let converged = arm.inverse_kinematics(target, 500, 0.05);
-        assert!(converged, "IK should converge for reachable in-plane target");
+        assert!(
+            converged,
+            "IK should converge for reachable in-plane target"
+        );
 
         let ee = arm.end_effector();
         let dist = (ee - target).norm();

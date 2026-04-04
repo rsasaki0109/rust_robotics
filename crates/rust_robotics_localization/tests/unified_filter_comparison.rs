@@ -38,21 +38,16 @@ const OBS_NOISE_X: f64 = 0.5;
 const OBS_NOISE_Y: f64 = 0.5;
 
 // Landmark positions (used by particle filter and histogram filter)
-const LANDMARKS: [(f64, f64); 4] = [
-    (10.0, 0.0),
-    (0.0, 15.0),
-    (-5.0, 20.0),
-    (10.0, 10.0),
-];
+const LANDMARKS: [(f64, f64); 4] = [(10.0, 0.0), (0.0, 15.0), (-5.0, 20.0), (10.0, 10.0)];
 
 // ---------------------------------------------------------------------------
 // Ground truth + noisy data generation (deterministic seed)
 // ---------------------------------------------------------------------------
 
 struct SimData {
-    ground_truth: Vec<Vector4<f64>>,  // [x, y, yaw, v]
-    noisy_controls: Vec<Vector2<f64>>, // [v, yaw_rate] with noise
-    noisy_observations: Vec<Vector2<f64>>, // [x, y] with noise
+    ground_truth: Vec<Vector4<f64>>,                  // [x, y, yaw, v]
+    noisy_controls: Vec<Vector2<f64>>,                // [v, yaw_rate] with noise
+    noisy_observations: Vec<Vector2<f64>>,            // [x, y] with noise
     landmark_observations: Vec<Vec<(f64, f64, f64)>>, // (distance, lm_x, lm_y)
 }
 
@@ -381,22 +376,13 @@ fn unified_filter_comparison() {
     // reasonable RMSE on this scenario (direct position observations).
     for r in &results[..3] {
         let rmse = compute_rmse(&r.positions, &data.ground_truth);
-        assert!(
-            rmse < 2.0,
-            "{} RMSE too high: {:.4}",
-            r.name,
-            rmse
-        );
+        assert!(rmse < 2.0, "{} RMSE too high: {:.4}", r.name, rmse);
     }
 
     // EnKF uses stochastic ensemble, allow slightly larger RMSE
     {
         let rmse = compute_rmse(&results[3].positions, &data.ground_truth);
-        assert!(
-            rmse < 3.0,
-            "EnKF RMSE too high: {:.4}",
-            rmse
-        );
+        assert!(rmse < 3.0, "EnKF RMSE too high: {:.4}", rmse);
     }
 
     // PF and Histogram use landmark observations only, so they have a
@@ -404,10 +390,6 @@ fn unified_filter_comparison() {
     // diverge to infinity.
     for r in &results[4..] {
         let rmse = compute_rmse(&r.positions, &data.ground_truth);
-        assert!(
-            rmse.is_finite(),
-            "{} produced non-finite RMSE",
-            r.name
-        );
+        assert!(rmse.is_finite(), "{} produced non-finite RMSE", r.name);
     }
 }

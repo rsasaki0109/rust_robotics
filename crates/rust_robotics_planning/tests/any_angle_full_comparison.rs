@@ -89,11 +89,15 @@ fn mann_whitney_u(a: &[f64], b: &[f64]) -> (f64, f64) {
 fn normal_cdf(x: f64) -> f64 {
     let t = 1.0 / (1.0 + 0.2316419 * x.abs());
     let d = 0.3989422804014327;
-    let p = d * (-x * x / 2.0).exp()
+    let p = d
+        * (-x * x / 2.0).exp()
         * (t * (0.319381530
-            + t * (-0.356563782
-                + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))));
-    if x >= 0.0 { 1.0 - p } else { p }
+            + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))));
+    if x >= 0.0 {
+        1.0 - p
+    } else {
+        p
+    }
 }
 
 #[test]
@@ -103,7 +107,8 @@ fn any_angle_full_comparison() {
     println!("==========================================================================");
     println!("  Full Any-Angle Comparison: Quality + Speed");
     println!("  Planners: Theta*, LazyTheta*, Enhanced+Opt, A*+Opt");
-    println!("  {} scenarios/bucket, {} families",
+    println!(
+        "  {} scenarios/bucket, {} families",
         SCENARIOS_PER_BUCKET, 4
     );
     println!("==========================================================================");
@@ -121,27 +126,57 @@ fn any_angle_full_comparison() {
     for family in families() {
         let map = match MovingAiMap::from_file(Path::new(&family.map_path)) {
             Ok(m) => m,
-            Err(e) => { println!("[SKIP] {}: {}", family.name, e); continue; }
+            Err(e) => {
+                println!("[SKIP] {}: {}", family.name, e);
+                continue;
+            }
         };
         let scenarios = match MovingAiScenario::from_file(Path::new(&family.scen_path)) {
             Ok(s) => s,
-            Err(e) => { println!("[SKIP] {}: {}", family.name, e); continue; }
+            Err(e) => {
+                println!("[SKIP] {}: {}", family.name, e);
+                continue;
+            }
         };
 
         let obstacles = map.to_obstacles();
 
-        let a_star = AStarPlanner::from_obstacle_points(&obstacles, AStarConfig {
-            resolution: RESOLUTION, robot_radius: ROBOT_RADIUS, heuristic_weight: 1.0,
-        }).unwrap();
-        let theta = ThetaStarPlanner::from_obstacle_points(&obstacles, ThetaStarConfig {
-            resolution: RESOLUTION, robot_radius: ROBOT_RADIUS, heuristic_weight: 1.0,
-        }).unwrap();
-        let lazy = LazyThetaStarPlanner::from_obstacle_points(&obstacles, LazyThetaStarConfig {
-            resolution: RESOLUTION, robot_radius: ROBOT_RADIUS, heuristic_weight: 1.0,
-        }).unwrap();
-        let enhanced = EnhancedLazyThetaStarPlanner::from_obstacle_points(&obstacles, EnhancedLazyThetaStarConfig {
-            resolution: RESOLUTION, robot_radius: ROBOT_RADIUS, heuristic_weight: 1.0,
-        }).unwrap();
+        let a_star = AStarPlanner::from_obstacle_points(
+            &obstacles,
+            AStarConfig {
+                resolution: RESOLUTION,
+                robot_radius: ROBOT_RADIUS,
+                heuristic_weight: 1.0,
+            },
+        )
+        .unwrap();
+        let theta = ThetaStarPlanner::from_obstacle_points(
+            &obstacles,
+            ThetaStarConfig {
+                resolution: RESOLUTION,
+                robot_radius: ROBOT_RADIUS,
+                heuristic_weight: 1.0,
+            },
+        )
+        .unwrap();
+        let lazy = LazyThetaStarPlanner::from_obstacle_points(
+            &obstacles,
+            LazyThetaStarConfig {
+                resolution: RESOLUTION,
+                robot_radius: ROBOT_RADIUS,
+                heuristic_weight: 1.0,
+            },
+        )
+        .unwrap();
+        let enhanced = EnhancedLazyThetaStarPlanner::from_obstacle_points(
+            &obstacles,
+            EnhancedLazyThetaStarConfig {
+                resolution: RESOLUTION,
+                robot_radius: ROBOT_RADIUS,
+                heuristic_weight: 1.0,
+            },
+        )
+        .unwrap();
 
         let grid_map = a_star.grid_map().clone();
 
@@ -154,8 +189,16 @@ fn any_angle_full_comparison() {
         println!("--- {} ---", family.name);
         println!(
             "{:>4} {:>4} | {:>8} {:>8} {:>8} {:>8} | {:>8} {:>8} {:>8} {:>8}",
-            "Bkt", "N", "Θ* len", "LΘ* len", "E+O len", "A+O len",
-            "Θ* ms", "LΘ* ms", "E+O ms", "A+O ms"
+            "Bkt",
+            "N",
+            "Θ* len",
+            "LΘ* len",
+            "E+O len",
+            "A+O len",
+            "Θ* ms",
+            "LΘ* ms",
+            "E+O ms",
+            "A+O ms"
         );
         println!("{}", "-".repeat(100));
 
@@ -177,10 +220,12 @@ fn any_angle_full_comparison() {
 
             for scen in bucket_scenarios.iter().take(n) {
                 let start = match map.planning_point(scen.start_x, scen.start_y) {
-                    Ok(p) => p, Err(_) => continue,
+                    Ok(p) => p,
+                    Err(_) => continue,
                 };
                 let goal = match map.planning_point(scen.goal_x, scen.goal_y) {
-                    Ok(p) => p, Err(_) => continue,
+                    Ok(p) => p,
+                    Err(_) => continue,
                 };
 
                 // Theta*
@@ -195,19 +240,19 @@ fn any_angle_full_comparison() {
 
                 // Enhanced + optimize_path
                 let t0 = Instant::now();
-                let eo_path = enhanced.plan(start, goal)
+                let eo_path = enhanced
+                    .plan(start, goal)
                     .map(|p| optimize_path(&p, &grid_map, RELAX_ITERATIONS));
                 let eo_time = t0.elapsed().as_secs_f64() * 1000.0;
 
                 // A* + optimize_path
                 let t0 = Instant::now();
-                let ao_path = a_star.plan(start, goal)
+                let ao_path = a_star
+                    .plan(start, goal)
                     .map(|p| optimize_path(&p, &grid_map, RELAX_ITERATIONS));
                 let ao_time = t0.elapsed().as_secs_f64() * 1000.0;
 
-                if let (Ok(t), Ok(l), Ok(eo), Ok(ao)) =
-                    (&t_path, &l_path, &eo_path, &ao_path)
-                {
+                if let (Ok(t), Ok(l), Ok(eo), Ok(ao)) = (&t_path, &l_path, &eo_path, &ao_path) {
                     t_lens.push(t.total_length());
                     l_lens.push(l.total_length());
                     eo_lens.push(eo.total_length());
@@ -219,15 +264,24 @@ fn any_angle_full_comparison() {
                 }
             }
 
-            if t_lens.is_empty() { continue; }
+            if t_lens.is_empty() {
+                continue;
+            }
             let nn = t_lens.len();
             let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
 
             println!(
                 "{:>4} {:>4} | {:>8.2} {:>8.2} {:>8.2} {:>8.2} | {:>8.2} {:>8.2} {:>8.2} {:>8.2}",
-                bucket, nn,
-                mean(&t_lens), mean(&l_lens), mean(&eo_lens), mean(&ao_lens),
-                mean(&t_times), mean(&l_times), mean(&eo_times), mean(&ao_times),
+                bucket,
+                nn,
+                mean(&t_lens),
+                mean(&l_lens),
+                mean(&eo_lens),
+                mean(&ao_lens),
+                mean(&t_times),
+                mean(&l_times),
+                mean(&eo_times),
+                mean(&ao_times),
             );
 
             all_theta_len.extend(&t_lens);
@@ -242,7 +296,9 @@ fn any_angle_full_comparison() {
     }
 
     let n = all_theta_len.len();
-    if n == 0 { return; }
+    if n == 0 {
+        return;
+    }
     let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
 
     println!();
@@ -251,22 +307,40 @@ fn any_angle_full_comparison() {
     println!("==========================================================================");
     println!("  PATH QUALITY (lower = better):");
     println!("    Theta*:       {:.2}", mean(&all_theta_len));
-    println!("    LazyTheta*:   {:.2} ({:+.2}%)", mean(&all_lazy_len),
-        (mean(&all_lazy_len) / mean(&all_theta_len) - 1.0) * 100.0);
-    println!("    Enhanced+Opt: {:.2} ({:+.2}%)", mean(&all_enh_opt_len),
-        (mean(&all_enh_opt_len) / mean(&all_theta_len) - 1.0) * 100.0);
-    println!("    A*+Opt:       {:.2} ({:+.2}%)", mean(&all_astar_opt_len),
-        (mean(&all_astar_opt_len) / mean(&all_theta_len) - 1.0) * 100.0);
+    println!(
+        "    LazyTheta*:   {:.2} ({:+.2}%)",
+        mean(&all_lazy_len),
+        (mean(&all_lazy_len) / mean(&all_theta_len) - 1.0) * 100.0
+    );
+    println!(
+        "    Enhanced+Opt: {:.2} ({:+.2}%)",
+        mean(&all_enh_opt_len),
+        (mean(&all_enh_opt_len) / mean(&all_theta_len) - 1.0) * 100.0
+    );
+    println!(
+        "    A*+Opt:       {:.2} ({:+.2}%)",
+        mean(&all_astar_opt_len),
+        (mean(&all_astar_opt_len) / mean(&all_theta_len) - 1.0) * 100.0
+    );
 
     println!();
     println!("  SPEED (ms, lower = better):");
     println!("    Theta*:       {:.2}ms", mean(&all_theta_time));
-    println!("    LazyTheta*:   {:.2}ms ({:.1}x)", mean(&all_lazy_time),
-        mean(&all_theta_time) / mean(&all_lazy_time));
-    println!("    Enhanced+Opt: {:.2}ms ({:.1}x)", mean(&all_enh_opt_time),
-        mean(&all_theta_time) / mean(&all_enh_opt_time));
-    println!("    A*+Opt:       {:.2}ms ({:.1}x)", mean(&all_astar_opt_time),
-        mean(&all_theta_time) / mean(&all_astar_opt_time));
+    println!(
+        "    LazyTheta*:   {:.2}ms ({:.1}x)",
+        mean(&all_lazy_time),
+        mean(&all_theta_time) / mean(&all_lazy_time)
+    );
+    println!(
+        "    Enhanced+Opt: {:.2}ms ({:.1}x)",
+        mean(&all_enh_opt_time),
+        mean(&all_theta_time) / mean(&all_enh_opt_time)
+    );
+    println!(
+        "    A*+Opt:       {:.2}ms ({:.1}x)",
+        mean(&all_astar_opt_time),
+        mean(&all_theta_time) / mean(&all_astar_opt_time)
+    );
 
     // Statistical tests: Enhanced+Opt vs Theta* (quality)
     let (z_qual, p_qual) = mann_whitney_u(&all_enh_opt_len, &all_theta_len);
@@ -275,12 +349,34 @@ fn any_angle_full_comparison() {
 
     println!();
     println!("  STATISTICAL TESTS:");
-    println!("    Enhanced+Opt vs Theta* (quality): z={:.3}, p={:.6} {}",
-        z_qual, p_qual,
-        if p_qual < 0.001 { "***" } else if p_qual < 0.01 { "**" } else if p_qual < 0.05 { "*" } else { "n.s." });
-    println!("    Theta* vs Lazy (speed, Theta slower): z={:.3}, p={:.6} {}",
-        z_speed, p_speed,
-        if p_speed < 0.001 { "***" } else if p_speed < 0.01 { "**" } else if p_speed < 0.05 { "*" } else { "n.s." });
+    println!(
+        "    Enhanced+Opt vs Theta* (quality): z={:.3}, p={:.6} {}",
+        z_qual,
+        p_qual,
+        if p_qual < 0.001 {
+            "***"
+        } else if p_qual < 0.01 {
+            "**"
+        } else if p_qual < 0.05 {
+            "*"
+        } else {
+            "n.s."
+        }
+    );
+    println!(
+        "    Theta* vs Lazy (speed, Theta slower): z={:.3}, p={:.6} {}",
+        z_speed,
+        p_speed,
+        if p_speed < 0.001 {
+            "***"
+        } else if p_speed < 0.01 {
+            "**"
+        } else if p_speed < 0.05 {
+            "*"
+        } else {
+            "n.s."
+        }
+    );
     println!("==========================================================================");
     println!();
 }
