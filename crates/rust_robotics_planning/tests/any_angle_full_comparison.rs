@@ -98,6 +98,7 @@ fn normal_cdf(x: f64) -> f64 {
 }
 
 #[test]
+#[ignore = "long-running: 160 MovingAI scenarios, use --release --ignored"]
 fn any_angle_full_comparison() {
     println!();
     println!("==========================================================================");
