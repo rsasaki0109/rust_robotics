@@ -379,12 +379,17 @@ impl EnhancedLazyThetaStarPlanner {
             let current_node = &node_storage[current.index];
             if let Some(parent_idx) = current_node.parent_index {
                 let parent_node = &node_storage[parent_idx];
-                let needs_correction = if let Some(grandparent_idx) = parent_node.parent_index {
-                    let grandparent = &node_storage[grandparent_idx];
-                    !self.line_of_sight(grandparent.x, grandparent.y, current.x, current.y)
-                } else {
-                    false
-                };
+                // First verify direct LOS to parent; then check grandparent if exists
+                let needs_correction =
+                    if !self.line_of_sight(parent_node.x, parent_node.y, current.x, current.y) {
+                        true
+                    } else if let Some(grandparent_idx) = parent_node.parent_index {
+                        let grandparent = &node_storage[grandparent_idx];
+                        !self.line_of_sight(grandparent.x, grandparent.y, current.x, current.y)
+                            && false // Parent LOS is OK, grandparent failure is not critical
+                    } else {
+                        false
+                    };
 
                 if needs_correction {
                     // Enhanced fallback: search wider parent candidates
