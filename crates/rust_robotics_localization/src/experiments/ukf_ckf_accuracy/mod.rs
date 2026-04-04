@@ -1438,12 +1438,10 @@ fn generate_sim_data(case: &AccuracyExperimentCase, bucket: u32, slot: usize) ->
         } else {
             bias_adjusted_observation
         };
-        let noisy_observation = if reused_by_cadence || last_observation.is_none() {
-            cadence_observation
-        } else if rng.gen::<f64>() < profile.observation_hold_probability {
-            last_observation.expect("stale observation should exist")
-        } else {
-            bias_adjusted_observation
+        let noisy_observation = match (reused_by_cadence, last_observation) {
+            (true, _) | (_, None) => cadence_observation,
+            (false, Some(prev)) if rng.gen::<f64>() < profile.observation_hold_probability => prev,
+            _ => bias_adjusted_observation,
         };
 
         ground_truth.push(state);
@@ -1553,7 +1551,7 @@ fn sensor_bias_offset_for_step(
     }
 
     let magnitude = profile.observation_outlier_scale * scale;
-    let direction = if slot % 2 == 0 { 1.0 } else { -1.0 };
+    let direction = if slot.is_multiple_of(2) { 1.0 } else { -1.0 };
     Vector2::new(magnitude, direction * 0.6 * magnitude)
 }
 

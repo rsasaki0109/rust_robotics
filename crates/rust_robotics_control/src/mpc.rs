@@ -683,15 +683,21 @@ fn optimize_linearized_controls(
 ) -> Vec<Vector2<f64>> {
     let pg_controls = optimize_linearized_controls_pg(xref, xbar, state, initial_controls);
 
-    if let Some(qp_controls) = solve_qp_clarabel(xref, xbar, state) {
-        let (qp_x, _, _, _) = linearized_rollout(state, xbar, &qp_controls);
-        let qp_cost = compute_cost(&qp_x, xref, &qp_controls);
+    // Adaptive solver selection: only invoke QP solver during reverse maneuvers
+    // where the projected-gradient solver struggles with the nonlinear coupling.
+    // During forward driving, PG alone is sufficient and faster.
+    let is_reverse = state.v < -0.1 || xref.iter().any(|x| x[2] < -0.1);
+    if is_reverse {
+        if let Some(qp_controls) = solve_qp_clarabel(xref, xbar, state) {
+            let (qp_x, _, _, _) = linearized_rollout(state, xbar, &qp_controls);
+            let qp_cost = compute_cost(&qp_x, xref, &qp_controls);
 
-        let (pg_x, _, _, _) = linearized_rollout(state, xbar, &pg_controls);
-        let pg_cost = compute_cost(&pg_x, xref, &pg_controls);
+            let (pg_x, _, _, _) = linearized_rollout(state, xbar, &pg_controls);
+            let pg_cost = compute_cost(&pg_x, xref, &pg_controls);
 
-        if qp_cost <= pg_cost {
-            return qp_controls;
+            if qp_cost <= pg_cost {
+                return qp_controls;
+            }
         }
     }
 

@@ -204,8 +204,8 @@ fn find_neighbors(i: usize, j: usize, m: usize) -> [(usize, usize); 4] {
 /// Computes the toroidal Manhattan heuristic for A\* on a toroidal grid.
 fn calc_heuristic_map(m: usize, goal: GridCell) -> Vec<Vec<f64>> {
     let mut hmap = vec![vec![0.0f64; m]; m];
-    for i in 0..m {
-        for j in 0..m {
+    for (i, hmap_row) in hmap.iter_mut().enumerate() {
+        for (j, hmap_val) in hmap_row.iter_mut().enumerate() {
             let di = {
                 let d = (i as isize - goal.i as isize).unsigned_abs();
                 d.min(m - d)
@@ -214,7 +214,7 @@ fn calc_heuristic_map(m: usize, goal: GridCell) -> Vec<Vec<f64>> {
                 let d = (j as isize - goal.j as isize).unsigned_abs();
                 d.min(m - d)
             };
-            hmap[i][j] = (di + dj) as f64;
+            *hmap_val = (di + dj) as f64;
         }
     }
     hmap
@@ -230,10 +230,10 @@ pub fn astar_torus(grid: &JointSpaceGrid, start: GridCell, goal: GridCell) -> Op
 
     // Cell states: 0 = free, 1 = obstacle, 2 = explored, 3 = frontier, 4 = start, 5 = goal
     let mut cell_state = vec![vec![0u8; m]; m];
-    for i in 0..m {
-        for j in 0..m {
+    for (i, state_row) in cell_state.iter_mut().enumerate() {
+        for (j, state_val) in state_row.iter_mut().enumerate() {
             if grid.get(i, j) {
-                cell_state[i][j] = 1; // obstacle
+                *state_val = 1; // obstacle
             }
         }
     }
@@ -260,10 +260,10 @@ pub fn astar_torus(grid: &JointSpaceGrid, start: GridCell, goal: GridCell) -> Op
         // Find cell with minimum f-score
         let mut min_f = f64::INFINITY;
         let mut current = (0, 0);
-        for i in 0..m {
-            for j in 0..m {
-                if f_score[i][j] < min_f {
-                    min_f = f_score[i][j];
+        for (i, f_row) in f_score.iter().enumerate() {
+            for (j, &f_val) in f_row.iter().enumerate() {
+                if f_val < min_f {
+                    min_f = f_val;
                     current = (i, j);
                 }
             }

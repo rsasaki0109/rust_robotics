@@ -281,7 +281,7 @@ impl LazyThetaStarPlanner {
             let neighbor_grid_index = self.grid_map.calc_index(nx, ny);
             if let Some(&neighbor_storage_index) = closed_set.get(&neighbor_grid_index) {
                 let g_via_neighbor = node_storage[neighbor_storage_index].cost + move_cost;
-                if best.map_or(true, |(_, best_g)| g_via_neighbor < best_g) {
+                if best.is_none_or(|(_, best_g)| g_via_neighbor < best_g) {
                     best = Some((neighbor_storage_index, g_via_neighbor));
                 }
             }

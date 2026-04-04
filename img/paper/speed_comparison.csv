@@ -1,0 +1,5 @@
+algorithm,rust_ms,python_ms
+a_star,4.003275,924.463889
+rrt,0.122902,5.676276
+ekf,0.190062,103.133797
+cubic_spline,0.921517,6.921463

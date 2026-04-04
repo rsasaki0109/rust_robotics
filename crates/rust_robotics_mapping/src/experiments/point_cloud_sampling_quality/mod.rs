@@ -956,7 +956,7 @@ fn append_burst_outliers(
         points.push(DVector::from_vec(vec![
             center[0] + rng.gen_range(-1.4 * severity..1.4 * severity),
             center[1] + rng.gen_range(-1.2 * severity..1.2 * severity),
-            center[2] + rng.gen_range(-1.0 * severity..1.0 * severity),
+            center[2] + rng.gen_range(-severity..severity),
         ]));
     }
 }
@@ -1213,7 +1213,7 @@ fn median_value(values: &[f64]) -> f64 {
     let mut sorted = values.to_vec();
     sorted.sort_by(f64::total_cmp);
     let mid = sorted.len() / 2;
-    if sorted.len() % 2 == 0 {
+    if sorted.len().is_multiple_of(2) {
         (sorted[mid - 1] + sorted[mid]) / 2.0
     } else {
         sorted[mid]

@@ -208,7 +208,7 @@ mod tests {
         let goal = Point2D::new(18.0, 18.0);
         let dfs_path = dfs_planner.plan(start, goal).unwrap();
         let a_star_path = a_star_planner.plan(start, goal).unwrap();
-        let smoothed = smooth_path(&dfs_path, &dfs_planner.grid_map());
+        let smoothed = smooth_path(&dfs_path, dfs_planner.grid_map());
 
         // Smoothed DFS should have far fewer waypoints than raw DFS
         assert!(

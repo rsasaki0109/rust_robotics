@@ -105,15 +105,16 @@ pub fn forward_kinematics(link_lengths: &[f64], joint_angles: &[f64]) -> [f64; 2
 /// The Jacobian relates joint velocities to end-effector velocity.
 fn jacobian(link_lengths: &[f64], joint_angles: &[f64]) -> Vec<Vec<f64>> {
     let n = link_lengths.len();
-    let mut j = vec![vec![0.0; n]; 2];
-    for i in 0..n {
+    let mut j0 = vec![0.0; n];
+    let mut j1 = vec![0.0; n];
+    for (i, (j0_val, j1_val)) in j0.iter_mut().zip(j1.iter_mut()).enumerate() {
         for k in i..n {
             let cumulative_angle: f64 = joint_angles[..=k].iter().sum();
-            j[0][i] -= link_lengths[k] * cumulative_angle.sin();
-            j[1][i] += link_lengths[k] * cumulative_angle.cos();
+            *j0_val -= link_lengths[k] * cumulative_angle.sin();
+            *j1_val += link_lengths[k] * cumulative_angle.cos();
         }
     }
-    j
+    vec![j0, j1]
 }
 
 /// Computes the pseudo-inverse of a 2-by-n matrix using the formula:
@@ -125,8 +126,8 @@ fn pseudo_inverse_2xn(j: &[Vec<f64>]) -> Vec<Vec<f64>> {
     let mut jjt = [[0.0f64; 2]; 2];
     for row in 0..2 {
         for col in 0..2 {
-            for k in 0..n {
-                jjt[row][col] += j[row][k] * j[col][k];
+            for (jr, jc) in j[row].iter().zip(j[col].iter()) {
+                jjt[row][col] += jr * jc;
             }
         }
     }
