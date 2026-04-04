@@ -17,6 +17,8 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/rsasaki0109/rust_robotics"
 authors = ["ryohei sasaki <rsasaki0109@gmail.com>"]
+keywords = ["robotics", "path-planning", "localization", "slam", "control"]
+categories = ["algorithms", "science::robotics", "simulation"]
 
 [workspace.dependencies]
 nalgebra = "0.33"

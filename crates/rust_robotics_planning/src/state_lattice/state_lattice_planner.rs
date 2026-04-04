@@ -34,9 +34,9 @@ pub struct StateLatticeConfig {
     pub a_min: f64,
     /// Maximum angle for sampling \[rad\]
     pub a_max: f64,
-    /// Minimum heading offset angle [rad]
+    /// Minimum heading offset angle \[rad\]
     pub p_min: f64,
-    /// Maximum heading offset angle [rad]
+    /// Maximum heading offset angle \[rad\]
     pub p_max: f64,
 
     // Lane sampling parameters
