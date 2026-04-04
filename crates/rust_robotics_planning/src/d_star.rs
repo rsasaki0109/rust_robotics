@@ -263,12 +263,41 @@ impl DStar {
     }
 
     /// Trigger re-planning from a cell whose parent became an obstacle.
+    ///
+    /// If the current parent is an obstacle, find the best non-obstacle
+    /// neighbor as a new parent before re-inserting into the open list.
     fn modify_cost(&mut self, idx: usize) {
         if self.map.cells[idx].tag == Tag::Closed {
             let parent = self.map.cells[idx].parent;
             let cost = self.map.cost(idx, parent);
-            let parent_h = self.map.cells[parent].h;
-            self.insert(idx, parent_h + cost);
+            if cost < f64::MAX {
+                // Parent is still valid
+                let parent_h = self.map.cells[parent].h;
+                self.insert(idx, parent_h + cost);
+            } else {
+                // Parent is an obstacle — find the best alternative neighbor
+                let neighbors = self.map.neighbors(idx);
+                let mut best_h = f64::MAX;
+                let mut best_neighbor = usize::MAX;
+                for &n in &neighbors {
+                    if self.map.cells[n].kind == CellKind::Obstacle {
+                        continue;
+                    }
+                    let c = self.map.cost(idx, n);
+                    let candidate = self.map.cells[n].h + c;
+                    if candidate < best_h {
+                        best_h = candidate;
+                        best_neighbor = n;
+                    }
+                }
+                if best_neighbor != usize::MAX {
+                    self.map.cells[idx].parent = best_neighbor;
+                    self.insert(idx, best_h);
+                } else {
+                    // Completely surrounded — insert with MAX to propagate RAISE
+                    self.insert(idx, f64::MAX);
+                }
+            }
         }
     }
 
@@ -556,7 +585,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "D* dynamic re-plan needs further investigation"]
     fn test_dstar_with_new_obstacles() {
         let (ox, oy) = make_box_obstacles();
         let mut dstar = DStar::new(&ox, &oy);
