@@ -7,8 +7,7 @@
 //! Reference: Evensen, "Ensemble Kalman filtering",
 //! Quarterly Journal of the Royal Meteorological Society, 2003.
 
-use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
-use rand::Rng;
+use nalgebra::{DMatrix, DVector, Matrix4, Vector2, Vector4};
 use rand_distr::{Distribution, Normal};
 
 use rust_robotics_core::{

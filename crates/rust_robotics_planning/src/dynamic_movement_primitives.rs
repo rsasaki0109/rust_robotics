@@ -256,8 +256,8 @@ fn lstsq(a: &[Vec<f64>], b: &[f64], n: usize) -> Vec<f64> {
     }
 
     // Add small regularisation for numerical stability.
-    for i in 0..n {
-        ata[i][i] += 1e-10;
+    for (i, ata_row) in ata.iter_mut().enumerate() {
+        ata_row[i] += 1e-10;
     }
 
     // Solve via Cholesky-like Gaussian elimination (symmetric positive-definite).
@@ -265,6 +265,7 @@ fn lstsq(a: &[Vec<f64>], b: &[f64], n: usize) -> Vec<f64> {
 }
 
 /// Solve a symmetric positive-definite system in-place via Gaussian elimination.
+#[allow(clippy::needless_range_loop)]
 fn solve_symmetric(a: &mut [Vec<f64>], b: &mut [f64]) -> Vec<f64> {
     let n = b.len();
     // Forward elimination.

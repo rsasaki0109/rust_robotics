@@ -724,6 +724,7 @@ impl JPSPlanner {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn fallback_result(
         &self,
         start_x: i32,
@@ -1052,10 +1053,10 @@ mod tests {
         }
     }
 
-    fn trace_chain_to_root<'a>(
-        expansions: &'a [RawTraceExpansion],
+    fn trace_chain_to_root(
+        expansions: &[RawTraceExpansion],
         terminal_node_index: usize,
-    ) -> Vec<&'a RawTraceExpansion> {
+    ) -> Vec<&RawTraceExpansion> {
         let expansion_index_by_node: HashMap<usize, usize> = expansions
             .iter()
             .enumerate()
@@ -1261,6 +1262,7 @@ mod tests {
             })
     }
 
+    #[allow(clippy::type_complexity)]
     fn first_divergent_turn_point(
         reference_turn_points: &[(i32, i32)],
         raw_jump_points: &[(i32, i32)],
@@ -1548,6 +1550,7 @@ mod tests {
         sample_count: usize,
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn measure_moving_ai_bucket_runtime_aggregate(
         name: &str,
         map: &MovingAiMap,

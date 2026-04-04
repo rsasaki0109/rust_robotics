@@ -44,6 +44,7 @@ fn path_length_from_cells(cells: &[(usize, usize)]) -> f64 {
 struct CoverageResult {
     name: &'static str,
     cells_visited: usize,
+    #[allow(dead_code)]
     total_free_cells: usize,
     coverage_pct: f64,
     path_length: f64,
@@ -102,7 +103,7 @@ fn coverage_planner_comparison() {
 
         // 2. Wavefront CPP
         {
-            let mut grid = WavefrontGrid::new(grid_size, grid_size);
+            let grid = WavefrontGrid::new(grid_size, grid_size);
             // All cells are free by default in WavefrontGrid::new
             let start = (0, 0);
             let goal = (grid_size - 1, grid_size - 1);

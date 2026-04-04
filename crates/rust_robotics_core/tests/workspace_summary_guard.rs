@@ -98,7 +98,7 @@ fn workspace_stop_condition_holds(experiments: &str, decisions: &str) -> bool {
     else {
         return false;
     };
-    let active_winner_count = count_nonzero_proxy_winners(&experiments);
+    let active_winner_count = count_nonzero_proxy_winners(experiments);
 
     total_presets == total_presets_from_mismatch
         && total_presets == total_presets_from_imperfect

@@ -738,6 +738,7 @@ fn normalize_slots(total_scenarios: usize, slots: &[usize]) -> Vec<usize> {
     normalized
 }
 
+#[allow(clippy::too_many_arguments)]
 fn warmup_and_assert(
     planner: &impl PlannerRuntime,
     start: Point2D,
