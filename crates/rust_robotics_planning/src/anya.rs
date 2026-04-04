@@ -210,38 +210,22 @@ impl AnyaPlanner {
     /// Find all grid corner points adjacent to at least one obstacle and
     /// at least one free cell. These are the candidate waypoints for the
     /// optimal any-angle path.
-    fn find_corner_points(&self) -> Vec<(i32, i32)> {
-        let mut corners = Vec::new();
+    /// Collect ALL free cells as visibility-graph nodes.
+    ///
+    /// For a grid with no-corner-cutting semantics, the optimal any-angle
+    /// path may turn at any free cell, not just obstacle-adjacent corners.
+    /// Using all free cells guarantees the visibility graph produces the
+    /// true optimal any-angle path (at the cost of O(V^2) LOS checks).
+    fn find_all_free_cells(&self) -> Vec<(i32, i32)> {
+        let mut cells = Vec::new();
         for ix in 0..self.grid_map.x_width {
             for iy in 0..self.grid_map.y_width {
-                if !self.grid_map.is_valid(ix, iy) {
-                    continue;
-                }
-                // Check if this free cell has at least one obstacle neighbor
-                let mut has_obstacle_neighbor = false;
-                for &(dx, dy) in &[
-                    (-1, -1),
-                    (-1, 0),
-                    (-1, 1),
-                    (0, -1),
-                    (0, 1),
-                    (1, -1),
-                    (1, 0),
-                    (1, 1),
-                ] {
-                    let nx = ix + dx;
-                    let ny = iy + dy;
-                    if !self.grid_map.is_valid(nx, ny) {
-                        has_obstacle_neighbor = true;
-                        break;
-                    }
-                }
-                if has_obstacle_neighbor {
-                    corners.push((ix, iy));
+                if self.grid_map.is_valid(ix, iy) {
+                    cells.push((ix, iy));
                 }
             }
         }
-        corners
+        cells
     }
 
     fn ensure_query_is_valid(&self, x: i32, y: i32, label: &str) -> RoboticsResult<()> {
@@ -277,8 +261,8 @@ impl AnyaPlanner {
             ]));
         }
 
-        // Build visibility graph nodes: corner points + start + goal
-        let mut nodes: Vec<(i32, i32)> = self.find_corner_points();
+        // Build visibility graph nodes: ALL free cells (guarantees optimality)
+        let mut nodes: Vec<(i32, i32)> = self.find_all_free_cells();
 
         // Add start and goal if not already present
         let start_pos = (start_x, start_y);
