@@ -19,6 +19,7 @@ pub mod n_joint_arm_control;
 pub mod pure_pursuit;
 pub mod rear_wheel_feedback;
 pub mod rocket_landing;
+pub mod rrt_star_seven_joint_arm;
 pub mod stanley_controller;
 pub mod state_machine;
 pub mod two_joint_arm_control;
