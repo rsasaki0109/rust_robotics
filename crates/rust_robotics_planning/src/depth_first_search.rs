@@ -208,7 +208,7 @@ impl DFSPlanner {
                 let new_grid_index = self.grid_map.calc_index(new_x, new_y);
 
                 // Skip if not valid or already visited
-                if !self.grid_map.is_valid(new_x, new_y) {
+                if !self.grid_map.is_valid_offset(current_x, current_y, dx, dy) {
                     continue;
                 }
                 if closed_set.contains(&new_grid_index) {
