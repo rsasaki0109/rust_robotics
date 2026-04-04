@@ -3,7 +3,7 @@
 //! RRT*-Dubins path planner
 //!
 //! Combines the RRT* (optimal RRT) algorithm with Dubins curve connections
-//! for non-holonomic vehicle path planning. Extends [`RRTDubinsPlanner`] with
+//! for non-holonomic vehicle path planning. Extends the RRT-Dubins planner with
 //! near-node rewiring so the tree converges toward an optimal solution.
 //!
 //! Each node carries a heading angle (x, y, yaw), and collision checking is
