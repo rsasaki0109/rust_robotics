@@ -73,7 +73,8 @@ fn bench_rrt(runs: usize) -> f64 {
 
     let start = Instant::now();
     for _ in 0..runs {
-        let mut planner = RRTPlanner::new(obstacles.clone(), rand_area.clone(), None, config.clone());
+        let mut planner =
+            RRTPlanner::new(obstacles.clone(), rand_area.clone(), None, config.clone());
         let _ = planner.planning([0.0, 0.0], [6.0, 10.0]);
     }
     start.elapsed().as_secs_f64() * 1000.0 / runs as f64

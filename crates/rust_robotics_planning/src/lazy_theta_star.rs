@@ -525,11 +525,9 @@ mod tests {
     fn test_lazy_theta_star_from_obstacle_points() {
         let (ox, oy) = create_simple_obstacles();
         let obstacles = Obstacles::try_from_xy(&ox, &oy).unwrap();
-        let planner = LazyThetaStarPlanner::from_obstacle_points(
-            &obstacles,
-            LazyThetaStarConfig::default(),
-        )
-        .unwrap();
+        let planner =
+            LazyThetaStarPlanner::from_obstacle_points(&obstacles, LazyThetaStarConfig::default())
+                .unwrap();
         let path = planner.plan_xy(2.0, 10.0, 18.0, 10.0).unwrap();
         assert!(!path.is_empty());
     }

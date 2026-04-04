@@ -99,10 +99,10 @@ fn mann_whitney_u(a: &[f64], b: &[f64]) -> (f64, f64, f64) {
 fn normal_cdf(x: f64) -> f64 {
     let t = 1.0 / (1.0 + 0.2316419 * x.abs());
     let d = 0.3989422804014327; // 1/sqrt(2*pi)
-    let p = d * (-x * x / 2.0).exp()
+    let p = d
+        * (-x * x / 2.0).exp()
         * (t * (0.319381530
-            + t * (-0.356563782
-                + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))));
+            + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429)))));
     if x >= 0.0 {
         1.0 - p
     } else {
@@ -125,7 +125,8 @@ fn any_angle_statistical_test() {
     println!();
     println!("==========================================================================");
     println!("  Statistical Test: Lazy Theta* vs Theta* Path Quality");
-    println!("  {} scenarios per bucket, Mann-Whitney U test",
+    println!(
+        "  {} scenarios per bucket, Mann-Whitney U test",
         SCENARIOS_PER_BUCKET
     );
     println!("==========================================================================");
@@ -255,7 +256,9 @@ fn any_angle_statistical_test() {
         let enhanced_mean: f64 = r.enhanced_lengths.iter().sum::<f64>() / r.n_scenarios as f64;
 
         // Compute ratios per scenario for paired comparison
-        let lazy_ratios: Vec<f64> = r.lazy_lengths.iter()
+        let lazy_ratios: Vec<f64> = r
+            .lazy_lengths
+            .iter()
             .zip(r.theta_lengths.iter())
             .map(|(l, t)| l / t)
             .collect();
@@ -269,9 +272,16 @@ fn any_angle_statistical_test() {
 
         println!(
             "{:<18} {:>4} {:>4} {:>10.2} {:>10.2} {:>10.2} {:>+7.1}% {:>+7.1}% {:>9.4} {}",
-            r.family, r.bucket, r.n_scenarios,
-            theta_mean, lazy_mean, enhanced_mean,
-            delta_lt, delta_et, p, sig
+            r.family,
+            r.bucket,
+            r.n_scenarios,
+            theta_mean,
+            lazy_mean,
+            enhanced_mean,
+            delta_lt,
+            delta_et,
+            p,
+            sig
         );
 
         if p < 0.05 && z > 0.0 {
@@ -302,9 +312,7 @@ fn any_angle_statistical_test() {
         let (_, z_all, p_all) = mann_whitney_u(&all_lazy, &all_theta);
         let (_, z_enh, p_enh) = mann_whitney_u(&all_enhanced, &all_theta);
 
-        println!(
-            "  Total scenarios: {}", n
-        );
+        println!("  Total scenarios: {}", n);
         println!(
             "  Overall Theta* mean: {:.2}, Lazy* mean: {:.2} ({:+.1}%), Enhanced* mean: {:.2} ({:+.1}%)",
             theta_mean,
@@ -315,13 +323,31 @@ fn any_angle_statistical_test() {
         );
         println!(
             "  Lazy vs Theta* (all): z={:.3}, p={:.6} {}",
-            z_all, p_all,
-            if p_all < 0.001 { "***" } else if p_all < 0.01 { "**" } else if p_all < 0.05 { "*" } else { "n.s." }
+            z_all,
+            p_all,
+            if p_all < 0.001 {
+                "***"
+            } else if p_all < 0.01 {
+                "**"
+            } else if p_all < 0.05 {
+                "*"
+            } else {
+                "n.s."
+            }
         );
         println!(
             "  Enhanced vs Theta* (all): z={:.3}, p={:.6} {}",
-            z_enh, p_enh,
-            if p_enh < 0.001 { "***" } else if p_enh < 0.01 { "**" } else if p_enh < 0.05 { "*" } else { "n.s." }
+            z_enh,
+            p_enh,
+            if p_enh < 0.001 {
+                "***"
+            } else if p_enh < 0.01 {
+                "**"
+            } else if p_enh < 0.05 {
+                "*"
+            } else {
+                "n.s."
+            }
         );
     }
     println!("==========================================================================");

@@ -160,9 +160,7 @@ impl LqrPlanner {
         let k = (1.0 / denom[0]) * bt_p * a;
 
         let closed_loop = a - b * k;
-        let eigenvalues = closed_loop
-            .eigenvalues()
-            .unwrap_or_else(Vector2::zeros);
+        let eigenvalues = closed_loop.eigenvalues().unwrap_or_else(Vector2::zeros);
 
         (k, p, eigenvalues)
     }
