@@ -20,6 +20,7 @@ pub mod greedy_best_first_search;
 pub mod hybrid_a_star;
 pub mod jps;
 pub mod sipp;
+pub mod enhanced_lazy_theta_star;
 pub mod lazy_theta_star;
 pub mod theta_star;
 
@@ -105,6 +106,7 @@ pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_star::RRTStar;
 pub use sipp::{SippConfig, SippPlanner};
 pub use state_lattice::{ObstacleAwarePlanResult, StateLattice, StateLatticeConfig};
+pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner};
 pub use lazy_theta_star::{LazyThetaStarConfig, LazyThetaStarPlanner};
 pub use theta_star::{ThetaStarConfig, ThetaStarPlanner};
 pub use voronoi_road_map::VoronoiPlanner;
