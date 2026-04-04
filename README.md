@@ -67,8 +67,28 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 
 ## Benchmarks
 
+### Rust vs Python Speed Comparison
+
+| Algorithm | Rust (ms) | Python (ms) | Speedup |
+|---|---:|---:|---:|
+| A* (100x100) | 4.0 | 924.5 | 231x |
+| EKF (1000 steps) | 0.19 | 103.1 | 543x |
+| RRT (100 runs) | 0.12 | 5.7 | 46x |
+| CubicSpline (1000 runs) | 0.92 | 6.9 | 7.5x |
+
+### Any-Angle Planner Comparison (160 MovingAI scenarios)
+
+| Planner | Path Quality vs Theta* | Speed vs Theta* |
+|---|---|---|
+| Theta* | baseline | baseline |
+| Lazy Theta* | same (+0.01%) | **1.7x faster** (p=0.025) |
+| A*+optimize_path | same (+0.27%) | **2.3x faster** |
+
+### Grid Planner Benchmark (50x50)
+
 ```bash
-cargo bench -p rust_robotics_planning --bench grid_planners
+cargo bench -p rust_robotics_planning --bench unified_planning_benchmark
+cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
 ```
 
 # Table of Contents
@@ -79,6 +99,7 @@ cargo bench -p rust_robotics_planning --bench grid_planners
       * [Histogram Filter](#histogram-filter-localization)
       * [Cubature Kalman Filter](#cubature-kalman-filter)
       * [Ensemble Kalman Filter](#ensemble-kalman-filter)
+      * [Adaptive Filter (EKF/CKF)](#adaptive-filter)
    * [Mapping](#mapping)
       * [NDT Map](#ndt-map)
       * [Gaussian Grid Map](#gaussian-grid-map)
@@ -96,7 +117,7 @@ cargo bench -p rust_robotics_planning --bench grid_planners
       * [EKF SLAM](#ekf-slam)
       * [Graph-Based SLAM](#graph-based-slam)
    * [Path Planning](#path-planning)
-      * [A*](#a-algorithm), [Theta*](#theta-algorithm), [JPS](#jump-point-search-jps), [Dijkstra](#dijkstra-algorithm), [D* Lite](#d-lite), [D*](#d-algorithm)
+      * [A*](#a-algorithm), [Theta*](#theta-algorithm), [Lazy Theta*](#lazy-theta), [Enhanced Lazy Theta*](#enhanced-lazy-theta), [JPS](#jump-point-search-jps), [Dijkstra](#dijkstra-algorithm), [D* Lite](#d-lite), [D*](#d-algorithm), [Anya](#anya-optimal-any-angle)
       * [BFS](#breadth-first-search), [DFS](#depth-first-search), [Greedy Best-First](#greedy-best-first-search)
       * [Bidirectional A*](#bidirectional-a), [Bidirectional BFS](#bidirectional-bfs)
       * [Flow Field](#flow-field), [Bug Planning](#bug-planning)
@@ -112,6 +133,7 @@ cargo bench -p rust_robotics_planning --bench grid_planners
       * [Elastic Bands](#elastic-bands), [Dynamic Movement Primitives](#dynamic-movement-primitives)
       * [PSO](#particle-swarm-optimization), [Time-Based Planning](#time-based-path-planning)
       * [Model Predictive Trajectory Generator](#model-predictive-trajectory-generator)
+      * [Path Smoothing](#path-smoothing)
       * [Coverage: Grid-Based Sweep](#grid-based-sweep-cpp), [Wavefront](#wavefront-cpp), [Spiral Spanning Tree](#spiral-spanning-tree-cpp)
    * [Path Tracking](#path-tracking)
       * [LQR Steer Control](#lqr-steer-control), [LQR Speed+Steer](#lqr-speed-steer-control)
@@ -161,6 +183,24 @@ Grid-based probabilistic localization using RFID landmarks. The algorithm mainta
 Blue: True path, Orange: Dead Reckoning, Green: Histogram Filter estimate, Black: RFID landmarks
 
 - [src](./crates/rust_robotics_localization/src/histogram_filter.rs)
+
+## Cubature Kalman Filter
+
+Cubature Kalman Filter (CKF) using 3rd-degree spherical-radial cubature rule. Achieves the same accuracy as UKF but 30% faster with zero tuning parameters (no alpha/beta/kappa). Recommended as the default over UKF for typical robotics scenarios.
+
+- [src](./crates/rust_robotics_localization/src/cubature_kalman_filter.rs)
+
+## Ensemble Kalman Filter
+
+Stochastic ensemble-based Kalman filter. Maintains an ensemble of state particles and updates them using the Kalman gain computed from ensemble statistics.
+
+- [src](./crates/rust_robotics_localization/src/ensemble_kalman_filter.rs)
+
+## Adaptive Filter
+
+Automatically switches between EKF (fast, linear) and CKF (robust, nonlinear) based on Normalized Innovation Squared (NIS). When innovation exceeds the chi-squared threshold, switches to CKF for better nonlinearity handling.
+
+- [src](./crates/rust_robotics_localization/src/adaptive_filter.rs)
 
 # Mapping
 ## NDT Map
@@ -213,6 +253,12 @@ Extended Kalman Filter based SLAM. Maintains a joint state vector of robot pose 
 
 - [src](./crates/rust_robotics_slam/src/ekf_slam.rs)
 
+## FastSLAM 2.0
+
+Improved particle filter SLAM that incorporates the latest observation into the proposal distribution before sampling, producing better particle diversity than FastSLAM 1.0.
+
+- [src](./crates/rust_robotics_slam/src/fastslam2.rs)
+
 ## Graph-Based SLAM
 
 <img src="./img/slam/graph_based_slam.svg" width="640px">
@@ -246,6 +292,30 @@ Any-angle path planning algorithm. Unlike A* which restricts movement to grid ed
 ```
 cargo run -p rust_robotics --example theta_star --features "planning,viz"
 ```
+
+## Lazy Theta*
+
+Lazy Theta* defers line-of-sight checks until node expansion, reducing redundant visibility tests. Achieves the same path quality as Theta* while being 1.7x faster (p=0.025 on 160 MovingAI scenarios).
+
+- [src](./crates/rust_robotics_planning/src/lazy_theta_star.rs)
+
+## Enhanced Lazy Theta*
+
+Extends Lazy Theta* with wider parent selection at expansion time. Uses 2-ring neighborhood search and ancestor chain walks to find better any-angle shortcuts. Achieves near-optimal paths (+0.11% vs visibility-graph optimal on 50x50 grids).
+
+- [src](./crates/rust_robotics_planning/src/enhanced_lazy_theta_star.rs)
+
+## Anya (Optimal Any-Angle)
+
+Optimal any-angle pathfinding using visibility-graph Dijkstra on all free cells. Guarantees the shortest any-angle path. Used as the optimality baseline for evaluating Theta* variants.
+
+- [src](./crates/rust_robotics_planning/src/anya.rs)
+
+## Path Smoothing
+
+Post-processing pipeline for grid-based paths: greedy LOS shortcutting followed by iterative waypoint relaxation. Transforms grid-constrained A* paths into near-optimal any-angle paths. A*+optimize_path achieves 2.3x speedup over Theta* with equivalent path quality.
+
+- [src](./crates/rust_robotics_planning/src/path_smoothing.rs)
 
 ## Jump Point Search (JPS)
 
