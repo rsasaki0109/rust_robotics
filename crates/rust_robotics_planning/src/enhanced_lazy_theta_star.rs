@@ -267,8 +267,8 @@ impl EnhancedLazyThetaStarPlanner {
         )))
     }
 
-    /// Enhanced fallback: find the best parent among closed-set neighbors,
-    /// then try to "skip" through the best parent's ancestors via LOS.
+    /// Enhanced fallback: find the best parent among closed-set neighbors
+    /// in a 2-ring neighborhood, then walk ancestor chains for LOS shortcuts.
     fn enhanced_best_parent(
         &self,
         x: i32,
@@ -276,66 +276,59 @@ impl EnhancedLazyThetaStarPlanner {
         closed_set: &HashMap<i32, usize>,
         node_storage: &[Node],
     ) -> Option<(usize, f64)> {
-        // Step 1: Find best 8-connected closed neighbor (same as Lazy Theta*)
         let mut best: Option<(usize, f64)> = None;
-        for &(dx, dy, move_cost) in &self.motion {
+        const MAX_ANCESTOR_HOPS: usize = 6;
+
+        // Collect candidate closed-set nodes from 2-ring neighborhood
+        // Ring 1: 8-connected (distance 1 or sqrt(2))
+        // Ring 2: distance 2, sqrt(5), 2*sqrt(2)
+        let offsets: [(i32, i32); 24] = [
+            // Ring 1 (8)
+            (1, 0), (0, 1), (-1, 0), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+            // Ring 2 (16)
+            (2, 0), (0, 2), (-2, 0), (0, -2),
+            (2, 1), (2, -1), (-2, 1), (-2, -1),
+            (1, 2), (1, -2), (-1, 2), (-1, -2),
+            (2, 2), (2, -2), (-2, 2), (-2, -2),
+        ];
+
+        for &(dx, dy) in &offsets {
             let nx = x + dx;
             let ny = y + dy;
-            if !self.grid_map.is_valid_offset(x, y, dx, dy) {
+            if !self.grid_map.is_valid(nx, ny) {
                 continue;
             }
             let neighbor_grid_index = self.grid_map.calc_index(nx, ny);
             if let Some(&neighbor_storage_index) = closed_set.get(&neighbor_grid_index) {
-                let g_via_neighbor = node_storage[neighbor_storage_index].cost + move_cost;
-                if best.is_none_or(|(_, best_g)| g_via_neighbor < best_g) {
-                    best = Some((neighbor_storage_index, g_via_neighbor));
-                }
-            }
-        }
+                let neighbor = &node_storage[neighbor_storage_index];
 
-        // Step 2: Try to improve via any-angle shortcuts through the best neighbor's ancestors
-        if let Some((best_neighbor_idx, _best_g)) = best {
-            // Walk up the ancestor chain of the best neighbor, checking LOS to (x,y)
-            let mut ancestor_idx = Some(best_neighbor_idx);
-            let mut hops = 0;
-            const MAX_ANCESTOR_HOPS: usize = 4;
-
-            while let Some(a_idx) = ancestor_idx {
-                if hops >= MAX_ANCESTOR_HOPS {
-                    break;
-                }
-                let ancestor = &node_storage[a_idx];
-                if self.line_of_sight(ancestor.x, ancestor.y, x, y) {
-                    let dist = self.euclidean_distance(ancestor.x, ancestor.y, x, y);
-                    let g_via_ancestor = ancestor.cost + dist;
-                    if best.is_none_or(|(_, best_g)| g_via_ancestor < best_g) {
-                        best = Some((a_idx, g_via_ancestor));
+                // Direct LOS check to this closed neighbor
+                if self.line_of_sight(neighbor.x, neighbor.y, x, y) {
+                    let dist = self.euclidean_distance(neighbor.x, neighbor.y, x, y);
+                    let g_via = neighbor.cost + dist;
+                    if best.is_none_or(|(_, best_g)| g_via < best_g) {
+                        best = Some((neighbor_storage_index, g_via));
                     }
                 }
-                ancestor_idx = ancestor.parent_index;
-                hops += 1;
-            }
-        }
 
-        // Step 3: Also check LOS to all closed neighbors' parents (cross-branch shortcuts)
-        for &(dx, dy, _) in &self.motion {
-            let nx = x + dx;
-            let ny = y + dy;
-            if !self.grid_map.is_valid_offset(x, y, dx, dy) {
-                continue;
-            }
-            let neighbor_grid_index = self.grid_map.calc_index(nx, ny);
-            if let Some(&neighbor_storage_index) = closed_set.get(&neighbor_grid_index) {
-                // Check the neighbor's parent
-                if let Some(parent_of_neighbor) = node_storage[neighbor_storage_index].parent_index {
-                    let pon = &node_storage[parent_of_neighbor];
-                    if self.line_of_sight(pon.x, pon.y, x, y) {
-                        let dist = self.euclidean_distance(pon.x, pon.y, x, y);
-                        let g_via_pon = pon.cost + dist;
-                        if best.is_none_or(|(_, best_g)| g_via_pon < best_g) {
-                            best = Some((parent_of_neighbor, g_via_pon));
+                // Walk ancestor chain of this neighbor
+                let mut ancestor_idx = neighbor.parent_index;
+                let mut hops = 0;
+                while let Some(a_idx) = ancestor_idx {
+                    if hops >= MAX_ANCESTOR_HOPS {
+                        break;
+                    }
+                    let ancestor = &node_storage[a_idx];
+                    if self.line_of_sight(ancestor.x, ancestor.y, x, y) {
+                        let dist = self.euclidean_distance(ancestor.x, ancestor.y, x, y);
+                        let g_via = ancestor.cost + dist;
+                        if best.is_none_or(|(_, best_g)| g_via < best_g) {
+                            best = Some((a_idx, g_via));
                         }
                     }
+                    ancestor_idx = ancestor.parent_index;
+                    hops += 1;
                 }
             }
         }
