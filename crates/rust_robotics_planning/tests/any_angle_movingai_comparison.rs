@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 
-use rust_robotics_core::{Obstacles, Point2D};
 use rust_robotics_planning::a_star::{AStarConfig, AStarPlanner};
 use rust_robotics_planning::enhanced_lazy_theta_star::{
     EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner,
@@ -65,6 +64,7 @@ fn families() -> Vec<MapFamily> {
     ]
 }
 
+#[allow(dead_code)]
 struct PlanResult {
     planner_name: &'static str,
     path_length: f64,
@@ -191,7 +191,7 @@ fn any_angle_movingai_comparison() {
             // Theta*
             let t0 = Instant::now();
             let theta_result = theta.plan(start, goal);
-            let theta_time = t0.elapsed().as_micros();
+            let _theta_time = t0.elapsed().as_micros();
             let theta_len = theta_result
                 .as_ref()
                 .map(|p| p.total_length())
@@ -200,7 +200,7 @@ fn any_angle_movingai_comparison() {
             // Lazy Theta*
             let t0 = Instant::now();
             let lazy_result = lazy.plan(start, goal);
-            let lazy_time = t0.elapsed().as_micros();
+            let _lazy_time = t0.elapsed().as_micros();
             let lazy_len = lazy_result
                 .as_ref()
                 .map(|p| p.total_length())
@@ -209,7 +209,7 @@ fn any_angle_movingai_comparison() {
             // Enhanced Lazy Theta*
             let t0 = Instant::now();
             let enhanced_result = enhanced.plan(start, goal);
-            let enhanced_time = t0.elapsed().as_micros();
+            let _enhanced_time = t0.elapsed().as_micros();
             let enhanced_len = enhanced_result
                 .as_ref()
                 .map(|p| p.total_length())

@@ -14,6 +14,7 @@ pub mod model_predictive_trajectory_generator;
 pub mod move_to_pose;
 pub mod mpc;
 pub mod mpc_control;
+pub mod n_joint_arm_3d;
 pub mod n_joint_arm_control;
 pub mod pure_pursuit;
 pub mod rear_wheel_feedback;
