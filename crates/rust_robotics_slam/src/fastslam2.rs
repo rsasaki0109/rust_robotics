@@ -10,7 +10,7 @@
 //!         Ryohei Sasaki (@rsasaki0109)
 //!         Rust port
 
-use nalgebra::{Matrix2, Matrix2x3, Matrix3, Matrix3x2, Vector2, Vector3};
+use nalgebra::{Matrix2, Matrix2x3, Matrix3, Vector2, Vector3};
 use rand_distr::{Distribution, Normal, Uniform};
 use std::f64::consts::PI;
 

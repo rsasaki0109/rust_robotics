@@ -203,8 +203,8 @@ impl Grid {
         let col = &self.reservation[pos.x as usize][pos.y as usize];
         let mut intervals = Vec::new();
         let mut start: Option<usize> = None;
-        for t in 0..tl {
-            if col[t] == 0 {
+        for (t, &cell) in col.iter().enumerate().take(tl) {
+            if cell == 0 {
                 if start.is_none() {
                     start = Some(t);
                 }
@@ -665,11 +665,11 @@ impl PriorityBasedPlanner {
     /// paths. Agents are planned in descending order of start-to-goal distance.
     pub fn plan(
         grid: &mut Grid,
-        tasks: &mut Vec<AgentTask>,
+        tasks: &mut [AgentTask],
         algorithm: SingleAgentAlgorithm,
     ) -> RoboticsResult<Vec<NodePath>> {
         // Sort by descending distance
-        tasks.sort_by(|a, b| b.distance_sq().cmp(&a.distance_sq()));
+        tasks.sort_by_key(|b| std::cmp::Reverse(b.distance_sq()));
 
         // Reserve initial positions
         for task in tasks.iter() {

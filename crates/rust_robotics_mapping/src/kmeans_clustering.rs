@@ -104,12 +104,12 @@ pub fn kmeans_clustering(x: &[f64], y: &[f64], config: &KMeansConfig) -> KMeansR
     let mut center_x = vec![0.0; k];
     let mut center_y = vec![0.0; k];
 
-    calc_centroids(&x, &y, &labels, k, &mut center_x, &mut center_y);
+    calc_centroids(x, y, &labels, k, &mut center_x, &mut center_y);
 
     let mut pre_cost = f64::INFINITY;
     for _ in 0..config.max_iterations {
-        let cost = update_labels(&x, &y, &center_x, &center_y, &mut labels);
-        calc_centroids(&x, &y, &labels, k, &mut center_x, &mut center_y);
+        let cost = update_labels(x, y, &center_x, &center_y, &mut labels);
+        calc_centroids(x, y, &labels, k, &mut center_x, &mut center_y);
 
         let d_cost = (cost - pre_cost).abs();
         if d_cost < config.cost_threshold {

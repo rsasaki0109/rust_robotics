@@ -99,9 +99,9 @@ pub fn farthest_point_sampling(
         // Select the point with maximum minimum distance
         let mut best_idx = 0;
         let mut best_dist = -1.0f64;
-        for i in 0..n {
-            if !selected_ids.contains(&i) && min_distances[i] > best_dist {
-                best_dist = min_distances[i];
+        for (i, &d) in min_distances.iter().enumerate() {
+            if !selected_ids.contains(&i) && d > best_dist {
+                best_dist = d;
                 best_idx = i;
             }
         }

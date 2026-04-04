@@ -449,7 +449,7 @@ mod tests {
         // Obstacle cell itself should be 0.
         assert_eq!(dist[2 * 5 + 2], 0.0);
         // Immediate neighbours should be 1.
-        assert_eq!(dist[1 * 5 + 2], 1.0);
+        assert_eq!(dist[5 + 2], 1.0);
         assert_eq!(dist[2 * 5 + 1], 1.0);
         // Corner cell (0,0) chessboard distance = 2.
         assert_eq!(dist[0], 2.0);
