@@ -908,7 +908,7 @@ mod tests {
         let rand_area = AreaBounds::new(-2.0, 20.0, -2.0, 20.0);
         let config = ClosedLoopRRTStarConfig::default();
         let planner = ClosedLoopRRTStarPlanner::new(obstacles, rand_area, config);
-        assert!(planner.get_tree().is_empty() || planner.get_tree().len() == 0);
+        assert!(planner.get_tree().is_empty() || planner.get_tree().is_empty());
     }
 
     // -- Integration test: planning on obstacle-free env --

@@ -159,11 +159,11 @@ impl Particle {
         c2: f64,
         rng: &mut R,
     ) {
-        for i in 0..2 {
+        for (i, &gbest) in gbest_pos.iter().enumerate() {
             let r1: f64 = rng.gen();
             let r2: f64 = rng.gen();
             let cognitive = c1 * r1 * (self.personal_best_position[i] - self.position[i]);
-            let social = c2 * r2 * (gbest_pos[i] - self.position[i]);
+            let social = c2 * r2 * (gbest - self.position[i]);
             self.velocity[i] = w * self.velocity[i] + cognitive + social;
             self.velocity[i] = self.velocity[i].clamp(-self.max_velocity[i], self.max_velocity[i]);
         }

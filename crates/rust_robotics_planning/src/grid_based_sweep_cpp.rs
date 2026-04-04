@@ -388,14 +388,9 @@ fn sweep_path_search(
     let mut px = vec![x];
     let mut py = vec![y];
 
-    loop {
-        match searcher.move_target_grid(cx, cy, grid) {
-            Some((nx, ny)) => {
-                cx = nx;
-                cy = ny;
-            }
-            None => break,
-        }
+    while let Some((nx, ny)) = searcher.move_target_grid(cx, cy, grid) {
+        cx = nx;
+        cy = ny;
 
         if searcher.is_search_done(grid) {
             break;

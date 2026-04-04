@@ -358,9 +358,9 @@ mod tests {
         let (w, h) = (100, 100);
         let mut grid = vec![vec![false; h]; w];
         // Block from (40,35) to (60,65).
-        for ix in 40..60 {
-            for iy in 35..65 {
-                grid[ix][iy] = true;
+        for row in grid.iter_mut().take(60).skip(40) {
+            for cell in row.iter_mut().take(65).skip(35) {
+                *cell = true;
             }
         }
         grid

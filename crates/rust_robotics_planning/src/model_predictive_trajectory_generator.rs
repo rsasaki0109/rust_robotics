@@ -328,6 +328,7 @@ pub struct LookupEntry {
     pub x: f64,
     pub y: f64,
     pub yaw: f64,
+    #[allow(dead_code)]
     pub s: f64,
     pub km: f64,
     pub kf: f64,
