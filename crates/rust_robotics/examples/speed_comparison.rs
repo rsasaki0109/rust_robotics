@@ -39,6 +39,7 @@ fn create_grid_obstacles() -> (Vec<f64>, Vec<f64>) {
 }
 
 /// Benchmark A* pathfinding on a 100x100 grid.
+#[allow(deprecated)]
 fn bench_a_star(runs: usize) -> f64 {
     let (ox, oy) = create_grid_obstacles();
     let planner = AStarPlanner::from_obstacles(&ox, &oy, 1.0, 0.5);

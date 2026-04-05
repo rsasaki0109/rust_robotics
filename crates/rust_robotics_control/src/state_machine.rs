@@ -183,7 +183,11 @@ impl StateMachine {
 
     /// Execute a transition
     fn execute_transition(&mut self, transition: &Transition, event: &str) -> Result<(), String> {
-        let current_state = self.current_state.as_ref().unwrap();
+        // Safety: execute_transition is only called from process() which checks current_state is Some
+        let current_state = self
+            .current_state
+            .as_ref()
+            .expect("execute_transition called without current_state");
 
         // Check guard condition
         if let Some(ref guard) = transition.guard {

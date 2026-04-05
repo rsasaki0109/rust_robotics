@@ -14,6 +14,7 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.80"
 license = "MIT"
 repository = "https://github.com/rsasaki0109/rust_robotics"
 authors = ["ryohei sasaki <rsasaki0109@gmail.com>"]

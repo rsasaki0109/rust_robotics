@@ -446,7 +446,8 @@ fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> SplineCourse {
     let mut course_k = Vec::new();
     let mut course_s = Vec::new();
 
-    let s_max = *sp.s.last().unwrap() - ds;
+    // sp.s is always non-empty: CubicSpline2D::new initializes s with at least one element
+    let s_max = *sp.s.last().expect("spline s is non-empty after construction") - ds;
     while s < s_max {
         let (ix, iy) = sp.calc_position(s);
         let iyaw = sp.calc_yaw(s);
