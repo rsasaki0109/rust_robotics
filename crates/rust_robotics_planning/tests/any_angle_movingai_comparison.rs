@@ -36,31 +36,31 @@ fn families() -> Vec<MapFamily> {
             name: "dao/arena2",
             map_path: format!("{base}/dao/arena2.map"),
             scen_path: format!("{base}/dao/arena2.map.scen"),
-            buckets: &[0, 10, 20],
+            buckets: &[0, 10, 20, 40, 60, 80],
         },
         MapFamily {
             name: "room/8room",
             map_path: format!("{base}/room/8room_000.map"),
             scen_path: format!("{base}/room/8room_000.map.scen"),
-            buckets: &[0, 10, 20],
+            buckets: &[0, 10, 20, 40, 60, 80],
         },
         MapFamily {
             name: "random/512",
             map_path: format!("{base}/random/random512-10-0.map"),
             scen_path: format!("{base}/random/random512-10-0.map.scen"),
-            buckets: &[0, 10, 20],
+            buckets: &[0, 10, 20, 40, 60, 80],
         },
         MapFamily {
             name: "maze/512",
             map_path: format!("{base}/maze/maze512-1-0.map"),
             scen_path: format!("{base}/maze/maze512-1-0.map.scen"),
-            buckets: &[0, 10, 20],
+            buckets: &[0, 10, 20, 40, 60, 80],
         },
         MapFamily {
             name: "street/berlin",
             map_path: format!("{base}/street/Berlin_0_512.map"),
             scen_path: format!("{base}/street/Berlin_0_512.map.scen"),
-            buckets: &[0, 10, 20],
+            buckets: &[0, 10, 20, 40, 60, 80],
         },
     ]
 }
