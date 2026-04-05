@@ -165,10 +165,7 @@ fn run_ukf(data: &SimData, config: &ScenarioConfig) -> FilterResult {
             1.0_f64.to_radians().powi(2),
             1.0_f64.powi(2),
         ),
-        observation_noise: Vector2::new(
-            config.obs_noise_x.powi(2),
-            config.obs_noise_y.powi(2),
-        ),
+        observation_noise: Vector2::new(config.obs_noise_x.powi(2), config.obs_noise_y.powi(2)),
         dt: DT,
     };
     let mut ukf = UKFLocalizer::new(ukf_config);
@@ -303,9 +300,15 @@ fn ckf_vs_ukf_broad_comparison() {
     println!();
     println!(
         "{:<28} | {:>10} {:>10} {:>10} | {:>10} {:>10} {:>10} | {:>8} {:>8}",
-        "Scenario", "CKF RMSE", "CKF Time", "CKF Final",
-        "UKF RMSE", "UKF Time", "UKF Final",
-        "RMSE %", "Time %"
+        "Scenario",
+        "CKF RMSE",
+        "CKF Time",
+        "CKF Final",
+        "UKF RMSE",
+        "UKF Time",
+        "UKF Final",
+        "RMSE %",
+        "Time %"
     );
     println!("{}", "-".repeat(130));
 
@@ -320,7 +323,8 @@ fn ckf_vs_ukf_broad_comparison() {
         let ukf_result = run_ukf(&data, scenario);
 
         let rmse_ratio = (ckf_result.rmse / ukf_result.rmse - 1.0) * 100.0;
-        let time_ratio = (ckf_result.elapsed_us as f64 / ukf_result.elapsed_us as f64 - 1.0) * 100.0;
+        let time_ratio =
+            (ckf_result.elapsed_us as f64 / ukf_result.elapsed_us as f64 - 1.0) * 100.0;
 
         println!(
             "{:<28} | {:>10.4} {:>9.1}us {:>10.4} | {:>10.4} {:>9.1}us {:>10.4} | {:>+7.1}% {:>+7.1}%",
@@ -383,8 +387,6 @@ fn ckf_vs_ukf_broad_comparison() {
         ukf_total_time as f64 / 1000.0,
         ckf_total_time as f64 / ukf_total_time as f64 * 100.0,
     );
-    println!(
-        "  CKF tuning params: 0, UKF tuning params: 3 (alpha, beta, kappa)"
-    );
+    println!("  CKF tuning params: 0, UKF tuning params: 3 (alpha, beta, kappa)");
     println!();
 }

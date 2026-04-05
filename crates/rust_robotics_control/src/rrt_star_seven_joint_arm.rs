@@ -386,7 +386,10 @@ mod tests {
 
         // Verify the path cost is positive and reasonable
         assert!(path.cost > 0.0, "Path should have positive cost");
-        assert!(path.waypoints.len() >= 2, "Path should have at least start and goal");
+        assert!(
+            path.waypoints.len() >= 2,
+            "Path should have at least start and goal"
+        );
     }
 
     /// Direct test of segment-sphere intersection geometry.
