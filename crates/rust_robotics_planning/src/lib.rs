@@ -20,6 +20,7 @@ pub mod greedy_best_first_search;
 pub mod hybrid_a_star;
 pub mod jps;
 pub mod sipp;
+pub mod anya;
 pub mod enhanced_lazy_theta_star;
 pub mod lazy_theta_star;
 pub mod theta_star;
