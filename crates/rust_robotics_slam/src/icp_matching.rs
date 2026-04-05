@@ -17,7 +17,8 @@
  * Original authors: Atsushi Sakai (@Atsushi_twi), Göktuğ Karakaşlı, Shamil Gemuev
  */
 
-use nalgebra::{DMatrix, DVector, Matrix2, Vector2};
+use nalgebra::{DMatrix, DVector, Matrix2, SVector, Vector2};
+use nearest_neighbor::KdTree;
 use rand::Rng;
 use std::f64;
 
@@ -112,33 +113,56 @@ fn update_homogeneous_matrix(
     }
 }
 
-/// Find nearest neighbor associations between point sets
+/// Find nearest neighbor associations between point sets using KdTree
 fn nearest_neighbor_association(
     previous_points: &DMatrix<f64>,
     current_points: &DMatrix<f64>,
 ) -> (Vec<usize>, f64) {
-    // Find nearest neighbor associations
-    let mut indexes = Vec::with_capacity(current_points.ncols());
-    let mut error = 0.0;
+    let dim = previous_points.nrows();
 
-    for j in 0..current_points.ncols() {
-        let current_point = current_points.column(j);
-        let mut min_dist = f64::INFINITY;
-        let mut best_idx = 0;
+    // Build KdTree from previous_points (reference point cloud)
+    if dim == 2 {
+        let prev_svecs: Vec<SVector<f64, 2>> = (0..previous_points.ncols())
+            .map(|i| {
+                SVector::<f64, 2>::from([previous_points[(0, i)], previous_points[(1, i)]])
+            })
+            .collect();
+        let tree = KdTree::new(&prev_svecs, 2);
 
-        for i in 0..previous_points.ncols() {
-            let prev_point = previous_points.column(i);
-            let dist = (current_point - prev_point).norm();
-            if dist < min_dist {
-                min_dist = dist;
-                best_idx = i;
-            }
+        let mut indexes = Vec::with_capacity(current_points.ncols());
+        let mut error = 0.0;
+
+        for j in 0..current_points.ncols() {
+            let query =
+                SVector::<f64, 2>::from([current_points[(0, j)], current_points[(1, j)]]);
+            let (argmin, sq_dist) = tree.search(&query);
+            indexes.push(argmin.unwrap_or(0));
+            error += sq_dist.sqrt();
         }
-        indexes.push(best_idx);
-        error += min_dist;
-    }
+        (indexes, error)
+    } else {
+        // Fallback to brute-force for non-2D cases
+        let mut indexes = Vec::with_capacity(current_points.ncols());
+        let mut error = 0.0;
 
-    (indexes, error)
+        for j in 0..current_points.ncols() {
+            let current_point = current_points.column(j);
+            let mut min_dist = f64::INFINITY;
+            let mut best_idx = 0;
+
+            for i in 0..previous_points.ncols() {
+                let prev_point = previous_points.column(i);
+                let dist = (current_point - prev_point).norm();
+                if dist < min_dist {
+                    min_dist = dist;
+                    best_idx = i;
+                }
+            }
+            indexes.push(best_idx);
+            error += min_dist;
+        }
+        (indexes, error)
+    }
 }
 
 /// Select columns from matrix based on indices
