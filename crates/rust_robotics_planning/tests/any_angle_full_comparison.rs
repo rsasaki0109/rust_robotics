@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::time::Instant;
 
-use rust_robotics_core::Point2D;
 use rust_robotics_planning::a_star::{AStarConfig, AStarPlanner};
 use rust_robotics_planning::enhanced_lazy_theta_star::{
     EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner,
