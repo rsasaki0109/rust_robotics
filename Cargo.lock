@@ -603,6 +603,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "nearest_neighbor"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "nalgebra",
+ "num-traits",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -987,6 +997,7 @@ version = "0.1.0"
 dependencies = [
  "gnuplot",
  "nalgebra",
+ "nearest_neighbor",
  "rand 0.8.5",
  "rand_distr",
  "rust_robotics_core",
