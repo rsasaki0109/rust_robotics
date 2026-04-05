@@ -108,6 +108,98 @@ fn line_of_sight_world(grid_map: &GridMap, from: &Point2D, to: &Point2D) -> bool
     true
 }
 
+/// Full pipeline: shortcutting + waypoint relaxation.
+///
+/// 1. Greedy LOS shortcutting (removes redundant waypoints)
+/// 2. Iterative waypoint perturbation (moves each interior waypoint to
+///    minimize total path length while maintaining LOS constraints)
+/// 3. Final shortcutting pass (removes any waypoints made redundant by relaxation)
+pub fn optimize_path(path: &Path2D, grid_map: &GridMap, max_iterations: usize) -> Path2D {
+    let mut current = smooth_path(path, grid_map);
+    if current.len() <= 2 {
+        return current;
+    }
+
+    for _ in 0..max_iterations {
+        let improved = relax_waypoints(&current, grid_map);
+        let improved = smooth_path(&improved, grid_map);
+        if (improved.total_length() - current.total_length()).abs() < 1e-6 {
+            break;
+        }
+        current = improved;
+    }
+
+    current
+}
+
+/// Move each interior waypoint toward the line between its neighbors,
+/// minimizing local path length while maintaining LOS.
+fn relax_waypoints(path: &Path2D, grid_map: &GridMap) -> Path2D {
+    if path.len() <= 2 {
+        return path.clone();
+    }
+
+    let mut points = path.points.clone();
+    let resolution = grid_map.resolution;
+
+    for i in 1..points.len() - 1 {
+        let prev = points[i - 1];
+        let next = points[i + 1];
+
+        // Target: midpoint of the line between prev and next
+        let mid_x = (prev.x + next.x) / 2.0;
+        let mid_y = (prev.y + next.y) / 2.0;
+
+        // Try to move waypoint toward the midpoint in steps
+        let current = points[i];
+        let dx = mid_x - current.x;
+        let dy = mid_y - current.y;
+
+        // Try progressively smaller steps toward midpoint
+        for &step_frac in &[1.0, 0.5, 0.25, 0.125] {
+            let candidate = Point2D::new(
+                current.x + dx * step_frac,
+                current.y + dy * step_frac,
+            );
+
+            // Snap to grid resolution
+            let snapped = Point2D::new(
+                (candidate.x / resolution).round() * resolution,
+                (candidate.y / resolution).round() * resolution,
+            );
+
+            // Check grid validity
+            let gx = grid_map.calc_x_index(snapped.x);
+            let gy = grid_map.calc_y_index(snapped.y);
+            if !grid_map.is_valid(gx, gy) {
+                continue;
+            }
+
+            // Check LOS to both neighbors
+            if !line_of_sight_world(grid_map, &prev, &snapped) {
+                continue;
+            }
+            if !line_of_sight_world(grid_map, &snapped, &next) {
+                continue;
+            }
+
+            // Check if this improves total local length
+            let old_len = dist(&prev, &current) + dist(&current, &next);
+            let new_len = dist(&prev, &snapped) + dist(&snapped, &next);
+            if new_len < old_len - 1e-10 {
+                points[i] = snapped;
+                break;
+            }
+        }
+    }
+
+    Path2D::from_points(points)
+}
+
+fn dist(a: &Point2D, b: &Point2D) -> f64 {
+    ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
