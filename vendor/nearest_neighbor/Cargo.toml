@@ -1,0 +1,23 @@
+[package]
+name = "nearest_neighbor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = "0.4"
+
+[dependencies.nalgebra]
+version = "0.33"
+default-features = false
+features = ["macros"]
+
+[dependencies.num-traits]
+version = "0.2"
+default-features = false
+
+[dev-dependencies]
+rand = "0.8.5"
+
+[features]
+default = []
+std = []
