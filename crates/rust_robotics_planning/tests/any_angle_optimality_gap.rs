@@ -90,6 +90,7 @@ fn scenarios() -> Vec<Scenario> {
 }
 
 #[test]
+#[ignore = "long-running: Anya visibility graph on 50x50, use --release --ignored"]
 fn any_angle_optimality_gap() {
     println!();
     println!("==========================================================================");
