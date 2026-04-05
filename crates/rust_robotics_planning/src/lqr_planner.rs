@@ -162,7 +162,7 @@ impl LqrPlanner {
         let closed_loop = a - b * k;
         let eigenvalues = closed_loop
             .eigenvalues()
-            .unwrap_or_else(|| Vector2::zeros());
+            .unwrap_or_else(Vector2::zeros);
 
         (k, p, eigenvalues)
     }
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn test_lqr_planner_same_start_goal() {
         let planner = LqrPlanner::new(LqrPlannerConfig::default());
-        let (rx, ry) = planner.planning(5.0, 5.0, 5.0, 5.0).unwrap();
+        let (rx, _ry) = planner.planning(5.0, 5.0, 5.0, 5.0).unwrap();
 
         // Should reach goal immediately (start == goal)
         assert!(!rx.is_empty());

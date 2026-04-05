@@ -113,6 +113,7 @@ fn print_summary() {
 
 fn bench_crossover(c: &mut Criterion) {
     let sizes = [50, 100, 200, 500, 1000];
+    #[allow(clippy::type_complexity)]
     let scenarios: Vec<(&str, Box<dyn Fn(i32) -> Obstacles>)> = vec![
         ("open", Box::new(boundary_obstacles)),
         ("dense", Box::new(dense_obstacles)),

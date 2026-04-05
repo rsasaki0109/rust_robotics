@@ -96,6 +96,7 @@ fn generate_sim_data(config: &ScenarioConfig, seed: u64) -> SimData {
 }
 
 struct FilterResult {
+    #[allow(dead_code)]
     name: &'static str,
     rmse: f64,
     elapsed_us: u128,
