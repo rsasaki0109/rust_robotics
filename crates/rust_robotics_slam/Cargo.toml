@@ -19,3 +19,4 @@ nalgebra = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 gnuplot = { workspace = true, optional = true }
+nearest_neighbor = { path = "../../vendor/nearest_neighbor" }
