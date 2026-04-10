@@ -274,7 +274,7 @@ impl RRTPlanner {
         ((dx * dx + dy * dy).sqrt(), dy.atan2(dx))
     }
 
-    fn plan_with_sampler<F>(
+    pub(crate) fn plan_with_sampler<F>(
         &mut self,
         start: Point2D,
         goal: Point2D,
