@@ -10,6 +10,11 @@ pub mod histogram_filter;
 pub mod particle_filter;
 pub mod unscented_kalman_filter;
 
+pub mod complementary_filter;
+pub mod information_filter;
+pub mod iterated_ekf;
+pub mod square_root_ukf;
+
 // Re-exports
 pub use ekf::{EKFConfig, EKFControl, EKFLocalizer, EKFMeasurement, EKFState};
 pub use histogram_filter::{GridMap, HistogramFilter};
