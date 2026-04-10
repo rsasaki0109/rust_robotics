@@ -65,6 +65,16 @@ cargo run -p rust_robotics --example jps --features "planning,viz"
 cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz"
 ```
 
+### dora-rs dataflow example
+
+The workspace also includes a minimal `dora-rs` planning demo that wraps the existing headless A* planner in a dora node and sends a structured JSON path report to a sink node.
+
+```bash
+dora run crates/rust_robotics/examples/dora_path_planning_dataflow.yml
+```
+
+This example requires the `dora` runtime/CLI to be installed and uses the feature-gated `dora` support in `crates/rust_robotics`.
+
 ## Benchmarks
 
 ### Rust vs Python Speed Comparison
@@ -144,7 +154,7 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
    * [Arm Navigation](#arm-navigation)
       * [Two Joint Arm](#two-joint-arm-control), [N-Joint Arm IK](#n-joint-arm-control), [Arm Obstacle Navigation](#arm-obstacle-navigation)
    * [Aerial Navigation](#aerial-navigation)
-      * [3D Grid A*](#3d-grid-a), [Drone 3D Trajectory Following](#drone-3d-trajectory-following)
+      * [3D Grid A*](#3d-grid-a), [Drone 3D Trajectory Following](#drone-3d-trajectory-following), [Drone Minimum-Snap Trajectory](#drone-minimum-snap-trajectory)
    * [Mission Planning](#mission-planning)
       * [Behavior Tree](#behavior-tree), [State Machine](#state-machine)
 
@@ -564,6 +574,18 @@ Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target pos
 Bounded 3D voxel-grid planning for aerial robots. The planner supports 6-connected or 26-connected motion and returns a collision-free waypoint sequence.
 
 - [src](./crates/rust_robotics_planning/src/grid_a_star_3d.rs)
+
+## Drone 3D Trajectory Following
+
+Closed-loop quadrotor waypoint tracking with quintic segments, PD thrust/attitude control, and Euler-integrated rigid-body dynamics.
+
+- [src](./crates/rust_robotics_control/src/drone_3d_trajectory.rs)
+
+## Drone Minimum-Snap Trajectory
+
+Seventh-order minimum-snap segment generation for drone waypoint loops. The module exposes piecewise segment generation, desired-state sampling, and a direct path into the existing quadrotor tracker.
+
+- [src](./crates/rust_robotics_control/src/minimum_snap_trajectory.rs)
 
 # Mission Planning
 
