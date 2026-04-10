@@ -75,7 +75,7 @@ fn divide<T: Float, const D: usize>(
 
     let mut k = indices.len() / 2;
     while k > 0 && data[indices[k]][dim] == data[indices[k - 1]][dim] {
-        k = k - 1;
+        k -= 1;
     }
     let indices_r = indices.split_off(k);
     let indices_l = indices.clone();
@@ -136,15 +136,15 @@ fn distance_to_boundary<T: Float, const D: usize>(
 #[inline]
 fn children_near_far<T: Float>(query_element: T, boundary: T, node_index: usize) -> (usize, usize) {
     if query_element < boundary {
-        (node_index * 2 + 0, node_index * 2 + 1)
+        (node_index * 2, node_index * 2 + 1)
     } else {
-        (node_index * 2 + 1, node_index * 2 + 0)
+        (node_index * 2 + 1, node_index * 2)
     }
 }
 
 #[inline]
 fn the_other_side_index(node_index: usize) -> usize {
-    if node_index % 2 == 0 {
+    if node_index.is_multiple_of(2) {
         node_index + 1
     } else {
         node_index - 1
@@ -175,7 +175,7 @@ fn find_leaf<T: Float, const D: usize>(query: &SVector<T, D>, boundaries: &VecMa
     let mut dim: usize = 0;
     while let Some(&boundary) = boundaries.get(&node_index) {
         node_index = if query[(dim, 0)] < boundary {
-            node_index * 2 + 0
+            node_index * 2
         } else {
             node_index * 2 + 1
         };
@@ -190,9 +190,7 @@ fn print_tree<T: Float, const D: usize>(
     data: &[SVector<T, D>],
 ) {
     let mut stack = Vec::from([(1, 0)]);
-    while stack.len() != 0 {
-        let (node_index, dim) = stack.pop().unwrap();
-
+    while let Some((node_index, dim)) = stack.pop() {
         let depth = calc_depth(node_index);
         if let Some(indices) = leaves.get(&node_index) {
             info!(
@@ -219,7 +217,7 @@ fn print_tree<T: Float, const D: usize>(
             b
         );
 
-        stack.push((node_index * 2 + 0, (dim + 1) % D));
+        stack.push((node_index * 2, (dim + 1) % D));
         stack.push((node_index * 2 + 1, (dim + 1) % D));
     }
 }
@@ -249,15 +247,13 @@ fn print_tree<T: Float, const D: usize>(
 // let indices = (0..data.len()).collect::<Vec<usize>>();
 fn non_duplicate_indices<T: Float, const D: usize>(data: &[SVector<T, D>]) -> Vec<usize> {
     let cmp = |i1: &usize, i2: &usize| -> Ordering {
-        for dim in 0..D {
-            let d1 = &data[*i1][dim];
-            let d2 = &data[*i2][dim];
-            let ord = d1.partial_cmp(&d2).unwrap();
+        for (d1, d2) in data[*i1].iter().zip(data[*i2].iter()) {
+            let ord = d1.partial_cmp(d2).unwrap();
             if ord != Ordering::Equal {
                 return ord;
             }
         }
-        return Ordering::Equal;
+        Ordering::Equal
     };
 
     let mut indices = (0..data.len()).collect::<Vec<usize>>();
@@ -287,15 +283,14 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
         let mut argmin = *argmin;
         let mut min_distance = min_distance;
         let mut stack = Vec::from([(node_index, find_dim::<D>(node_index))]);
-        while stack.len() != 0 {
-            let (node_index, dim) = stack.pop().unwrap();
+        while let Some((node_index, dim)) = stack.pop() {
             let maybe_boundary = self.boundaries.get(&node_index);
 
             let Some(&boundary) = maybe_boundary else {
                 // let find_nearest_time = std::time::Instant::now();
                 // If `node_index` is not in boundaries, `node_index` must be a leaf.
                 let indices = self.leaves.get(&node_index).unwrap();
-                let (candidate, distance) = find_nearest(query, &indices, self.data);
+                let (candidate, distance) = find_nearest(query, indices, self.data);
                 if distance < min_distance {
                     argmin = candidate;
                     min_distance = distance;
@@ -354,9 +349,7 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
         let mut leaves = BTreeMap::<usize, Vec<usize>>::new();
 
         let mut stack = Vec::from([(indices, 1, 0)]);
-        while stack.len() != 0 {
-            let (mut indices, node_index, dim) = stack.pop().unwrap();
-
+        while let Some((mut indices, node_index, dim)) = stack.pop() {
             if indices.len() <= leaf_size {
                 leaves.insert(node_index, indices);
                 continue;
@@ -366,7 +359,7 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
 
             boundaries.insert(node_index, boundary);
             let next_dim = (dim + 1) % D;
-            stack.push((indices_l, node_index * 2 + 0, next_dim));
+            stack.push((indices_l, node_index * 2, next_dim));
             stack.push((indices_r, node_index * 2 + 1, next_dim));
         }
         KdTree {
@@ -377,7 +370,7 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
     }
 
     pub fn print(&self) {
-        print_tree::<T, D>(&self.boundaries, &self.leaves, &self.data);
+        print_tree::<T, D>(&self.boundaries, &self.leaves, self.data);
     }
 
     /// Returns the index of the nearest item from the given query in the target data,
@@ -390,7 +383,7 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
             panic_leaf_node_not_found(query, leaf_index);
         };
 
-        let (argmin, distance) = find_nearest(query, &indices, self.data);
+        let (argmin, distance) = find_nearest(query, indices, self.data);
         self.find_nearest_in_other_areas(query, &argmin, distance, leaf_index)
     }
 }
