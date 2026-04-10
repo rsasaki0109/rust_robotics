@@ -14,6 +14,10 @@ pub mod point_cloud_sampling;
 pub mod ray_casting_grid_map;
 pub mod rectangle_fitting;
 
+pub mod dbscan_clustering;
+pub mod line_extraction;
+pub mod occupancy_grid_map;
+
 // Re-exports
 pub use gaussian_grid_map::GaussianGridMap;
 pub use ndt::{NDTGrid, NDTMap};
