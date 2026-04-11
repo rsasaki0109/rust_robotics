@@ -1,0 +1,22 @@
+nodes:
+  - id: rust-robotics-planner
+    build: cargo build --manifest-path ../../../Cargo.toml -p rust_robotics --example dora_path_planning_node --features "planning,dora"
+    path: ../../../target/debug/examples/dora_path_planning_node
+    inputs:
+      tick: dora/timer/millis/100
+    outputs:
+      - path-report
+
+  - id: rust-robotics-metrics
+    build: cargo build --manifest-path ../../../Cargo.toml -p rust_robotics --example dora_path_metrics_node --features dora
+    path: ../../../target/debug/examples/dora_path_metrics_node
+    inputs:
+      path: rust-robotics-planner/path-report
+    outputs:
+      - path-metrics
+
+  - id: rust-robotics-sink
+    build: cargo build --manifest-path ../../../Cargo.toml -p rust_robotics --example dora_path_planning_sink --features dora
+    path: ../../../target/debug/examples/dora_path_planning_sink
+    inputs:
+      path: rust-robotics-planner/path-report

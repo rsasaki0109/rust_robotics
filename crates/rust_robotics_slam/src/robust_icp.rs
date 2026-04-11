@@ -121,10 +121,8 @@ impl<'a> RobustIcp2D<'a> {
             iterations = iter + 1;
 
             // Transform source points
-            let src_transformed: Vec<Vector2<f64>> = src
-                .iter()
-                .map(|sp| transform.transform(sp))
-                .collect();
+            let src_transformed: Vec<Vector2<f64>> =
+                src.iter().map(|sp| transform.transform(sp)).collect();
 
             // Find nearest neighbors in dst
             let nearest_dsts: Vec<Vector2<f64>> = src_transformed
@@ -152,11 +150,8 @@ impl<'a> RobustIcp2D<'a> {
             prev_error = error;
 
             // Weighted Gauss-Newton update
-            let Some(delta) = weighted_gauss_newton(
-                &transform,
-                &src_transformed,
-                &nearest_dsts,
-            ) else {
+            let Some(delta) = weighted_gauss_newton(&transform, &src_transformed, &nearest_dsts)
+            else {
                 break;
             };
 
@@ -202,7 +197,7 @@ fn calc_stddevs(residuals: &[Vector2<f64>]) -> Option<[f64; 2]> {
     Some(result)
 }
 
-fn median_of(data: &mut Vec<f64>) -> Option<f64> {
+fn median_of(data: &mut [f64]) -> Option<f64> {
     let n = data.len();
     if n == 0 {
         return None;
