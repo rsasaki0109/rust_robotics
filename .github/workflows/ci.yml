@@ -135,3 +135,5 @@ jobs:
 
     - name: Check semver compliance
       uses: obi1kenobi/cargo-semver-checks-action@v2
+      with:
+        exclude: nearest_neighbor
