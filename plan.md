@@ -1,491 +1,431 @@
-# RustRobotics Development Plan
+# RustRobotics Development Plan — Phase 2
 
-## Project Overview
+## Overview
 
-RustRobotics is a Rust implementation of [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics). The workspace is split across planning, localization, control, mapping, SLAM, visualization, and shared core crates.
+All algorithm waves (1-3) and post-wave additions are complete. This plan covers the next phase of work:
 
-Repository: `rsasaki0109/rust_robotics`  
-Current branch snapshot: `feature/more-algorithms-wave4`  
-Plan status: updated to reflect the local branch state as of `2026-04-11`
+- **Task A**: Create PR to merge `feature/more-algorithms-wave4` → `main`
+- **Task B**: Benchmark new algorithms with performance comparisons
+- **Task C**: Add gnuplot visualization examples for new algorithms
+- **Task D**: Wave 4 — implement 8 more algorithms
+- **Task E**: Expand dora-rs real-time planning integration
+- **Task F**: Complete the A*/Fringe/IDA* experiment track
 
----
-
-## What This File Is For
-
-This file is no longer a Wave 3 task sheet.
-
-At this point, `plan.md` is the branch-level status document for:
-
-1. completed algorithm waves that are already in the source tree,
-2. active experiment tracks that are driving current design decisions,
-3. the stable interfaces that have survived those experiments,
-4. the next practical priorities.
-
-Detailed per-preset measurements live in `docs/experiments*.md`, `docs/decisions*.md`, and `docs/interfaces.md`. This file summarizes those results so the current branch can be understood from one place.
+**Branch**: `feature/more-algorithms-wave4`
+**All lib.rs changes for existing modules are done. Tests pass. Clippy clean.**
 
 ---
 
-## Current Branch Snapshot
+## Task A: PR & Merge
 
-### Completed and stabilized work
+### Goal
+Create a clean PR from `feature/more-algorithms-wave4` → `main`.
 
-- Wave 1 + Wave 2 implementations are complete.
-- Wave 3 implementations are complete.
-- The branch now also contains additional planning modules beyond the original Wave 3 scope.
-- The branch now contains drone trajectory comparison infrastructure that promotes only a small stable helper surface while keeping concrete generator variants experimental.
-- The branch now contains a feature-gated, example-scoped `dora-rs` planning demo that has been validated locally with `dora-cli 0.3.13` and now exchanges a structured JSON path report between the planner node and sink.
+### Steps
 
-### Actively experimental work
+1. Run full CI locally first:
+```bash
+cargo fmt --all -- --check
+cargo build --workspace
+cargo test --workspace
+cargo clippy --workspace --all-features -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+```
 
-- planning runtime aggregation strategies for MovingAI crossover buckets
-- `A* / Fringe Search / IDA*` threshold-budget comparison on local and larger windows
-- drone trajectory generator trade-offs across stop-go, pass-through, acceleration, jerk-enriched, and coupled-continuity waypoint boundary presets
+2. Clean up any temporary files:
+```bash
+rm -rf crates/rust_robotics/examples/out/
+rm -rf logs/
+rm -f scripts/demo_wave1.sh scripts/wave1_implement.sh
+```
 
-### Current branch reality
+3. Update README.md — add the new algorithms to the algorithm table. The current README lists the original algorithms but not the 26 new ones. Add them to the appropriate sections:
 
-- The branch has advanced significantly beyond the previous `main`-based Wave 3 plan.
-- The current plan must therefore describe both stable algorithm additions and experimental comparison work.
-- The branch contains many uncommitted changes, so this file should be read as a local branch status snapshot rather than a released changelog.
+**Localization section — add:**
+- Complementary Filter
+- Iterated EKF (IEKF)
+- Information Filter
+- Square Root UKF (SR-UKF)
 
----
+**Control section — add:**
+- PID Controller
+- Sliding Mode Control
+- Feedback Linearization
+- Backstepping Control
+- iLQR (iterative LQR)
 
-## Completed Implementation Waves
+**Planning section — add:**
+- Bidirectional RRT
+- Tangent Bug
+- RRG (Rapidly-exploring Random Graph)
+- LPA* (Lifelong Planning A*)
+- ARA* (Anytime Repairing A*)
+- FMT* (Fast Marching Tree)
+- Bipedal Planner
+- RRT Sobol
+- RRT Path Smoothing
+- A* Variants (Beam, Iterative, Dynamic)
+- Fringe Search
+- IDA*
 
-### Wave 1 + Wave 2
+**Mapping section — add:**
+- DBSCAN Clustering
+- Line Extraction (Split-and-Merge)
+- Occupancy Grid Map (Log-Odds)
 
-The earlier implementation waves added `14` algorithms across control, mapping, localization, and planning.
+**SLAM section — add:**
+- Pose Graph Optimization
+- Correlative Scan Matching
 
-| # | Algorithm | Crate | Status |
-|---|-----------|-------|--------|
-| 1 | PID Controller | control | complete |
-| 2 | DBSCAN Clustering | mapping | complete |
-| 3 | Complementary Filter | localization | complete |
-| 4 | Bidirectional RRT | planning | complete |
-| 5 | Tangent Bug | planning | complete |
-| 6 | Line Extraction (Split-and-Merge) | mapping | complete |
-| 7 | Iterated EKF (IEKF) | localization | complete |
-| 8 | RRG | planning | complete |
-| 9 | Occupancy Grid Map (Log-Odds) | mapping | complete |
-| 10 | Information Filter | localization | complete |
-| 11 | Sliding Mode Control | control | complete |
-| 12 | Feedback Linearization | control | complete |
-| 13 | LPA* | planning | complete |
-| 14 | ARA* | planning | complete |
+4. Push and create PR:
+```bash
+git add -A
+git commit -m "Add 26 new algorithms (Wave 1-3 + extras), benchmarks, experiments, dora-rs integration"
+git push -u origin feature/more-algorithms-wave4
+gh pr create --title "Add 26 new robotics algorithms" --body "$(cat <<'EOF'
+## Summary
+- 26 new algorithms across all domains (localization, control, planning, mapping, SLAM)
+- Wave 1 (7): PID, DBSCAN, Complementary Filter, Bidirectional RRT, Tangent Bug, Line Extraction, IEKF
+- Wave 2 (7): RRG, Occupancy Grid, Information Filter, Sliding Mode, Feedback Linearization, LPA*, ARA*
+- Wave 3 (6): SR-UKF, Backstepping, FMT*, Pose Graph Optimization, Correlative Scan Matching, iLQR
+- Post-wave (6): Bipedal Planner, RRT Sobol, RRT Path Smoothing, A* Variants, Fringe Search, IDA*
+- All tests passing, clippy clean
+- Experiment infrastructure for runtime aggregation and grid threshold comparison
+- dora-rs integration demo
 
-These waves established the basic implementation pattern used throughout the workspace:
-
-- public config struct with validation
-- algorithm struct with `new` / `try_new`
-- inline `#[cfg(test)]` tests
-- `nalgebra` for math
-- `rust_robotics_core` types and traits for stable contracts
-
-### Wave 3
-
-Wave 3 closed the medium-hard implementation gap that the previous version of this file was centered on.
-
-| # | Algorithm | Crate | File | Status |
-|---|-----------|-------|------|--------|
-| 15 | Square Root UKF | localization | `crates/rust_robotics_localization/src/square_root_ukf.rs` | complete |
-| 16 | Backstepping Control | control | `crates/rust_robotics_control/src/backstepping_control.rs` | complete |
-| 17 | FMT* | planning | `crates/rust_robotics_planning/src/fmt_star.rs` | complete |
-| 18 | Pose Graph Optimization | slam | `crates/rust_robotics_slam/src/pose_graph_optimization.rs` | complete |
-| 19 | Correlative Scan Matching | slam | `crates/rust_robotics_slam/src/correlative_scan_matching.rs` | complete |
-| 20 | iLQR | control | `crates/rust_robotics_control/src/ilqr.rs` | complete |
-
-Wave 3 is no longer a pending milestone. It should be treated as finished baseline work for the current branch.
-
-### Branch-local planning additions after Wave 3
-
-Beyond the original Wave 3 target, the current branch also contains additional planning implementations that broaden the repo beyond the old plan:
-
-| Module | File | Purpose | Current role |
-|---|---|---|---|
-| Bipedal Planner | `crates/rust_robotics_planning/src/bipedal_planner.rs` | footstep / LIPM-style trajectory planning | branch-local algorithm addition |
-| RRT Sobol | `crates/rust_robotics_planning/src/rrt_sobol.rs` | low-discrepancy sampling variant of RRT | branch-local algorithm addition |
-| RRT Path Smoothing | `crates/rust_robotics_planning/src/rrt_path_smoothing.rs` | shortcut-based smoothing wrapper over RRT | branch-local algorithm addition |
-| A* Variants | `crates/rust_robotics_planning/src/a_star_variants.rs` | beam / iterative / dynamic / theta-like / jump-corner family | branch-local algorithm addition |
-| Fringe Search | `crates/rust_robotics_planning/src/fringe_search.rs` | thresholded best-first grid search | branch-local algorithm addition |
-| IDA* | `crates/rust_robotics_planning/src/ida_star.rs` | memory-light iterative deepening A* | branch-local algorithm addition |
-
-These additions are real source modules in the tree. Some also participate in the active experiment tracks described below.
-
----
-
-## Active Experimental Tracks
-
-## 1. Planning Runtime Aggregation
-
-### Problem slice
-
-The repo is comparing multiple runtime aggregation strategies over MovingAI crossover buckets before treating one workflow as the stable evaluation path.
-
-### Current decision
-
-- `full-bucket` remains the convergence reference.
-- `variance-triggered` is the best current exploratory proxy.
-- `first-scenario` remains useful only as a cheap smoke test.
-
-### Why it matters
-
-This track affects how planner comparisons are interpreted. It is not adding a new planner; it is deciding how much evidence is enough before a planner “winner” label is trusted.
-
-### Current stable boundary
-
-The stable shared surface is intentionally small:
-
-- `RuntimeAggregationVariant`
-- `RuntimeSamplingPlan`
-- `RuntimeExperimentCase`
-- `RuntimeObservation`
-- `run_variant_suite`
-
-Concrete aggregation variants stay under package-local `experiments/` code until they prove reusable across packages.
-
-### Current status
-
-- This track is active and reusable across packages.
-- It already feeds planning evidence and is designed so localization / control / mapping can reuse the same evaluation contract.
-
-Primary references:
-
-- `docs/experiments.md`
-- `docs/decisions.md`
-- `docs/interfaces.md`
+## Test plan
+- [ ] cargo test --workspace passes
+- [ ] cargo clippy --workspace -- -D warnings clean
+- [ ] All headless examples run
+- [ ] README updated with new algorithm list
+EOF
+)"
+```
 
 ---
 
-## 2. Planning Grid Threshold Comparison
+## Task B: Benchmarks
 
-### Problem slice
+### Goal
+Create a benchmark example that compares performance of related algorithms. Output a markdown table to stdout.
 
-Compare `AStarPlanner`, `FringeSearchPlanner`, and `IDAStarPlanner` under the same `PathPlanner` contract and then push `IDA*` until its practical exactness boundary is understood, not assumed.
+### B1: Grid Planner Benchmark
+**File**: `crates/rust_robotics/examples/benchmark_grid_planners.rs`
+**Features**: `planning`
 
-### Stable contract
+Compare on the same 100x100 grid with obstacles:
+- A* vs Dijkstra vs JPS vs Theta* vs Lazy Theta* vs LPA* vs ARA* vs Fringe Search vs IDA*
+
+Measure: planning time (µs), path length, nodes expanded.
 
 ```rust
-PathPlanner::plan(Point2D, Point2D) -> Result<Path2D, RoboticsError>
+// Pseudocode structure
+fn main() {
+    let (ox, oy) = build_test_obstacles(); // 100x100 grid with wall
+    let start = Point2D::new(10.0, 10.0);
+    let goal = Point2D::new(90.0, 90.0);
+
+    let planners: Vec<(&str, Box<dyn Fn() -> RoboticsResult<Path2D>>)> = vec![
+        ("A*", Box::new(|| { /* create and plan */ })),
+        ("Dijkstra", Box::new(|| { /* ... */ })),
+        // ...
+    ];
+
+    println!("| Planner | Time (µs) | Path Length | Nodes |");
+    println!("|---------|-----------|-------------|-------|");
+    for (name, plan_fn) in &planners {
+        let start_time = std::time::Instant::now();
+        let path = plan_fn().unwrap();
+        let elapsed = start_time.elapsed().as_micros();
+        println!("| {} | {} | {:.1} | - |", name, elapsed, path.total_length());
+    }
+}
 ```
 
-This is important: no new planning core abstraction has been promoted from this work. The experiment is intentionally happening behind the existing trait boundary.
+Add to `Cargo.toml`:
+```toml
+[[example]]
+name = "benchmark_grid_planners"
+required-features = ["planning"]
+```
 
-### Current result
+### B2: Localization Filter Benchmark
+**File**: `crates/rust_robotics/examples/benchmark_localizers.rs`
+**Features**: `localization`
 
-- `AStarPlanner` remains the reference winner on median-timed runtime.
-- `FringeSearchPlanner` remains useful as a lower-peak-live alternative.
-- `IDAStarPlanner` remains experimental, but its exactness boundary is now much better characterized than before.
+Compare on the same simulated trajectory (circular motion with noise):
+- EKF vs UKF vs CKF vs IEKF vs Complementary Filter vs Information Filter vs SR-UKF
 
-### Current evidence ladder
+Measure: final position error (m), average update time (µs).
 
-The branch now has explicit exact/non-exact thresholds for several local MovingAI slices:
+### B3: Sampling Planner Benchmark
+**File**: `crates/rust_robotics/examples/benchmark_sampling_planners.rs`
+**Features**: `planning`
 
-- bucket `5`: one-iteration cheap floor reaches exact at `22`, while `21` still fails
-- bucket `11`: cheap floor reaches exact at `43`, while `42` still fails
-- bucket `12`: cheap floor reaches exact at `132`, while `131` still fails
-- bucket `10`: threshold-round recovery returns at `iter32`, while `iter24` still fails
-- bucket `15`: this is the hard slice; representative `iter256-exp3000000` still fails, full-slice `iter512-exp1750775` stays mixed (`window08` exact, `window16/24` expansion-stop), and full-slice `iter512-exp1750776` reaches exact
-- bucket `15` fixed-budget iteration floor: once budget is fixed at `iter512-exp1750776`, the iteration floor is `275`, while `274` still fails with a mean next-threshold gap of `0.058875`
+Compare: RRT vs RRT* vs Bidirectional RRT vs RRG vs FMT* vs BIT*
 
-### Why this track matters
+Measure: planning time (ms), path length, success rate (over 50 runs).
 
-This experiment is no longer just “which planner is faster.” It now explains where the bounded `IDA*` approximation breaks, how it recovers, and what exactness costs on harder local slices. That gives the branch a real basis for deciding whether `IDA*` should stay experimental or be pushed further.
-
-### Current status
-
-- This track is active.
-- The interface is stable.
-- The evidence is deep enough to guide future bounded-search work.
-- The bucket-`15` diagnostics follow-up is now in place: failure-preserving reports show the hard slice is dominated by contour re-expansion, not broad frontier growth.
-- The next value is no longer adding basic effort metrics; it is deciding whether to push the planning track further with memory-oriented diagnostics or switch attention back to controller + generator pairings and the optional `dora` payload follow-up.
-
-Primary references:
-
-- `docs/experiments_planning_grid_threshold.md`
-- `docs/decisions_planning_grid_threshold.md`
-- `docs/interfaces.md`
+### B4: Update README with benchmark results
+After running benchmarks, add a "Performance" section to README.md with the tables.
 
 ---
 
-## 3. Drone Trajectory Generator Comparison
+## Task C: Visualization Examples
 
-### Problem slice
+### Goal
+Add gnuplot examples for key new algorithms. Each example should generate a PNG in `img/`.
 
-Compare multiple drone trajectory generators under the same sampled `DesiredState` + PD-tracker contract, then promote only the helper surface that survives repeated re-runs.
+### C1: PID Controller Step Response
+**File**: `crates/rust_robotics/examples/pid_controller.rs`
+**Features**: `control`, `viz`
 
-### Stable contract
+Plot the step response: time vs output, showing P-only, PI, PID, PID+anti-windup.
+Save to `img/control/pid_step_response.png`
 
-- sampled `DesiredState` sequences
-- consumed by the existing quadrotor PD tracker
+### C2: DBSCAN vs K-means Comparison
+**File**: `crates/rust_robotics/examples/dbscan_vs_kmeans.rs`
+**Features**: `mapping`, `viz`
 
-The stable helper surface promoted so far is deliberately small:
+Generate crescent-shaped clusters. Show DBSCAN correctly separating them while K-means fails.
+Save to `img/mapping/dbscan_vs_kmeans.png`
 
-- `generate_waypoint_trajectory_with_durations`
-- `sample_trajectory_segments`
-- `simulate_desired_states`
+### C3: Bidirectional RRT Tree Growth
+**File**: `crates/rust_robotics/examples/bidirectional_rrt.rs`
+**Features**: `planning`, `viz`
 
-Concrete generators remain experimental:
+Plot both trees (start=blue, goal=red) and the connecting path (green).
+Save to `img/path_planning/bidirectional_rrt.png`
 
-- `quintic-uniform`
-- `quintic-distance-scaled`
-- `minimum-snap-distance-scaled`
+### C4: iLQR Trajectory Optimization
+**File**: `crates/rust_robotics/examples/ilqr_trajectory.rs`
+**Features**: `control`, `viz`
 
-### Presets already compared
+Plot initial guess trajectory vs optimized trajectory around obstacles.
+Save to `img/control/ilqr_trajectory.png`
 
-The current branch has five concrete control presets for this problem:
+### C5: Filter Comparison
+**File**: `crates/rust_robotics/examples/filter_comparison.rs`
+**Features**: `localization`, `viz`
 
-1. `control-drone-trajectory-variants`
-2. `control-drone-trajectory-pass-through`
-3. `control-drone-trajectory-pass-through-accel`
-4. `control-drone-trajectory-pass-through-accel-jerk`
-5. `control-drone-trajectory-coupled-continuity`
+Plot ground truth vs EKF vs IEKF vs SR-UKF estimates on the same trajectory.
+Save to `img/localization/filter_comparison.png`
 
-### Current decision
+### C6: Occupancy Grid Map Building
+**File**: `crates/rust_robotics/examples/occupancy_grid_demo.rs`
+**Features**: `mapping`, `viz`
 
-Across the current branch, the practical default still remains:
+Simulate a robot scanning with LIDAR, show the occupancy grid being built.
+Save to `img/mapping/occupancy_grid.png`
 
-- `quintic-distance-scaled`
-
-But the branch no longer has a clean global loser:
-
-- `minimum-snap-distance-scaled` still loses clearly on the tested non-coupled presets,
-- while under coupled-continuity plus the improved bounded-feedback controller it now has a tiny local quality edge that is still too expensive and too narrow to promote.
-
-### What changed across presets
-
-- stop-go preset: baseline comparison for mixed-length loops
-- pass-through preset: adds heuristic waypoint velocity
-- pass-through-accel preset: adds finite-difference waypoint acceleration
-- pass-through-accel-jerk preset: adds finite-difference waypoint jerk
-- coupled-continuity preset: solves closed-loop waypoint velocities globally, preserves `C2` waypoint acceleration continuity, and derives waypoint jerk from adjacent coupled segments
-
-The boundary-only reruns did not flip the ranking cleanly enough to promote minimum-snap.
-
-The newer controller + generator pairing rerun did sharpen that story:
-
-- on `stop-go`, the improved controller changes the best-RMSE label from `quintic-uniform` to `quintic-distance-scaled`,
-- on `pass-through`, `pass-through-accel`, and `pass-through-accel-jerk`, `quintic-distance-scaled` remains the best practical pairing,
-- on `coupled-continuity`, `minimum-snap-distance-scaled` becomes marginally best on RMSE and max error, but only by a tiny margin and at roughly `4x` the generation cost.
-
-### Important nuance
-
-The jerk-enriched preset did not fundamentally change the quintic branch. The added jerk term only changes the minimum-snap branch because the quintic generator consumes waypoint position, velocity, and acceleration but not jerk. This means the jerk-only result is evidence about minimum-snap sensitivity, not about a new common stable surface.
-
-The coupled-continuity preset is different: it smooths both branches because both consume the globally solved velocity/acceleration boundary profile. On the current branch that sharply lowers generated jerk and snap, but it also pushes the bottleneck into the existing PD tracker and raises tracking RMSE on the harder loop families.
-
-### Current status
-
-- This track is active.
-- The stable helper boundary is good enough for current callers.
-- The experimental generator comparison is still valuable.
-- The explicit pairing question is now answered well enough for this branch snapshot.
-- The next step should be gain-sensitivity work or broader coupled-family coverage, not widening the public helper API without evidence.
-
-Primary references:
-
-- `docs/experiments_control_drone_trajectory.md`
-- `docs/experiments_control_drone_trajectory_pass_through.md`
-- `docs/experiments_control_drone_trajectory_pass_through_accel.md`
-- `docs/experiments_control_drone_trajectory_pass_through_accel_jerk.md`
-- `docs/experiments_control_drone_trajectory_coupled_continuity.md`
-- `docs/experiments_control_drone_trajectory_controller_generator_pairings.md`
-- `docs/decisions_control_drone_trajectory.md`
-- `docs/decisions_control_drone_trajectory_pass_through.md`
-- `docs/decisions_control_drone_trajectory_pass_through_accel.md`
-- `docs/decisions_control_drone_trajectory_pass_through_accel_jerk.md`
-- `docs/decisions_control_drone_trajectory_coupled_continuity.md`
-- `docs/decisions_control_drone_trajectory_controller_generator_pairings.md`
-- `docs/interfaces.md`
+For each example, add the corresponding `[[example]]` entry to `crates/rust_robotics/Cargo.toml`.
 
 ---
 
-## Stable Engineering Conventions
+## Task D: Wave 4 — 8 New Algorithms
 
-These conventions remain valid and should continue to shape new work:
+### Goal
+Add 8 more algorithms that further distinguish this project from PythonRobotics.
 
-- keep public interfaces small and concrete
-- prefer experiment-first comparison over pre-emptive abstraction
-- keep inline `#[cfg(test)]` coverage for algorithm modules
-- use `nalgebra` for matrix and vector math
-- use `rust_robotics_core` types and traits as the stable contract surface
-- avoid `unsafe`
-- keep public docs present and clippy-clean
+**Add `pub mod` to the appropriate lib.rs files first.**
 
-In practice, this means:
+### D1: RRT-Connect
+**File**: `crates/rust_robotics_planning/src/rrt_connect.rs`
+**Reference**: `bidirectional_rrt.rs`, `rrt.rs`
 
-- new algorithms can be added freely as package-local modules,
-- but new core traits should only appear if multiple variants truly need them,
-- and experiment results should update the docs in the same change that introduces or reruns them.
+RRT-Connect (Kuffner & LaValle 2000) aggressively extends both trees toward each other using CONNECT (not just EXTEND). Faster convergence than Bidirectional RRT.
+
+Algorithm: Each iteration, one tree does EXTEND toward random sample. If success, other tree does CONNECT (repeatedly EXTEND) toward the new node. Swap trees. Terminate when CONNECT reaches the other tree.
+
+Config: `expand_dis(3.0)`, `path_resolution(0.5)`, `max_iter(500)`, `robot_radius(0.8)`
+Tests (3): no obstacles, with obstacles, faster than bidirectional RRT on same problem
+
+### D2: CHOMP (Covariant Hamiltonian Optimization for Motion Planning)
+**File**: `crates/rust_robotics_planning/src/chomp.rs`
+
+Trajectory optimization that minimizes a functional of smoothness + obstacle cost using covariant gradient descent.
+
+Config: `n_waypoints(50)`, `dt(0.1)`, `max_iterations(100)`, `learning_rate(0.01)`, `obstacle_cost_weight(1.0)`, `smoothness_weight(1.0)`
+Input: start Point2D, goal Point2D, obstacles Vec<CircleObstacle>
+Output: Path2D (optimized trajectory)
+
+Algorithm:
+1. Initialize straight-line trajectory from start to goal
+2. For each iteration:
+   - Compute smoothness cost gradient (finite differences of acceleration)
+   - Compute obstacle cost gradient (distance field to obstacles)
+   - Update trajectory: path -= learning_rate * (smoothness_grad + obstacle_weight * obstacle_grad)
+   - Fix start and goal points
+3. Return optimized path
+
+Tests (3): converges, avoids obstacles, smoother than RRT path
+
+### D3: DDP (Differential Dynamic Programming)
+**File**: `crates/rust_robotics_control/src/ddp.rs`
+**Reference**: `ilqr.rs`
+
+DDP extends iLQR by including second-order dynamics terms (f_xx, f_ux, f_uu). For the unicycle model these are zero, so implement with a double-integrator or car-like model where they matter.
+
+Use a simple car model: state=[x, y, theta, v], control=[accel, steer]
+
+Config: `horizon(50)`, `dt(0.1)`, `max_iterations(50)`, `tolerance(1e-6)`, state/control cost weights
+Tests (4): converges, reaches goal, cost decreases, config defaults
+
+### D4: Gaussian Process Regression (for mapping)
+**File**: `crates/rust_robotics_mapping/src/gaussian_process.rs`
+
+GP regression for terrain/surface mapping from sparse measurements.
+
+Config: `length_scale(1.0)`, `signal_variance(1.0)`, `noise_variance(0.01)`
+Input: training points (x, y, z), query points (x, y)
+Output: predicted z values + uncertainty at query points
+
+Algorithm: Standard GP regression with RBF kernel.
+- K = kernel_matrix(train, train)
+- K_star = kernel_matrix(query, train)
+- mean = K_star * (K + noise*I)^-1 * z_train
+- variance = K_star_star - K_star * (K + noise*I)^-1 * K_star^T
+
+Tests (3): predicts known function, uncertainty increases away from data, config defaults
+
+### D5: Rapidly-exploring Random Belief Trees (RRBT)
+**File**: `crates/rust_robotics_planning/src/rrbt.rs`
+
+Planning under uncertainty: extends RRT to plan in belief space (mean + covariance).
+
+Simplified version: Each node stores (x, y, covariance_trace). Edge cost includes both distance and uncertainty growth. Use EKF-style prediction for covariance propagation.
+
+Config: `expand_dis(3.0)`, `max_iter(500)`, `process_noise(0.1)`, `measurement_noise(0.5)`, observation landmarks
+Tests (3): finds path, path prefers observable regions, config defaults
+
+### D6: Rapidly-exploring Random Tree Star with informed sampling (RRT*-Informed) with path heuristic
+**File**: Already exists as `informed_rrt_star.rs` — SKIP, replace with:
+
+### D6: Hybrid A* (if not already complete, verify and enhance)
+Check if `hybrid_a_star.rs` exists and has tests. If tests are missing, add comprehensive tests.
+
+### D7: Monte Carlo Localization (MCL / Adaptive Particle Filter)
+**File**: `crates/rust_robotics_localization/src/monte_carlo_localization.rs`
+**Reference**: `particle_filter.rs`
+
+MCL with adaptive particle count (KLD-sampling). Adjusts number of particles based on the complexity of the posterior distribution.
+
+Config: `min_particles(100)`, `max_particles(5000)`, `kld_epsilon(0.05)`, `kld_z(2.326)` (99% quantile)
+Same motion/observation model as particle filter.
+Key difference: after resampling, compute KLD-based particle count for next iteration.
+
+Tests (4): converges, adaptive count grows with multimodal distribution, decreases with convergence, config defaults
+
+### D8: Probabilistic Road Map Star (PRM*)
+**File**: `crates/rust_robotics_planning/src/prm_star.rs`
+**Reference**: `prm.rs`
+
+PRM with asymptotically optimal connection radius: r_n = gamma * (log(n)/n)^(1/d)
+
+Config: `n_samples(500)`, `robot_radius(0.8)`, `gamma(2.5)` (connection radius scale)
+Tests (3): finds path, path quality improves with more samples, config defaults
 
 ---
 
-## Current Priorities
+## Task E: dora-rs Integration
 
-### Priority 1: drone boundary quality — GAIN SENSITIVITY COMPLETE
+### Goal
+Expand the existing dora-rs demo into a more complete planning + localization pipeline.
 
-The branch now includes:
+### Current state
+- `dora_path_planning_node.rs` — planner node (exists)
+- `dora_path_planning_sink.rs` — sink node (exists)
+- `dora_path_metrics_node.rs` — metrics node (exists)
 
-- **`LateralGainSet`** struct for parameterized lateral feedback gains
-- **`evaluate_lateral_gain_case()`** for running arbitrary gain sets
-- **Gain sensitivity sweep** (5x5 grid: `lateral_position_gain` x `lateral_velocity_gain`)
+### E1: Add EKF Localization Node
+**File**: `crates/rust_robotics/examples/dora_ekf_node.rs`
 
-Results on expanded coupled-continuity families (5 families):
+A dora-rs node that:
+1. Receives control input (v, omega) on input `control`
+2. Receives noisy position measurement on input `measurement`
+3. Runs EKF predict + update
+4. Publishes estimated state on output `state_estimate`
 
-- Default gains (pg=0.15, vg=0.45) are within 10% of the best sweep point for both generators
-- Best quintic-distance-scaled: pg=0.25, vg=0.65 (RMSE 1.469)
-- Best minimum-snap-distance-scaled: pg=0.25, vg=0.55 (RMSE 1.457)
-- minimum-snap achieves marginally better RMSE at the best gain point, but the gap is tiny
-- Higher gains reduce RMSE but increase torque demand monotonically
+### E2: Add Full Navigation Pipeline Dataflow
+**File**: `crates/rust_robotics/examples/dora_navigation.yaml`
 
-The ranking is stable to mild gain retuning: quintic-distance-scaled remains the practical default.
+A dora-rs dataflow YAML connecting:
+- planner node → control node → EKF node → planner (replanning loop)
 
-### Priority 2: drone controller variants — EXPANDED FAMILY COVERAGE COMPLETE
+### E3: Document dora-rs setup
+**File**: `docs/dora_integration.md`
 
-Coupled-continuity families expanded from 3 to 5:
-
-- original: `oval-cruise-coupled`, `figure-eight-climb-coupled`, `banked-diamond-coupled`
-- new: `spiral-climb-coupled`, `reverse-s-coupled`
-
-Full 5-family x 3-generator x 3-controller pairings confirm:
-
-- bounded lateral-feedback controller wins decisively (mean RMSE 1.63 vs baseline 13.26)
-- the controller advantage generalizes to all 5 coupled families
-- minimum-snap remains marginally better on RMSE only under coupled-continuity with tuned gains, but at ~4x generation cost
-
-### Priority 3: planning bounded-search diagnostics — COMPLETE
-
-The planning threshold work now includes per-contour diagnostics:
-
-- `ContourStats` and `contour_history` added to `IDAStarPlanReport`
-- Per-contour breakdown of expanded/reexpanded/generated/prune counts and max depth
-- The `iter274/275` boundary on bucket `15` is now fully explained:
-  - final contour raises depth from 59 to 60 via a threshold step of 0.059
-  - 99.94% of all expansions are re-expansions across 274+ contours
-  - total ~1.75M expansions to touch only ~1,000 unique states
-- No further memory-oriented diagnostics are needed to explain this boundary
-
-### Priority 4: optional `dora-rs` follow-up — SEMANTIC NODE ADDED
-
-The dataflow now has three nodes:
-
-1. **planner node** — runs A* and emits `path-report` (JSON)
-2. **metrics node** (NEW) — receives `path-report`, computes per-segment quality metrics (efficiency, turning angles, segment length stats), and emits `path-metrics` (JSON)
-3. **sink node** — receives `path-report` and prints a human-readable summary
-
-The metrics node (`dora_path_metrics_node.rs`) is the "second node that consumes the path semantically" described in the previous plan. It calculates:
-
-- path efficiency (direct_distance / path_length)
-- segment length statistics (mean, min, max)
-- turning angle statistics (mean, max)
-
-The next useful increment would be a bridge into another runtime boundary such as ROS2, or a node that drives a simulated robot along the path.
-
-### Priority 5: keep the plan in sync with the branch
-
-This file previously fell behind the actual branch state. Going forward, `plan.md` should be updated whenever:
-
-- a new algorithm wave is materially added,
-- a new experiment preset is promoted into repeated use,
-- or a stable boundary changes.
+Document:
+- How to install dora-rs
+- How to run the planning demo
+- How to run the full navigation pipeline
+- Architecture diagram (text-based)
 
 ---
 
-## Verification Commands
+## Task F: Complete Experiment Tracks
 
-### Workspace-level
+### Goal
+Finalize the A*/Fringe/IDA* comparison and produce a summary.
 
+### F1: Run the grid threshold comparison
+Execute the comparison on 5 MovingAI maps (different sizes), collecting:
+- Planning time
+- Path length (optimality gap vs A*)
+- Memory usage (node count)
+
+### F2: Write summary
+**File**: `docs/planning_comparison_summary.md`
+
+Create a clear summary with tables:
+
+| Planner | Map Size | Time (ms) | Path Length | Optimal? | Memory |
+|---------|----------|-----------|-------------|----------|--------|
+| A*      | 100x100  | ...       | ...         | Yes      | ...    |
+| Fringe  | 100x100  | ...       | ...         | Yes      | ...    |
+| IDA*    | 100x100  | ...       | ...         | Yes      | ...    |
+
+Include analysis: when to use which algorithm.
+
+### F3: Add to README
+Add a "Algorithm Comparison" section to README.md with a link to the detailed report.
+
+---
+
+## Verification
+
+After completing each task, run:
 ```bash
-cargo check --workspace
-```
-
-### `dora-rs` demo
-
-```bash
-cargo build -p rust_robotics --example dora_path_planning_node --example dora_path_planning_sink --example dora_path_metrics_node --features "planning,dora"
-dora run crates/rust_robotics/examples/dora_path_planning_dataflow.yml
-```
-
-### Planning comparison work
-
-```bash
-cargo test -p rust_robotics_planning --test grid_threshold_planner_comparison -- --nocapture
-cargo clippy -p rust_robotics_planning --all-targets -- -D warnings
-```
-
-### Drone trajectory comparison work
-
-```bash
-cargo test -p rust_robotics_control --test drone_trajectory_variant_comparison -- --nocapture
-cargo clippy -p rust_robotics_control --all-targets -- -D warnings
-```
-
-### Wave 3 historical verification set
-
-```bash
-cargo test -p rust_robotics_control -- backstepping ilqr --nocapture
-cargo test -p rust_robotics_planning -- fmt_star --nocapture
-cargo test -p rust_robotics_slam -- pose_graph correlative_scan --nocapture
+cargo fmt --all
+cargo build --workspace
+cargo test --workspace
+cargo clippy --workspace --all-features -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 ```
 
 ---
 
-## Key Reference Files
+## File Conventions Reminder
 
-### Planning algorithms
+- Config struct with `Default` impl and `validate()` method
+- Constructors: `new()` (panics), `try_new()` (returns Result)
+- Inline `#[cfg(test)] mod tests` with 3-5 tests
+- `#![forbid(unsafe_code)]` is at crate level
+- Doc comments on public items, escape brackets: `\[m\]`, `\[rad\]`
+- Wrap bare URLs: `<https://...>`
+- Use `rust_robotics_core` types and traits
+- Use `nalgebra` for matrix operations
 
-- `crates/rust_robotics_planning/src/fmt_star.rs`
-- `crates/rust_robotics_planning/src/bipedal_planner.rs`
-- `crates/rust_robotics_planning/src/rrt_sobol.rs`
-- `crates/rust_robotics_planning/src/rrt_path_smoothing.rs`
-- `crates/rust_robotics_planning/src/a_star_variants.rs`
-- `crates/rust_robotics_planning/src/fringe_search.rs`
-- `crates/rust_robotics_planning/src/ida_star.rs`
+## Reference Files
 
-### Control algorithms and drone helpers
-
-- `crates/rust_robotics_control/src/backstepping_control.rs`
-- `crates/rust_robotics_control/src/ilqr.rs`
-- `crates/rust_robotics_control/src/drone_3d_trajectory.rs`
-- `crates/rust_robotics_control/src/minimum_snap_trajectory.rs`
-- `crates/rust_robotics_control/src/experiments/drone_trajectory_quality/mod.rs`
-- `crates/rust_robotics_control/tests/drone_trajectory_variant_comparison.rs`
-
-### SLAM / localization anchors
-
-- `crates/rust_robotics_slam/src/pose_graph_optimization.rs`
-- `crates/rust_robotics_slam/src/correlative_scan_matching.rs`
-- `crates/rust_robotics_localization/src/square_root_ukf.rs`
-
-### `dora-rs` example anchors
-
-- `crates/rust_robotics/Cargo.toml`
-- `crates/rust_robotics/examples/dora_path_planning_node.rs`
-- `crates/rust_robotics/examples/dora_path_metrics_node.rs`
-- `crates/rust_robotics/examples/dora_path_planning_sink.rs`
-- `crates/rust_robotics/examples/dora_path_planning_dataflow.yml`
-
-### Current decision documents
-
-- `docs/experiments.md`
-- `docs/decisions.md`
-- `docs/interfaces.md`
-- `docs/experiments_planning_grid_threshold.md`
-- `docs/decisions_planning_grid_threshold.md`
-- `docs/experiments_control_drone_trajectory.md`
-- `docs/experiments_control_drone_trajectory_pass_through.md`
-- `docs/experiments_control_drone_trajectory_pass_through_accel.md`
-- `docs/experiments_control_drone_trajectory_pass_through_accel_jerk.md`
-- `docs/experiments_control_drone_trajectory_coupled_continuity.md`
-- `docs/decisions_control_drone_trajectory_coupled_continuity.md`
-
----
-
-## Summary
-
-The old question was whether Wave 3 could be implemented cleanly. That question is answered.
-
-The current branch is now in a different phase:
-
-- algorithm breadth has expanded beyond the old Wave 3 scope,
-- planning evaluation has become more experiment-driven,
-- drone trajectory work has a stable helper boundary but still-open generator/controller trade-offs,
-- and the next useful work is not more abstraction, but better evidence on the current experimental fronts.
+| Pattern | Reference file |
+|---------|---------------|
+| Grid planner | `crates/rust_robotics_planning/src/a_star.rs` |
+| Sampling planner | `crates/rust_robotics_planning/src/rrt_star.rs` |
+| Localization filter | `crates/rust_robotics_localization/src/ekf.rs` |
+| Control (simulate) | `crates/rust_robotics_control/src/move_to_pose.rs` |
+| Control (trajectory opt) | `crates/rust_robotics_control/src/ilqr.rs` |
+| Mapping | `crates/rust_robotics_mapping/src/kmeans_clustering.rs` |
+| SLAM | `crates/rust_robotics_slam/src/icp_matching.rs` |
+| Viz example | `crates/rust_robotics/examples/a_star.rs` |
+| Benchmark example | `crates/rust_robotics/examples/speed_comparison.rs` |

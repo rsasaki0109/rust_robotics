@@ -69,6 +69,11 @@ name = "dora_path_metrics_node"
 path = "examples/dora_path_metrics_node.rs"
 required-features = ["dora"]
 
+[[example]]
+name = "dora_ekf_node"
+path = "examples/dora_ekf_node.rs"
+required-features = ["localization"]
+
 # === Visualization examples (require viz + domain features) ===
 
 [[example]]
@@ -97,6 +102,41 @@ path = "examples/rear_wheel_feedback.rs"
 required-features = ["control", "viz"]
 
 [[example]]
+name = "pid_controller"
+path = "examples/pid_controller.rs"
+required-features = ["control", "viz"]
+
+[[example]]
+name = "bidirectional_rrt_viz"
+path = "examples/bidirectional_rrt_viz.rs"
+required-features = ["planning", "viz"]
+
+[[example]]
+name = "filter_comparison"
+path = "examples/filter_comparison.rs"
+required-features = ["localization", "viz"]
+
+[[example]]
+name = "ilqr_trajectory"
+path = "examples/ilqr_trajectory.rs"
+required-features = ["control", "viz"]
+
+[[example]]
 name = "speed_comparison"
 path = "examples/speed_comparison.rs"
 required-features = ["planning", "localization"]
+
+[[example]]
+name = "benchmark_grid_planners"
+path = "examples/benchmark_grid_planners.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_sampling_planners"
+path = "examples/benchmark_sampling_planners.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_localizers"
+path = "examples/benchmark_localizers.rs"
+required-features = ["localization"]
