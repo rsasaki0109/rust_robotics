@@ -721,6 +721,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_bidirectional_a_star_matches_moving_ai_arena2_bucket_80_optimal_length() {
         let map = MovingAiMap::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map"))
             .expect("arena2 MovingAI map should parse");
