@@ -6,6 +6,7 @@ pub mod experiments;
 pub mod arm_obstacle_navigation;
 pub mod behavior_tree;
 pub mod cgmres_nmpc;
+pub mod ddp;
 pub mod drone_3d_trajectory;
 pub mod lqr_control;
 pub mod lqr_speed_steer_control;
