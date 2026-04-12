@@ -434,8 +434,7 @@ mod tests {
             gamma: 2.5,
         };
 
-        let planner_low =
-            PRMStarPlanner::new(&ox, &oy, (2.0, 2.0), (18.0, 18.0), low_cfg.clone());
+        let planner_low = PRMStarPlanner::new(&ox, &oy, (2.0, 2.0), (18.0, 18.0), low_cfg.clone());
         let low_result = planner_low.plan();
 
         let planner_high =
