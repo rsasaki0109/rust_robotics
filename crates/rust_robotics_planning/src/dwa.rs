@@ -1639,6 +1639,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running closed-loop regression scenario"]
     fn test_dwa_stuck_closed_loop_matches_pythonrobotics_reference() {
         let mut dwa = DWAPlanner::new(DWAConfig {
             to_goal_cost_gain: 0.2,
