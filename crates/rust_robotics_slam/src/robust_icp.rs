@@ -6,7 +6,7 @@
  * - Huber loss for outlier robustness
  * - Weighted Gauss-Newton optimization on SE(2)
  *
- * Reference: https://github.com/tier4/icp_rust
+ * Reference: <https://github.com/tier4/icp_rust>
  */
 
 use nalgebra::{Matrix2, Matrix2x3, Matrix3, Rotation2, SVector, Vector2, Vector3};
