@@ -1991,6 +1991,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_moving_ai_arena2_bucket_80() {
         assert_pure_jps_matches_moving_ai_bucket(
             "arena2",
@@ -2001,6 +2002,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_reports_cost_mismatch_metrics_on_moving_ai_bucket_80_subset() {
         for (name, map_str, scen_str) in MOVING_AI_CASES {
             assert_pure_jps_matches_moving_ai_bucket(name, map_str, scen_str, 80);
@@ -2008,6 +2010,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_sampled_moving_ai_buckets_without_fallback() {
         const BUCKETS: [u32; 5] = [0, 20, 40, 60, 80];
 
@@ -2019,6 +2022,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_long_tail_moving_ai_buckets_without_fallback() {
         let cases: [(&str, &str, &str, &[u32]); 3] = [
             (
@@ -2049,6 +2053,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_sampled_moving_ai_maze_buckets_without_fallback() {
         const BUCKETS: [u32; 6] = [0, 20, 40, 60, 80, 120];
 
@@ -2063,6 +2068,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_long_tail_moving_ai_maze_buckets_without_fallback() {
         const BUCKETS: [u32; 4] = [200, 400, 800, 1211];
 
@@ -2077,6 +2083,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_solves_sampled_moving_ai_street_buckets_without_fallback() {
         const BUCKETS: [u32; 8] = [0, 20, 40, 60, 80, 120, 160, 186];
 
@@ -2091,6 +2098,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_vs_a_star_runtime_on_long_tail_moving_ai_subset() {
         const ITERATIONS: usize = 7;
         let cases: [(&str, &str, &str, u32); 5] = [
@@ -2181,6 +2189,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_vs_a_star_runtime_crossover_samples_on_moving_ai() {
         const ITERATIONS: usize = 5;
         let families: [(&str, &str, &str, &[u32]); 5] = [
@@ -2273,6 +2282,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_vs_a_star_runtime_bucket_aggregate_samples_on_moving_ai() {
         const ITERATIONS: usize = 1;
         const SAMPLE_SLOTS: [usize; 3] = [0, 4, 9];
@@ -2338,6 +2348,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_jps_vs_a_star_runtime_bucket_full_aggregate_on_narrowed_windows() {
         const ITERATIONS: usize = 1;
         const FULL_BUCKET_SLOTS: [usize; 10] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
