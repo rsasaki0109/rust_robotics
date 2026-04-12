@@ -1240,6 +1240,7 @@ fn assert_report_observations(reports: &[VariantSummary], case_label: &str) {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_report_shared_quality_runtime_and_effort() {
     let cases = comparison_cases();
     let variants = planner_variants();
@@ -1290,6 +1291,7 @@ fn grid_threshold_planners_report_shared_quality_runtime_and_effort() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_spot_check_larger_moving_ai_windows() {
     let case = larger_moving_ai_cases()
         .into_iter()
@@ -1413,6 +1415,7 @@ fn grid_threshold_planners_spot_check_larger_moving_ai_windows() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_sweep_window_margin_and_bounded_ida_cutoffs() {
     let cases = larger_moving_ai_window_sweep_cases();
     let profiles = bounded_ida_profiles();
@@ -1512,6 +1515,7 @@ fn grid_threshold_planners_sweep_window_margin_and_bounded_ida_cutoffs() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_find_cheap_bounded_ida_exact_floor() {
     let cases = larger_moving_ai_window_sweep_cases();
     let profiles = cheap_budget_floor_profiles();
@@ -1617,6 +1621,7 @@ fn grid_threshold_planners_find_cheap_bounded_ida_exact_floor() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_find_harder_slice_cheap_bounded_ida_exact_floor() {
     let cases = harder_moving_ai_window_sweep_cases();
     let profiles = harder_slice_cheap_budget_floor_profiles();
@@ -1722,6 +1727,7 @@ fn grid_threshold_planners_find_harder_slice_cheap_bounded_ida_exact_floor() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_compare_additional_harder_slice_one_iteration_reachability() {
     let slices = [
         ("movingai-arena2-b10", 10u32, 0usize, "max_iterations"),
@@ -1782,6 +1788,7 @@ fn grid_threshold_planners_compare_additional_harder_slice_one_iteration_reachab
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_find_mid_slice_cheap_bounded_ida_exact_floor() {
     let cases = moving_ai_window_sweep_cases(MovingAiSliceSpec {
         id_prefix: "movingai-arena2-b11",
@@ -1891,6 +1898,7 @@ fn grid_threshold_planners_find_mid_slice_cheap_bounded_ida_exact_floor() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_find_threshold_round_exact_floors_on_harder_slices() {
     let slices = [
         (
@@ -2070,6 +2078,7 @@ fn grid_threshold_planners_find_threshold_round_exact_floors_on_harder_slices() 
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_find_bucket15_expansion_exact_floor_after_iteration_ramp() {
     let cases = moving_ai_window_sweep_cases(MovingAiSliceSpec {
         id_prefix: "movingai-arena2-b15",
@@ -2180,6 +2189,7 @@ fn grid_threshold_planners_find_bucket15_expansion_exact_floor_after_iteration_r
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_bound_bucket15_high_iteration_expansion_non_exact_band() {
     let cases = moving_ai_window_sweep_cases(MovingAiSliceSpec {
         id_prefix: "movingai-arena2-b15",
@@ -3089,6 +3099,7 @@ fn grid_threshold_planners_probe_bucket15_iteration_boundary_on_full_slice() {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_probe_bucket15_contour_diagnostics() {
     let cases = moving_ai_window_sweep_cases(MovingAiSliceSpec {
         id_prefix: "movingai-arena2-b15",
@@ -3252,6 +3263,7 @@ struct MultiMapSpec {
 }
 
 #[test]
+#[ignore = "long-running grid threshold benchmark"]
 fn grid_threshold_planners_multi_map_spot_check() {
     let specs = [
         MultiMapSpec {
