@@ -6,6 +6,7 @@ pub mod experiments;
 pub mod circle_fitting;
 pub mod distance_map;
 pub mod gaussian_grid_map;
+pub mod gaussian_process;
 pub mod kmeans_clustering;
 pub mod lidar_to_grid_map;
 pub mod ndt;
@@ -13,6 +14,10 @@ pub mod normal_vector_estimation;
 pub mod point_cloud_sampling;
 pub mod ray_casting_grid_map;
 pub mod rectangle_fitting;
+
+pub mod dbscan_clustering;
+pub mod line_extraction;
+pub mod occupancy_grid_map;
 
 // Re-exports
 pub use gaussian_grid_map::GaussianGridMap;

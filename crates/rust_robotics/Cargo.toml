@@ -17,6 +17,7 @@ control = ["dep:rust_robotics_control"]
 mapping = ["dep:rust_robotics_mapping"]
 slam = ["dep:rust_robotics_slam"]
 viz = ["dep:rust_robotics_viz", "rust_robotics_control?/viz", "rust_robotics_slam?/viz"]
+dora = ["dep:dora-node-api", "dep:eyre", "dep:serde", "dep:serde_json"]
 full = ["planning", "localization", "control", "mapping", "slam", "viz"]
 
 [dependencies]
@@ -27,6 +28,10 @@ rust_robotics_control = { workspace = true, optional = true }
 rust_robotics_mapping = { workspace = true, optional = true }
 rust_robotics_slam = { workspace = true, optional = true }
 rust_robotics_viz = { workspace = true, optional = true }
+dora-node-api = { version = "0.3.0", optional = true }
+eyre = { version = "0.6.7", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 gnuplot = { workspace = true }
@@ -48,6 +53,26 @@ required-features = ["localization"]
 name = "headless_navigation_loop"
 path = "examples/headless_navigation_loop.rs"
 required-features = ["planning", "localization", "control"]
+
+[[example]]
+name = "dora_path_planning_node"
+path = "examples/dora_path_planning_node.rs"
+required-features = ["planning", "dora"]
+
+[[example]]
+name = "dora_path_planning_sink"
+path = "examples/dora_path_planning_sink.rs"
+required-features = ["dora"]
+
+[[example]]
+name = "dora_path_metrics_node"
+path = "examples/dora_path_metrics_node.rs"
+required-features = ["dora"]
+
+[[example]]
+name = "dora_ekf_node"
+path = "examples/dora_ekf_node.rs"
+required-features = ["localization"]
 
 # === Visualization examples (require viz + domain features) ===
 
@@ -77,6 +102,41 @@ path = "examples/rear_wheel_feedback.rs"
 required-features = ["control", "viz"]
 
 [[example]]
+name = "pid_controller"
+path = "examples/pid_controller.rs"
+required-features = ["control", "viz"]
+
+[[example]]
+name = "bidirectional_rrt_viz"
+path = "examples/bidirectional_rrt_viz.rs"
+required-features = ["planning", "viz"]
+
+[[example]]
+name = "filter_comparison"
+path = "examples/filter_comparison.rs"
+required-features = ["localization", "viz"]
+
+[[example]]
+name = "ilqr_trajectory"
+path = "examples/ilqr_trajectory.rs"
+required-features = ["control", "viz"]
+
+[[example]]
 name = "speed_comparison"
 path = "examples/speed_comparison.rs"
 required-features = ["planning", "localization"]
+
+[[example]]
+name = "benchmark_grid_planners"
+path = "examples/benchmark_grid_planners.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_sampling_planners"
+path = "examples/benchmark_sampling_planners.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_localizers"
+path = "examples/benchmark_localizers.rs"
+required-features = ["localization"]

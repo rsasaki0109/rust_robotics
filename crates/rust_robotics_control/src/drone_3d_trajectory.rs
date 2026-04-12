@@ -55,6 +55,18 @@ impl QuinticCoeffs {
         let c = &self.c;
         20.0 * c[0] * t.powi(3) + 12.0 * c[1] * t.powi(2) + 6.0 * c[2] * t + 2.0 * c[3]
     }
+
+    /// Evaluate jerk at time `t`.
+    pub fn jerk(&self, t: f64) -> f64 {
+        let c = &self.c;
+        60.0 * c[0] * t.powi(2) + 24.0 * c[1] * t + 6.0 * c[2]
+    }
+
+    /// Evaluate snap at time `t`.
+    pub fn snap(&self, t: f64) -> f64 {
+        let c = &self.c;
+        120.0 * c[0] * t + 24.0 * c[1]
+    }
 }
 
 /// A 3D quintic trajectory segment (one per axis).
@@ -63,6 +75,18 @@ pub struct TrajectorySegment {
     pub x: QuinticCoeffs,
     pub y: QuinticCoeffs,
     pub z: QuinticCoeffs,
+}
+
+impl TrajectorySegment {
+    /// Evaluate jerk at time `t`.
+    pub fn jerk(&self, t: f64) -> Vector3<f64> {
+        Vector3::new(self.x.jerk(t), self.y.jerk(t), self.z.jerk(t))
+    }
+
+    /// Evaluate snap at time `t`.
+    pub fn snap(&self, t: f64) -> Vector3<f64> {
+        Vector3::new(self.x.snap(t), self.y.snap(t), self.z.snap(t))
+    }
 }
 
 /// Boundary conditions for one axis of a trajectory segment.
@@ -179,13 +203,56 @@ pub fn generate_waypoint_trajectory(
     waypoints: &[Vector3<f64>],
     segment_duration: f64,
 ) -> Vec<TrajectorySegment> {
+    let segment_durations = vec![segment_duration; waypoints.len()];
+    generate_waypoint_trajectory_with_durations(waypoints, &segment_durations)
+}
+
+/// Generate trajectory segments for a closed loop through the given waypoints
+/// with an explicit duration for each segment.
+pub fn generate_waypoint_trajectory_with_durations(
+    waypoints: &[Vector3<f64>],
+    segment_durations: &[f64],
+) -> Vec<TrajectorySegment> {
     let n = waypoints.len();
     assert!(n >= 2, "Need at least 2 waypoints");
+    assert_eq!(
+        n,
+        segment_durations.len(),
+        "Need one segment duration per waypoint-to-waypoint segment"
+    );
     (0..n)
         .map(|i| {
-            generate_trajectory_segment(&waypoints[i], &waypoints[(i + 1) % n], segment_duration)
+            generate_trajectory_segment(
+                &waypoints[i],
+                &waypoints[(i + 1) % n],
+                segment_durations[i],
+            )
         })
         .collect()
+}
+
+/// Sample a piecewise quintic trajectory into desired states at a fixed `dt`.
+pub fn sample_trajectory_segments(
+    segments: &[TrajectorySegment],
+    segment_durations: &[f64],
+    dt: f64,
+) -> Vec<DesiredState> {
+    assert!(dt > 0.0, "dt must be positive");
+    assert_eq!(
+        segments.len(),
+        segment_durations.len(),
+        "Need one duration per trajectory segment"
+    );
+
+    let mut samples = Vec::new();
+    for (segment, duration) in segments.iter().zip(segment_durations.iter().copied()) {
+        let mut t = 0.0;
+        while t <= duration {
+            samples.push(DesiredState::from_segment(segment, t));
+            t += dt;
+        }
+    }
+    samples
 }
 
 // ---------------------------------------------------------------------------
@@ -432,6 +499,31 @@ impl Default for SimulationConfig {
     }
 }
 
+/// Simulate a pre-sampled desired trajectory.
+pub fn simulate_desired_states(
+    start_position: Vector3<f64>,
+    desired_states: &[DesiredState],
+    config: &SimulationConfig,
+) -> SimulationRecord {
+    let mut state = QuadrotorState::new(start_position);
+    let mut record = SimulationRecord {
+        positions: vec![state.position],
+        orientations: vec![state.orientation],
+        controls: Vec::with_capacity(desired_states.len()),
+    };
+
+    for desired in desired_states {
+        let control = compute_control(&state, desired, &config.params, &config.gains);
+        step_dynamics(&mut state, &control, &config.params, config.dt);
+
+        record.positions.push(state.position);
+        record.orientations.push(state.orientation);
+        record.controls.push(control);
+    }
+
+    record
+}
+
 /// Run the full trajectory-following simulation.
 ///
 /// The quadrotor starts at the first waypoint and follows a closed loop
@@ -442,35 +534,17 @@ pub fn simulate_trajectory_following(
     waypoints: &[Vector3<f64>],
     config: &SimulationConfig,
 ) -> SimulationRecord {
-    let segments = generate_waypoint_trajectory(waypoints, config.segment_duration);
-    let n_segments = segments.len();
-
-    let mut state = QuadrotorState::new(waypoints[0]);
-    let mut record = SimulationRecord {
-        positions: vec![state.position],
-        orientations: vec![state.orientation],
-        controls: Vec::new(),
-    };
-
-    let total_segments = n_segments * config.n_loops;
-
-    for seg_idx in 0..total_segments {
-        let segment = &segments[seg_idx % n_segments];
-        let mut t = 0.0;
-        while t <= config.segment_duration {
-            let desired = DesiredState::from_segment(segment, t);
-            let control = compute_control(&state, &desired, &config.params, &config.gains);
-            step_dynamics(&mut state, &control, &config.params, config.dt);
-
-            record.positions.push(state.position);
-            record.orientations.push(state.orientation);
-            record.controls.push(control);
-
-            t += config.dt;
-        }
+    let segment_durations = vec![config.segment_duration; waypoints.len()];
+    let segments = generate_waypoint_trajectory_with_durations(waypoints, &segment_durations);
+    let mut desired_states = Vec::new();
+    for _ in 0..config.n_loops {
+        desired_states.extend(sample_trajectory_segments(
+            &segments,
+            &segment_durations,
+            config.dt,
+        ));
     }
-
-    record
+    simulate_desired_states(waypoints[0], &desired_states, config)
 }
 
 #[cfg(test)]
@@ -575,6 +649,33 @@ mod tests {
                 i
             );
         }
+    }
+
+    #[test]
+    fn test_waypoint_trajectory_generation_with_durations() {
+        let waypoints = vec![
+            Vector3::new(0.0, 0.0, 1.0),
+            Vector3::new(4.0, 0.0, 2.0),
+            Vector3::new(4.0, 3.0, 3.0),
+        ];
+        let durations = vec![2.0, 3.0, 4.0];
+
+        let segments = generate_waypoint_trajectory_with_durations(&waypoints, &durations);
+        assert_eq!(segments.len(), 3);
+        assert!((segments[0].x.position(2.0) - 4.0).abs() < EPSILON);
+        assert!((segments[1].y.position(3.0) - 3.0).abs() < EPSILON);
+        assert!((segments[2].z.position(4.0) - 1.0).abs() < EPSILON);
+    }
+
+    #[test]
+    fn test_sample_trajectory_segments_counts() {
+        let waypoints = vec![Vector3::new(0.0, 0.0, 0.0), Vector3::new(2.0, 0.0, 0.0)];
+        let segments = generate_waypoint_trajectory_with_durations(&waypoints, &[1.0, 2.0]);
+        let samples = sample_trajectory_segments(&segments, &[1.0, 2.0], 0.5);
+
+        assert_eq!(samples.len(), 8);
+        assert!((samples[0].position.x - 0.0).abs() < EPSILON);
+        assert!((samples[2].position.x - 2.0).abs() < 1e-6);
     }
 
     // -----------------------------------------------------------------------
@@ -804,5 +905,27 @@ mod tests {
                 p
             );
         }
+    }
+
+    #[test]
+    fn test_simulate_desired_states_hover() {
+        let config = SimulationConfig {
+            dt: 0.05,
+            ..Default::default()
+        };
+        let desired_states = vec![
+            DesiredState {
+                position: Vector3::new(0.0, 0.0, 3.0),
+                velocity: Vector3::zeros(),
+                acceleration: Vector3::zeros(),
+                yaw: 0.0,
+            };
+            20
+        ];
+
+        let record = simulate_desired_states(Vector3::new(0.0, 0.0, 3.0), &desired_states, &config);
+        let final_z = record.positions.last().unwrap().z;
+        assert!((final_z - 3.0).abs() < 0.1);
+        assert_eq!(record.controls.len(), desired_states.len());
     }
 }

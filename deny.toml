@@ -2,6 +2,9 @@
 ignore = [
     # paste is a transitive dep via nalgebra, no action available
     "RUSTSEC-2024-0436",
+    # rand 0.8 unsoundness with thread_rng+log; does not affect this project
+    # (we don't use custom loggers with thread_rng). Will resolve with rand 0.9 migration.
+    "RUSTSEC-2026-0097",
 ]
 
 [licenses]
