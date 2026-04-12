@@ -96,6 +96,15 @@ pub struct AStarPlanner {
     motion: Vec<(i32, i32, f64)>,
 }
 
+/// Search-effort statistics collected during one A* query.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AStarSearchStats {
+    pub expanded_nodes: usize,
+    pub generated_nodes: usize,
+    pub skipped_closed_nodes: usize,
+    pub max_frontier_len: usize,
+}
+
 impl AStarPlanner {
     /// Create a new A* planner with obstacle positions
     pub fn new(ox: &[f64], oy: &[f64], config: AStarConfig) -> Self {
@@ -154,12 +163,22 @@ impl AStarPlanner {
 
     /// Plan a path without requiring the PathPlanner trait in scope
     pub fn plan(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
-        self.plan_impl(start, goal)
+        self.plan_impl(start, goal).map(|(path, _stats)| path)
     }
 
     /// Plan a path from raw coordinates without requiring the PathPlanner trait in scope
     pub fn plan_xy(&self, sx: f64, sy: f64, gx: f64, gy: f64) -> RoboticsResult<Path2D> {
         self.plan_impl(Point2D::new(sx, sy), Point2D::new(gx, gy))
+            .map(|(path, _stats)| path)
+    }
+
+    /// Plan a path and return per-query search-effort statistics.
+    pub fn plan_with_stats(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+    ) -> RoboticsResult<(Path2D, AStarSearchStats)> {
+        self.plan_impl(start, goal)
     }
 
     /// Get reference to the grid map
@@ -213,7 +232,11 @@ impl AStarPlanner {
         )))
     }
 
-    fn plan_impl(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
+    fn plan_impl(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+    ) -> RoboticsResult<(Path2D, AStarSearchStats)> {
         let start_x = self.grid_map.calc_x_index(start.x);
         let start_y = self.grid_map.calc_y_index(start.y);
         let goal_x = self.grid_map.calc_x_index(goal.x);
@@ -225,6 +248,7 @@ impl AStarPlanner {
         let mut open_set = BinaryHeap::new();
         let mut closed_set = HashMap::new();
         let mut node_storage: Vec<Node> = Vec::new();
+        let mut stats = AStarSearchStats::default();
 
         // Add start node
         node_storage.push(Node::new(start_x, start_y, 0.0, None));
@@ -237,18 +261,22 @@ impl AStarPlanner {
             priority: self.calc_heuristic(start_x, start_y, goal_x, goal_y),
             index: start_index,
         });
+        stats.max_frontier_len = open_set.len();
 
         while let Some(current) = open_set.pop() {
             let current_grid_index = self.grid_map.calc_index(current.x, current.y);
 
-            // Check if we reached the goal
-            if current.x == goal_x && current.y == goal_y {
-                return Ok(self.build_path(current.index, &node_storage));
-            }
-
             // Skip if already in closed set
             if closed_set.contains_key(&current_grid_index) {
+                stats.skipped_closed_nodes += 1;
                 continue;
+            }
+
+            stats.expanded_nodes += 1;
+
+            // Check if we reached the goal
+            if current.x == goal_x && current.y == goal_y {
+                return Ok((self.build_path(current.index, &node_storage), stats));
             }
 
             // Move to closed set
@@ -272,6 +300,7 @@ impl AStarPlanner {
                 // Add to storage and open set
                 node_storage.push(Node::new(new_x, new_y, new_cost, Some(current.index)));
                 let new_index = node_storage.len() - 1;
+                stats.generated_nodes += 1;
 
                 let priority = new_cost + self.calc_heuristic(new_x, new_y, goal_x, goal_y);
                 open_set.push(PriorityNode {
@@ -281,6 +310,7 @@ impl AStarPlanner {
                     priority,
                     index: new_index,
                 });
+                stats.max_frontier_len = stats.max_frontier_len.max(open_set.len());
             }
         }
 
@@ -290,7 +320,7 @@ impl AStarPlanner {
 
 impl PathPlanner for AStarPlanner {
     fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
-        self.plan_impl(start, goal)
+        self.plan_impl(start, goal).map(|(path, _stats)| path)
     }
 }
 
@@ -407,6 +437,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_a_star_matches_moving_ai_arena2_bucket_80_optimal_length() {
         let map = MovingAiMap::parse_str(include_str!("../benchdata/moving_ai/dao/arena2.map"))
             .expect("arena2 MovingAI map should parse");

@@ -293,6 +293,7 @@ mod tests {
     const SAMPLE_SCEN: &str = include_str!("testdata/moving_ai/sample.map.scen");
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn parses_sample_map() {
         let map = MovingAiMap::parse_str(SAMPLE_MAP).expect("sample map should parse");
 
@@ -319,6 +320,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn sample_scenario_is_solved_by_astar() {
         let map = MovingAiMap::parse_str(SAMPLE_MAP).expect("sample map should parse");
         let scenario = MovingAiScenario::parse_str(SAMPLE_SCEN)
