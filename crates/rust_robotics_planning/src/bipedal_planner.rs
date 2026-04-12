@@ -25,9 +25,9 @@ impl Footstep {
 /// Configuration for the bipedal planner.
 #[derive(Debug, Clone, Copy)]
 pub struct BipedalPlannerConfig {
-    /// Support phase duration [s].
+    /// Support phase duration \[s\].
     pub t_sup: f64,
-    /// Center-of-mass height [m].
+    /// Center-of-mass height \[m\].
     pub z_c: f64,
     /// Footstep modification weight on COM position error.
     pub a: f64,
