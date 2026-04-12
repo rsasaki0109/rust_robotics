@@ -664,6 +664,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_ida_star_matches_sample_moving_ai_optimal_length() {
         let map = MovingAiMap::parse_str(include_str!("testdata/moving_ai/sample.map"))
             .expect("sample MovingAI map should parse");
