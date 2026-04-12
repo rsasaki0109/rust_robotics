@@ -65,6 +65,16 @@ cargo run -p rust_robotics --example jps --features "planning,viz"
 cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz"
 ```
 
+### dora-rs dataflow example
+
+The workspace also includes a minimal `dora-rs` planning demo that wraps the existing headless A* planner in a dora node and sends a structured JSON path report to a sink node.
+
+```bash
+dora run crates/rust_robotics/examples/dora_path_planning_dataflow.yml
+```
+
+This example requires the `dora` runtime/CLI to be installed and uses the feature-gated `dora` support in `crates/rust_robotics`.
+
 ## Benchmarks
 
 ### Rust vs Python Speed Comparison
@@ -100,6 +110,11 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
       * [Cubature Kalman Filter](#cubature-kalman-filter)
       * [Ensemble Kalman Filter](#ensemble-kalman-filter)
       * [Adaptive Filter (EKF/CKF)](#adaptive-filter)
+      * [Complementary Filter](#complementary-filter)
+      * [Iterated EKF (IEKF)](#iterated-ekf)
+      * [Information Filter](#information-filter)
+      * [Square Root UKF (SR-UKF)](#square-root-ukf)
+      * [Monte Carlo Localization (MCL)](#monte-carlo-localization)
    * [Mapping](#mapping)
       * [NDT Map](#ndt-map)
       * [Gaussian Grid Map](#gaussian-grid-map)
@@ -111,11 +126,17 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
       * [K-Means Clustering](#k-means-clustering)
       * [Normal Vector Estimation](#normal-vector-estimation)
       * [Point Cloud Sampling](#point-cloud-sampling)
+      * [DBSCAN Clustering](#dbscan-clustering)
+      * [Line Extraction (Split-and-Merge)](#line-extraction)
+      * [Occupancy Grid Map (Log-Odds)](#occupancy-grid-map)
+      * [Gaussian Process Regression](#gaussian-process-regression)
    * [SLAM](#slam)
       * [Iterative Closest Point](#iterative-closest-point-icp-matching)
       * [FastSLAM 1.0](#fastslam-10)
       * [EKF SLAM](#ekf-slam)
       * [Graph-Based SLAM](#graph-based-slam)
+      * [Pose Graph Optimization](#pose-graph-optimization)
+      * [Correlative Scan Matching](#correlative-scan-matching)
    * [Path Planning](#path-planning)
       * [A*](#a-algorithm), [Theta*](#theta-algorithm), [Lazy Theta*](#lazy-theta), [Enhanced Lazy Theta*](#enhanced-lazy-theta), [JPS](#jump-point-search-jps), [Dijkstra](#dijkstra-algorithm), [D* Lite](#d-lite), [D*](#d-algorithm), [Anya](#anya-optimal-any-angle)
       * [BFS](#breadth-first-search), [DFS](#depth-first-search), [Greedy Best-First](#greedy-best-first-search)
@@ -135,16 +156,22 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
       * [Model Predictive Trajectory Generator](#model-predictive-trajectory-generator)
       * [Path Smoothing](#path-smoothing)
       * [Coverage: Grid-Based Sweep](#grid-based-sweep-cpp), [Wavefront](#wavefront-cpp), [Spiral Spanning Tree](#spiral-spanning-tree-cpp)
+      * [Bidirectional RRT](#bidirectional-rrt), [RRT-Connect](#rrt-connect), [RRG](#rrg), [FMT*](#fmt), [PRM*](#prm-star)
+      * [LPA*](#lpa), [ARA*](#ara), [Fringe Search](#fringe-search), [IDA*](#ida), [A* Variants](#a-star-variants)
+      * [Tangent Bug](#tangent-bug), [Bipedal Planner](#bipedal-planner), [CHOMP](#chomp)
+      * [RRT Sobol](#rrt-sobol), [RRT Path Smoothing](#rrt-path-smoothing)
    * [Path Tracking](#path-tracking)
       * [LQR Steer Control](#lqr-steer-control), [LQR Speed+Steer](#lqr-speed-steer-control)
       * [Move to Pose](#move-to-pose), [Pure Pursuit](#pure-pursuit), [Stanley](#stanley-control), [Rear Wheel Feedback](#rear-wheel-feedback-control)
       * [MPC (Model Predictive Control)](#mpc-model-predictive-control)
+      * [PID Controller](#pid-controller), [Sliding Mode Control](#sliding-mode-control), [Feedback Linearization](#feedback-linearization), [Backstepping Control](#backstepping-control)
+      * [iLQR](#ilqr), [DDP](#ddp)
    * [Inverted Pendulum](#inverted-pendulum)
       * [LQR Control](#lqr-control)
    * [Arm Navigation](#arm-navigation)
       * [Two Joint Arm](#two-joint-arm-control), [N-Joint Arm IK](#n-joint-arm-control), [Arm Obstacle Navigation](#arm-obstacle-navigation)
    * [Aerial Navigation](#aerial-navigation)
-      * [3D Grid A*](#3d-grid-a), [Drone 3D Trajectory Following](#drone-3d-trajectory-following)
+      * [3D Grid A*](#3d-grid-a), [Drone 3D Trajectory Following](#drone-3d-trajectory-following), [Drone Minimum-Snap Trajectory](#drone-minimum-snap-trajectory)
    * [Mission Planning](#mission-planning)
       * [Behavior Tree](#behavior-tree), [State Machine](#state-machine)
 
@@ -202,6 +229,36 @@ Automatically switches between EKF (fast, linear) and CKF (robust, nonlinear) ba
 
 - [src](./crates/rust_robotics_localization/src/adaptive_filter.rs)
 
+## Complementary Filter
+
+Fuses high-frequency prediction (control/gyro) with low-frequency measurement (position sensor) using a tunable blending factor alpha. Simple, fast, and effective for IMU fusion.
+
+- [src](./crates/rust_robotics_localization/src/complementary_filter.rs)
+
+## Iterated EKF
+
+Improves EKF accuracy by iterating the update step linearization. Re-linearizes the observation model around the updated state estimate multiple times until convergence.
+
+- [src](./crates/rust_robotics_localization/src/iterated_ekf.rs)
+
+## Information Filter
+
+Dual of the Kalman Filter operating in information space (inverse covariance). Update step is additive in information form, making multi-sensor fusion natural.
+
+- [src](./crates/rust_robotics_localization/src/information_filter.rs)
+
+## Square Root UKF
+
+UKF variant that propagates Cholesky factors instead of full covariance matrices. Improves numerical stability and guarantees positive semi-definiteness.
+
+- [src](./crates/rust_robotics_localization/src/square_root_ukf.rs)
+
+## Monte Carlo Localization
+
+Adaptive Particle Filter with KLD-sampling. Automatically adjusts particle count based on posterior complexity — more particles for multi-modal distributions, fewer after convergence.
+
+- [src](./crates/rust_robotics_localization/src/monte_carlo_localization.rs)
+
 # Mapping
 ## NDT Map
 
@@ -224,6 +281,30 @@ Occupancy grid mapping using Gaussian distribution. Higher probability near obst
 Occupancy grid mapping using ray casting. Free space (0.5), Occupied (1.0), Unknown (0.0).
 
 - [src](./crates/rust_robotics_mapping/src/ray_casting_grid_map.rs)
+
+## DBSCAN Clustering
+
+Density-based spatial clustering that finds arbitrary-shaped clusters and identifies outliers (noise). No need to specify number of clusters in advance.
+
+- [src](./crates/rust_robotics_mapping/src/dbscan_clustering.rs)
+
+## Line Extraction
+
+Extracts line segments from 2D scan data using the Split-and-Merge (Iterative End Point Fit) algorithm. Used for feature extraction in indoor environments.
+
+- [src](./crates/rust_robotics_mapping/src/line_extraction.rs)
+
+## Occupancy Grid Map
+
+Probabilistic occupancy grid using log-odds representation. Updates cells via Bresenham ray casting — free along rays, occupied at endpoints.
+
+- [src](./crates/rust_robotics_mapping/src/occupancy_grid_map.rs)
+
+## Gaussian Process Regression
+
+GP regression with RBF kernel for terrain/surface mapping from sparse measurements. Provides predictions with uncertainty estimates.
+
+- [src](./crates/rust_robotics_mapping/src/gaussian_process.rs)
 
 # SLAM
 
@@ -266,6 +347,18 @@ Improved particle filter SLAM that incorporates the latest observation into the 
 Pose graph optimization for SLAM. Constructs a graph of robot poses connected by odometry and observation constraints, then optimizes the graph using iterative methods.
 
 - [src](./crates/rust_robotics_slam/src/graph_based_slam.rs)
+
+## Pose Graph Optimization
+
+2D pose graph optimization using Gauss-Newton iteration. Core backend for graph-based SLAM — optimizes a graph of robot poses connected by odometry and loop closure constraints.
+
+- [src](./crates/rust_robotics_slam/src/pose_graph_optimization.rs)
+
+## Correlative Scan Matching
+
+Brute-force correlative scan matcher that searches over a discretized pose space. More robust to initial pose errors than ICP — useful as a SLAM front-end.
+
+- [src](./crates/rust_robotics_slam/src/correlative_scan_matching.rs)
 
 # Path Planning
 
@@ -564,6 +657,18 @@ Black: Arm links, Red: Joints (shoulder, elbow, end effector), Green: Target pos
 Bounded 3D voxel-grid planning for aerial robots. The planner supports 6-connected or 26-connected motion and returns a collision-free waypoint sequence.
 
 - [src](./crates/rust_robotics_planning/src/grid_a_star_3d.rs)
+
+## Drone 3D Trajectory Following
+
+Closed-loop quadrotor waypoint tracking with quintic segments, PD thrust/attitude control, and Euler-integrated rigid-body dynamics.
+
+- [src](./crates/rust_robotics_control/src/drone_3d_trajectory.rs)
+
+## Drone Minimum-Snap Trajectory
+
+Seventh-order minimum-snap segment generation for drone waypoint loops. The module exposes piecewise segment generation, desired-state sampling, and a direct path into the existing quadrotor tracker.
+
+- [src](./crates/rust_robotics_control/src/minimum_snap_trajectory.rs)
 
 # Mission Planning
 
