@@ -6,6 +6,7 @@ pub mod experiments;
 pub mod circle_fitting;
 pub mod distance_map;
 pub mod gaussian_grid_map;
+pub mod gaussian_process;
 pub mod kmeans_clustering;
 pub mod lidar_to_grid_map;
 pub mod ndt;
