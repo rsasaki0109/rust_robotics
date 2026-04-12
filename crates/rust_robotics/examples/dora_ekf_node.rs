@@ -13,6 +13,7 @@
 #[cfg(feature = "dora")]
 mod dora_runtime {
     use dora_node_api::{dora_core::config::DataId, DoraNode, Event, IntoArrow};
+    use rust_robotics::core::StateEstimator;
     use rust_robotics::localization::ekf::{EKFControl, EKFLocalizer, EKFMeasurement};
     use serde::{Deserialize, Serialize};
     use std::error::Error;
@@ -119,6 +120,7 @@ mod dora_runtime {
 
 #[cfg(not(feature = "dora"))]
 mod stdio_fallback {
+    use rust_robotics::core::StateEstimator;
     use rust_robotics::localization::ekf::{EKFControl, EKFLocalizer, EKFMeasurement};
     use std::error::Error;
     use std::io::{self, BufRead};
