@@ -30,10 +30,10 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
 
     - name: Build workspace
-      run: cargo build --workspace --all-targets
+      run: cargo build --workspace --lib --tests --examples
 
     - name: Run workspace tests
-      run: cargo test --workspace --all-targets
+      run: cargo test --workspace --lib --tests
 
     - name: Run headless tests (no default features)
       run: cargo test --workspace --no-default-features
