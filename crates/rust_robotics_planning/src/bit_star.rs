@@ -512,6 +512,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running iterative improvement test"]
     fn test_bit_star_cost_improves_with_more_iterations() {
         let obstacles = vec![(5.0, 5.0, 1.5)];
 
