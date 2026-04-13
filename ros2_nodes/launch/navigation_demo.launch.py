@@ -12,14 +12,27 @@ from launch.actions import (
     SetEnvironmentVariable,
     TimerAction,
 )
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def rust_node_process(pkg_dir: str, node_name: str) -> ExecuteProcess:
+def rust_node_process(
+    pkg_dir: str,
+    node_name: str,
+    *,
+    condition=None,
+    additional_env=None,
+) -> ExecuteProcess:
     binary_path = os.path.join(pkg_dir, node_name, "target", "release", node_name)
-    return ExecuteProcess(cmd=[binary_path], name=node_name, output="screen")
+    return ExecuteProcess(
+        cmd=[binary_path],
+        name=node_name,
+        output="screen",
+        condition=condition,
+        additional_env=additional_env,
+    )
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -33,11 +46,27 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("turtlebot3_model", default_value="burger"),
+            DeclareLaunchArgument("spawn_x", default_value="-2.0"),
+            DeclareLaunchArgument("spawn_y", default_value="-0.5"),
+            DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
+            DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
+            DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
+            DeclareLaunchArgument(
+                "waypoint_mission", default_value="0.4,0.0;0.1,0.4"
+            ),
+            DeclareLaunchArgument("waypoint_frame", default_value="map"),
+            DeclareLaunchArgument("waypoint_loop", default_value="false"),
+            DeclareLaunchArgument("waypoint_goal_tolerance", default_value="0.35"),
             SetEnvironmentVariable(
                 "TURTLEBOT3_MODEL", LaunchConfiguration("turtlebot3_model")
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(turtlebot3_launch),
+                launch_arguments={
+                    "x_pose": LaunchConfiguration("spawn_x"),
+                    "y_pose": LaunchConfiguration("spawn_y"),
+                }.items(),
             ),
             Node(
                 package="ros_gz_bridge",
@@ -50,8 +79,51 @@ def generate_launch_description() -> LaunchDescription:
                 period=5.0,
                 actions=[
                     rust_node_process(ros2_nodes_dir, "slam_node"),
-                    rust_node_process(ros2_nodes_dir, "path_planner_node"),
-                    rust_node_process(ros2_nodes_dir, "dwa_planner_node"),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "ekf_localizer_node",
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_ekf_localizer")
+                        ),
+                        additional_env={
+                            "EKF_INPUT_ODOM_TOPIC": "/odom",
+                            "EKF_OUTPUT_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "EKF_OUTPUT_POSE_TOPIC": "/ekf_pose",
+                        },
+                    ),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "path_planner_node",
+                        additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic")
+                        },
+                    ),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "dwa_planner_node",
+                        additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "DWA_GOAL_THRESHOLD": LaunchConfiguration("dwa_goal_threshold"),
+                        },
+                    ),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "waypoint_navigator_node",
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_waypoint_navigator")
+                        ),
+                        additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "WAYPOINT_NAV_WAYPOINTS": LaunchConfiguration(
+                                "waypoint_mission"
+                            ),
+                            "WAYPOINT_NAV_FRAME": LaunchConfiguration("waypoint_frame"),
+                            "WAYPOINT_NAV_LOOP": LaunchConfiguration("waypoint_loop"),
+                            "WAYPOINT_NAV_GOAL_TOLERANCE": LaunchConfiguration(
+                                "waypoint_goal_tolerance"
+                            ),
+                        },
+                    ),
                 ],
             ),
         ]
