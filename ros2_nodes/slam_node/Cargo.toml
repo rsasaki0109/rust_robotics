@@ -1,0 +1,13 @@
+[package]
+name = "slam_node"
+version = "0.1.0"
+edition = "2021"
+description = "ROS2 SLAM node using ICP and occupancy grid mapping"
+
+[dependencies]
+safe_drive = { path = "../../../safe_drive", features = ["jazzy"] }
+rust_robotics_slam = { path = "../../crates/rust_robotics_slam" }
+rust_robotics_mapping = { path = "../../crates/rust_robotics_mapping" }
+nalgebra = "0.33"
+
+[workspace]
