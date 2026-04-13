@@ -3,7 +3,7 @@
 //! Implements state estimation using the Extended Kalman Filter algorithm
 //! for robot localization with nonlinear motion and observation models.
 
-use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
+use nalgebra::{Matrix2, Matrix2x4, Matrix4, Vector2, Vector4};
 use rust_robotics_core::{
     ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
 };
@@ -30,8 +30,8 @@ impl Default for EKFConfig {
     fn default() -> Self {
         let mut q = Matrix4::<f64>::identity();
         q[(0, 0)] = 0.1_f64.powi(2);
-        q[(1, 1)] = (1.0_f64.to_radians()).powi(2);
-        q[(2, 2)] = 0.1_f64.powi(2);
+        q[(1, 1)] = 0.1_f64.powi(2);
+        q[(2, 2)] = (1.0_f64.to_radians()).powi(2);
         q[(3, 3)] = 0.1_f64.powi(2);
 
         let r = Matrix2::<f64>::identity();
@@ -195,11 +195,12 @@ impl EKFLocalizer {
     /// Motion model: predict state based on control input
     fn motion_model(x: &EKFState, u: &EKFControl, dt: f64) -> EKFState {
         let yaw = x[2];
-        let f = Matrix4::new(
-            1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 0., 0., 1.,
-        );
-        let b = Matrix4x2::new(dt * yaw.cos(), 0., dt * yaw.sin(), 0., 0., dt, 1., 0.);
-        f * x + b * u
+        EKFState::new(
+            x[0] + dt * u[0] * yaw.cos(),
+            x[1] + dt * u[0] * yaw.sin(),
+            x[2] + dt * u[1],
+            u[0],
+        )
     }
 
     /// Jacobian of motion model with respect to state
@@ -210,19 +211,19 @@ impl EKFLocalizer {
             1.,
             0.,
             -dt * v * yaw.sin(),
-            dt * yaw.cos(),
+            0.,
             0.,
             1.,
             dt * v * yaw.cos(),
-            dt * yaw.sin(),
-            0.,
-            0.,
-            1.,
-            0.,
             0.,
             0.,
             0.,
             1.,
+            0.,
+            0.,
+            0.,
+            0.,
+            0.,
         )
     }
 
@@ -477,6 +478,23 @@ mod tests {
             .unwrap();
 
         assert!(state.x > 0.0);
+    }
+
+    #[test]
+    fn test_ekf_velocity_tracks_control_without_accumulating() {
+        let mut ekf = EKFLocalizer::with_defaults();
+
+        for step in 1..=20 {
+            let state = ekf
+                .estimate_state(
+                    Point2D::new(step as f64 * 0.05, 0.0),
+                    ControlInput::new(0.5, 0.0),
+                    0.1,
+                )
+                .unwrap();
+
+            assert!((state.v - 0.5).abs() < 1e-9);
+        }
     }
 
     #[test]
