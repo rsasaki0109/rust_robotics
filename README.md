@@ -83,24 +83,35 @@ The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive 
 - Path Planner (A*)
 - DWA Local Planner
 - SLAM Node
+- EKF Localizer
+- Waypoint Navigator
 
 ```text
-                 TurtleBot3 Gazebo
-              /scan  /odom  /cmd_vel
-                 |      |       ^
-                 v      |       |
-            +-----------+       |
-            | slam_node | ----- +
-            +-----------+    /map
-                   |
-                   v
-          +-------------------+
-          | path_planner_node | ---> /planned_path
-          +-------------------+             |
-             ^           ^                  v
-             |           |           +--------------+
-           /odom     /goal_pose ---> | dwa_planner |
-                                     +--------------+
+                    TurtleBot3 Gazebo
+                 /scan  /odom  /cmd_vel
+                    |      |       ^
+                    v      |       |
+               +-----------+       |
+               | slam_node | ----- +
+               +-----------+    /map
+                      |
+                      v
+             +-------------------+
+             | path_planner_node | ---> /planned_path
+             +-------------------+             |
+                ^           ^                  v
+                |           |           +--------------+
+         /ekf_odom     /goal_pose ---> | dwa_planner |
+                ^                      +--------------+
+                |
+      +----------------------+
+      | ekf_localizer_node   |
+      +----------------------+
+                ^
+                |
+      +-------------------------+
+      | waypoint_navigator_node |
+      +-------------------------+
 ```
 
 Demo video: [docs/gazebo_demo.mp4](./docs/gazebo_demo.mp4)
@@ -114,10 +125,19 @@ export ROS_DOMAIN_ID=42  # optional but recommended if other ROS graphs are alre
 cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/ekf_localizer_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
 
 export TURTLEBOT3_MODEL=burger
 ./ros2_nodes/launch/run_gazebo_demo.sh
+
+# Multi-goal mission demo
+WAYPOINT_NAV_FRAME=relative_start \
+WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4" \
+  ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
+
+`run_gazebo_mission_demo.sh` defaults to `WAYPOINT_NAV_FRAME=relative_start`, so the mission waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. The wrapper's default mission is a conservative two-waypoint route that was verified in TurtleBot3 world: `(0.4, 0.0) -> (0.1, 0.4)`.
 
 ## Benchmarks
 
