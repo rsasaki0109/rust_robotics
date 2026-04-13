@@ -1,0 +1,12 @@
+[package]
+name = "path_planner_node"
+version = "0.1.0"
+edition = "2021"
+description = "ROS2 A* path planner node using safe_drive"
+
+[dependencies]
+safe_drive = { path = "../../../safe_drive", features = ["jazzy"] }
+rust_robotics_planning = { path = "../../crates/rust_robotics_planning" }
+rust_robotics_core = { path = "../../crates/rust_robotics_core" }
+
+[workspace]
