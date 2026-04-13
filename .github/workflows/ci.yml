@@ -49,6 +49,7 @@ jobs:
         cargo run -p rust_robotics --example headless_grid_planners --features planning
         cargo run -p rust_robotics --example headless_localizers --features localization
         cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
+        cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
 
   lint:
     runs-on: ubuntu-latest
