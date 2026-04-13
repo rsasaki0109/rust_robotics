@@ -1,0 +1,12 @@
+[package]
+name = "ekf_localizer_node"
+version = "0.1.0"
+edition = "2021"
+description = "ROS2 EKF localizer node using rust_robotics_localization and safe_drive"
+
+[dependencies]
+safe_drive = { path = "../../../safe_drive", features = ["jazzy"] }
+rust_robotics_core = { path = "../../crates/rust_robotics_core" }
+rust_robotics_localization = { path = "../../crates/rust_robotics_localization" }
+
+[workspace]

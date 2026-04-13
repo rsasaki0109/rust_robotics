@@ -162,19 +162,15 @@ from PathPlanning.CubicSpline.cubic_spline_planner import CubicSpline2D  # noqa:
 
 
 def ekf_motion_model(x, u, dt=0.1):
-    F = np.array(
-        [[1.0, 0, 0, 0], [0, 1.0, 0, 0], [0, 0, 1.0, 0], [0, 0, 0, 1.0]]
-    )
     yaw = x[2, 0]
-    B = np.array(
+    return np.array(
         [
-            [dt * math.cos(yaw), 0],
-            [dt * math.sin(yaw), 0],
-            [0.0, dt],
-            [1.0, 0.0],
+            [x[0, 0] + dt * u[0, 0] * math.cos(yaw)],
+            [x[1, 0] + dt * u[0, 0] * math.sin(yaw)],
+            [x[2, 0] + dt * u[1, 0]],
+            [u[0, 0]],
         ]
     )
-    return F @ x + B @ u
 
 
 def ekf_jacob_f(x, u, dt=0.1):
@@ -182,10 +178,10 @@ def ekf_jacob_f(x, u, dt=0.1):
     v = u[0, 0]
     return np.array(
         [
-            [1.0, 0.0, -dt * v * math.sin(yaw), dt * math.cos(yaw)],
-            [0.0, 1.0, dt * v * math.cos(yaw), dt * math.sin(yaw)],
+            [1.0, 0.0, -dt * v * math.sin(yaw), 0.0],
+            [0.0, 1.0, dt * v * math.cos(yaw), 0.0],
             [0.0, 0.0, 1.0, 0.0],
-            [0.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.0, 0.0],
         ]
     )
 

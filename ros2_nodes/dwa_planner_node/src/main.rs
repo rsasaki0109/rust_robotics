@@ -6,10 +6,17 @@ use safe_drive::{
     error::DynError,
     logger::Logger,
     msg::common_interfaces::{geometry_msgs, nav_msgs, sensor_msgs},
-    qos::{policy::DurabilityPolicy, Profile},
     pr_info, pr_warn,
+    qos::{policy::DurabilityPolicy, Profile},
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    env,
+    sync::{Arc, Mutex},
+};
+
+const DEFAULT_ODOM_TOPIC: &str = "/odom";
+const DEFAULT_GOAL_THRESHOLD: f64 = 0.3;
+const DEFAULT_ROBOT_RADIUS: f64 = 0.35;
 
 #[derive(Clone, Copy)]
 struct OdomState {
@@ -44,6 +51,45 @@ fn nearest_goal(path: &[Point2D], x: f64, y: f64) -> Option<Point2D> {
     path.get(look_ahead).copied()
 }
 
+fn publish_stop_command(
+    publisher: &safe_drive::topic::publisher::Publisher<geometry_msgs::msg::Twist>,
+    logger: &Logger,
+) {
+    let mut cmd = match geometry_msgs::msg::Twist::new() {
+        Some(msg) => msg,
+        None => {
+            pr_warn!(logger, "failed to allocate Twist message for stop command");
+            return;
+        }
+    };
+    cmd.linear.x = 0.0;
+    cmd.angular.z = 0.0;
+    if let Err(err) = publisher.send(&cmd) {
+        pr_warn!(logger, "failed to publish stop command: {}", err);
+    } else {
+        pr_info!(logger, "published stop command after path clear");
+    }
+}
+
+fn load_f64_env(name: &str, default: f64) -> Result<f64, String> {
+    match env::var(name) {
+        Ok(raw) if !raw.trim().is_empty() => {
+            let value = raw
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| format!("invalid {} '{}'", name, raw))?;
+            if !value.is_finite() || value <= 0.0 {
+                return Err(format!(
+                    "{} must be positive and finite, got {}",
+                    name, value
+                ));
+            }
+            Ok(value)
+        }
+        _ => Ok(default),
+    }
+}
+
 fn build_obstacles_from_scan(scan: &sensor_msgs::msg::LaserScan, odom: OdomState) -> Vec<Point2D> {
     let mut obstacles = Vec::new();
     let mut angle = scan.angle_min as f64;
@@ -65,27 +111,43 @@ fn build_obstacles_from_scan(scan: &sensor_msgs::msg::LaserScan, odom: OdomState
 fn main() -> Result<(), DynError> {
     let ctx = Context::new()?;
     let node = ctx.create_node("dwa_planner_node", None, Default::default())?;
+    let odom_topic = env::var("RUST_NAV_ODOM_TOPIC")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_ODOM_TOPIC.to_string());
+    let goal_threshold = load_f64_env("DWA_GOAL_THRESHOLD", DEFAULT_GOAL_THRESHOLD)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
+    let robot_radius = load_f64_env("DWA_ROBOT_RADIUS", DEFAULT_ROBOT_RADIUS)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
 
     let mut path_qos = Profile::default();
     path_qos.durability = DurabilityPolicy::TransientLocal;
 
     let scan_sub = node.create_subscriber::<sensor_msgs::msg::LaserScan>("/scan", None)?;
-    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>("/odom", None)?;
-    let path_sub = node.create_subscriber::<nav_msgs::msg::Path>("/planned_path", Some(path_qos))?;
-    let cmd_pub = node.create_publisher::<geometry_msgs::msg::Twist>("/cmd_vel", None)?;
+    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>(&odom_topic, None)?;
+    let path_sub =
+        node.create_subscriber::<nav_msgs::msg::Path>("/planned_path", Some(path_qos))?;
+    let cmd_pub = Arc::new(node.create_publisher::<geometry_msgs::msg::Twist>("/cmd_vel", None)?);
 
     let mut config = DWAConfig::default();
-    config.goal_threshold = 0.3;
-    config.robot_radius = 0.35;
+    config.goal_threshold = goal_threshold;
+    config.robot_radius = robot_radius;
 
     let planner = Arc::new(Mutex::new(DWAPlanner::new(config)));
     let state = Arc::new(Mutex::new(PlannerState::default()));
     let logger = Logger::new("dwa_planner_node");
-    pr_info!(logger, "dwa planner started");
+    pr_info!(
+        logger,
+        "dwa planner started (odom topic: {}, goal_threshold={:.2}, robot_radius={:.2})",
+        odom_topic,
+        goal_threshold,
+        robot_radius
+    );
 
     let mut selector = ctx.create_selector()?;
 
     let state_path = state.clone();
+    let cmd_path = cmd_pub.clone();
     let log_path = Logger::new("dwa_planner_node");
     selector.add_subscriber(
         path_sub,
@@ -101,6 +163,7 @@ fn main() -> Result<(), DynError> {
                     if had_path {
                         st.warned_missing_path = true;
                         pr_warn!(log_path, "planned path cleared");
+                        publish_stop_command(cmd_path.as_ref(), &log_path);
                     }
                 } else {
                     st.warned_missing_path = false;
@@ -170,7 +233,10 @@ fn main() -> Result<(), DynError> {
                 Some(goal) => goal,
                 None => {
                     if should_warn_missing_path {
-                        pr_warn!(log_odom, "planned path is empty; waiting for planner output");
+                        pr_warn!(
+                            log_odom,
+                            "planned path is empty; waiting for planner output"
+                        );
                     }
                     return;
                 }
@@ -211,7 +277,7 @@ fn main() -> Result<(), DynError> {
             };
             cmd.linear.x = control[0];
             cmd.angular.z = control[1];
-            let _ = pub_odom.send(&cmd);
+            let _ = pub_odom.as_ref().send(&cmd);
         }),
     );
 

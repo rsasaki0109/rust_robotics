@@ -36,4 +36,4 @@ EOF
   exit 1
 fi
 
-exec python3 "$LAUNCH_FILE" "turtlebot3_model:=${TURTLEBOT3_MODEL}"
+exec ros2 launch "$LAUNCH_FILE" "turtlebot3_model:=${TURTLEBOT3_MODEL}"
