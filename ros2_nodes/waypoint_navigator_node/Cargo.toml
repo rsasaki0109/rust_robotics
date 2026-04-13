@@ -1,0 +1,11 @@
+[package]
+name = "waypoint_navigator_node"
+version = "0.1.0"
+edition = "2021"
+description = "ROS2 waypoint mission node using safe_drive"
+
+[dependencies]
+safe_drive = { path = "../../../safe_drive", features = ["jazzy"] }
+rust_robotics_core = { path = "../../crates/rust_robotics_core" }
+
+[workspace]
