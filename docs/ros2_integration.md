@@ -190,6 +190,8 @@ The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navi
 - `WAYPOINT_NAV_LOOP`: `true` or `false`
 - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
 
+`waypoint_navigator_node` also watches for stalled progress on the active waypoint. When odom does not move by at least `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` within `WAYPOINT_NAV_STUCK_TIMEOUT`, it transitions into a simple recovery sequence: `cancel -> settle -> rotate -> backoff -> reissue goal`.
+
 Example looping square:
 
 ```bash
@@ -213,7 +215,8 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
 3. `waypoint_navigator_node` publishes the current mission waypoint on `/goal_pose`.
 4. `path_planner_node` rebuilds A* from `/map` and publishes `/planned_path`.
 5. `dwa_planner_node` follows `/planned_path` while using `/ekf_odom` for state and publishes `/cmd_vel`.
-6. TurtleBot3 moves toward the requested goal in Gazebo.
+6. If waypoint progress stalls, `waypoint_navigator_node` clears the active goal, publishes a short recovery maneuver on `/cmd_vel`, and then republishes the same waypoint.
+7. TurtleBot3 moves toward the requested goal in Gazebo.
 
 ### Verify topic wiring
 
@@ -263,6 +266,14 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `WAYPOINT_NAV_FRAME` (default `"map"`): `map` for absolute goals, `relative_start` for offsets from the initial odom pose
 - `WAYPOINT_NAV_GOAL_TOLERANCE` (default `0.35`): distance threshold for waypoint completion \[m\]
 - `WAYPOINT_NAV_LOOP` (default `false`): restart the mission after the last waypoint
+- `WAYPOINT_NAV_STUCK_TIMEOUT` (default `6.0`): no-progress timeout before recovery begins \[s\]
+- `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` (default `0.05`): minimum odom motion that resets the stuck timer \[m\]
+- `WAYPOINT_NAV_MAX_RECOVERY_ATTEMPTS` (default `2`): recovery retries allowed per waypoint before the mission fails
+- `WAYPOINT_NAV_RECOVERY_SETTLE_SECONDS` (default `0.5`): stop-and-settle time after sending `navigation_cancel` \[s\]
+- `WAYPOINT_NAV_RECOVERY_ROTATE_SECONDS` (default `1.4`): in-place rotation duration \[s\]
+- `WAYPOINT_NAV_RECOVERY_BACKOFF_SECONDS` (default `0.9`): reverse-motion duration \[s\]
+- `WAYPOINT_NAV_RECOVERY_ROTATE_SPEED` (default `0.7`): angular velocity during the rotate phase \[rad/s\]
+- `WAYPOINT_NAV_RECOVERY_BACKOFF_SPEED` (default `0.08`): reverse linear speed magnitude during the backoff phase \[m/s\]
 
 ## Troubleshooting
 
@@ -282,3 +293,5 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
   - Confirm raw `/odom` exists and that `EKF_INPUT_ODOM_TOPIC` matches it.
 - Mission demo does not advance to the next waypoint:
   - Check the selected mission odom topic and confirm the robot is entering `WAYPOINT_NAV_GOAL_TOLERANCE` around the active waypoint.
+- Mission demo repeatedly logs recovery attempts:
+  - Lower `WAYPOINT_NAV_STUCK_TIMEOUT` only if odom is stable enough; otherwise increase it or reduce `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` so slow-but-valid motion is not classified as stuck.
