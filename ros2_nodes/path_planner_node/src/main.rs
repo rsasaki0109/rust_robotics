@@ -21,20 +21,19 @@ fn create_static_obstacles() -> (Vec<f64>, Vec<f64>) {
     let mut ox = Vec::new();
     let mut oy = Vec::new();
 
-    for i in -20..=20 {
-        ox.push(i as f64);
-        oy.push(-20.0);
-        ox.push(i as f64);
-        oy.push(20.0);
-        ox.push(-20.0);
-        oy.push(i as f64);
-        ox.push(20.0);
-        oy.push(i as f64);
-    }
-
-    for i in -8..=8 {
-        ox.push(0.0);
-        oy.push(i as f64);
+    // Boundary walls matching TurtleBot3 world (~3m x 3m area)
+    let bound = 30; // grid cells at 0.5m resolution = 15m
+    for i in -bound..=bound {
+        let v = i as f64 * GRID_RESOLUTION;
+        let wall = bound as f64 * GRID_RESOLUTION;
+        ox.push(v);
+        oy.push(-wall);
+        ox.push(v);
+        oy.push(wall);
+        ox.push(-wall);
+        oy.push(v);
+        ox.push(wall);
+        oy.push(v);
     }
 
     (ox, oy)
