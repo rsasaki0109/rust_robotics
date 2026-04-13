@@ -520,6 +520,66 @@ fn advance_recovery_phase(
     }
 }
 
+fn begin_recovery_attempt(
+    state: &mut NavigatorState,
+    current_idx: usize,
+    goal: Point2D,
+    now: Instant,
+    config: &RecoveryConfig,
+) -> MissionEvent {
+    let attempt = state.current_waypoint_recovery_attempts + 1;
+    if attempt > config.max_attempts_per_waypoint {
+        state.mission_status = MissionStatus::Failed;
+        state.current_waypoint_idx = None;
+        state.last_goal_publish_at = None;
+        state.active_goal = None;
+        state.recovery = None;
+        MissionEvent::Failed {
+            current_idx,
+            goal,
+            attempts: state.current_waypoint_recovery_attempts,
+        }
+    } else {
+        state.mission_status = MissionStatus::Recovering;
+        state.current_waypoint_recovery_attempts = attempt;
+        state.last_goal_publish_at = None;
+        state.active_goal = None;
+        state.recovery = Some(RecoveryState {
+            waypoint_idx: current_idx,
+            goal,
+            attempt,
+            phase: RecoveryPhase::Settle,
+            phase_started_at: now,
+        });
+        MissionEvent::RecoveryStarted {
+            current_idx,
+            goal,
+            attempt,
+        }
+    }
+}
+
+fn resume_waypoint_after_recovery(
+    state: &mut NavigatorState,
+    current_idx: usize,
+    goal: Point2D,
+    attempt: u32,
+    robot_pose: Point2D,
+    goal_tolerance: f64,
+    now: Instant,
+) -> MissionEvent {
+    state.mission_status = MissionStatus::Running;
+    state.current_waypoint_idx = Some(current_idx);
+    state.last_goal_publish_at = Some(now);
+    state.active_goal = Some(new_active_goal(goal, robot_pose, goal_tolerance, now));
+    state.recovery = None;
+    MissionEvent::RecoveryRetry {
+        current_idx,
+        goal,
+        attempt,
+    }
+}
+
 fn publish_goal(
     publisher: &safe_drive::topic::publisher::Publisher<geometry_msgs::msg::PoseStamped>,
     waypoint: Point2D,
@@ -633,22 +693,16 @@ fn main() -> Result<(), DynError> {
                                         let current_idx = recovery.waypoint_idx;
                                         let goal = recovery.goal;
                                         let attempt = recovery.attempt;
-                                        st.mission_status = MissionStatus::Running;
-                                        st.current_waypoint_idx = Some(current_idx);
-                                        st.last_goal_publish_at = Some(now);
-                                        st.active_goal = Some(new_active_goal(
-                                            goal,
-                                            robot_pose,
-                                            mission_cb.goal_tolerance,
-                                            now,
-                                        ));
-                                        st.recovery = None;
                                         (
-                                            Some(MissionEvent::RecoveryRetry {
+                                            Some(resume_waypoint_after_recovery(
+                                                &mut st,
                                                 current_idx,
                                                 goal,
                                                 attempt,
-                                            }),
+                                                robot_pose,
+                                                mission_cb.goal_tolerance,
+                                                now,
+                                            )),
                                             Some(stop_command()),
                                         )
                                     }
@@ -747,42 +801,16 @@ fn main() -> Result<(), DynError> {
                                     .unwrap_or(false);
 
                             if should_recover {
-                                let attempt = st.current_waypoint_recovery_attempts + 1;
-                                if attempt > mission_cb.recovery.max_attempts_per_waypoint {
-                                    st.mission_status = MissionStatus::Failed;
-                                    st.current_waypoint_idx = None;
-                                    st.last_goal_publish_at = None;
-                                    st.active_goal = None;
-                                    st.recovery = None;
-                                    (
-                                        Some(MissionEvent::Failed {
-                                            current_idx,
-                                            goal: current_goal,
-                                            attempts: st.current_waypoint_recovery_attempts,
-                                        }),
-                                        Some(stop_command()),
-                                    )
-                                } else {
-                                    st.mission_status = MissionStatus::Recovering;
-                                    st.current_waypoint_recovery_attempts = attempt;
-                                    st.last_goal_publish_at = None;
-                                    st.active_goal = None;
-                                    st.recovery = Some(RecoveryState {
-                                        waypoint_idx: current_idx,
-                                        goal: current_goal,
-                                        attempt,
-                                        phase: RecoveryPhase::Settle,
-                                        phase_started_at: now,
-                                    });
-                                    (
-                                        Some(MissionEvent::RecoveryStarted {
-                                            current_idx,
-                                            goal: current_goal,
-                                            attempt,
-                                        }),
-                                        Some(stop_command()),
-                                    )
-                                }
+                                (
+                                    Some(begin_recovery_attempt(
+                                        &mut st,
+                                        current_idx,
+                                        current_goal,
+                                        now,
+                                        &mission_cb.recovery,
+                                    )),
+                                    Some(stop_command()),
+                                )
                             } else if current_distance > mission_cb.goal_tolerance || !completion_armed {
                                 if should_republish_goal(st.last_goal_publish_at, now) {
                                     st.last_goal_publish_at = Some(now);
@@ -1058,12 +1086,12 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        advance_recovery_phase, arm_goal_completion_if_progressed, goal_is_stuck,
-        new_active_goal, parse_bool, parse_mission_frame, parse_waypoints,
-        recovery_command_for_phase, resolve_waypoint, should_republish_goal,
-        update_goal_progress, MissionFrame, RecoveryConfig, RecoveryPhase,
-        RecoveryPhaseTransition, RecoveryState, GOAL_COMPLETION_ARM_DELAY,
-        GOAL_PROGRESS_ARM_DISTANCE, GOAL_REPUBLISH_INTERVAL,
+        advance_recovery_phase, arm_goal_completion_if_progressed, begin_recovery_attempt,
+        goal_is_stuck, new_active_goal, parse_bool, parse_mission_frame, parse_waypoints,
+        recovery_command_for_phase, resolve_waypoint, resume_waypoint_after_recovery,
+        should_republish_goal, update_goal_progress, MissionEvent, MissionFrame, MissionStatus,
+        NavigatorState, RecoveryConfig, RecoveryPhase, RecoveryPhaseTransition, RecoveryState,
+        GOAL_COMPLETION_ARM_DELAY, GOAL_PROGRESS_ARM_DISTANCE, GOAL_REPUBLISH_INTERVAL,
     };
     use rust_robotics_core::Point2D;
     use std::time::{Duration, Instant};
@@ -1280,5 +1308,113 @@ mod tests {
         assert!(cmd_two.angular_z < 0.0);
         assert_eq!(cmd_one.linear_x, 0.0);
         assert_eq!(cmd_two.linear_x, 0.0);
+    }
+
+    #[test]
+    fn begin_recovery_attempt_enters_recovering_state() {
+        let config = recovery_config();
+        let now = Instant::now();
+        let goal = Point2D::new(1.0, 0.0);
+        let mut state = NavigatorState {
+            mission_status: MissionStatus::Running,
+            current_waypoint_idx: Some(0),
+            active_goal: Some(new_active_goal(goal, Point2D::origin(), 0.2, now)),
+            ..Default::default()
+        };
+
+        let event = begin_recovery_attempt(&mut state, 0, goal, now, &config);
+
+        match event {
+            MissionEvent::RecoveryStarted {
+                current_idx,
+                goal: event_goal,
+                attempt,
+            } => {
+                assert_eq!(current_idx, 0);
+                assert_eq!(attempt, 1);
+                assert!((event_goal.x - goal.x).abs() < 1e-9);
+            }
+            _ => panic!("expected RecoveryStarted"),
+        }
+        assert_eq!(state.mission_status, MissionStatus::Recovering);
+        assert_eq!(state.current_waypoint_recovery_attempts, 1);
+        assert!(state.active_goal.is_none());
+        assert!(state.recovery.is_some());
+    }
+
+    #[test]
+    fn begin_recovery_attempt_fails_after_attempt_budget_is_spent() {
+        let config = recovery_config();
+        let now = Instant::now();
+        let goal = Point2D::new(1.0, 0.0);
+        let mut state = NavigatorState {
+            mission_status: MissionStatus::Running,
+            current_waypoint_idx: Some(0),
+            current_waypoint_recovery_attempts: config.max_attempts_per_waypoint,
+            active_goal: Some(new_active_goal(goal, Point2D::origin(), 0.2, now)),
+            ..Default::default()
+        };
+
+        let event = begin_recovery_attempt(&mut state, 0, goal, now, &config);
+
+        match event {
+            MissionEvent::Failed {
+                current_idx,
+                goal: event_goal,
+                attempts,
+            } => {
+                assert_eq!(current_idx, 0);
+                assert_eq!(attempts, config.max_attempts_per_waypoint);
+                assert!((event_goal.x - goal.x).abs() < 1e-9);
+            }
+            _ => panic!("expected Failed"),
+        }
+        assert_eq!(state.mission_status, MissionStatus::Failed);
+        assert!(state.current_waypoint_idx.is_none());
+        assert!(state.active_goal.is_none());
+        assert!(state.recovery.is_none());
+    }
+
+    #[test]
+    fn resume_waypoint_after_recovery_restores_running_goal() {
+        let now = Instant::now();
+        let goal = Point2D::new(0.8, 0.2);
+        let robot_pose = Point2D::new(0.1, -0.1);
+        let mut state = NavigatorState {
+            mission_status: MissionStatus::Recovering,
+            current_waypoint_idx: Some(0),
+            current_waypoint_recovery_attempts: 1,
+            recovery: Some(RecoveryState {
+                waypoint_idx: 0,
+                goal,
+                attempt: 1,
+                phase: RecoveryPhase::Backoff,
+                phase_started_at: now,
+            }),
+            ..Default::default()
+        };
+
+        let event =
+            resume_waypoint_after_recovery(&mut state, 0, goal, 1, robot_pose, 0.2, now);
+
+        match event {
+            MissionEvent::RecoveryRetry {
+                current_idx,
+                goal: event_goal,
+                attempt,
+            } => {
+                assert_eq!(current_idx, 0);
+                assert_eq!(attempt, 1);
+                assert!((event_goal.y - goal.y).abs() < 1e-9);
+            }
+            _ => panic!("expected RecoveryRetry"),
+        }
+        assert_eq!(state.mission_status, MissionStatus::Running);
+        assert_eq!(state.current_waypoint_idx, Some(0));
+        assert!(state.recovery.is_none());
+        assert_eq!(state.last_goal_publish_at, Some(now));
+        let active_goal = state.active_goal.expect("active goal should be recreated");
+        assert!((active_goal.published_goal.x - goal.x).abs() < 1e-9);
+        assert!((active_goal.published_robot_pose.x - robot_pose.x).abs() < 1e-9);
     }
 }
