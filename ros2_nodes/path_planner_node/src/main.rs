@@ -5,49 +5,118 @@ use safe_drive::{
     error::DynError,
     logger::Logger,
     msg::common_interfaces::{geometry_msgs, nav_msgs},
+    qos::{policy::DurabilityPolicy, Profile},
     pr_info, pr_warn,
 };
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
-const GRID_RESOLUTION: f64 = 0.5;
 const ROBOT_RADIUS: f64 = 0.4;
+const MAP_OCCUPANCY_THRESHOLD: i8 = 60;
+const MAP_REBUILD_LOG_INTERVAL: Duration = Duration::from_secs(5);
 
 #[derive(Default)]
 struct PlannerState {
     robot_pose: Option<Point2D>,
+    goal_pose: Option<Point2D>,
+    planner: Option<Arc<AStarPlanner>>,
+    last_map_log_at: Option<Instant>,
 }
 
-fn create_static_obstacles() -> (Vec<f64>, Vec<f64>) {
-    let mut ox = Vec::new();
-    let mut oy = Vec::new();
+struct MapPlannerUpdate {
+    planner: Arc<AStarPlanner>,
+    resolution: f64,
+    width: usize,
+    height: usize,
+    occupied_cells: usize,
+}
 
-    // Boundary walls matching TurtleBot3 world (~3m x 3m area)
-    let bound = 30; // grid cells at 0.5m resolution = 15m
-    for i in -bound..=bound {
-        let v = i as f64 * GRID_RESOLUTION;
-        let wall = bound as f64 * GRID_RESOLUTION;
-        ox.push(v);
-        oy.push(-wall);
-        ox.push(v);
-        oy.push(wall);
-        ox.push(-wall);
-        oy.push(v);
-        ox.push(wall);
-        oy.push(v);
+fn map_cell_center(origin: f64, index: usize, resolution: f64) -> f64 {
+    origin + (index as f64 + 0.5) * resolution
+}
+
+fn rebuild_planner_from_map(
+    map: &nav_msgs::msg::OccupancyGrid,
+    threshold: i8,
+) -> Result<MapPlannerUpdate, String> {
+    let info = &map.info;
+    let resolution = info.resolution as f64;
+    if !resolution.is_finite() || resolution <= 0.0 {
+        return Err(format!("invalid map resolution: {}", info.resolution));
     }
 
-    (ox, oy)
-}
+    let width = info.width as usize;
+    let height = info.height as usize;
+    if width == 0 || height == 0 {
+        return Err("map dimensions must be non-zero".to_string());
+    }
 
-fn world_to_grid(point: Point2D, resolution: f64) -> (i32, i32) {
-    (
-        (point.x / resolution).round() as i32,
-        (point.y / resolution).round() as i32,
+    let expected_cells = width
+        .checked_mul(height)
+        .ok_or_else(|| "map dimensions overflowed usize".to_string())?;
+    if map.data.len() != expected_cells {
+        return Err(format!(
+            "map payload length mismatch: expected {}, got {}",
+            expected_cells,
+            map.data.len()
+        ));
+    }
+
+    let origin_x = info.origin.position.x;
+    let origin_y = info.origin.position.y;
+    let max_x = origin_x + width as f64 * resolution;
+    let max_y = origin_y + height as f64 * resolution;
+
+    let mut ox = Vec::with_capacity((width + height) * 4);
+    let mut oy = Vec::with_capacity((width + height) * 4);
+
+    // Add a perimeter so A* sees the full OccupancyGrid bounds as its search area.
+    for ix in 0..=width {
+        let x = origin_x + ix as f64 * resolution;
+        ox.push(x);
+        oy.push(origin_y);
+        ox.push(x);
+        oy.push(max_y);
+    }
+    for iy in 0..=height {
+        let y = origin_y + iy as f64 * resolution;
+        ox.push(origin_x);
+        oy.push(y);
+        ox.push(max_x);
+        oy.push(y);
+    }
+
+    let mut occupied_cells = 0;
+    for (index, cell) in map.data.iter().enumerate() {
+        if *cell < threshold {
+            continue;
+        }
+
+        let grid_x = index % width;
+        let grid_y = index / width;
+        ox.push(map_cell_center(origin_x, grid_x, resolution));
+        oy.push(map_cell_center(origin_y, grid_y, resolution));
+        occupied_cells += 1;
+    }
+
+    let planner = AStarPlanner::try_new(
+        &ox,
+        &oy,
+        AStarConfig {
+            resolution,
+            robot_radius: ROBOT_RADIUS,
+            ..Default::default()
+        },
     )
-}
+    .map_err(|err| err.to_string())?;
 
-fn grid_to_world(ix: i32, iy: i32, resolution: f64) -> Point2D {
-    Point2D::new(ix as f64 * resolution, iy as f64 * resolution)
+    Ok(MapPlannerUpdate {
+        planner: Arc::new(planner),
+        resolution,
+        width,
+        height,
+        occupied_cells,
+    })
 }
 
 fn publish_path(
@@ -77,25 +146,60 @@ fn publish_path(
     Ok(())
 }
 
+fn attempt_plan(
+    planner: Arc<AStarPlanner>,
+    start: Point2D,
+    goal: Point2D,
+    publisher: &safe_drive::topic::publisher::Publisher<nav_msgs::msg::Path>,
+    logger: &Logger,
+    log_success: bool,
+) {
+    match planner.plan(start, goal) {
+        Ok(path) => {
+            if let Err(err) = publish_path(publisher, &path.points) {
+                pr_warn!(logger, "failed to publish path: {}", err);
+                return;
+            }
+            if log_success {
+                pr_info!(
+                    logger,
+                    "planned path: {} points, start=({:.2},{:.2}) goal=({:.2},{:.2})",
+                    path.points.len(),
+                    start.x,
+                    start.y,
+                    goal.x,
+                    goal.y
+                );
+            }
+        }
+        Err(err) => {
+            pr_warn!(
+                logger,
+                "A* failed for start=({:.2},{:.2}) goal=({:.2},{:.2}): {}",
+                start.x,
+                start.y,
+                goal.x,
+                goal.y,
+                err
+            );
+        }
+    }
+}
+
 fn main() -> Result<(), DynError> {
     let ctx = Context::new()?;
     let node = ctx.create_node("path_planner_node", None, Default::default())?;
 
     let goal_sub = node.create_subscriber::<geometry_msgs::msg::PoseStamped>("/goal_pose", None)?;
-    let robot_sub =
-        node.create_subscriber::<geometry_msgs::msg::PoseStamped>("/robot_pose", None)?;
-    let path_pub = node.create_publisher::<nav_msgs::msg::Path>("/planned_path", None)?;
+    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>("/odom", None)?;
+    let map_sub = node.create_subscriber::<nav_msgs::msg::OccupancyGrid>("/map", None)?;
+    let mut path_qos = Profile::default();
+    path_qos.durability = DurabilityPolicy::TransientLocal;
+    let path_pub = Arc::new(node.create_publisher::<nav_msgs::msg::Path>(
+        "/planned_path",
+        Some(path_qos),
+    )?);
 
-    let (ox, oy) = create_static_obstacles();
-    let planner = Arc::new(AStarPlanner::new(
-        &ox,
-        &oy,
-        AStarConfig {
-            resolution: GRID_RESOLUTION,
-            robot_radius: ROBOT_RADIUS,
-            ..Default::default()
-        },
-    ));
     let state = Arc::new(Mutex::new(PlannerState::default()));
     let logger = Logger::new("path_planner_node");
 
@@ -103,17 +207,77 @@ fn main() -> Result<(), DynError> {
 
     let mut selector = ctx.create_selector()?;
 
-    let state_robot = state.clone();
+    let state_odom = state.clone();
     selector.add_subscriber(
-        robot_sub,
+        odom_sub,
         Box::new(move |msg| {
-            if let Ok(mut st) = state_robot.lock() {
-                st.robot_pose = Some(Point2D::new(msg.pose.position.x, msg.pose.position.y));
+            if let Ok(mut st) = state_odom.lock() {
+                st.robot_pose = Some(Point2D::new(
+                    msg.pose.pose.position.x,
+                    msg.pose.pose.position.y,
+                ));
             }
         }),
     );
 
-    let planner_goal = planner.clone();
+    let state_map = state.clone();
+    let pub_map = path_pub.clone();
+    let log_map = Logger::new("path_planner_node");
+    selector.add_subscriber(
+        map_sub,
+        Box::new(move |msg| {
+            let planner_update = match rebuild_planner_from_map(&msg, MAP_OCCUPANCY_THRESHOLD) {
+                Ok(update) => update,
+                Err(err) => {
+                    pr_warn!(log_map, "failed to rebuild planner from /map: {}", err);
+                    return;
+                }
+            };
+
+            let (replan_request, should_log_rebuild) = {
+                let mut st = match state_map.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        pr_warn!(log_map, "failed to lock planner state on /map");
+                        return;
+                    }
+                };
+                st.planner = Some(planner_update.planner.clone());
+                let now = Instant::now();
+                let should_log_rebuild = st.last_map_log_at.map_or(true, |last_log_at| {
+                    now.duration_since(last_log_at) >= MAP_REBUILD_LOG_INTERVAL
+                });
+                if should_log_rebuild {
+                    st.last_map_log_at = Some(now);
+                }
+                (
+                    match (st.robot_pose, st.goal_pose) {
+                        (Some(start), Some(goal)) => {
+                            Some((planner_update.planner.clone(), start, goal))
+                        }
+                        _ => None,
+                    },
+                    should_log_rebuild,
+                )
+            };
+
+            if should_log_rebuild {
+                pr_info!(
+                    log_map,
+                    "planner rebuilt from /map: {}x{} cells @ {:.2} m, {} occupied cells",
+                    planner_update.width,
+                    planner_update.height,
+                    planner_update.resolution,
+                    planner_update.occupied_cells
+                );
+            }
+
+            if let Some((planner, start, goal)) = replan_request {
+                attempt_plan(planner, start, goal, pub_map.as_ref(), &log_map, false);
+            }
+        }),
+    );
+
     let state_goal = state.clone();
     let pub_goal = path_pub;
     let log_goal = Logger::new("path_planner_node");
@@ -121,48 +285,41 @@ fn main() -> Result<(), DynError> {
         goal_sub,
         Box::new(move |msg| {
             let goal_world = Point2D::new(msg.pose.position.x, msg.pose.position.y);
-            let start_world = {
-                let guard = match state_goal.lock() {
+            let plan_request = {
+                let mut st = match state_goal.lock() {
                     Ok(guard) => guard,
                     Err(_) => {
-                        pr_warn!(log_goal, "failed to lock planner state");
+                        pr_warn!(log_goal, "failed to lock planner state on /goal_pose");
                         return;
                     }
                 };
-                match guard.robot_pose {
-                    Some(p) => p,
+                st.goal_pose = Some(goal_world);
+
+                let start = match st.robot_pose {
+                    Some(pose) => pose,
                     None => {
-                        pr_warn!(log_goal, "robot pose is not available yet");
+                        pr_warn!(log_goal, "robot pose from /odom is not available yet");
                         return;
                     }
-                }
+                };
+                let planner = match st.planner.as_ref() {
+                    Some(planner) => planner.clone(),
+                    None => {
+                        pr_warn!(log_goal, "planner is not ready yet; waiting for /map");
+                        return;
+                    }
+                };
+                (planner, start, goal_world)
             };
 
-            let (sx, sy) = world_to_grid(start_world, GRID_RESOLUTION);
-            let (gx, gy) = world_to_grid(goal_world, GRID_RESOLUTION);
-            let start = grid_to_world(sx, sy, GRID_RESOLUTION);
-            let goal = grid_to_world(gx, gy, GRID_RESOLUTION);
-
-            match planner_goal.plan(start, goal) {
-                Ok(path) => {
-                    if let Err(err) = publish_path(&pub_goal, &path.points) {
-                        pr_warn!(log_goal, "failed to publish path: {}", err);
-                        return;
-                    }
-                    pr_info!(
-                        log_goal,
-                        "planned path: {} points, start=({:.2},{:.2}) goal=({:.2},{:.2})",
-                        path.points.len(),
-                        start.x,
-                        start.y,
-                        goal.x,
-                        goal.y
-                    );
-                }
-                Err(err) => {
-                    pr_warn!(log_goal, "A* failed: {}", err);
-                }
-            }
+            attempt_plan(
+                plan_request.0,
+                plan_request.1,
+                plan_request.2,
+                pub_goal.as_ref(),
+                &log_goal,
+                true,
+            );
         }),
     );
 
