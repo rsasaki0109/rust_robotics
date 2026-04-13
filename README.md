@@ -139,6 +139,8 @@ WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4" \
 
 `run_gazebo_mission_demo.sh` defaults to `WAYPOINT_NAV_FRAME=relative_start`, so the mission waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. The wrapper's default mission is a conservative two-waypoint route that was verified in TurtleBot3 world: `(0.4, 0.0) -> (0.1, 0.4)`.
 
+`waypoint_navigator_node` now includes a simple recovery state machine. If the active waypoint stays outside tolerance without measurable odom progress for `WAYPOINT_NAV_STUCK_TIMEOUT` seconds, it issues `navigation_cancel`, waits briefly, rotates in place, backs off, then republishes the active waypoint. The main tuning knobs are `WAYPOINT_NAV_MAX_RECOVERY_ATTEMPTS`, `WAYPOINT_NAV_RECOVERY_ROTATE_SECONDS`, `WAYPOINT_NAV_RECOVERY_BACKOFF_SECONDS`, and `WAYPOINT_NAV_RECOVERY_BACKOFF_SPEED`.
+
 ## Benchmarks
 
 ### Rust vs Python Speed Comparison
