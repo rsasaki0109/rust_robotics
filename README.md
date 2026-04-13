@@ -5,7 +5,7 @@ RustRobotics
 [![codecov](https://codecov.io/gh/rsasaki0109/rust_robotics/branch/main/graph/badge.svg)](https://codecov.io/gh/rsasaki0109/rust_robotics)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://rsasaki0109.github.io/rust_robotics/)
 
-This package is a rust implementation of [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics).
+This package is a rust implementation of [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics), featuring 100+ unique robotics algorithms across localization, mapping, SLAM, planning, control, and mission-level behavior.
 
 ## Build
 
@@ -27,6 +27,7 @@ crates/
 ├── rust_robotics_mapping/       — Mapping (NDT, Gaussian Grid, Ray Casting)
 ├── rust_robotics_slam/          — SLAM (EKF-SLAM, FastSLAM, Graph SLAM, ICP)
 ├── rust_robotics_viz/           — Visualization (gnuplot wrapper)
+├── ros2_nodes/                  — ROS2 navigation nodes (safe_drive-based)
 └── rust_robotics/               — Umbrella crate (feature-gated re-exports)
 ```
 
@@ -74,6 +75,35 @@ dora run crates/rust_robotics/examples/dora_path_planning_dataflow.yml
 ```
 
 This example requires the `dora` runtime/CLI to be installed and uses the feature-gated `dora` support in `crates/rust_robotics`.
+
+## ROS2 Integration
+
+The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive (Rust ROS2 bindings).
+
+- Path Planner (A*)
+- DWA Local Planner
+- SLAM Node
+
+```text
+sensor/odom,map inputs
+        |
+        v
++-------------------+      global path      +----------------------+
+| Path Planner (A*) | --------------------> | DWA Local Planner    |
++-------------------+                       +----------------------+
+         ^                                            |
+         | map updates                                | cmd_vel
+         |                                            v
+   +------------------+                         Robot Base
+   | SLAM Node        |
+   +------------------+
+```
+
+See [docs/ros2_integration.md](./docs/ros2_integration.md) for details.
+
+```bash
+cargo build --manifest-path ros2_nodes/path_planner_node/Cargo.toml
+```
 
 ## Benchmarks
 
@@ -174,6 +204,7 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
       * [3D Grid A*](#3d-grid-a), [Drone 3D Trajectory Following](#drone-3d-trajectory-following), [Drone Minimum-Snap Trajectory](#drone-minimum-snap-trajectory)
    * [Mission Planning](#mission-planning)
       * [Behavior Tree](#behavior-tree), [State Machine](#state-machine)
+   * [ROS2 Integration](#ros2-integration)
 
 # Localization
 ## Extended Kalman Filter Localization
