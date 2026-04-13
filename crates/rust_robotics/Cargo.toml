@@ -55,6 +55,11 @@ path = "examples/headless_navigation_loop.rs"
 required-features = ["planning", "localization", "control"]
 
 [[example]]
+name = "headless_mission_recovery"
+path = "examples/headless_mission_recovery.rs"
+required-features = ["planning", "localization", "control"]
+
+[[example]]
 name = "dora_path_planning_node"
 path = "examples/dora_path_planning_node.rs"
 required-features = ["planning", "dora"]
