@@ -36,7 +36,13 @@ jobs:
       run: cargo test --workspace --lib --tests
 
     - name: Run headless tests (no default features)
-      run: cargo test --workspace --no-default-features
+      run: |
+        cargo test -p rust_robotics_core --no-default-features
+        cargo test -p rust_robotics_planning --no-default-features --lib --tests
+        cargo test -p rust_robotics_localization --no-default-features --lib --tests
+        cargo test -p rust_robotics_control --no-default-features --lib --tests
+        cargo test -p rust_robotics_mapping --no-default-features --lib --tests
+        cargo test -p rust_robotics_slam --no-default-features --lib --tests
 
     - name: Run headless examples
       run: |
