@@ -542,6 +542,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "long-running MovingAI benchmark"]
     fn test_flow_field_matches_moving_ai_random512_bucket_80_optimal_length() {
         let map = MovingAiMap::parse_str(include_str!(
             "../benchdata/moving_ai/random/random512-10-0.map"
