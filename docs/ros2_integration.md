@@ -161,7 +161,8 @@ export TURTLEBOT3_MODEL=burger
 
 The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py), which:
 
-- launches `turtlebot3_gazebo/turtlebot3_world.launch.py`
+- launches Gazebo server for `turtlebot3_world.world`
+- can optionally launch the Gazebo GUI client with `enable_gazebo_gui:=true`
 - forwards the upstream TurtleBot3 world spawn defaults (`x=-2.0`, `y=-0.5`) as launch arguments
 - adds an extra `ros_gz_bridge` subscription so `/cmd_vel` accepts `geometry_msgs/Twist`
 - publishes an identity `map -> odom` static transform for RViz / debugging tools
@@ -172,6 +173,12 @@ If you want RViz alongside Gazebo:
 
 ```bash
 ENABLE_RVIZ=true ./ros2_nodes/launch/run_gazebo_demo.sh
+```
+
+If you need a headless Gazebo server run:
+
+```bash
+ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_gazebo_demo.sh
 ```
 
 The RViz layout is stored at [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
@@ -228,6 +235,7 @@ source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=89
 export TURTLEBOT3_MODEL=burger
 export ENABLE_RVIZ=false
+export ENABLE_GAZEBO_GUI=false
 
 ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
