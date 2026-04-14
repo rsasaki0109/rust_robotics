@@ -28,8 +28,14 @@ const MAX_DT: f64 = 0.5;
 struct EkfState {
     localizer: EKFLocalizer,
     initialized: bool,
-    last_update_at: Option<Instant>,
+    last_update_at: Option<MessageStamp>,
     last_log_at: Option<Instant>,
+}
+
+#[derive(Clone, Copy)]
+struct MessageStamp {
+    sec: i32,
+    nanosec: u32,
 }
 
 fn topic_from_env(key: &str, default: &str) -> String {
@@ -53,12 +59,16 @@ fn apply_yaw_to_pose(pose: &mut geometry_msgs::msg::Pose, yaw: f64) {
     pose.orientation.w = half_yaw.cos();
 }
 
-fn sanitize_dt(last_update_at: Option<Instant>, now: Instant) -> f64 {
+fn sanitize_dt(last_update_at: Option<MessageStamp>, now: MessageStamp) -> f64 {
     match last_update_at {
-        Some(previous) => now
-            .saturating_duration_since(previous)
-            .as_secs_f64()
-            .clamp(MIN_DT, MAX_DT),
+        Some(previous) => {
+            let delta_nanos = stamp_to_nanos(now) - stamp_to_nanos(previous);
+            if delta_nanos <= 0 {
+                MIN_DT
+            } else {
+                (delta_nanos as f64 / 1_000_000_000.0).clamp(MIN_DT, MAX_DT)
+            }
+        }
         None => FALLBACK_DT,
     }
 }
@@ -79,6 +89,17 @@ fn copy_stamp(
 ) {
     target.sec = source.sec;
     target.nanosec = source.nanosec;
+}
+
+fn stamp_from_odom(msg: &nav_msgs::msg::Odometry) -> MessageStamp {
+    MessageStamp {
+        sec: msg.header.stamp.sec,
+        nanosec: msg.header.stamp.nanosec,
+    }
+}
+
+fn stamp_to_nanos(stamp: MessageStamp) -> i128 {
+    i128::from(stamp.sec) * 1_000_000_000 + i128::from(stamp.nanosec)
 }
 
 fn output_frame_id(source: &nav_msgs::msg::Odometry) -> String {
@@ -187,6 +208,7 @@ fn main() -> Result<(), DynError> {
         odom_sub,
         Box::new(move |msg| {
             let now = Instant::now();
+            let msg_stamp = stamp_from_odom(&msg);
             let mut state = match state_cb.lock() {
                 Ok(guard) => guard,
                 Err(_) => {
@@ -206,7 +228,7 @@ fn main() -> Result<(), DynError> {
                         }
                     };
                 state.initialized = true;
-                state.last_update_at = Some(now);
+                state.last_update_at = Some(msg_stamp);
 
                 if let Err(err) = publish_pose(&pose_pub, initialized, &msg) {
                     pr_warn!(
@@ -238,8 +260,8 @@ fn main() -> Result<(), DynError> {
                 return;
             }
 
-            let dt = sanitize_dt(state.last_update_at, now);
-            state.last_update_at = Some(now);
+            let dt = sanitize_dt(state.last_update_at, msg_stamp);
+            state.last_update_at = Some(msg_stamp);
 
             let measurement = Point2D::new(msg.pose.pose.position.x, msg.pose.pose.position.y);
             let control = ControlInput::new(msg.twist.twist.linear.x, msg.twist.twist.angular.z);
@@ -282,25 +304,46 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        copy_stamp, output_frame_id, sanitize_dt, yaw_from_quaternion, DEFAULT_FRAME_ID,
-        FALLBACK_DT, MAX_DT, MIN_DT,
+        copy_stamp, output_frame_id, sanitize_dt, stamp_to_nanos, yaw_from_quaternion,
+        MessageStamp, DEFAULT_FRAME_ID, FALLBACK_DT, MAX_DT, MIN_DT,
     };
     use safe_drive::msg::common_interfaces::nav_msgs;
-    use std::time::{Duration, Instant};
 
     #[test]
     fn sanitize_dt_uses_default_without_history() {
-        let now = Instant::now();
+        let now = MessageStamp {
+            sec: 10,
+            nanosec: 0,
+        };
         assert!((sanitize_dt(None, now) - FALLBACK_DT).abs() < 1e-9);
     }
 
     #[test]
     fn sanitize_dt_clamps_bounds() {
-        let now = Instant::now();
-        let short = now - Duration::from_micros(100);
-        let long = now - Duration::from_secs(2);
+        let now = MessageStamp {
+            sec: 10,
+            nanosec: 0,
+        };
+        let short = MessageStamp {
+            sec: 9,
+            nanosec: 999_900_000,
+        };
+        let long = MessageStamp { sec: 8, nanosec: 0 };
         assert!((sanitize_dt(Some(short), now) - MIN_DT).abs() < 1e-9);
         assert!((sanitize_dt(Some(long), now) - MAX_DT).abs() < 1e-9);
+    }
+
+    #[test]
+    fn sanitize_dt_uses_min_dt_for_non_monotonic_stamp() {
+        let previous = MessageStamp {
+            sec: 10,
+            nanosec: 500_000_000,
+        };
+        let current = MessageStamp {
+            sec: 10,
+            nanosec: 400_000_000,
+        };
+        assert!((sanitize_dt(Some(previous), current) - MIN_DT).abs() < 1e-9);
     }
 
     #[test]
@@ -327,5 +370,14 @@ mod tests {
 
         assert_eq!(target.header.stamp.sec, 12);
         assert_eq!(target.header.stamp.nanosec, 34);
+    }
+
+    #[test]
+    fn stamp_to_nanos_combines_sec_and_nanosec() {
+        let stamp = MessageStamp {
+            sec: 3,
+            nanosec: 25,
+        };
+        assert_eq!(stamp_to_nanos(stamp), 3_000_000_025);
     }
 }

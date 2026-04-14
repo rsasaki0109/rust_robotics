@@ -4,9 +4,9 @@ use safe_drive::{
     context::Context,
     error::DynError,
     logger::Logger,
-    msg::common_interfaces::{geometry_msgs, nav_msgs},
-    qos::{policy::DurabilityPolicy, Profile},
+    msg::common_interfaces::{geometry_msgs, nav_msgs, std_msgs},
     pr_info, pr_warn,
+    qos::{policy::DurabilityPolicy, Profile},
 };
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -17,6 +17,7 @@ const ROBOT_RADIUS: f64 = 0.4;
 const MAP_OCCUPANCY_THRESHOLD: i8 = 60;
 const MAP_REBUILD_LOG_INTERVAL: Duration = Duration::from_secs(5);
 const QUERY_SNAP_MAX_DISTANCE: f64 = 0.35;
+const NAVIGATION_CANCEL_TOPIC: &str = "/navigation_cancel";
 
 #[derive(Default)]
 struct PlannerState {
@@ -254,7 +255,8 @@ fn find_nearest_valid_query_point(
                 continue;
             }
 
-            let candidate = Point2D::new(grid.calc_x_position(cell_x), grid.calc_y_position(cell_y));
+            let candidate =
+                Point2D::new(grid.calc_x_position(cell_x), grid.calc_y_position(cell_y));
             let distance_sq = (candidate.x - point.x).powi(2) + (candidate.y - point.y).powi(2);
             if distance_sq > max_distance_sq {
                 continue;
@@ -283,12 +285,12 @@ fn main() -> Result<(), DynError> {
     let goal_sub = node.create_subscriber::<geometry_msgs::msg::PoseStamped>("/goal_pose", None)?;
     let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>(&odom_topic, None)?;
     let map_sub = node.create_subscriber::<nav_msgs::msg::OccupancyGrid>("/map", None)?;
+    let cancel_sub =
+        node.create_subscriber::<std_msgs::msg::Empty>(NAVIGATION_CANCEL_TOPIC, None)?;
     let mut path_qos = Profile::default();
     path_qos.durability = DurabilityPolicy::TransientLocal;
-    let path_pub = Arc::new(node.create_publisher::<nav_msgs::msg::Path>(
-        "/planned_path",
-        Some(path_qos),
-    )?);
+    let path_pub =
+        Arc::new(node.create_publisher::<nav_msgs::msg::Path>("/planned_path", Some(path_qos))?);
 
     let state = Arc::new(Mutex::new(PlannerState::default()));
     let logger = Logger::new("path_planner_node");
@@ -369,7 +371,7 @@ fn main() -> Result<(), DynError> {
     );
 
     let state_goal = state.clone();
-    let pub_goal = path_pub;
+    let pub_goal = path_pub.clone();
     let log_goal = Logger::new("path_planner_node");
     let odom_topic_goal = odom_topic.clone();
     selector.add_subscriber(
@@ -415,6 +417,34 @@ fn main() -> Result<(), DynError> {
                 &log_goal,
                 true,
             );
+        }),
+    );
+
+    let state_cancel = state.clone();
+    let pub_cancel = path_pub.clone();
+    let log_cancel = Logger::new("path_planner_node");
+    selector.add_subscriber(
+        cancel_sub,
+        Box::new(move |_msg| {
+            let had_goal = {
+                let mut st = match state_cancel.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        pr_warn!(log_cancel, "failed to lock planner state on cancel");
+                        return;
+                    }
+                };
+                st.goal_pose.take().is_some()
+            };
+
+            if let Err(err) = publish_path(pub_cancel.as_ref(), &[]) {
+                pr_warn!(log_cancel, "failed to clear published path: {}", err);
+                return;
+            }
+
+            if had_goal {
+                pr_info!(log_cancel, "cleared active navigation goal");
+            }
         }),
     );
 
