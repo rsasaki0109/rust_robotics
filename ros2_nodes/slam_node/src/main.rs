@@ -26,8 +26,16 @@ const DEFAULT_OUTPUT_POSE_TOPIC: &str = "/slam_pose";
 const DEFAULT_OUTPUT_ODOM_TOPIC: &str = "/slam_odom";
 const DEFAULT_DIAGNOSTICS_TOPIC: &str = "/slam_diagnostics";
 const ICP_BLEND_ALPHA: f64 = 0.35;
+const ICP_FULL_WEIGHT_ERROR: f64 = 2.0;
+const ICP_REJECT_ERROR: f64 = 4.0;
+const ICP_FULL_WEIGHT_ITERATIONS: f64 = 12.0;
+const ICP_REJECT_ITERATIONS: f64 = 40.0;
+const ICP_FULL_WEIGHT_TRANSLATION_CORRECTION: f64 = 0.05;
 const MAX_ICP_TRANSLATION_CORRECTION: f64 = 0.25;
+const ICP_FULL_WEIGHT_YAW_CORRECTION: f64 = 0.08;
 const MAX_ICP_YAW_CORRECTION: f64 = 0.35;
+const ICP_FULL_WEIGHT_TRANSLATION_MOTION: f64 = 0.05;
+const ICP_FULL_WEIGHT_YAW_MOTION: f64 = 0.08;
 
 #[derive(Clone, Copy)]
 struct Pose2D {
@@ -74,6 +82,14 @@ struct ScanDiagnostics {
     icp_delta: Option<MotionDelta>,
     applied_delta: Option<MotionDelta>,
     blend_applied: bool,
+    blend_alpha: f64,
+    gate_reason: &'static str,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct IcpBlendDecision {
+    alpha: f64,
+    reason: &'static str,
 }
 
 fn yaw_from_quaternion(x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -208,7 +224,165 @@ fn icp_motion_delta(result: &ICPResult) -> Option<MotionDelta> {
     })
 }
 
-fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta) -> MotionDelta {
+fn translation_magnitude(delta: MotionDelta) -> f64 {
+    delta.x.hypot(delta.y)
+}
+
+fn ramp_weight(value: f64, full_weight_limit: f64, reject_limit: f64) -> f64 {
+    if value <= full_weight_limit {
+        1.0
+    } else if value >= reject_limit {
+        0.0
+    } else {
+        1.0 - (value - full_weight_limit) / (reject_limit - full_weight_limit)
+    }
+}
+
+fn ramp_up_weight(value: f64, reject_limit: f64, full_weight_limit: f64) -> f64 {
+    if value <= reject_limit {
+        0.0
+    } else if value >= full_weight_limit {
+        1.0
+    } else {
+        (value - reject_limit) / (full_weight_limit - reject_limit)
+    }
+}
+
+fn compute_icp_blend_decision(
+    odom: MotionDelta,
+    icp: MotionDelta,
+    converged: bool,
+    iterations: usize,
+    final_error: f64,
+) -> IcpBlendDecision {
+    if !converged {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "not_converged",
+        };
+    }
+    if !final_error.is_finite() {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "invalid_error",
+        };
+    }
+
+    let correction = MotionDelta {
+        x: icp.x - odom.x,
+        y: icp.y - odom.y,
+        yaw: normalize_angle(icp.yaw - odom.yaw),
+    };
+    let correction_translation = translation_magnitude(correction);
+    let correction_yaw = correction.yaw.abs();
+    if correction_translation >= MAX_ICP_TRANSLATION_CORRECTION {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "translation_outlier",
+        };
+    }
+    if correction_yaw >= MAX_ICP_YAW_CORRECTION {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "yaw_outlier",
+        };
+    }
+
+    let error_weight = ramp_weight(final_error, ICP_FULL_WEIGHT_ERROR, ICP_REJECT_ERROR);
+    if error_weight <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "high_error",
+        };
+    }
+
+    let iteration_weight = ramp_weight(
+        iterations as f64,
+        ICP_FULL_WEIGHT_ITERATIONS,
+        ICP_REJECT_ITERATIONS,
+    );
+    if iteration_weight <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "slow_convergence",
+        };
+    }
+
+    let correction_translation_weight = ramp_weight(
+        correction_translation,
+        ICP_FULL_WEIGHT_TRANSLATION_CORRECTION,
+        MAX_ICP_TRANSLATION_CORRECTION,
+    );
+    if correction_translation_weight <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "translation_outlier",
+        };
+    }
+
+    let correction_yaw_weight = ramp_weight(
+        correction_yaw,
+        ICP_FULL_WEIGHT_YAW_CORRECTION,
+        MAX_ICP_YAW_CORRECTION,
+    );
+    if correction_yaw_weight <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "yaw_outlier",
+        };
+    }
+
+    let odom_motion = translation_magnitude(odom);
+    let odom_motion_weight = ramp_up_weight(
+        odom_motion,
+        ICP_FULL_WEIGHT_TRANSLATION_MOTION * 0.25,
+        ICP_FULL_WEIGHT_TRANSLATION_MOTION,
+    )
+    .max(ramp_up_weight(
+        odom.yaw.abs(),
+        ICP_FULL_WEIGHT_YAW_MOTION * 0.25,
+        ICP_FULL_WEIGHT_YAW_MOTION,
+    ));
+    if odom_motion_weight <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "low_motion",
+        };
+    }
+
+    let scale = error_weight
+        .min(iteration_weight)
+        .min(correction_translation_weight)
+        .min(correction_yaw_weight)
+        .min(odom_motion_weight);
+    let alpha = ICP_BLEND_ALPHA * scale;
+    if alpha <= 0.0 {
+        return IcpBlendDecision {
+            alpha: 0.0,
+            reason: "rejected",
+        };
+    }
+
+    let reason = if scale < 0.999 {
+        if scale == odom_motion_weight {
+            "attenuated_low_motion"
+        } else if scale == error_weight {
+            "attenuated_error"
+        } else if scale == iteration_weight {
+            "attenuated_iterations"
+        } else if scale == correction_translation_weight {
+            "attenuated_translation"
+        } else {
+            "attenuated_yaw"
+        }
+    } else {
+        "accepted"
+    };
+
+    IcpBlendDecision { alpha, reason }
+}
+
+fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta, alpha: f64) -> MotionDelta {
     let correction_x = (icp.x - odom.x).clamp(
         -MAX_ICP_TRANSLATION_CORRECTION,
         MAX_ICP_TRANSLATION_CORRECTION,
@@ -221,9 +395,9 @@ fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta) -> MotionDelta {
         normalize_angle(icp.yaw - odom.yaw).clamp(-MAX_ICP_YAW_CORRECTION, MAX_ICP_YAW_CORRECTION);
 
     MotionDelta {
-        x: odom.x + ICP_BLEND_ALPHA * correction_x,
-        y: odom.y + ICP_BLEND_ALPHA * correction_y,
-        yaw: normalize_angle(odom.yaw + ICP_BLEND_ALPHA * correction_yaw),
+        x: odom.x + alpha * correction_x,
+        y: odom.y + alpha * correction_y,
+        yaw: normalize_angle(odom.yaw + alpha * correction_yaw),
     }
 }
 
@@ -253,8 +427,16 @@ fn push_delta_fields(fields: &mut Vec<String>, prefix: &str, delta: Option<Motio
 fn diagnostics_status(diagnostics: ScanDiagnostics) -> &'static str {
     if !diagnostics.had_previous_scan {
         "bootstrap"
-    } else if diagnostics.icp_converged {
-        "icp_ok"
+    } else if diagnostics.blend_applied {
+        if diagnostics.blend_alpha + 1e-6 >= ICP_BLEND_ALPHA {
+            "icp_ok"
+        } else {
+            "icp_attenuated"
+        }
+    } else if diagnostics.gate_reason == "missing_icp_delta"
+        || diagnostics.gate_reason == "syncing_to_odom"
+    {
+        "odom_only"
     } else {
         "icp_rejected"
     }
@@ -278,6 +460,8 @@ fn format_slam_diagnostics(
         format!("icp_iterations={}", diagnostics.icp_iterations),
         format!("icp_error={:.4}", diagnostics.icp_final_error),
         format!("blend_applied={}", diagnostics.blend_applied),
+        format!("blend_alpha={:.3}", diagnostics.blend_alpha),
+        format!("gate_reason={}", diagnostics.gate_reason),
         format!("raw_x={:.3}", raw_pose.x),
         format!("raw_y={:.3}", raw_pose.y),
         format!("raw_yaw={:.3}", raw_pose.yaw),
@@ -515,20 +699,41 @@ fn main() -> Result<(), DynError> {
                 .map(|previous_raw_odom| relative_motion_local(previous_raw_odom, raw_pose));
             let mut applied_delta = None;
             let mut blend_applied = false;
+            let mut blend_alpha = 0.0;
+            let mut gate_reason = if had_previous_scan {
+                "odom_only"
+            } else {
+                "bootstrap"
+            };
             let pose = if use_corrected_frame {
                 if !st.corrected_initialized {
                     st.corrected_pose = raw_pose;
                     st.corrected_initialized = true;
                 } else if let Some(odom_delta) = odom_delta {
                     let blended_delta = if let Some(icp_delta) = icp_delta {
-                        blend_applied = true;
-                        blend_motion_delta(odom_delta, icp_delta)
+                        let decision = compute_icp_blend_decision(
+                            odom_delta,
+                            icp_delta,
+                            icp_converged,
+                            icp_iterations,
+                            icp_final_error,
+                        );
+                        blend_alpha = decision.alpha;
+                        gate_reason = decision.reason;
+                        if decision.alpha > 0.0 {
+                            blend_applied = true;
+                            blend_motion_delta(odom_delta, icp_delta, decision.alpha)
+                        } else {
+                            odom_delta
+                        }
                     } else {
+                        gate_reason = "missing_icp_delta";
                         odom_delta
                     };
                     applied_delta = Some(blended_delta);
                     st.corrected_pose = compose_pose_local(st.corrected_pose, blended_delta);
                 } else {
+                    gate_reason = "syncing_to_odom";
                     st.corrected_pose = raw_pose;
                 }
                 st.corrected_pose
@@ -591,6 +796,8 @@ fn main() -> Result<(), DynError> {
                     icp_delta,
                     applied_delta,
                     blend_applied,
+                    blend_alpha,
+                    gate_reason,
                 },
             );
             if let Err(err) = publish_diagnostics(&pub_diag, &diagnostics) {
@@ -610,9 +817,10 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        blend_motion_delta, compose_pose_local, format_slam_diagnostics, normalize_angle,
-        odom_measurement_from_msg, relative_motion_local, MotionDelta, Pose2D, ScanDiagnostics,
-        DEFAULT_BASE_FRAME_ID, DEFAULT_ODOM_FRAME_ID,
+        blend_motion_delta, compose_pose_local, compute_icp_blend_decision,
+        format_slam_diagnostics, normalize_angle, odom_measurement_from_msg,
+        relative_motion_local, MotionDelta, Pose2D, ScanDiagnostics, DEFAULT_BASE_FRAME_ID,
+        DEFAULT_ODOM_FRAME_ID, ICP_BLEND_ALPHA,
     };
     use safe_drive::msg::common_interfaces::nav_msgs;
 
@@ -682,11 +890,75 @@ mod tests {
             y: -1.0,
             yaw: 1.0,
         };
-        let blended = blend_motion_delta(odom, icp);
+        let blended = blend_motion_delta(odom, icp, ICP_BLEND_ALPHA);
         assert!(blended.x > odom.x);
         assert!(blended.x < 0.2);
         assert!(blended.y.abs() < 0.1);
         assert!(blended.yaw.abs() < 0.2);
+    }
+
+    #[test]
+    fn compute_icp_blend_decision_rejects_high_error() {
+        let decision = compute_icp_blend_decision(
+            MotionDelta {
+                x: 0.1,
+                y: 0.0,
+                yaw: 0.0,
+            },
+            MotionDelta {
+                x: 0.11,
+                y: 0.0,
+                yaw: 0.01,
+            },
+            true,
+            4,
+            10.0,
+        );
+        assert_eq!(decision.alpha, 0.0);
+        assert_eq!(decision.reason, "high_error");
+    }
+
+    #[test]
+    fn compute_icp_blend_decision_attenuates_low_motion() {
+        let decision = compute_icp_blend_decision(
+            MotionDelta {
+                x: 0.02,
+                y: 0.0,
+                yaw: 0.02,
+            },
+            MotionDelta {
+                x: 0.03,
+                y: 0.0,
+                yaw: 0.03,
+            },
+            true,
+            5,
+            1.0,
+        );
+        assert!(decision.alpha > 0.0);
+        assert!(decision.alpha < ICP_BLEND_ALPHA);
+        assert_eq!(decision.reason, "attenuated_low_motion");
+    }
+
+    #[test]
+    fn compute_icp_blend_decision_accepts_clean_match() {
+        let decision = compute_icp_blend_decision(
+            MotionDelta {
+                x: 0.12,
+                y: 0.01,
+                yaw: 0.09,
+            },
+            MotionDelta {
+                x: 0.13,
+                y: 0.015,
+                yaw: 0.1,
+            },
+            true,
+            4,
+            1.2,
+        );
+        assert!((decision.alpha - ICP_BLEND_ALPHA).abs() < 1e-9);
+        assert_eq!(decision.reason, "accepted");
     }
 
     #[test]
@@ -733,11 +1005,15 @@ mod tests {
                     yaw: 0.015,
                 }),
                 blend_applied: true,
+                blend_alpha: ICP_BLEND_ALPHA,
+                gate_reason: "accepted",
             },
         );
         assert!(text.contains("status=icp_ok"));
         assert!(text.contains("scan_points=42"));
         assert!(text.contains("odom_dx=0.100"));
         assert!(text.contains("applied_dyaw=0.015"));
+        assert!(text.contains("blend_alpha=0.350"));
+        assert!(text.contains("gate_reason=accepted"));
     }
 }
