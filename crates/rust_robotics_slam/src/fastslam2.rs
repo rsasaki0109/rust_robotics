@@ -11,6 +11,7 @@
 //!         Rust port
 
 use nalgebra::{Matrix2, Matrix2x3, Matrix3, Vector2, Vector3};
+use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
 use std::f64::consts::PI;
 
@@ -215,9 +216,12 @@ fn compute_proposal(
 }
 
 /// Sample a 3D pose from a Gaussian distribution
-fn sample_pose(mean: &Vector3<f64>, cov: &Matrix3<f64>) -> Vector3<f64> {
+fn sample_pose_with_rng<R: Rng + ?Sized>(
+    mean: &Vector3<f64>,
+    cov: &Matrix3<f64>,
+    rng: &mut R,
+) -> Vector3<f64> {
     let normal = Normal::new(0.0, 1.0).unwrap();
-    let mut rng = rand::thread_rng();
 
     // Cholesky decomposition for sampling
     let l = cov.cholesky().map(|c| c.l()).unwrap_or_else(|| {
@@ -229,11 +233,7 @@ fn sample_pose(mean: &Vector3<f64>, cov: &Matrix3<f64>) -> Vector3<f64> {
         ))
     });
 
-    let noise = Vector3::new(
-        normal.sample(&mut rng),
-        normal.sample(&mut rng),
-        normal.sample(&mut rng),
-    );
+    let noise = Vector3::new(normal.sample(rng), normal.sample(rng), normal.sample(rng));
 
     mean + l * noise
 }
@@ -297,7 +297,7 @@ fn normalize_weights(particles: &mut [Particle]) {
     }
 }
 
-fn resample(particles: &mut Vec<Particle>) {
+fn resample_with_rng<R: Rng + ?Sized>(particles: &mut Vec<Particle>, rng: &mut R) {
     normalize_weights(particles);
     let n = particles.len();
     let mut new_particles = Vec::with_capacity(n);
@@ -308,7 +308,7 @@ fn resample(particles: &mut Vec<Particle>) {
     }
 
     let uniform = Uniform::new(0.0, 1.0 / n as f64);
-    let mut r = uniform.sample(&mut rand::thread_rng());
+    let mut r = uniform.sample(rng);
     let mut j = 0;
     for _ in 0..n {
         while r > cum_sum[j + 1] && j < n - 1 {
@@ -328,10 +328,11 @@ fn resample(particles: &mut Vec<Particle>) {
 /// Key difference from FastSLAM 1.0: the particle pose is sampled from a
 /// proposal distribution that incorporates the observation, not just the
 /// motion model.
-pub fn fastslam2_update(
+fn fastslam2_update_with_rng<R: Rng + ?Sized>(
     particles: &mut Vec<Particle>,
     u: Vector2<f64>,
     z: &[(f64, f64, usize)], // (distance, angle, landmark_id)
+    rng: &mut R,
 ) {
     let r = get_r();
 
@@ -342,15 +343,15 @@ pub fn fastslam2_update(
             let (proposal_mean, proposal_cov) = compute_proposal(particle, &u, &z_vec, lm_id, &r);
 
             // Sample pose from improved proposal
-            let sampled_pose = sample_pose(&proposal_mean, &proposal_cov);
+            let sampled_pose = sample_pose_with_rng(&proposal_mean, &proposal_cov, rng);
             particle.set_pose(&sampled_pose);
         } else {
             // No observations: fall back to motion model sampling
             let normal = Normal::new(0.0, 1.0).unwrap();
             let q = get_q();
             let u_noisy = Vector2::new(
-                u[0] + normal.sample(&mut rand::thread_rng()) * q[(0, 0)].sqrt(),
-                u[1] + normal.sample(&mut rand::thread_rng()) * q[(1, 1)].sqrt(),
+                u[0] + normal.sample(rng) * q[(0, 0)].sqrt(),
+                u[1] + normal.sample(rng) * q[(1, 1)].sqrt(),
             );
             let pose = motion_model(particle.pose(), u_noisy);
             particle.set_pose(&pose);
@@ -368,8 +369,17 @@ pub fn fastslam2_update(
 
     let neff = compute_neff(particles);
     if neff < NTH {
-        resample(particles);
+        resample_with_rng(particles, rng);
     }
+}
+
+pub fn fastslam2_update(
+    particles: &mut Vec<Particle>,
+    u: Vector2<f64>,
+    z: &[(f64, f64, usize)], // (distance, angle, landmark_id)
+) {
+    let mut rng = rand::thread_rng();
+    fastslam2_update_with_rng(particles, u, z, &mut rng);
 }
 
 pub fn get_best_particle(particles: &[Particle]) -> &Particle {
@@ -379,7 +389,11 @@ pub fn get_best_particle(particles: &[Particle]) -> &Particle {
         .unwrap()
 }
 
-pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
+fn get_observations_with_rng<R: Rng + ?Sized>(
+    x_true: &Vector3<f64>,
+    landmarks: &[(f64, f64)],
+    rng: &mut R,
+) -> Vec<(f64, f64, usize)> {
     let normal = Normal::new(0.0, 1.0).unwrap();
     let r = get_r();
     let mut z = Vec::new();
@@ -391,13 +405,18 @@ pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<
 
         if d <= MAX_RANGE {
             let angle = normalize_angle(dy.atan2(dx) - x_true[2]);
-            let d_noisy = d + normal.sample(&mut rand::thread_rng()) * r[(0, 0)].sqrt();
-            let angle_noisy = angle + normal.sample(&mut rand::thread_rng()) * r[(1, 1)].sqrt();
+            let d_noisy = d + normal.sample(rng) * r[(0, 0)].sqrt();
+            let angle_noisy = angle + normal.sample(rng) * r[(1, 1)].sqrt();
             z.push((d_noisy, angle_noisy, lm_id));
         }
     }
 
     z
+}
+
+pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
+    let mut rng = rand::thread_rng();
+    get_observations_with_rng(x_true, landmarks, &mut rng)
 }
 
 pub fn create_particles(n_particles: usize, n_landmarks: usize) -> Vec<Particle> {
@@ -409,6 +428,7 @@ pub fn create_particles(n_particles: usize, n_landmarks: usize) -> Vec<Particle>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_create_particles() {
@@ -425,10 +445,11 @@ mod tests {
         let u = Vector2::new(1.0, 0.1);
         let landmarks = vec![(10.0, 0.0), (0.0, 10.0), (10.0, 10.0)];
         let x_true = Vector3::new(0.0, 0.0, 0.0);
+        let mut rng = StdRng::seed_from_u64(7);
 
         for _ in 0..5 {
-            let z = get_observations(&x_true, &landmarks);
-            fastslam2_update(&mut particles, u, &z);
+            let z = get_observations_with_rng(&x_true, &landmarks, &mut rng);
+            fastslam2_update_with_rng(&mut particles, u, &z, &mut rng);
         }
 
         assert_eq!(particles.len(), 20);
@@ -468,25 +489,58 @@ mod tests {
 
     #[test]
     fn test_landmark_convergence() {
-        let mut particles = create_particles(100, 1);
+        let mut particles = create_particles(120, 1);
         let landmarks = vec![(5.0, 5.0)];
         let mut x_true = Vector3::new(0.0, 0.0, PI / 4.0);
         let u = Vector2::new(0.5, 0.0);
+        let mut rng = StdRng::seed_from_u64(17);
 
-        for _ in 0..50 {
+        for _ in 0..60 {
             x_true = motion_model(x_true, u);
-            let z = get_observations(&x_true, &landmarks);
-            fastslam2_update(&mut particles, u, &z);
+            let z = get_observations_with_rng(&x_true, &landmarks, &mut rng);
+            fastslam2_update_with_rng(&mut particles, u, &z, &mut rng);
         }
 
-        let best = get_best_particle(&particles);
-        if best.landmarks[0].is_initialized() {
-            let lm_err =
-                ((best.landmarks[0].x - 5.0).powi(2) + (best.landmarks[0].y - 5.0).powi(2)).sqrt();
-            assert!(
-                lm_err < 8.0,
-                "landmark estimate should converge: err={lm_err}"
-            );
-        }
+        let initialized: Vec<&Particle> = particles
+            .iter()
+            .filter(|particle| particle.landmarks[0].is_initialized())
+            .collect();
+        assert!(
+            !initialized.is_empty(),
+            "at least one particle should initialize the landmark"
+        );
+
+        let total_weight: f64 = initialized.iter().map(|particle| particle.weight).sum();
+        let (mean_x, mean_y) = if total_weight > 0.0 {
+            let weighted_x = initialized
+                .iter()
+                .map(|particle| particle.weight * particle.landmarks[0].x)
+                .sum::<f64>()
+                / total_weight;
+            let weighted_y = initialized
+                .iter()
+                .map(|particle| particle.weight * particle.landmarks[0].y)
+                .sum::<f64>()
+                / total_weight;
+            (weighted_x, weighted_y)
+        } else {
+            let avg_x = initialized
+                .iter()
+                .map(|particle| particle.landmarks[0].x)
+                .sum::<f64>()
+                / initialized.len() as f64;
+            let avg_y = initialized
+                .iter()
+                .map(|particle| particle.landmarks[0].y)
+                .sum::<f64>()
+                / initialized.len() as f64;
+            (avg_x, avg_y)
+        };
+
+        let lm_err = ((mean_x - 5.0).powi(2) + (mean_y - 5.0).powi(2)).sqrt();
+        assert!(
+            lm_err < 6.0,
+            "landmark estimate should converge: err={lm_err}"
+        );
     }
 }
