@@ -374,6 +374,7 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `SLAM_OUTPUT_ODOM_TOPIC` (default `"/slam_odom"`): corrected odom output topic
 - `SLAM_USE_CORRECTED_FRAME` (default `false`): whether to integrate `/map` and outputs in `SLAM_CORRECTED_FRAME_ID`
 - `SLAM_CORRECTED_FRAME_ID` (default `"map"`): corrected global frame name used by `/map`, `/slam_pose`, and `/slam_odom`
+- **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. On startup with corrected mode, `slam_node` logs the resolved numeric values.
 
 ### `ekf_localizer_node`
 
