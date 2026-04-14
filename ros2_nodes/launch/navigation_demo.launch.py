@@ -36,9 +36,28 @@ def rust_node_process(
     )
 
 
+def python_script_process(
+    script_path: str,
+    name: str,
+    *,
+    args=None,
+    condition=None,
+) -> ExecuteProcess:
+    cmd = ["python3", script_path]
+    if args:
+        cmd.extend(args)
+    return ExecuteProcess(
+        cmd=cmd,
+        name=name,
+        output="screen",
+        condition=condition,
+    )
+
+
 def generate_launch_description() -> LaunchDescription:
     ros2_nodes_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     default_rviz_config = os.path.join(ros2_nodes_dir, "launch", "navigation_demo.rviz")
+    odom_tf_broadcaster = os.path.join(ros2_nodes_dir, "launch", "odom_tf_broadcaster.py")
     turtlebot3_launch_dir = os.path.join(
         get_package_share_directory("turtlebot3_gazebo"),
         "launch",
@@ -66,6 +85,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("enable_rviz", default_value="false"),
             DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
+            DeclareLaunchArgument("enable_nav_tf_broadcaster", default_value="true"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
@@ -170,6 +190,14 @@ def generate_launch_description() -> LaunchDescription:
                             "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
                             "DWA_GOAL_THRESHOLD": LaunchConfiguration("dwa_goal_threshold"),
                         },
+                    ),
+                    python_script_process(
+                        odom_tf_broadcaster,
+                        "odom_tf_broadcaster",
+                        args=["--odom-topic", LaunchConfiguration("nav_odom_topic")],
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_nav_tf_broadcaster")
+                        ),
                     ),
                     rust_node_process(
                         ros2_nodes_dir,

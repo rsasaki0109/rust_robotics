@@ -217,7 +217,8 @@ For observability during the mission demo:
 
 - `/mission_status` reports the current mission state, active waypoint, and recovery phase
 - `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
-- the launch-time `map -> odom` static transform lets RViz show `/map`, `/planned_path`, `/ekf_odom`, and `/mission_markers` in a single `map` fixed frame
+- `odom_tf_broadcaster.py` republishes the selected nav odom topic as dynamic TF from `odom` to the robot base frame
+- the launch-time `map -> odom` static transform lets RViz show `/map`, `/planned_path`, `/ekf_odom`, `/mission_markers`, and the robot model in a single `map` fixed frame
 
 Example looping square:
 
@@ -245,6 +246,7 @@ The smoke script wraps [run_gazebo_mission_demo.sh](../ros2_nodes/launch/run_gaz
 - `waypoint_navigator_node` exposes `/mission_status`
 - typed `ros2 topic echo /mission_markers visualization_msgs/msg/MarkerArray --once` succeeds
 - `tf2_echo map odom` resolves the identity static transform published by `navigation_demo.launch.py`
+- `tf2_echo odom base_footprint` resolves the dynamic TF mirrored from the selected nav odom topic
 - the mission finishes with `mission complete`, `cleared active navigation goal`, `planned path cleared`, and `published stop command after path clear`
 
 The script defaults to `WAYPOINT_NAV_FRAME=relative_start` and the verified two-waypoint route `(0.4, 0.0) -> (0.1, 0.4)`, but it respects the same mission tuning environment variables as `run_gazebo_mission_demo.sh`.
