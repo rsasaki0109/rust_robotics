@@ -15,14 +15,31 @@ use std::{
 const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const DEFAULT_WAYPOINTS: &str = "0.5,0.0;0.5,0.5;0.0,0.5";
 const DEFAULT_GOAL_TOLERANCE: f64 = 0.35;
+const DEFAULT_WAYPOINT_FRAME: &str = "map";
 const GOAL_FRAME_ID: &str = "map";
 const GOAL_REPUBLISH_INTERVAL: Duration = Duration::from_secs(2);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MissionFrame {
+    Map,
+    RelativeStart,
+}
+
+impl MissionFrame {
+    fn as_str(self) -> &'static str {
+        match self {
+            MissionFrame::Map => "map",
+            MissionFrame::RelativeStart => "relative_start",
+        }
+    }
+}
 
 #[derive(Clone)]
 struct MissionConfig {
     waypoints: Vec<Point2D>,
     goal_tolerance: f64,
     loop_mission: bool,
+    frame: MissionFrame,
 }
 
 #[derive(Default)]
@@ -30,14 +47,25 @@ struct NavigatorState {
     current_waypoint_idx: Option<usize>,
     mission_completed: bool,
     last_goal_publish_at: Option<Instant>,
+    anchor_pose: Option<Point2D>,
 }
 
 enum MissionEvent {
-    Start { next_idx: usize },
-    Advance { reached_idx: usize, next_idx: usize },
-    Loop { reached_idx: usize, next_idx: usize },
-    Complete { reached_idx: usize },
-    Republish { current_idx: usize },
+    Start { next_idx: usize, goal: Point2D },
+    Advance {
+        reached_idx: usize,
+        reached_goal: Point2D,
+        next_idx: usize,
+        next_goal: Point2D,
+    },
+    Loop {
+        reached_idx: usize,
+        reached_goal: Point2D,
+        next_idx: usize,
+        next_goal: Point2D,
+    },
+    Complete { reached_idx: usize, reached_goal: Point2D },
+    Republish { current_idx: usize, goal: Point2D },
 }
 
 fn parse_waypoints(raw: &str) -> Result<Vec<Point2D>, String> {
@@ -93,6 +121,15 @@ fn parse_bool(raw: &str) -> Option<bool> {
     }
 }
 
+fn parse_mission_frame(raw: &str) -> Option<MissionFrame> {
+    let normalized = raw.trim().to_ascii_lowercase().replace(['-', ' '], "_");
+    match normalized.as_str() {
+        "map" | "absolute" => Some(MissionFrame::Map),
+        "relative" | "relative_start" | "start_relative" => Some(MissionFrame::RelativeStart),
+        _ => None,
+    }
+}
+
 fn load_mission_config() -> Result<MissionConfig, String> {
     let waypoint_spec = env::var("WAYPOINT_NAV_WAYPOINTS")
         .ok()
@@ -121,10 +158,19 @@ fn load_mission_config() -> Result<MissionConfig, String> {
         _ => false,
     };
 
+    let frame = match env::var("WAYPOINT_NAV_FRAME") {
+        Ok(raw) if !raw.trim().is_empty() => {
+            parse_mission_frame(&raw).ok_or_else(|| format!("invalid WAYPOINT_NAV_FRAME '{}'", raw))?
+        }
+        _ => parse_mission_frame(DEFAULT_WAYPOINT_FRAME)
+            .expect("DEFAULT_WAYPOINT_FRAME must be valid"),
+    };
+
     Ok(MissionConfig {
         waypoints,
         goal_tolerance,
         loop_mission,
+        frame,
     })
 }
 
@@ -145,6 +191,20 @@ fn should_republish_goal(last_goal_publish_at: Option<Instant>, now: Instant) ->
     match last_goal_publish_at {
         Some(last_sent_at) => now.duration_since(last_sent_at) >= GOAL_REPUBLISH_INTERVAL,
         None => true,
+    }
+}
+
+fn resolve_waypoint(
+    waypoint: Point2D,
+    frame: MissionFrame,
+    anchor_pose: Option<Point2D>,
+) -> Point2D {
+    match frame {
+        MissionFrame::Map => waypoint,
+        MissionFrame::RelativeStart => {
+            let anchor = anchor_pose.unwrap_or(Point2D::origin());
+            Point2D::new(anchor.x + waypoint.x, anchor.y + waypoint.y)
+        }
     }
 }
 
@@ -183,10 +243,11 @@ fn main() -> Result<(), DynError> {
     let logger = Logger::new("waypoint_navigator_node");
     pr_info!(
         logger,
-        "waypoint navigator started: {} waypoint(s), tolerance={:.2} m, loop={}",
+        "waypoint navigator started: {} waypoint(s), tolerance={:.2} m, loop={}, frame={}",
         mission.waypoints.len(),
         mission.goal_tolerance,
-        mission.loop_mission
+        mission.loop_mission,
+        mission.frame.as_str()
     );
     pr_info!(logger, "waypoint odom topic: {}", odom_topic);
     pr_info!(logger, "mission: {}", format_waypoints(&mission.waypoints));
@@ -213,35 +274,65 @@ fn main() -> Result<(), DynError> {
                 if st.mission_completed {
                     None
                 } else {
+                    if mission_cb.frame == MissionFrame::RelativeStart && st.anchor_pose.is_none() {
+                        st.anchor_pose = Some(robot_pose);
+                    }
+
                     match st.current_waypoint_idx {
                         None => {
+                            let goal = resolve_waypoint(
+                                mission_cb.waypoints[0],
+                                mission_cb.frame,
+                                st.anchor_pose,
+                            );
                             st.current_waypoint_idx = Some(0);
                             st.last_goal_publish_at = Some(now);
-                            Some(MissionEvent::Start { next_idx: 0 })
+                            Some(MissionEvent::Start { next_idx: 0, goal })
                         }
                         Some(current_idx) => {
-                            let current_goal = mission_cb.waypoints[current_idx];
+                            let current_goal = resolve_waypoint(
+                                mission_cb.waypoints[current_idx],
+                                mission_cb.frame,
+                                st.anchor_pose,
+                            );
                             if distance(robot_pose, current_goal) > mission_cb.goal_tolerance {
                                 if should_republish_goal(st.last_goal_publish_at, now) {
                                     st.last_goal_publish_at = Some(now);
-                                    Some(MissionEvent::Republish { current_idx })
+                                    Some(MissionEvent::Republish {
+                                        current_idx,
+                                        goal: current_goal,
+                                    })
                                 } else {
                                     None
                                 }
                             } else if current_idx + 1 < mission_cb.waypoints.len() {
                                 let next_idx = current_idx + 1;
+                                let next_goal = resolve_waypoint(
+                                    mission_cb.waypoints[next_idx],
+                                    mission_cb.frame,
+                                    st.anchor_pose,
+                                );
                                 st.current_waypoint_idx = Some(next_idx);
                                 st.last_goal_publish_at = Some(now);
                                 Some(MissionEvent::Advance {
                                     reached_idx: current_idx,
+                                    reached_goal: current_goal,
                                     next_idx,
+                                    next_goal,
                                 })
                             } else if mission_cb.loop_mission {
+                                let next_goal = resolve_waypoint(
+                                    mission_cb.waypoints[0],
+                                    mission_cb.frame,
+                                    st.anchor_pose,
+                                );
                                 st.current_waypoint_idx = Some(0);
                                 st.last_goal_publish_at = Some(now);
                                 Some(MissionEvent::Loop {
                                     reached_idx: current_idx,
+                                    reached_goal: current_goal,
                                     next_idx: 0,
+                                    next_goal,
                                 })
                             } else {
                                 st.current_waypoint_idx = None;
@@ -249,6 +340,7 @@ fn main() -> Result<(), DynError> {
                                 st.last_goal_publish_at = None;
                                 Some(MissionEvent::Complete {
                                     reached_idx: current_idx,
+                                    reached_goal: current_goal,
                                 })
                             }
                         }
@@ -257,8 +349,7 @@ fn main() -> Result<(), DynError> {
             };
 
             match event {
-                Some(MissionEvent::Start { next_idx }) => {
-                    let goal = mission_cb.waypoints[next_idx];
+                Some(MissionEvent::Start { next_idx, goal }) => {
                     if let Err(err) = publish_goal(&goal_pub, goal) {
                         pr_warn!(log_odom, "failed to publish first goal: {}", err);
                         return;
@@ -274,59 +365,64 @@ fn main() -> Result<(), DynError> {
                 }
                 Some(MissionEvent::Advance {
                     reached_idx,
+                    reached_goal,
                     next_idx,
+                    next_goal,
                 }) => {
-                    let reached = mission_cb.waypoints[reached_idx];
-                    let next = mission_cb.waypoints[next_idx];
-                    if let Err(err) = publish_goal(&goal_pub, next) {
+                    if let Err(err) = publish_goal(&goal_pub, next_goal) {
                         pr_warn!(log_odom, "failed to publish next goal: {}", err);
                         return;
                     }
                     pr_info!(
                         log_odom,
-                        "reached waypoint {}/{} at ({:.2}, {:.2}); next -> ({:.2}, {:.2})",
+                        "reached waypoint {}/{} at ({:.2}, {:.2}); next waypoint {}/{} -> ({:.2}, {:.2})",
                         reached_idx + 1,
                         mission_cb.waypoints.len(),
-                        reached.x,
-                        reached.y,
-                        next.x,
-                        next.y
+                        reached_goal.x,
+                        reached_goal.y,
+                        next_idx + 1,
+                        mission_cb.waypoints.len(),
+                        next_goal.x,
+                        next_goal.y
                     );
                 }
                 Some(MissionEvent::Loop {
                     reached_idx,
+                    reached_goal,
                     next_idx,
+                    next_goal,
                 }) => {
-                    let reached = mission_cb.waypoints[reached_idx];
-                    let next = mission_cb.waypoints[next_idx];
-                    if let Err(err) = publish_goal(&goal_pub, next) {
+                    if let Err(err) = publish_goal(&goal_pub, next_goal) {
                         pr_warn!(log_odom, "failed to publish looped goal: {}", err);
                         return;
                     }
                     pr_info!(
                         log_odom,
-                        "completed mission lap at waypoint {}/{} ({:.2}, {:.2}); restarting -> ({:.2}, {:.2})",
+                        "completed mission lap at waypoint {}/{} ({:.2}, {:.2}); restarting at waypoint {}/{} -> ({:.2}, {:.2})",
                         reached_idx + 1,
                         mission_cb.waypoints.len(),
-                        reached.x,
-                        reached.y,
-                        next.x,
-                        next.y
+                        reached_goal.x,
+                        reached_goal.y,
+                        next_idx + 1,
+                        mission_cb.waypoints.len(),
+                        next_goal.x,
+                        next_goal.y
                     );
                 }
-                Some(MissionEvent::Complete { reached_idx }) => {
-                    let reached = mission_cb.waypoints[reached_idx];
+                Some(MissionEvent::Complete {
+                    reached_idx,
+                    reached_goal,
+                }) => {
                     pr_info!(
                         log_odom,
                         "mission complete at waypoint {}/{} ({:.2}, {:.2})",
                         reached_idx + 1,
                         mission_cb.waypoints.len(),
-                        reached.x,
-                        reached.y
+                        reached_goal.x,
+                        reached_goal.y
                     );
                 }
-                Some(MissionEvent::Republish { current_idx }) => {
-                    let goal = mission_cb.waypoints[current_idx];
+                Some(MissionEvent::Republish { current_idx, goal }) => {
                     if let Err(err) = publish_goal(&goal_pub, goal) {
                         pr_warn!(log_odom, "failed to republish active goal: {}", err);
                         return;
@@ -352,7 +448,11 @@ fn main() -> Result<(), DynError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_bool, parse_waypoints, should_republish_goal, GOAL_REPUBLISH_INTERVAL};
+    use super::{
+        parse_bool, parse_mission_frame, parse_waypoints, resolve_waypoint,
+        should_republish_goal, MissionFrame, GOAL_REPUBLISH_INTERVAL,
+    };
+    use rust_robotics_core::Point2D;
     use std::time::{Duration, Instant};
 
     #[test]
@@ -377,6 +477,31 @@ mod tests {
         assert_eq!(parse_bool("0"), Some(false));
         assert_eq!(parse_bool("no"), Some(false));
         assert_eq!(parse_bool("maybe"), None);
+    }
+
+    #[test]
+    fn parse_mission_frame_accepts_relative_aliases() {
+        assert_eq!(parse_mission_frame("map"), Some(MissionFrame::Map));
+        assert_eq!(
+            parse_mission_frame("relative_start"),
+            Some(MissionFrame::RelativeStart)
+        );
+        assert_eq!(
+            parse_mission_frame("relative"),
+            Some(MissionFrame::RelativeStart)
+        );
+        assert_eq!(parse_mission_frame("bad"), None);
+    }
+
+    #[test]
+    fn resolve_waypoint_offsets_relative_start_frame() {
+        let resolved = resolve_waypoint(
+            Point2D::new(0.5, -0.2),
+            MissionFrame::RelativeStart,
+            Some(Point2D::new(-2.0, -0.5)),
+        );
+        assert!((resolved.x + 1.5).abs() < 1e-9);
+        assert!((resolved.y + 0.7).abs() < 1e-9);
     }
 
     #[test]

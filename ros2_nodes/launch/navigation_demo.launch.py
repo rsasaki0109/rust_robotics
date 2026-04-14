@@ -46,12 +46,15 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("turtlebot3_model", default_value="burger"),
+            DeclareLaunchArgument("spawn_x", default_value="-2.0"),
+            DeclareLaunchArgument("spawn_y", default_value="-0.5"),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
                 "waypoint_mission", default_value="0.5,0.0;0.5,0.5;0.0,0.5"
             ),
+            DeclareLaunchArgument("waypoint_frame", default_value="map"),
             DeclareLaunchArgument("waypoint_loop", default_value="false"),
             DeclareLaunchArgument("waypoint_goal_tolerance", default_value="0.35"),
             SetEnvironmentVariable(
@@ -59,6 +62,10 @@ def generate_launch_description() -> LaunchDescription:
             ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(turtlebot3_launch),
+                launch_arguments={
+                    "x_pose": LaunchConfiguration("spawn_x"),
+                    "y_pose": LaunchConfiguration("spawn_y"),
+                }.items(),
             ),
             Node(
                 package="ros_gz_bridge",
@@ -108,6 +115,7 @@ def generate_launch_description() -> LaunchDescription:
                             "WAYPOINT_NAV_WAYPOINTS": LaunchConfiguration(
                                 "waypoint_mission"
                             ),
+                            "WAYPOINT_NAV_FRAME": LaunchConfiguration("waypoint_frame"),
                             "WAYPOINT_NAV_LOOP": LaunchConfiguration("waypoint_loop"),
                             "WAYPOINT_NAV_GOAL_TOLERANCE": LaunchConfiguration(
                                 "waypoint_goal_tolerance"

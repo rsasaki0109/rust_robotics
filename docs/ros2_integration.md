@@ -103,11 +103,13 @@ cargo test --workspace --lib --tests
 - **Configuration**:
   - `RUST_NAV_ODOM_TOPIC`
   - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited `x,y` mission string
+  - `WAYPOINT_NAV_FRAME`: `map` or `relative_start`
   - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint reach tolerance \[m\]
   - `WAYPOINT_NAV_LOOP`: whether to restart after the last waypoint
 - **Notes**:
   - Waits for the selected odometry topic before sending the first goal
-  - Publishes the next `/goal_pose` only when the current waypoint is reached
+  - Republishes the active `/goal_pose` every 2 seconds until the planner reacts
+  - `relative_start` resolves waypoints as offsets from the robot pose seen on the first odom sample
 
 ## Navigation Stack Architecture
 
@@ -154,6 +156,7 @@ export TURTLEBOT3_MODEL=burger
 The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py), which:
 
 - launches `turtlebot3_gazebo/turtlebot3_world.launch.py`
+- forwards the upstream TurtleBot3 world spawn defaults (`x=-2.0`, `y=-0.5`) as launch arguments
 - adds an extra `ros_gz_bridge` subscription so `/cmd_vel` accepts `geometry_msgs/Twist`
 - waits 5 seconds for Gazebo topics to appear
 - starts `slam_node`, `path_planner_node`, and `dwa_planner_node` from `target/release`
@@ -167,15 +170,19 @@ source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=42
 export TURTLEBOT3_MODEL=burger
 export NAV_ODOM_TOPIC=/ekf_odom
+export WAYPOINT_NAV_FRAME=relative_start
 export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5"
 
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
+The mission wrapper uses `WAYPOINT_NAV_FRAME=relative_start` by default, so the demo waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. `navigation_demo.launch.py` still exposes `spawn_x` / `spawn_y` and forwards the upstream TurtleBot3 world defaults (`x=-2.0`, `y=-0.5`) for reproducibility.
+
 The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
 
 - `enable_ekf_localizer:=true`
 - `nav_odom_topic:=/ekf_odom`
+- `waypoint_frame:=relative_start`
 - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited 2D mission
 - `WAYPOINT_NAV_LOOP`: `true` or `false`
 - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
@@ -183,6 +190,7 @@ The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navi
 Example looping square:
 
 ```bash
+export WAYPOINT_NAV_FRAME=relative_start
 export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5;0.0,0.0"
 export WAYPOINT_NAV_LOOP=true
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
@@ -248,7 +256,8 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 ### `waypoint_navigator_node`
 
 - `RUST_NAV_ODOM_TOPIC` (default `"/odom"` unless launch overrides it): mission odom input topic
-- `WAYPOINT_NAV_WAYPOINTS` (default `"0.5,0.0;0.5,0.5;0.0,0.5"`): mission waypoints in the `map` frame
+- `WAYPOINT_NAV_WAYPOINTS` (default `"0.5,0.0;0.5,0.5;0.0,0.5"`): mission waypoints interpreted in the frame selected by `WAYPOINT_NAV_FRAME`
+- `WAYPOINT_NAV_FRAME` (default `"map"`): `map` for absolute goals, `relative_start` for offsets from the initial odom pose
 - `WAYPOINT_NAV_GOAL_TOLERANCE` (default `0.35`): distance threshold for waypoint completion \[m\]
 - `WAYPOINT_NAV_LOOP` (default `false`): restart the mission after the last waypoint
 

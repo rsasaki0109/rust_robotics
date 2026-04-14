@@ -2,6 +2,7 @@
 # Launch TurtleBot3 Gazebo, the Rust navigation stack, and the waypoint mission node.
 # Usage:
 #   WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5" ./ros2_nodes/launch/run_gazebo_mission_demo.sh
+# Waypoints default to offsets from the first odom pose seen by waypoint_navigator_node.
 
 set -eo pipefail
 
@@ -14,6 +15,7 @@ set -u
 export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export NAV_ODOM_TOPIC="${NAV_ODOM_TOPIC:-/ekf_odom}"
 export WAYPOINT_NAV_WAYPOINTS="${WAYPOINT_NAV_WAYPOINTS:-0.5,0.0;0.5,0.5;0.0,0.5}"
+export WAYPOINT_NAV_FRAME="${WAYPOINT_NAV_FRAME:-relative_start}"
 export WAYPOINT_NAV_LOOP="${WAYPOINT_NAV_LOOP:-false}"
 export WAYPOINT_NAV_GOAL_TOLERANCE="${WAYPOINT_NAV_GOAL_TOLERANCE:-0.35}"
 
@@ -51,5 +53,6 @@ exec ros2 launch "$LAUNCH_FILE" \
   "nav_odom_topic:=${NAV_ODOM_TOPIC}" \
   "enable_waypoint_navigator:=true" \
   "waypoint_mission:=${WAYPOINT_NAV_WAYPOINTS}" \
+  "waypoint_frame:=${WAYPOINT_NAV_FRAME}" \
   "waypoint_loop:=${WAYPOINT_NAV_LOOP}" \
   "waypoint_goal_tolerance:=${WAYPOINT_NAV_GOAL_TOLERANCE}"

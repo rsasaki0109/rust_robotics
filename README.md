@@ -132,9 +132,12 @@ export TURTLEBOT3_MODEL=burger
 ./ros2_nodes/launch/run_gazebo_demo.sh
 
 # Multi-goal mission demo
+WAYPOINT_NAV_FRAME=relative_start \
 WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5" \
   ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
+
+`run_gazebo_mission_demo.sh` defaults to `WAYPOINT_NAV_FRAME=relative_start`, so the mission waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`.
 
 ## Benchmarks
 
