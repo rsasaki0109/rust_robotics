@@ -11,6 +11,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const DEFAULT_WAYPOINTS: &str = "0.5,0.0;0.5,0.5;0.0,0.5";
 const DEFAULT_GOAL_TOLERANCE: f64 = 0.35;
 const GOAL_FRAME_ID: &str = "map";
@@ -156,11 +157,15 @@ fn publish_goal(
 fn main() -> Result<(), DynError> {
     let mission =
         load_mission_config().map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
+    let odom_topic = env::var("RUST_NAV_ODOM_TOPIC")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_ODOM_TOPIC.to_string());
 
     let ctx = Context::new()?;
     let node = ctx.create_node("waypoint_navigator_node", None, Default::default())?;
 
-    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>("/odom", None)?;
+    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>(&odom_topic, None)?;
     let goal_pub = node.create_publisher::<geometry_msgs::msg::PoseStamped>("/goal_pose", None)?;
 
     let state = Arc::new(Mutex::new(NavigatorState::default()));
@@ -172,6 +177,7 @@ fn main() -> Result<(), DynError> {
         mission.goal_tolerance,
         mission.loop_mission
     );
+    pr_info!(logger, "waypoint odom topic: {}", odom_topic);
     pr_info!(logger, "mission: {}", format_waypoints(&mission.waypoints));
 
     let mut selector = ctx.create_selector()?;

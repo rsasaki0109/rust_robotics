@@ -8,9 +8,11 @@ use safe_drive::{
     qos::{policy::DurabilityPolicy, Profile},
     pr_info, pr_warn,
 };
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const ROBOT_RADIUS: f64 = 0.4;
 const MAP_OCCUPANCY_THRESHOLD: i8 = 60;
 const MAP_REBUILD_LOG_INTERVAL: Duration = Duration::from_secs(5);
@@ -189,9 +191,13 @@ fn attempt_plan(
 fn main() -> Result<(), DynError> {
     let ctx = Context::new()?;
     let node = ctx.create_node("path_planner_node", None, Default::default())?;
+    let odom_topic = env::var("RUST_NAV_ODOM_TOPIC")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_ODOM_TOPIC.to_string());
 
     let goal_sub = node.create_subscriber::<geometry_msgs::msg::PoseStamped>("/goal_pose", None)?;
-    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>("/odom", None)?;
+    let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>(&odom_topic, None)?;
     let map_sub = node.create_subscriber::<nav_msgs::msg::OccupancyGrid>("/map", None)?;
     let mut path_qos = Profile::default();
     path_qos.durability = DurabilityPolicy::TransientLocal;
@@ -203,7 +209,7 @@ fn main() -> Result<(), DynError> {
     let state = Arc::new(Mutex::new(PlannerState::default()));
     let logger = Logger::new("path_planner_node");
 
-    pr_info!(logger, "path planner started");
+    pr_info!(logger, "path planner started (odom topic: {})", odom_topic);
 
     let mut selector = ctx.create_selector()?;
 
@@ -281,6 +287,7 @@ fn main() -> Result<(), DynError> {
     let state_goal = state.clone();
     let pub_goal = path_pub;
     let log_goal = Logger::new("path_planner_node");
+    let odom_topic_goal = odom_topic.clone();
     selector.add_subscriber(
         goal_sub,
         Box::new(move |msg| {
@@ -298,7 +305,11 @@ fn main() -> Result<(), DynError> {
                 let start = match st.robot_pose {
                     Some(pose) => pose,
                     None => {
-                        pr_warn!(log_goal, "robot pose from /odom is not available yet");
+                        pr_warn!(
+                            log_goal,
+                            "robot pose from {} is not available yet",
+                            odom_topic_goal
+                        );
                         return;
                     }
                 };

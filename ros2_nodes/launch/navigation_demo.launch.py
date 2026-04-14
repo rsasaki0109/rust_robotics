@@ -46,6 +46,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("turtlebot3_model", default_value="burger"),
+            DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
+            DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
                 "waypoint_mission", default_value="0.5,0.0;0.5,0.5;0.0,0.5"
@@ -69,8 +71,32 @@ def generate_launch_description() -> LaunchDescription:
                 period=5.0,
                 actions=[
                     rust_node_process(ros2_nodes_dir, "slam_node"),
-                    rust_node_process(ros2_nodes_dir, "path_planner_node"),
-                    rust_node_process(ros2_nodes_dir, "dwa_planner_node"),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "ekf_localizer_node",
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_ekf_localizer")
+                        ),
+                        additional_env={
+                            "EKF_INPUT_ODOM_TOPIC": "/odom",
+                            "EKF_OUTPUT_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "EKF_OUTPUT_POSE_TOPIC": "/ekf_pose",
+                        },
+                    ),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "path_planner_node",
+                        additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic")
+                        },
+                    ),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "dwa_planner_node",
+                        additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic")
+                        },
+                    ),
                     rust_node_process(
                         ros2_nodes_dir,
                         "waypoint_navigator_node",
@@ -78,6 +104,7 @@ def generate_launch_description() -> LaunchDescription:
                             LaunchConfiguration("enable_waypoint_navigator")
                         ),
                         additional_env={
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
                             "WAYPOINT_NAV_WAYPOINTS": LaunchConfiguration(
                                 "waypoint_mission"
                             ),

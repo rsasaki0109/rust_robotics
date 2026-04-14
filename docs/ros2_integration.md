@@ -26,6 +26,7 @@ source /opt/ros/jazzy/setup.bash
 cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/ekf_localizer_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
 ```
 
@@ -43,24 +44,28 @@ cargo test --workspace --lib --tests
 - **Role**: Global path planning with A*
 - **Subscriptions**:
   - `/goal_pose` (`geometry_msgs/PoseStamped`)
-  - `/odom` (`nav_msgs/Odometry`)
+  - `RUST_NAV_ODOM_TOPIC` (`nav_msgs/Odometry`, default `/odom`)
   - `/map` (`nav_msgs/OccupancyGrid`)
 - **Publications**:
   - `/planned_path` (`nav_msgs/Path`)
+- **Configuration**:
+  - `RUST_NAV_ODOM_TOPIC`
 - **Notes**:
   - Rebuilds its A* planner whenever `/map` updates
   - Converts occupied grid cells into A* obstacles
-  - Uses `/odom.pose.pose.position` as the robot start pose
+  - Uses the selected odometry topic pose as the robot start pose
 
 ### `dwa_planner_node`
 
 - **Role**: Local trajectory planning and velocity command generation
 - **Subscriptions**:
   - `/scan` (`sensor_msgs/LaserScan`)
-  - `/odom` (`nav_msgs/Odometry`)
+  - `RUST_NAV_ODOM_TOPIC` (`nav_msgs/Odometry`, default `/odom`)
   - `/planned_path` (`nav_msgs/Path`)
 - **Publications**:
   - `/cmd_vel` (`geometry_msgs/Twist`)
+- **Configuration**:
+  - `RUST_NAV_ODOM_TOPIC`
 
 ### `slam_node`
 
@@ -71,44 +76,67 @@ cargo test --workspace --lib --tests
 - **Publications**:
   - `/map` (`nav_msgs/OccupancyGrid`)
 
+### `ekf_localizer_node`
+
+- **Role**: Filter wheel odometry into a smoother navigation odom stream
+- **Subscriptions**:
+  - `/odom` (`nav_msgs/Odometry`) by default
+- **Publications**:
+  - `/ekf_pose` (`geometry_msgs/PoseStamped`)
+  - `/ekf_odom` (`nav_msgs/Odometry`)
+- **Configuration**:
+  - `EKF_INPUT_ODOM_TOPIC`
+  - `EKF_OUTPUT_ODOM_TOPIC`
+  - `EKF_OUTPUT_POSE_TOPIC`
+- **Notes**:
+  - Wraps `rust_robotics_localization::EKFLocalizer`
+  - Uses raw odometry pose as measurement and raw twist as control input
+  - Provides a filtered odom source for the planner / mission nodes
+
 ### `waypoint_navigator_node`
 
 - **Role**: Mission-level sequencing of multiple 2D goals
 - **Subscriptions**:
-  - `/odom` (`nav_msgs/Odometry`)
+  - `RUST_NAV_ODOM_TOPIC` (`nav_msgs/Odometry`, default `/odom`)
 - **Publications**:
   - `/goal_pose` (`geometry_msgs/PoseStamped`)
 - **Configuration**:
+  - `RUST_NAV_ODOM_TOPIC`
   - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited `x,y` mission string
   - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint reach tolerance \[m\]
   - `WAYPOINT_NAV_LOOP`: whether to restart after the last waypoint
 - **Notes**:
-  - Waits for `/odom` before sending the first goal
+  - Waits for the selected odometry topic before sending the first goal
   - Publishes the next `/goal_pose` only when the current waypoint is reached
 
 ## Navigation Stack Architecture
 
 ```text
-                 TurtleBot3 Gazebo
-              /scan  /odom  /cmd_vel
-                 |      |       ^
-                 v      |       |
-            +-----------+       |
-            | slam_node | ----- +
-            +-----------+    /map
-                   |
-                   v
-          +-------------------+
-          | path_planner_node | ---> /planned_path
-          +-------------------+             |
-             ^           ^                  v
-             |           |           +--------------+
-           /odom     /goal_pose ---> | dwa_planner |
-             ^                       +--------------+
-             |                              |
-   +-------------------------+              v
-   | waypoint_navigator_node |           /cmd_vel
-   +-------------------------+
+                    TurtleBot3 Gazebo
+                 /scan  /odom  /cmd_vel
+                    |      |       ^
+                    v      |       |
+               +-----------+       |
+               | slam_node | ----- +
+               +-----------+    /map
+                      |
+                      v
+             +-------------------+
+             | path_planner_node | ---> /planned_path
+             +-------------------+             |
+                ^           ^                  v
+                |           |           +--------------+
+         /ekf_odom     /goal_pose ---> | dwa_planner |
+                ^                      +--------------+
+                |                             |
+      +----------------------+                v
+      | ekf_localizer_node   |             /cmd_vel
+      +----------------------+
+                ^
+                |
+      +-------------------------+
+      | waypoint_navigator_node |
+      +-------------------------+
 ```
 
 ## Gazebo Demo
@@ -138,6 +166,7 @@ Demo video: [gazebo_demo.mp4](./gazebo_demo.mp4)
 source /opt/ros/jazzy/setup.bash
 export ROS_DOMAIN_ID=42
 export TURTLEBOT3_MODEL=burger
+export NAV_ODOM_TOPIC=/ekf_odom
 export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5"
 
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
@@ -145,6 +174,8 @@ export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5"
 
 The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
 
+- `enable_ekf_localizer:=true`
+- `nav_odom_topic:=/ekf_odom`
 - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited 2D mission
 - `WAYPOINT_NAV_LOOP`: `true` or `false`
 - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
@@ -167,10 +198,11 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
 ### Expected data flow
 
 1. `slam_node` receives `/scan` and `/odom`, then publishes `/map`.
-2. `waypoint_navigator_node` publishes the current mission waypoint on `/goal_pose`.
-3. `path_planner_node` rebuilds A* from `/map` and publishes `/planned_path`.
-4. `dwa_planner_node` follows `/planned_path` while avoiding live laser obstacles and publishes `/cmd_vel`.
-5. TurtleBot3 moves toward the requested goal in Gazebo.
+2. `ekf_localizer_node` converts `/odom` into `/ekf_odom` and `/ekf_pose`.
+3. `waypoint_navigator_node` publishes the current mission waypoint on `/goal_pose`.
+4. `path_planner_node` rebuilds A* from `/map` and publishes `/planned_path`.
+5. `dwa_planner_node` follows `/planned_path` while using `/ekf_odom` for state and publishes `/cmd_vel`.
+6. TurtleBot3 moves toward the requested goal in Gazebo.
 
 ### Verify topic wiring
 
@@ -178,6 +210,7 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
 ros2 topic list
 ros2 topic echo /scan --once
 ros2 topic echo /odom --once
+ros2 topic echo /ekf_odom --once
 ros2 topic echo /map --once
 ros2 topic echo /planned_path --qos-durability transient_local --once
 ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
@@ -206,8 +239,15 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `occupied_log_odds` / `free_log_odds`: Bayesian update weights
 - `icp_max_iterations` (from algorithm defaults): ICP optimization limit
 
+### `ekf_localizer_node`
+
+- `EKF_INPUT_ODOM_TOPIC` (default `"/odom"`): raw odom input topic
+- `EKF_OUTPUT_ODOM_TOPIC` (default `"/ekf_odom"`): filtered odom output topic
+- `EKF_OUTPUT_POSE_TOPIC` (default `"/ekf_pose"`): filtered pose output topic
+
 ### `waypoint_navigator_node`
 
+- `RUST_NAV_ODOM_TOPIC` (default `"/odom"` unless launch overrides it): mission odom input topic
 - `WAYPOINT_NAV_WAYPOINTS` (default `"0.5,0.0;0.5,0.5;0.0,0.5"`): mission waypoints in the `map` frame
 - `WAYPOINT_NAV_GOAL_TOLERANCE` (default `0.35`): distance threshold for waypoint completion \[m\]
 - `WAYPOINT_NAV_LOOP` (default `false`): restart the mission after the last waypoint
@@ -221,10 +261,12 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `path_planner_node` logs `planner is not ready yet; waiting for /map`:
   - Confirm `slam_node` is running and `/map` is being published.
 - `path_planner_node` logs `robot pose from /odom is not available yet`:
-  - Confirm TurtleBot3 Gazebo is publishing `/odom`.
+  - Confirm the selected odom topic is publishing (`/odom` or `/ekf_odom` depending on launch mode).
 - `A* failed for start=... goal=...`:
   - The goal may be outside the current map bounds or inside an occupied cell.
 - No robot motion despite `/planned_path`:
   - Check `/cmd_vel` output from `dwa_planner_node` and verify TurtleBot3 Gazebo is subscribed to `/cmd_vel`.
+- `ekf_localizer_node` is running but `/ekf_odom` stays silent:
+  - Confirm raw `/odom` exists and that `EKF_INPUT_ODOM_TOPIC` matches it.
 - Mission demo does not advance to the next waypoint:
-  - Check `/odom` and confirm the robot is entering `WAYPOINT_NAV_GOAL_TOLERANCE` around the active waypoint.
+  - Check the selected mission odom topic and confirm the robot is entering `WAYPOINT_NAV_GOAL_TOLERANCE` around the active waypoint.
