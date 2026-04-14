@@ -317,6 +317,15 @@ export ENABLE_SLAM_CORRECTED_FRAME=true
 In corrected mode, the script additionally verifies `tf2_echo map odom`.
 When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it also checks that `/slam_ground_truth_status` reaches `status=ok` and includes `slam_xy_error=`.
 
+To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions (sequential Gazebo runs, prints last `improvement_xy` lines per scenario):
+
+```bash
+source /opt/ros/jazzy/setup.bash
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation.
+
 ### Send a goal
 
 ```bash
