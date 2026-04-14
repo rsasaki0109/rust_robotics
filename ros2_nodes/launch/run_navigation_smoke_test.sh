@@ -16,11 +16,16 @@ export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-89}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-false}"
 export ENABLE_SLAM_CORRECTED_FRAME="${ENABLE_SLAM_CORRECTED_FRAME:-false}"
+export ENABLE_SLAM_GROUND_TRUTH_MONITOR="${ENABLE_SLAM_GROUND_TRUTH_MONITOR:-$ENABLE_SLAM_CORRECTED_FRAME}"
 export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
 export RAW_ODOM_TOPIC="${RAW_ODOM_TOPIC:-/ekf_odom}"
 export BASE_TF_ODOM_TOPIC="${BASE_TF_ODOM_TOPIC:-$RAW_ODOM_TOPIC}"
 export SLAM_POSE_TOPIC="${SLAM_POSE_TOPIC:-/slam_pose}"
 export SLAM_ODOM_TOPIC="${SLAM_ODOM_TOPIC:-/slam_odom}"
+export SLAM_DIAGNOSTICS_TOPIC="${SLAM_DIAGNOSTICS_TOPIC:-/slam_diagnostics}"
+export SLAM_GROUND_TRUTH_STATUS_TOPIC="${SLAM_GROUND_TRUTH_STATUS_TOPIC:-/slam_ground_truth_status}"
+export GROUND_TRUTH_GZ_POSE_TOPIC="${GROUND_TRUTH_GZ_POSE_TOPIC:-/world/default/dynamic_pose/info}"
+export GROUND_TRUTH_ENTITY_NAME="${GROUND_TRUTH_ENTITY_NAME:-${TURTLEBOT3_MODEL}}"
 export ENABLE_SLAM_MAP_ODOM_TF="${ENABLE_SLAM_MAP_ODOM_TF:-$ENABLE_SLAM_CORRECTED_FRAME}"
 if [[ -z "${NAV_ODOM_TOPIC:-}" ]]; then
   if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
@@ -49,6 +54,8 @@ SMOKE_TOPIC_CAPTURE_TIMEOUT="${SMOKE_TOPIC_CAPTURE_TIMEOUT:-20}"
 TMP_DIR="$(mktemp -d)"
 LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
 STATUS_OUT="$TMP_DIR/mission_status.txt"
+SLAM_DIAG_OUT="$TMP_DIR/slam_diagnostics.txt"
+SLAM_GT_STATUS_OUT="$TMP_DIR/slam_ground_truth_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
 ODOM_OUT="$TMP_DIR/nav_odom.txt"
 TF_NAV_OUT="$TMP_DIR/tf_nav.txt"
@@ -163,6 +170,7 @@ wait_for_log_pattern "observability topics: /mission_status and /mission_markers
 capture_topic_once "/map" "nav_msgs/msg/OccupancyGrid" "$MAP_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/planned_path" "nav_msgs/msg/Path" "$PATH_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
+capture_topic_once "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_nav_tf "$SMOKE_STARTUP_TIMEOUT"
 
@@ -173,6 +181,8 @@ if [[ -z "$parent_frame" ]]; then
 fi
 
 rg -q "data: status=" "$STATUS_OUT"
+rg -q "data: status=" "$SLAM_DIAG_OUT"
+rg -q "icp_" "$SLAM_DIAG_OUT"
 rg -q "frame_id: $parent_frame" "$MAP_OUT"
 rg -q "frame_id: $parent_frame" "$PATH_OUT"
 rg -q "ns: mission" "$MARKERS_OUT"
@@ -180,6 +190,11 @@ rg -q "frame_id: $parent_frame" "$MARKERS_OUT"
 
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   capture_tf_between_frames "map" "odom" "$TF_MAP_ODOM_OUT" "$SMOKE_STARTUP_TIMEOUT"
+  if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
+    capture_topic_once "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
+    rg -q "data: status=ok" "$SLAM_GT_STATUS_OUT"
+    rg -q "slam_xy_error=" "$SLAM_GT_STATUS_OUT"
+  fi
 fi
 
 wait_for_log_pattern "mission complete at waypoint" "$SMOKE_MISSION_TIMEOUT"
@@ -193,8 +208,16 @@ rg -q "data: status=completed" "$STATUS_OUT"
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
 echo
+echo "Verified slam diagnostics topic:"
+cat "$SLAM_DIAG_OUT"
+echo
 echo "Verified /map, /planned_path, /mission_markers, and nav TF in frame '$parent_frame'."
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   echo "Verified dynamic TF map -> odom."
+  if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
+    echo "Verified slam ground-truth status topic:"
+    cat "$SLAM_GT_STATUS_OUT"
+    echo
+  fi
 fi
 echo "Navigation smoke test passed."
