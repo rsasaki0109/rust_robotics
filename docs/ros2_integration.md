@@ -75,12 +75,20 @@ cargo test --workspace --lib --tests
 - **Role**: Scan matching and occupancy-grid mapping
 - **Subscriptions**:
   - `/scan` (`sensor_msgs/LaserScan`)
-  - `/odom` (`nav_msgs/Odometry`)
+  - `SLAM_INPUT_ODOM_TOPIC` (`nav_msgs/Odometry`, default `/odom`)
 - **Publications**:
   - `/map` (`nav_msgs/OccupancyGrid`)
+  - `/slam_pose` (`geometry_msgs/PoseStamped`) when corrected mode is enabled
+  - `/slam_odom` (`nav_msgs/Odometry`) when corrected mode is enabled
+- **Configuration**:
+  - `SLAM_INPUT_ODOM_TOPIC`
+  - `SLAM_OUTPUT_POSE_TOPIC`
+  - `SLAM_OUTPUT_ODOM_TOPIC`
+  - `SLAM_USE_CORRECTED_FRAME`
+  - `SLAM_CORRECTED_FRAME_ID`
 - **Notes**:
-  - The current Gazebo demo implementation updates the map directly from odom-aligned robot poses
-  - `/map.header.frame_id` therefore follows the input odom frame, which is `odom` by default
+  - In default mode, the Gazebo demo keeps `/map` in the selected odom frame and integrates scans from raw odom poses
+  - In corrected mode, `slam_node` blends odom delta with ICP relative motion, publishes `/slam_pose` plus `/slam_odom`, and integrates `/map` in `SLAM_CORRECTED_FRAME_ID` (`map` by default)
 
 ### `ekf_localizer_node`
 
@@ -172,6 +180,7 @@ The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navig
 - forwards the upstream TurtleBot3 world spawn defaults (`x=-2.0`, `y=-0.5`) as launch arguments
 - adds an extra `ros_gz_bridge` subscription so `/cmd_vel` accepts `geometry_msgs/Twist`
 - can optionally publish a legacy identity `map -> odom` static transform with `publish_map_odom_tf:=true`
+- can optionally publish a scan-matching `map -> odom` transform with `enable_slam_map_odom_tf:=true`
 - waits 5 seconds for Gazebo topics to appear
 - starts `slam_node`, `path_planner_node`, and `dwa_planner_node` from `target/release`
 
@@ -192,6 +201,14 @@ If you explicitly want the legacy `map -> odom` alias for RViz:
 ```bash
 PUBLISH_MAP_ODOM_TF=true ./ros2_nodes/launch/run_gazebo_demo.sh
 ```
+
+If you want the corrected SLAM frame:
+
+```bash
+ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_gazebo_demo.sh
+```
+
+That switches the planner stack to `/slam_odom`, uses `map` as the global frame, and enables [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) to estimate `map -> odom` from `/slam_odom` against the raw odom stream.
 
 The RViz layout is stored at [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
 
@@ -215,6 +232,7 @@ The mission wrapper uses `WAYPOINT_NAV_FRAME=relative_start` by default, so the 
 The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
 
 - `enable_ekf_localizer:=true`
+- `raw_odom_topic:=/ekf_odom`
 - `enable_rviz:=true` by default in `run_gazebo_mission_demo.sh` (override with `ENABLE_RVIZ=false`)
 - `nav_odom_topic:=/ekf_odom`
 - `nav_global_frame:=odom`
@@ -224,14 +242,29 @@ The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navi
 - `WAYPOINT_NAV_LOOP`: `true` or `false`
 - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
 
+If you want the corrected SLAM frame in the mission demo:
+
+```bash
+export ENABLE_SLAM_CORRECTED_FRAME=true
+./ros2_nodes/launch/run_gazebo_mission_demo.sh
+```
+
+That changes the mission stack to:
+
+- `nav_odom_topic:=/slam_odom`
+- `nav_global_frame:=map`
+- `enable_slam_map_odom_tf:=true`
+- `base_tf_odom_topic:=/ekf_odom`
+
 `waypoint_navigator_node` also watches for stalled progress on the active waypoint. When odom does not move by at least `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` within `WAYPOINT_NAV_STUCK_TIMEOUT`, it transitions into a simple recovery sequence: `cancel -> settle -> rotate -> backoff -> reissue goal`.
 
 For observability during the mission demo:
 
 - `/mission_status` reports the current mission state, active waypoint, and recovery phase
 - `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
-- `odom_tf_broadcaster.py` republishes the selected nav odom topic as dynamic TF from `odom` to the robot base frame
+- `odom_tf_broadcaster.py` republishes `base_tf_odom_topic` as dynamic TF from the raw odom frame to the robot base frame
 - by default `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` all use the same honest global frame, `odom`
+- with `ENABLE_SLAM_CORRECTED_FRAME=true`, `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` switch to `map`, while [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) supplies dynamic `map -> odom`
 - `navigation_demo.rviz` therefore uses `odom` as its fixed frame by default
 
 Example looping square:
@@ -264,6 +297,15 @@ The smoke script wraps [run_gazebo_mission_demo.sh](../ros2_nodes/launch/run_gaz
 - the mission finishes with `mission complete`, `cleared active navigation goal`, `planned path cleared`, and `published stop command after path clear`
 
 The script defaults to `WAYPOINT_NAV_FRAME=relative_start` and the verified two-waypoint route `(0.4, 0.0) -> (0.1, 0.4)`, but it respects the same mission tuning environment variables as `run_gazebo_mission_demo.sh`.
+
+To run the smoke in corrected mode:
+
+```bash
+export ENABLE_SLAM_CORRECTED_FRAME=true
+./ros2_nodes/launch/run_navigation_smoke_test.sh
+```
+
+In corrected mode, the script additionally verifies `tf2_echo map odom`.
 
 ### Send a goal
 
@@ -317,6 +359,11 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `map_height` (default `300`): number of cells in y
 - `occupied_log_odds` / `free_log_odds`: Bayesian update weights
 - `icp_max_iterations` (from algorithm defaults): ICP optimization limit
+- `SLAM_INPUT_ODOM_TOPIC` (default `"/odom"`): odom source used for scan integration and ICP correction
+- `SLAM_OUTPUT_POSE_TOPIC` (default `"/slam_pose"`): corrected pose output topic
+- `SLAM_OUTPUT_ODOM_TOPIC` (default `"/slam_odom"`): corrected odom output topic
+- `SLAM_USE_CORRECTED_FRAME` (default `false`): whether to integrate `/map` and outputs in `SLAM_CORRECTED_FRAME_ID`
+- `SLAM_CORRECTED_FRAME_ID` (default `"map"`): corrected global frame name used by `/map`, `/slam_pose`, and `/slam_odom`
 
 ### `ekf_localizer_node`
 
