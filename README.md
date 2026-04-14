@@ -133,11 +133,11 @@ export TURTLEBOT3_MODEL=burger
 
 # Multi-goal mission demo
 WAYPOINT_NAV_FRAME=relative_start \
-WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5" \
+WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4" \
   ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
-`run_gazebo_mission_demo.sh` defaults to `WAYPOINT_NAV_FRAME=relative_start`, so the mission waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`.
+`run_gazebo_mission_demo.sh` defaults to `WAYPOINT_NAV_FRAME=relative_start`, so the mission waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. The wrapper's default mission is a conservative two-waypoint route that was verified in TurtleBot3 world: `(0.4, 0.0) -> (0.1, 0.4)`.
 
 ## Benchmarks
 

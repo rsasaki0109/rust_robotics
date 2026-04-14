@@ -50,6 +50,8 @@ cargo test --workspace --lib --tests
   - `/planned_path` (`nav_msgs/Path`)
 - **Configuration**:
   - `RUST_NAV_ODOM_TOPIC`
+  - `DWA_GOAL_THRESHOLD`
+  - `DWA_ROBOT_RADIUS`
 - **Notes**:
   - Rebuilds its A* planner whenever `/map` updates
   - Converts occupied grid cells into A* obstacles
@@ -171,17 +173,18 @@ export ROS_DOMAIN_ID=42
 export TURTLEBOT3_MODEL=burger
 export NAV_ODOM_TOPIC=/ekf_odom
 export WAYPOINT_NAV_FRAME=relative_start
-export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5"
+export WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4"
 
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
-The mission wrapper uses `WAYPOINT_NAV_FRAME=relative_start` by default, so the demo waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. `navigation_demo.launch.py` still exposes `spawn_x` / `spawn_y` and forwards the upstream TurtleBot3 world defaults (`x=-2.0`, `y=-0.5`) for reproducibility.
+The mission wrapper uses `WAYPOINT_NAV_FRAME=relative_start` by default, so the demo waypoints above are interpreted as offsets from the first odom pose observed by `waypoint_navigator_node`. Its default mission is a verified two-waypoint route, `(0.4, 0.0) -> (0.1, 0.4)`. `navigation_demo.launch.py` still exposes `spawn_x` / `spawn_y` and forwards the upstream TurtleBot3 world defaults (`x=-2.0`, `y=-0.5`) for reproducibility.
 
 The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
 
 - `enable_ekf_localizer:=true`
 - `nav_odom_topic:=/ekf_odom`
+- `dwa_goal_threshold:=0.3`
 - `waypoint_frame:=relative_start`
 - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited 2D mission
 - `WAYPOINT_NAV_LOOP`: `true` or `false`
@@ -191,7 +194,7 @@ Example looping square:
 
 ```bash
 export WAYPOINT_NAV_FRAME=relative_start
-export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5;0.0,0.0"
+export WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.0,0.4;0.4,0.0"
 export WAYPOINT_NAV_LOOP=true
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
@@ -234,8 +237,8 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 
 ### `dwa_planner_node`
 
-- `goal_threshold` (default `0.3`): terminal tolerance \[m\]
-- `robot_radius` (default `0.35`): collision radius \[m\]
+- `DWA_GOAL_THRESHOLD` (default `0.3`): terminal tolerance \[m\]
+- `DWA_ROBOT_RADIUS` (default `0.35`): collision radius \[m\]
 - `look_ahead_points` (default `10`): target index offset on global path
 - `predict_time`, `dt`, `max_speed`, `max_yaw_rate`: standard DWA tuning terms
 

@@ -50,9 +50,10 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("spawn_y", default_value="-0.5"),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
-                "waypoint_mission", default_value="0.5,0.0;0.5,0.5;0.0,0.5"
+                "waypoint_mission", default_value="0.4,0.0;0.1,0.4"
             ),
             DeclareLaunchArgument("waypoint_frame", default_value="map"),
             DeclareLaunchArgument("waypoint_loop", default_value="false"),
@@ -101,7 +102,8 @@ def generate_launch_description() -> LaunchDescription:
                         ros2_nodes_dir,
                         "dwa_planner_node",
                         additional_env={
-                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic")
+                            "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "DWA_GOAL_THRESHOLD": LaunchConfiguration("dwa_goal_threshold"),
                         },
                     ),
                     rust_node_process(

@@ -12,6 +12,8 @@ use safe_drive::{
 use std::{env, sync::{Arc, Mutex}};
 
 const DEFAULT_ODOM_TOPIC: &str = "/odom";
+const DEFAULT_GOAL_THRESHOLD: f64 = 0.3;
+const DEFAULT_ROBOT_RADIUS: f64 = 0.35;
 
 #[derive(Clone, Copy)]
 struct OdomState {
@@ -46,6 +48,25 @@ fn nearest_goal(path: &[Point2D], x: f64, y: f64) -> Option<Point2D> {
     path.get(look_ahead).copied()
 }
 
+fn load_f64_env(name: &str, default: f64) -> Result<f64, String> {
+    match env::var(name) {
+        Ok(raw) if !raw.trim().is_empty() => {
+            let value = raw
+                .trim()
+                .parse::<f64>()
+                .map_err(|_| format!("invalid {} '{}'", name, raw))?;
+            if !value.is_finite() || value <= 0.0 {
+                return Err(format!(
+                    "{} must be positive and finite, got {}",
+                    name, value
+                ));
+            }
+            Ok(value)
+        }
+        _ => Ok(default),
+    }
+}
+
 fn build_obstacles_from_scan(scan: &sensor_msgs::msg::LaserScan, odom: OdomState) -> Vec<Point2D> {
     let mut obstacles = Vec::new();
     let mut angle = scan.angle_min as f64;
@@ -71,6 +92,10 @@ fn main() -> Result<(), DynError> {
         .ok()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_ODOM_TOPIC.to_string());
+    let goal_threshold = load_f64_env("DWA_GOAL_THRESHOLD", DEFAULT_GOAL_THRESHOLD)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
+    let robot_radius = load_f64_env("DWA_ROBOT_RADIUS", DEFAULT_ROBOT_RADIUS)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidInput, err))?;
 
     let mut path_qos = Profile::default();
     path_qos.durability = DurabilityPolicy::TransientLocal;
@@ -81,13 +106,19 @@ fn main() -> Result<(), DynError> {
     let cmd_pub = node.create_publisher::<geometry_msgs::msg::Twist>("/cmd_vel", None)?;
 
     let mut config = DWAConfig::default();
-    config.goal_threshold = 0.3;
-    config.robot_radius = 0.35;
+    config.goal_threshold = goal_threshold;
+    config.robot_radius = robot_radius;
 
     let planner = Arc::new(Mutex::new(DWAPlanner::new(config)));
     let state = Arc::new(Mutex::new(PlannerState::default()));
     let logger = Logger::new("dwa_planner_node");
-    pr_info!(logger, "dwa planner started (odom topic: {})", odom_topic);
+    pr_info!(
+        logger,
+        "dwa planner started (odom topic: {}, goal_threshold={:.2}, robot_radius={:.2})",
+        odom_topic,
+        goal_threshold,
+        robot_radius
+    );
 
     let mut selector = ctx.create_selector()?;
 
