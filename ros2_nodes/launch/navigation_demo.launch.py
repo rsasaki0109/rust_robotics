@@ -58,6 +58,9 @@ def generate_launch_description() -> LaunchDescription:
     ros2_nodes_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     default_rviz_config = os.path.join(ros2_nodes_dir, "launch", "navigation_demo.rviz")
     odom_tf_broadcaster = os.path.join(ros2_nodes_dir, "launch", "odom_tf_broadcaster.py")
+    map_odom_tf_broadcaster = os.path.join(
+        ros2_nodes_dir, "launch", "map_odom_tf_broadcaster.py"
+    )
     turtlebot3_launch_dir = os.path.join(
         get_package_share_directory("turtlebot3_gazebo"),
         "launch",
@@ -85,9 +88,15 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("enable_rviz", default_value="false"),
             DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
+            DeclareLaunchArgument("raw_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("base_tf_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("enable_nav_tf_broadcaster", default_value="true"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("nav_global_frame", default_value="odom"),
+            DeclareLaunchArgument("enable_slam_corrected_frame", default_value="false"),
+            DeclareLaunchArgument("enable_slam_map_odom_tf", default_value="false"),
+            DeclareLaunchArgument("slam_pose_topic", default_value="/slam_pose"),
+            DeclareLaunchArgument("slam_odom_topic", default_value="/slam_odom"),
             DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
@@ -164,7 +173,19 @@ def generate_launch_description() -> LaunchDescription:
             TimerAction(
                 period=5.0,
                 actions=[
-                    rust_node_process(ros2_nodes_dir, "slam_node"),
+                    rust_node_process(
+                        ros2_nodes_dir,
+                        "slam_node",
+                        additional_env={
+                            "SLAM_INPUT_ODOM_TOPIC": LaunchConfiguration("raw_odom_topic"),
+                            "SLAM_OUTPUT_POSE_TOPIC": LaunchConfiguration("slam_pose_topic"),
+                            "SLAM_OUTPUT_ODOM_TOPIC": LaunchConfiguration("slam_odom_topic"),
+                            "SLAM_USE_CORRECTED_FRAME": LaunchConfiguration(
+                                "enable_slam_corrected_frame"
+                            ),
+                            "SLAM_CORRECTED_FRAME_ID": LaunchConfiguration("map_frame"),
+                        },
+                    ),
                     rust_node_process(
                         ros2_nodes_dir,
                         "ekf_localizer_node",
@@ -173,7 +194,7 @@ def generate_launch_description() -> LaunchDescription:
                         ),
                         additional_env={
                             "EKF_INPUT_ODOM_TOPIC": "/odom",
-                            "EKF_OUTPUT_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
+                            "EKF_OUTPUT_ODOM_TOPIC": LaunchConfiguration("raw_odom_topic"),
                             "EKF_OUTPUT_POSE_TOPIC": "/ekf_pose",
                         },
                     ),
@@ -195,9 +216,22 @@ def generate_launch_description() -> LaunchDescription:
                     python_script_process(
                         odom_tf_broadcaster,
                         "odom_tf_broadcaster",
-                        args=["--odom-topic", LaunchConfiguration("nav_odom_topic")],
+                        args=["--odom-topic", LaunchConfiguration("base_tf_odom_topic")],
                         condition=IfCondition(
                             LaunchConfiguration("enable_nav_tf_broadcaster")
+                        ),
+                    ),
+                    python_script_process(
+                        map_odom_tf_broadcaster,
+                        "map_odom_tf_broadcaster",
+                        args=[
+                            "--map-odom-topic",
+                            LaunchConfiguration("slam_odom_topic"),
+                            "--raw-odom-topic",
+                            LaunchConfiguration("raw_odom_topic"),
+                        ],
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_slam_map_odom_tf")
                         ),
                     ),
                     rust_node_process(

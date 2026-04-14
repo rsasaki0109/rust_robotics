@@ -79,3 +79,8 @@ jobs:
       run: |
         source /opt/ros/jazzy/setup.bash
         timeout 20m ./ros2_nodes/launch/run_navigation_smoke_test.sh
+
+    - name: Run corrected-frame navigation smoke test
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        ROS_DOMAIN_ID=90 ENABLE_SLAM_CORRECTED_FRAME=true timeout 20m ./ros2_nodes/launch/run_navigation_smoke_test.sh
