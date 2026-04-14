@@ -37,6 +37,7 @@ def rust_node_process(
 
 def generate_launch_description() -> LaunchDescription:
     ros2_nodes_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    default_rviz_config = os.path.join(ros2_nodes_dir, "launch", "navigation_demo.rviz")
     turtlebot3_launch = os.path.join(
         get_package_share_directory("turtlebot3_gazebo"),
         "launch",
@@ -48,6 +49,11 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("turtlebot3_model", default_value="burger"),
             DeclareLaunchArgument("spawn_x", default_value="-2.0"),
             DeclareLaunchArgument("spawn_y", default_value="-0.5"),
+            DeclareLaunchArgument("publish_map_odom_tf", default_value="true"),
+            DeclareLaunchArgument("map_frame", default_value="map"),
+            DeclareLaunchArgument("odom_frame", default_value="odom"),
+            DeclareLaunchArgument("enable_rviz", default_value="false"),
+            DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
@@ -73,6 +79,27 @@ def generate_launch_description() -> LaunchDescription:
                 executable="parameter_bridge",
                 name="cmd_vel_twist_bridge",
                 arguments=["/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist"],
+                output="screen",
+            ),
+            Node(
+                package="tf2_ros",
+                executable="static_transform_publisher",
+                name="map_to_odom_bridge",
+                arguments=[
+                    "--frame-id",
+                    LaunchConfiguration("map_frame"),
+                    "--child-frame-id",
+                    LaunchConfiguration("odom_frame"),
+                ],
+                condition=IfCondition(LaunchConfiguration("publish_map_odom_tf")),
+                output="screen",
+            ),
+            Node(
+                package="rviz2",
+                executable="rviz2",
+                name="navigation_demo_rviz",
+                arguments=["-d", LaunchConfiguration("rviz_config")],
+                condition=IfCondition(LaunchConfiguration("enable_rviz")),
                 output="screen",
             ),
             TimerAction(

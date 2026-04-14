@@ -19,6 +19,7 @@ export WAYPOINT_NAV_FRAME="${WAYPOINT_NAV_FRAME:-relative_start}"
 export WAYPOINT_NAV_LOOP="${WAYPOINT_NAV_LOOP:-false}"
 export WAYPOINT_NAV_GOAL_TOLERANCE="${WAYPOINT_NAV_GOAL_TOLERANCE:-0.35}"
 export DWA_GOAL_THRESHOLD="${DWA_GOAL_THRESHOLD:-0.3}"
+export ENABLE_RVIZ="${ENABLE_RVIZ:-true}"
 
 required_bins=(
   "$ROOT_DIR/ros2_nodes/path_planner_node/target/release/path_planner_node"
@@ -50,6 +51,7 @@ fi
 
 exec ros2 launch "$LAUNCH_FILE" \
   "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
+  "enable_rviz:=${ENABLE_RVIZ}" \
   "enable_ekf_localizer:=true" \
   "nav_odom_topic:=${NAV_ODOM_TOPIC}" \
   "dwa_goal_threshold:=${DWA_GOAL_THRESHOLD}" \
