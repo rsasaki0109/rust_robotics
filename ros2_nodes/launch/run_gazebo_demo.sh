@@ -11,6 +11,7 @@ set +u
 source /opt/ros/jazzy/setup.bash
 set -u
 export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
+export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 
 required_bins=(
   "$ROOT_DIR/ros2_nodes/path_planner_node/target/release/path_planner_node"
@@ -36,4 +37,6 @@ EOF
   exit 1
 fi
 
-exec ros2 launch "$LAUNCH_FILE" "turtlebot3_model:=${TURTLEBOT3_MODEL}"
+exec ros2 launch "$LAUNCH_FILE" \
+  "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
+  "enable_rviz:=${ENABLE_RVIZ}"
