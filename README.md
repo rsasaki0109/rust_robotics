@@ -59,6 +59,7 @@ use rust_robotics_control::{PurePursuitController, StanleyController};
 cargo run -p rust_robotics --example headless_grid_planners --features planning
 cargo run -p rust_robotics --example headless_localizers --features localization
 cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
+cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
 
 # Visualization (requires gnuplot)
 cargo run -p rust_robotics --example a_star --features "planning,viz"
