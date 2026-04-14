@@ -52,7 +52,11 @@ mod dora_runtime {
 
         while let Some(event) = events.recv() {
             match event {
-                Event::Input { id, data, metadata } if id.as_str() == "control" => {
+                Event::Input {
+                    id,
+                    data,
+                    metadata: _,
+                } if id.as_str() == "control" => {
                     let payload: &str = TryFrom::try_from(&data)?;
                     if payload.is_empty() {
                         return Err("received empty control payload".into());
