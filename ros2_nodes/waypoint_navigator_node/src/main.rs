@@ -18,6 +18,7 @@ const DEFAULT_GOAL_TOLERANCE: f64 = 0.35;
 const DEFAULT_WAYPOINT_FRAME: &str = "map";
 const GOAL_FRAME_ID: &str = "map";
 const GOAL_REPUBLISH_INTERVAL: Duration = Duration::from_secs(2);
+const GOAL_PROGRESS_ARM_DISTANCE: f64 = 0.05;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MissionFrame {
@@ -48,10 +49,21 @@ struct NavigatorState {
     mission_completed: bool,
     last_goal_publish_at: Option<Instant>,
     anchor_pose: Option<Point2D>,
+    active_goal: Option<ActiveGoalState>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ActiveGoalState {
+    published_goal: Point2D,
+    published_robot_pose: Point2D,
+    completion_armed: bool,
 }
 
 enum MissionEvent {
-    Start { next_idx: usize, goal: Point2D },
+    Start {
+        next_idx: usize,
+        goal: Point2D,
+    },
     Advance {
         reached_idx: usize,
         reached_goal: Point2D,
@@ -64,8 +76,14 @@ enum MissionEvent {
         next_idx: usize,
         next_goal: Point2D,
     },
-    Complete { reached_idx: usize, reached_goal: Point2D },
-    Republish { current_idx: usize, goal: Point2D },
+    Complete {
+        reached_idx: usize,
+        reached_goal: Point2D,
+    },
+    Republish {
+        current_idx: usize,
+        goal: Point2D,
+    },
 }
 
 fn parse_waypoints(raw: &str) -> Result<Vec<Point2D>, String> {
@@ -159,9 +177,8 @@ fn load_mission_config() -> Result<MissionConfig, String> {
     };
 
     let frame = match env::var("WAYPOINT_NAV_FRAME") {
-        Ok(raw) if !raw.trim().is_empty() => {
-            parse_mission_frame(&raw).ok_or_else(|| format!("invalid WAYPOINT_NAV_FRAME '{}'", raw))?
-        }
+        Ok(raw) if !raw.trim().is_empty() => parse_mission_frame(&raw)
+            .ok_or_else(|| format!("invalid WAYPOINT_NAV_FRAME '{}'", raw))?,
         _ => parse_mission_frame(DEFAULT_WAYPOINT_FRAME)
             .expect("DEFAULT_WAYPOINT_FRAME must be valid"),
     };
@@ -205,6 +222,30 @@ fn resolve_waypoint(
             let anchor = anchor_pose.unwrap_or(Point2D::origin());
             Point2D::new(anchor.x + waypoint.x, anchor.y + waypoint.y)
         }
+    }
+}
+
+fn new_active_goal(goal: Point2D, robot_pose: Point2D, goal_tolerance: f64) -> ActiveGoalState {
+    ActiveGoalState {
+        published_goal: goal,
+        published_robot_pose: robot_pose,
+        completion_armed: distance(robot_pose, goal) > goal_tolerance,
+    }
+}
+
+fn arm_goal_completion_if_progressed(
+    active_goal: &mut ActiveGoalState,
+    robot_pose: Point2D,
+    goal_tolerance: f64,
+) {
+    if active_goal.completion_armed {
+        return;
+    }
+
+    let moved_since_publish = distance(robot_pose, active_goal.published_robot_pose);
+    let remaining_distance = distance(robot_pose, active_goal.published_goal);
+    if moved_since_publish >= GOAL_PROGRESS_ARM_DISTANCE || remaining_distance > goal_tolerance {
+        active_goal.completion_armed = true;
     }
 }
 
@@ -287,6 +328,11 @@ fn main() -> Result<(), DynError> {
                             );
                             st.current_waypoint_idx = Some(0);
                             st.last_goal_publish_at = Some(now);
+                            st.active_goal = Some(new_active_goal(
+                                goal,
+                                robot_pose,
+                                mission_cb.goal_tolerance,
+                            ));
                             Some(MissionEvent::Start { next_idx: 0, goal })
                         }
                         Some(current_idx) => {
@@ -295,7 +341,20 @@ fn main() -> Result<(), DynError> {
                                 mission_cb.frame,
                                 st.anchor_pose,
                             );
-                            if distance(robot_pose, current_goal) > mission_cb.goal_tolerance {
+                            let current_distance = distance(robot_pose, current_goal);
+                            if let Some(active_goal) = st.active_goal.as_mut() {
+                                arm_goal_completion_if_progressed(
+                                    active_goal,
+                                    robot_pose,
+                                    mission_cb.goal_tolerance,
+                                );
+                            }
+                            let completion_armed = st
+                                .active_goal
+                                .map(|active_goal| active_goal.completion_armed)
+                                .unwrap_or(current_distance > mission_cb.goal_tolerance);
+
+                            if current_distance > mission_cb.goal_tolerance || !completion_armed {
                                 if should_republish_goal(st.last_goal_publish_at, now) {
                                     st.last_goal_publish_at = Some(now);
                                     Some(MissionEvent::Republish {
@@ -314,6 +373,11 @@ fn main() -> Result<(), DynError> {
                                 );
                                 st.current_waypoint_idx = Some(next_idx);
                                 st.last_goal_publish_at = Some(now);
+                                st.active_goal = Some(new_active_goal(
+                                    next_goal,
+                                    robot_pose,
+                                    mission_cb.goal_tolerance,
+                                ));
                                 Some(MissionEvent::Advance {
                                     reached_idx: current_idx,
                                     reached_goal: current_goal,
@@ -328,6 +392,11 @@ fn main() -> Result<(), DynError> {
                                 );
                                 st.current_waypoint_idx = Some(0);
                                 st.last_goal_publish_at = Some(now);
+                                st.active_goal = Some(new_active_goal(
+                                    next_goal,
+                                    robot_pose,
+                                    mission_cb.goal_tolerance,
+                                ));
                                 Some(MissionEvent::Loop {
                                     reached_idx: current_idx,
                                     reached_goal: current_goal,
@@ -338,6 +407,7 @@ fn main() -> Result<(), DynError> {
                                 st.current_waypoint_idx = None;
                                 st.mission_completed = true;
                                 st.last_goal_publish_at = None;
+                                st.active_goal = None;
                                 Some(MissionEvent::Complete {
                                     reached_idx: current_idx,
                                     reached_goal: current_goal,
@@ -449,8 +519,9 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_bool, parse_mission_frame, parse_waypoints, resolve_waypoint,
-        should_republish_goal, MissionFrame, GOAL_REPUBLISH_INTERVAL,
+        arm_goal_completion_if_progressed, new_active_goal, parse_bool, parse_mission_frame,
+        parse_waypoints, resolve_waypoint, should_republish_goal, MissionFrame,
+        GOAL_PROGRESS_ARM_DISTANCE, GOAL_REPUBLISH_INTERVAL,
     };
     use rust_robotics_core::Point2D;
     use std::time::{Duration, Instant};
@@ -521,5 +592,33 @@ mod tests {
             Some(now),
             now + GOAL_REPUBLISH_INTERVAL
         ));
+    }
+
+    #[test]
+    fn new_active_goal_requires_progress_when_goal_is_already_close() {
+        let active_goal = new_active_goal(Point2D::new(0.1, 0.1), Point2D::new(0.0, 0.0), 0.2);
+        assert!(!active_goal.completion_armed);
+    }
+
+    #[test]
+    fn arm_goal_completion_when_robot_moves_after_publish() {
+        let mut active_goal = new_active_goal(Point2D::new(0.1, 0.1), Point2D::new(0.0, 0.0), 0.2);
+
+        arm_goal_completion_if_progressed(
+            &mut active_goal,
+            Point2D::new(GOAL_PROGRESS_ARM_DISTANCE + 0.01, 0.0),
+            0.2,
+        );
+
+        assert!(active_goal.completion_armed);
+    }
+
+    #[test]
+    fn arm_goal_completion_when_robot_is_seen_outside_tolerance() {
+        let mut active_goal = new_active_goal(Point2D::new(0.1, 0.1), Point2D::new(0.0, 0.0), 0.2);
+
+        arm_goal_completion_if_progressed(&mut active_goal, Point2D::new(0.5, 0.5), 0.2);
+
+        assert!(active_goal.completion_armed);
     }
 }

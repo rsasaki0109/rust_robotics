@@ -4,19 +4,22 @@ use safe_drive::{
     context::Context,
     error::DynError,
     logger::Logger,
-    msg::common_interfaces::{geometry_msgs, nav_msgs},
+    msg::{
+        builtin_interfaces,
+        common_interfaces::{geometry_msgs, nav_msgs},
+    },
     pr_info, pr_warn,
 };
 use std::{
     env, io,
     sync::{Arc, Mutex},
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 const DEFAULT_INPUT_ODOM_TOPIC: &str = "/odom";
 const DEFAULT_OUTPUT_ODOM_TOPIC: &str = "/ekf_odom";
 const DEFAULT_OUTPUT_POSE_TOPIC: &str = "/ekf_pose";
-const POSE_FRAME_ID: &str = "map";
+const DEFAULT_FRAME_ID: &str = "odom";
 const LOG_INTERVAL: Duration = Duration::from_secs(5);
 const FALLBACK_DT: f64 = 0.1;
 const MIN_DT: f64 = 1e-3;
@@ -70,13 +73,32 @@ fn initial_state_from_odom(msg: &nav_msgs::msg::Odometry) -> State2D {
     )
 }
 
+fn copy_stamp(
+    target: &mut builtin_interfaces::UnsafeTime,
+    source: &builtin_interfaces::UnsafeTime,
+) {
+    target.sec = source.sec;
+    target.nanosec = source.nanosec;
+}
+
+fn output_frame_id(source: &nav_msgs::msg::Odometry) -> String {
+    let source_frame_id = source.header.frame_id.get_string();
+    if source_frame_id.is_empty() {
+        DEFAULT_FRAME_ID.to_string()
+    } else {
+        source_frame_id
+    }
+}
+
 fn publish_pose(
     publisher: &safe_drive::topic::publisher::Publisher<geometry_msgs::msg::PoseStamped>,
     state: State2D,
+    source: &nav_msgs::msg::Odometry,
 ) -> Result<(), DynError> {
     let mut msg = geometry_msgs::msg::PoseStamped::new().ok_or("failed to allocate PoseStamped")?;
-    msg.header.stamp = SystemTime::now().into();
-    let _ = msg.header.frame_id.assign(POSE_FRAME_ID);
+    copy_stamp(&mut msg.header.stamp, &source.header.stamp);
+    let frame_id = output_frame_id(source);
+    let _ = msg.header.frame_id.assign(&frame_id);
     msg.pose.position.x = state.x;
     msg.pose.position.y = state.y;
     msg.pose.position.z = 0.0;
@@ -91,13 +113,9 @@ fn publish_odom(
     source: &nav_msgs::msg::Odometry,
 ) -> Result<(), DynError> {
     let mut msg = nav_msgs::msg::Odometry::new().ok_or("failed to allocate Odometry")?;
-    msg.header.stamp = SystemTime::now().into();
-    let source_frame_id = source.header.frame_id.get_string();
-    if source_frame_id.is_empty() {
-        let _ = msg.header.frame_id.assign(POSE_FRAME_ID);
-    } else {
-        let _ = msg.header.frame_id.assign(&source_frame_id);
-    }
+    copy_stamp(&mut msg.header.stamp, &source.header.stamp);
+    let frame_id = output_frame_id(source);
+    let _ = msg.header.frame_id.assign(&frame_id);
     let child_frame_id = source.child_frame_id.get_string();
     if !child_frame_id.is_empty() {
         let _ = msg.child_frame_id.assign(&child_frame_id);
@@ -136,8 +154,9 @@ fn main() -> Result<(), DynError> {
     let output_odom_topic = topic_from_env("EKF_OUTPUT_ODOM_TOPIC", DEFAULT_OUTPUT_ODOM_TOPIC);
     let output_pose_topic = topic_from_env("EKF_OUTPUT_POSE_TOPIC", DEFAULT_OUTPUT_POSE_TOPIC);
 
-    let initial_localizer = EKFLocalizer::with_initial_state_2d(State2D::origin(), EKFConfig::default())
-        .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
+    let initial_localizer =
+        EKFLocalizer::with_initial_state_2d(State2D::origin(), EKFConfig::default())
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err.to_string()))?;
     let shared_state = Arc::new(Mutex::new(EkfState {
         localizer: initial_localizer,
         initialized: false,
@@ -148,7 +167,8 @@ fn main() -> Result<(), DynError> {
     let ctx = Context::new()?;
     let node = ctx.create_node("ekf_localizer_node", None, Default::default())?;
     let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>(&input_odom_topic, None)?;
-    let pose_pub = node.create_publisher::<geometry_msgs::msg::PoseStamped>(&output_pose_topic, None)?;
+    let pose_pub =
+        node.create_publisher::<geometry_msgs::msg::PoseStamped>(&output_pose_topic, None)?;
     let odom_pub = node.create_publisher::<nav_msgs::msg::Odometry>(&output_odom_topic, None)?;
 
     let logger = Logger::new("ekf_localizer_node");
@@ -175,23 +195,51 @@ fn main() -> Result<(), DynError> {
                 }
             };
 
-            let dt = sanitize_dt(state.last_update_at, now);
-            state.last_update_at = Some(now);
-
             if !state.initialized {
                 let initialized = initial_state_from_odom(&msg);
-                state.localizer = match EKFLocalizer::with_initial_state_2d(
-                    initialized,
-                    EKFConfig::default(),
-                ) {
-                    Ok(localizer) => localizer,
-                    Err(err) => {
-                        pr_warn!(logger_cb, "failed to initialize EKF state: {}", err);
-                        return;
-                    }
-                };
+                state.localizer =
+                    match EKFLocalizer::with_initial_state_2d(initialized, EKFConfig::default()) {
+                        Ok(localizer) => localizer,
+                        Err(err) => {
+                            pr_warn!(logger_cb, "failed to initialize EKF state: {}", err);
+                            return;
+                        }
+                    };
                 state.initialized = true;
+                state.last_update_at = Some(now);
+
+                if let Err(err) = publish_pose(&pose_pub, initialized, &msg) {
+                    pr_warn!(
+                        logger_cb,
+                        "failed to publish initial filtered pose: {}",
+                        err
+                    );
+                    return;
+                }
+                if let Err(err) = publish_odom(&odom_pub, initialized, &msg) {
+                    pr_warn!(
+                        logger_cb,
+                        "failed to publish initial filtered odom: {}",
+                        err
+                    );
+                    return;
+                }
+
+                if should_log(&mut state.last_log_at, now) {
+                    pr_info!(
+                        logger_cb,
+                        "initialized filtered pose x={:.2} y={:.2} yaw={:.2} v={:.2}",
+                        initialized.x,
+                        initialized.y,
+                        initialized.yaw,
+                        initialized.v
+                    );
+                }
+                return;
             }
+
+            let dt = sanitize_dt(state.last_update_at, now);
+            state.last_update_at = Some(now);
 
             let measurement = Point2D::new(msg.pose.pose.position.x, msg.pose.pose.position.y);
             let control = ControlInput::new(msg.twist.twist.linear.x, msg.twist.twist.angular.z);
@@ -204,7 +252,7 @@ fn main() -> Result<(), DynError> {
                 }
             };
 
-            if let Err(err) = publish_pose(&pose_pub, estimate) {
+            if let Err(err) = publish_pose(&pose_pub, estimate, &msg) {
                 pr_warn!(logger_cb, "failed to publish filtered pose: {}", err);
                 return;
             }
@@ -233,7 +281,11 @@ fn main() -> Result<(), DynError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{sanitize_dt, yaw_from_quaternion, FALLBACK_DT, MAX_DT, MIN_DT};
+    use super::{
+        copy_stamp, output_frame_id, sanitize_dt, yaw_from_quaternion, DEFAULT_FRAME_ID,
+        FALLBACK_DT, MAX_DT, MIN_DT,
+    };
+    use safe_drive::msg::common_interfaces::nav_msgs;
     use std::time::{Duration, Instant};
 
     #[test]
@@ -256,5 +308,24 @@ mod tests {
         let half = std::f64::consts::FRAC_PI_4;
         let yaw = yaw_from_quaternion(0.0, 0.0, half.sin(), half.cos());
         assert!((yaw - std::f64::consts::FRAC_PI_2).abs() < 1e-9);
+    }
+
+    #[test]
+    fn output_frame_id_falls_back_when_source_is_empty() {
+        let msg = nav_msgs::msg::Odometry::new().unwrap();
+        assert_eq!(output_frame_id(&msg), DEFAULT_FRAME_ID);
+    }
+
+    #[test]
+    fn copy_stamp_preserves_source_timestamp() {
+        let mut source = nav_msgs::msg::Odometry::new().unwrap();
+        let mut target = nav_msgs::msg::Odometry::new().unwrap();
+        source.header.stamp.sec = 12;
+        source.header.stamp.nanosec = 34;
+
+        copy_stamp(&mut target.header.stamp, &source.header.stamp);
+
+        assert_eq!(target.header.stamp.sec, 12);
+        assert_eq!(target.header.stamp.nanosec, 34);
     }
 }
