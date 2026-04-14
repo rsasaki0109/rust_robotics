@@ -146,10 +146,11 @@ For observability, `navigation_demo.launch.py` now also exposes:
 
 - `ENABLE_RVIZ=true ./ros2_nodes/launch/run_gazebo_demo.sh` to open RViz with [navigation_demo.rviz](./ros2_nodes/launch/navigation_demo.rviz)
 - `ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_gazebo_demo.sh` for a headless Gazebo server run
+- dynamic TF from the selected nav odom topic to the robot base frame via [odom_tf_broadcaster.py](./ros2_nodes/launch/odom_tf_broadcaster.py)
 - `/mission_status` (`std_msgs/String`) for mission / recovery state summaries
 - `/mission_markers` (`visualization_msgs/MarkerArray`) for the route, active goal, and status text
 
-The launch file also publishes an identity `map -> odom` static transform for RViz. That matches the current demo stack assumption that the SLAM map and navigation odom remain aligned during the Gazebo mission demo.
+The launch file now gives RViz a full demo TF chain: identity `map -> odom`, then dynamic `odom -> base_footprint` from the selected nav odom topic. That still assumes the SLAM map and navigation odom remain aligned during the Gazebo mission demo.
 
 For a local ROS2/Gazebo regression check, run:
 
@@ -157,7 +158,7 @@ For a local ROS2/Gazebo regression check, run:
 ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
 
-The smoke script launches the mission demo, verifies `/mission_status`, typed `/mission_markers`, the `map -> odom` static transform, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
+The smoke script launches the mission demo, verifies `/mission_status`, typed `/mission_markers`, the `map -> odom` static transform, the dynamic nav odom TF, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
 
 ## Benchmarks
 
