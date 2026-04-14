@@ -25,17 +25,52 @@ const DEFAULT_BASE_FRAME_ID: &str = "base_footprint";
 const DEFAULT_OUTPUT_POSE_TOPIC: &str = "/slam_pose";
 const DEFAULT_OUTPUT_ODOM_TOPIC: &str = "/slam_odom";
 const DEFAULT_DIAGNOSTICS_TOPIC: &str = "/slam_diagnostics";
-const ICP_BLEND_ALPHA: f64 = 0.35;
-const ICP_FULL_WEIGHT_ERROR: f64 = 2.0;
-const ICP_REJECT_ERROR: f64 = 4.0;
-const ICP_FULL_WEIGHT_ITERATIONS: f64 = 12.0;
-const ICP_REJECT_ITERATIONS: f64 = 40.0;
-const ICP_FULL_WEIGHT_TRANSLATION_CORRECTION: f64 = 0.05;
-const MAX_ICP_TRANSLATION_CORRECTION: f64 = 0.25;
-const ICP_FULL_WEIGHT_YAW_CORRECTION: f64 = 0.08;
-const MAX_ICP_YAW_CORRECTION: f64 = 0.35;
-const ICP_FULL_WEIGHT_TRANSLATION_MOTION: f64 = 0.05;
-const ICP_FULL_WEIGHT_YAW_MOTION: f64 = 0.08;
+
+/// Default ICP blend / gate tuning (override with `SLAM_ICP_*` environment variables).
+const DEFAULT_ICP_BLEND_ALPHA: f64 = 0.35;
+const DEFAULT_ICP_FULL_WEIGHT_ERROR: f64 = 2.0;
+const DEFAULT_ICP_REJECT_ERROR: f64 = 4.0;
+const DEFAULT_ICP_FULL_WEIGHT_ITERATIONS: f64 = 12.0;
+const DEFAULT_ICP_REJECT_ITERATIONS: f64 = 40.0;
+const DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION: f64 = 0.05;
+const DEFAULT_ICP_MAX_TRANSLATION_CORRECTION: f64 = 0.25;
+const DEFAULT_ICP_FULL_WEIGHT_YAW_CORRECTION: f64 = 0.08;
+const DEFAULT_ICP_MAX_YAW_CORRECTION: f64 = 0.35;
+const DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_MOTION: f64 = 0.05;
+const DEFAULT_ICP_FULL_WEIGHT_YAW_MOTION: f64 = 0.08;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct IcpGatingParams {
+    blend_alpha: f64,
+    full_weight_error: f64,
+    reject_error: f64,
+    full_weight_iterations: f64,
+    reject_iterations: f64,
+    full_weight_translation_correction: f64,
+    max_translation_correction: f64,
+    full_weight_yaw_correction: f64,
+    max_yaw_correction: f64,
+    full_weight_translation_motion: f64,
+    full_weight_yaw_motion: f64,
+}
+
+impl Default for IcpGatingParams {
+    fn default() -> Self {
+        Self {
+            blend_alpha: DEFAULT_ICP_BLEND_ALPHA,
+            full_weight_error: DEFAULT_ICP_FULL_WEIGHT_ERROR,
+            reject_error: DEFAULT_ICP_REJECT_ERROR,
+            full_weight_iterations: DEFAULT_ICP_FULL_WEIGHT_ITERATIONS,
+            reject_iterations: DEFAULT_ICP_REJECT_ITERATIONS,
+            full_weight_translation_correction: DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION,
+            max_translation_correction: DEFAULT_ICP_MAX_TRANSLATION_CORRECTION,
+            full_weight_yaw_correction: DEFAULT_ICP_FULL_WEIGHT_YAW_CORRECTION,
+            max_yaw_correction: DEFAULT_ICP_MAX_YAW_CORRECTION,
+            full_weight_translation_motion: DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_MOTION,
+            full_weight_yaw_motion: DEFAULT_ICP_FULL_WEIGHT_YAW_MOTION,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 struct Pose2D {
@@ -147,6 +182,57 @@ fn bool_from_env(key: &str, default: bool) -> bool {
     }
 }
 
+fn f64_from_env(key: &str, default: f64) -> f64 {
+    env::var(key)
+        .ok()
+        .and_then(|raw| raw.trim().parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .unwrap_or(default)
+}
+
+fn clamp_f64(v: f64, min: f64, max: f64) -> f64 {
+    v.clamp(min, max)
+}
+
+/// Loads [`IcpGatingParams`] from `SLAM_ICP_*` env vars (unset → defaults from [`IcpGatingParams::default`]).
+fn icp_gating_params_from_env() -> IcpGatingParams {
+    let mut p = IcpGatingParams::default();
+    p.blend_alpha = clamp_f64(
+        f64_from_env("SLAM_ICP_BLEND_ALPHA", p.blend_alpha),
+        0.0,
+        1.0,
+    );
+    p.full_weight_error = f64_from_env("SLAM_ICP_FULL_WEIGHT_ERROR", p.full_weight_error).max(1e-6);
+    p.reject_error = f64_from_env("SLAM_ICP_REJECT_ERROR", p.reject_error).max(p.full_weight_error + 1e-6);
+    p.full_weight_iterations = f64_from_env("SLAM_ICP_FULL_WEIGHT_ITERATIONS", p.full_weight_iterations).max(0.0);
+    p.reject_iterations = f64_from_env("SLAM_ICP_REJECT_ITERATIONS", p.reject_iterations).max(p.full_weight_iterations + 1e-6);
+    p.full_weight_translation_correction = f64_from_env(
+        "SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION",
+        p.full_weight_translation_correction,
+    )
+    .max(0.0);
+    p.max_translation_correction = f64_from_env(
+        "SLAM_ICP_MAX_TRANSLATION_CORRECTION",
+        p.max_translation_correction,
+    )
+    .max(p.full_weight_translation_correction + 1e-6);
+    p.full_weight_yaw_correction = f64_from_env(
+        "SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION",
+        p.full_weight_yaw_correction,
+    )
+    .max(0.0);
+    p.max_yaw_correction =
+        f64_from_env("SLAM_ICP_MAX_YAW_CORRECTION", p.max_yaw_correction).max(p.full_weight_yaw_correction + 1e-6);
+    p.full_weight_translation_motion = f64_from_env(
+        "SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION",
+        p.full_weight_translation_motion,
+    )
+    .max(0.0);
+    p.full_weight_yaw_motion =
+        f64_from_env("SLAM_ICP_FULL_WEIGHT_YAW_MOTION", p.full_weight_yaw_motion).max(0.0);
+    p
+}
+
 fn frame_or_default(frame_id: String, default: &str) -> String {
     if frame_id.is_empty() {
         default.to_string()
@@ -254,6 +340,7 @@ fn compute_icp_blend_decision(
     converged: bool,
     iterations: usize,
     final_error: f64,
+    p: &IcpGatingParams,
 ) -> IcpBlendDecision {
     if !converged {
         return IcpBlendDecision {
@@ -275,20 +362,20 @@ fn compute_icp_blend_decision(
     };
     let correction_translation = translation_magnitude(correction);
     let correction_yaw = correction.yaw.abs();
-    if correction_translation >= MAX_ICP_TRANSLATION_CORRECTION {
+    if correction_translation >= p.max_translation_correction {
         return IcpBlendDecision {
             alpha: 0.0,
             reason: "translation_outlier",
         };
     }
-    if correction_yaw >= MAX_ICP_YAW_CORRECTION {
+    if correction_yaw >= p.max_yaw_correction {
         return IcpBlendDecision {
             alpha: 0.0,
             reason: "yaw_outlier",
         };
     }
 
-    let error_weight = ramp_weight(final_error, ICP_FULL_WEIGHT_ERROR, ICP_REJECT_ERROR);
+    let error_weight = ramp_weight(final_error, p.full_weight_error, p.reject_error);
     if error_weight <= 0.0 {
         return IcpBlendDecision {
             alpha: 0.0,
@@ -298,8 +385,8 @@ fn compute_icp_blend_decision(
 
     let iteration_weight = ramp_weight(
         iterations as f64,
-        ICP_FULL_WEIGHT_ITERATIONS,
-        ICP_REJECT_ITERATIONS,
+        p.full_weight_iterations,
+        p.reject_iterations,
     );
     if iteration_weight <= 0.0 {
         return IcpBlendDecision {
@@ -310,8 +397,8 @@ fn compute_icp_blend_decision(
 
     let correction_translation_weight = ramp_weight(
         correction_translation,
-        ICP_FULL_WEIGHT_TRANSLATION_CORRECTION,
-        MAX_ICP_TRANSLATION_CORRECTION,
+        p.full_weight_translation_correction,
+        p.max_translation_correction,
     );
     if correction_translation_weight <= 0.0 {
         return IcpBlendDecision {
@@ -322,8 +409,8 @@ fn compute_icp_blend_decision(
 
     let correction_yaw_weight = ramp_weight(
         correction_yaw,
-        ICP_FULL_WEIGHT_YAW_CORRECTION,
-        MAX_ICP_YAW_CORRECTION,
+        p.full_weight_yaw_correction,
+        p.max_yaw_correction,
     );
     if correction_yaw_weight <= 0.0 {
         return IcpBlendDecision {
@@ -335,13 +422,13 @@ fn compute_icp_blend_decision(
     let odom_motion = translation_magnitude(odom);
     let odom_motion_weight = ramp_up_weight(
         odom_motion,
-        ICP_FULL_WEIGHT_TRANSLATION_MOTION * 0.25,
-        ICP_FULL_WEIGHT_TRANSLATION_MOTION,
+        p.full_weight_translation_motion * 0.25,
+        p.full_weight_translation_motion,
     )
     .max(ramp_up_weight(
         odom.yaw.abs(),
-        ICP_FULL_WEIGHT_YAW_MOTION * 0.25,
-        ICP_FULL_WEIGHT_YAW_MOTION,
+        p.full_weight_yaw_motion * 0.25,
+        p.full_weight_yaw_motion,
     ));
     if odom_motion_weight <= 0.0 {
         return IcpBlendDecision {
@@ -355,7 +442,7 @@ fn compute_icp_blend_decision(
         .min(correction_translation_weight)
         .min(correction_yaw_weight)
         .min(odom_motion_weight);
-    let alpha = ICP_BLEND_ALPHA * scale;
+    let alpha = p.blend_alpha * scale;
     if alpha <= 0.0 {
         return IcpBlendDecision {
             alpha: 0.0,
@@ -382,17 +469,17 @@ fn compute_icp_blend_decision(
     IcpBlendDecision { alpha, reason }
 }
 
-fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta, alpha: f64) -> MotionDelta {
+fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta, alpha: f64, p: &IcpGatingParams) -> MotionDelta {
     let correction_x = (icp.x - odom.x).clamp(
-        -MAX_ICP_TRANSLATION_CORRECTION,
-        MAX_ICP_TRANSLATION_CORRECTION,
+        -p.max_translation_correction,
+        p.max_translation_correction,
     );
     let correction_y = (icp.y - odom.y).clamp(
-        -MAX_ICP_TRANSLATION_CORRECTION,
-        MAX_ICP_TRANSLATION_CORRECTION,
+        -p.max_translation_correction,
+        p.max_translation_correction,
     );
     let correction_yaw =
-        normalize_angle(icp.yaw - odom.yaw).clamp(-MAX_ICP_YAW_CORRECTION, MAX_ICP_YAW_CORRECTION);
+        normalize_angle(icp.yaw - odom.yaw).clamp(-p.max_yaw_correction, p.max_yaw_correction);
 
     MotionDelta {
         x: odom.x + alpha * correction_x,
@@ -424,11 +511,11 @@ fn push_delta_fields(fields: &mut Vec<String>, prefix: &str, delta: Option<Motio
     }
 }
 
-fn diagnostics_status(diagnostics: ScanDiagnostics) -> &'static str {
+fn diagnostics_status(diagnostics: ScanDiagnostics, base_blend_alpha: f64) -> &'static str {
     if !diagnostics.had_previous_scan {
         "bootstrap"
     } else if diagnostics.blend_applied {
-        if diagnostics.blend_alpha + 1e-6 >= ICP_BLEND_ALPHA {
+        if diagnostics.blend_alpha + 1e-6 >= base_blend_alpha {
             "icp_ok"
         } else {
             "icp_attenuated"
@@ -449,9 +536,10 @@ fn format_slam_diagnostics(
     estimate_pose: Pose2D,
     corrected_mode: bool,
     diagnostics: ScanDiagnostics,
+    base_blend_alpha: f64,
 ) -> String {
     let mut fields = vec![
-        format!("status={}", diagnostics_status(diagnostics)),
+        format!("status={}", diagnostics_status(diagnostics, base_blend_alpha)),
         format!("frame={}", frame_id),
         format!("raw_frame={}", raw_frame_id),
         format!("corrected_mode={}", corrected_mode),
@@ -562,6 +650,7 @@ fn main() -> Result<(), DynError> {
     let diagnostics_topic = topic_from_env("SLAM_DIAGNOSTICS_TOPIC", DEFAULT_DIAGNOSTICS_TOPIC);
     let corrected_frame_id = topic_from_env("SLAM_CORRECTED_FRAME_ID", DEFAULT_MAP_FRAME_ID);
     let use_corrected_frame = bool_from_env("SLAM_USE_CORRECTED_FRAME", false);
+    let icp_params = icp_gating_params_from_env();
 
     let ctx = Context::new()?;
     let node = ctx.create_node("slam_node", None, Default::default())?;
@@ -616,6 +705,21 @@ fn main() -> Result<(), DynError> {
         corrected_frame_id,
         use_corrected_frame
     );
+    if use_corrected_frame {
+        pr_info!(
+            logger,
+            "ICP gating params: blend_alpha={:.3} err=[{:.3},{:.3}] iter=[{:.1},{:.1}] max_corr_trans={:.3} max_corr_yaw={:.3} motion_trans={:.3} motion_yaw={:.3}",
+            icp_params.blend_alpha,
+            icp_params.full_weight_error,
+            icp_params.reject_error,
+            icp_params.full_weight_iterations,
+            icp_params.reject_iterations,
+            icp_params.max_translation_correction,
+            icp_params.max_yaw_correction,
+            icp_params.full_weight_translation_motion,
+            icp_params.full_weight_yaw_motion
+        );
+    }
 
     let mut selector = ctx.create_selector()?;
 
@@ -630,6 +734,7 @@ fn main() -> Result<(), DynError> {
     );
 
     let state_scan = state.clone();
+    let icp_params_scan = icp_params;
     let pub_scan = map_pub;
     let pub_pose = corrected_pose_pub;
     let pub_odom = corrected_odom_pub;
@@ -717,12 +822,13 @@ fn main() -> Result<(), DynError> {
                             icp_converged,
                             icp_iterations,
                             icp_final_error,
+                            &icp_params_scan,
                         );
                         blend_alpha = decision.alpha;
                         gate_reason = decision.reason;
                         if decision.alpha > 0.0 {
                             blend_applied = true;
-                            blend_motion_delta(odom_delta, icp_delta, decision.alpha)
+                            blend_motion_delta(odom_delta, icp_delta, decision.alpha, &icp_params_scan)
                         } else {
                             odom_delta
                         }
@@ -799,6 +905,7 @@ fn main() -> Result<(), DynError> {
                     blend_alpha,
                     gate_reason,
                 },
+                icp_params_scan.blend_alpha,
             );
             if let Err(err) = publish_diagnostics(&pub_diag, &diagnostics) {
                 pr_warn!(log_scan, "failed to publish slam diagnostics: {}", err);
@@ -819,10 +926,14 @@ mod tests {
     use super::{
         blend_motion_delta, compose_pose_local, compute_icp_blend_decision,
         format_slam_diagnostics, normalize_angle, odom_measurement_from_msg,
-        relative_motion_local, MotionDelta, Pose2D, ScanDiagnostics, DEFAULT_BASE_FRAME_ID,
-        DEFAULT_ODOM_FRAME_ID, ICP_BLEND_ALPHA,
+        relative_motion_local, IcpGatingParams, MotionDelta, Pose2D, ScanDiagnostics,
+        DEFAULT_BASE_FRAME_ID, DEFAULT_ICP_BLEND_ALPHA, DEFAULT_ODOM_FRAME_ID,
     };
     use safe_drive::msg::common_interfaces::nav_msgs;
+
+    fn default_icp() -> IcpGatingParams {
+        IcpGatingParams::default()
+    }
 
     #[test]
     fn odom_measurement_defaults_frames_when_headers_are_empty() {
@@ -890,7 +1001,7 @@ mod tests {
             y: -1.0,
             yaw: 1.0,
         };
-        let blended = blend_motion_delta(odom, icp, ICP_BLEND_ALPHA);
+        let blended = blend_motion_delta(odom, icp, DEFAULT_ICP_BLEND_ALPHA, &default_icp());
         assert!(blended.x > odom.x);
         assert!(blended.x < 0.2);
         assert!(blended.y.abs() < 0.1);
@@ -913,6 +1024,7 @@ mod tests {
             true,
             4,
             10.0,
+            &default_icp(),
         );
         assert_eq!(decision.alpha, 0.0);
         assert_eq!(decision.reason, "high_error");
@@ -934,9 +1046,10 @@ mod tests {
             true,
             5,
             1.0,
+            &default_icp(),
         );
         assert!(decision.alpha > 0.0);
-        assert!(decision.alpha < ICP_BLEND_ALPHA);
+        assert!(decision.alpha < DEFAULT_ICP_BLEND_ALPHA);
         assert_eq!(decision.reason, "attenuated_low_motion");
     }
 
@@ -956,8 +1069,9 @@ mod tests {
             true,
             4,
             1.2,
+            &default_icp(),
         );
-        assert!((decision.alpha - ICP_BLEND_ALPHA).abs() < 1e-9);
+        assert!((decision.alpha - DEFAULT_ICP_BLEND_ALPHA).abs() < 1e-9);
         assert_eq!(decision.reason, "accepted");
     }
 
@@ -1005,9 +1119,10 @@ mod tests {
                     yaw: 0.015,
                 }),
                 blend_applied: true,
-                blend_alpha: ICP_BLEND_ALPHA,
+                blend_alpha: DEFAULT_ICP_BLEND_ALPHA,
                 gate_reason: "accepted",
             },
+            DEFAULT_ICP_BLEND_ALPHA,
         );
         assert!(text.contains("status=icp_ok"));
         assert!(text.contains("scan_points=42"));
