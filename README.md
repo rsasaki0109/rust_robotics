@@ -159,11 +159,11 @@ If you want the experimental corrected SLAM frame, enable:
 ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
-That switches the mission stack to `NAV_ODOM_TOPIC=/slam_odom` and `NAV_GLOBAL_FRAME=map`. In this mode, `slam_node` publishes `/slam_pose` plus `/slam_odom`, the map is integrated in `map`, and [map_odom_tf_broadcaster.py](./ros2_nodes/launch/map_odom_tf_broadcaster.py) estimates a dynamic `map -> odom` transform from `/slam_odom` against the raw odom stream.
+That switches the mission stack to `NAV_ODOM_TOPIC=/slam_odom` and `NAV_GLOBAL_FRAME=map`. In this mode, `slam_node` publishes `/slam_pose` plus `/slam_odom`, the map is integrated in `map`, and [map_odom_tf_broadcaster.py](./ros2_nodes/launch/map_odom_tf_broadcaster.py) estimates a dynamic `map -> odom` transform from `/slam_odom` against the raw odom stream. The corrected pose update is quality-gated: high-error, low-motion, or outlier ICP deltas fall back to pure odom, and medium-quality matches are attenuated instead of applied at the full blend factor.
 
 Corrected mode also exposes two extra observability topics:
 
-- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, and applied correction deltas
+- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, `blend_alpha`, `gate_reason`, and applied correction deltas
 - `/slam_ground_truth_status` (`std_msgs/String`) with relative-start Gazebo ground-truth error metrics derived from `gz topic -e -t /world/default/dynamic_pose/info --json-output`
 
 The ground-truth monitor defaults to the spawned model name (`GROUND_TRUTH_ENTITY_NAME=$TURTLEBOT3_MODEL`) and compares `/ekf_odom` plus `/slam_odom` against the model pose after subtracting the first ground-truth sample. You can override the Gazebo source with `GROUND_TRUTH_GZ_POSE_TOPIC` if needed.
