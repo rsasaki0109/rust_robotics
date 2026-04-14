@@ -7,7 +7,7 @@ use safe_drive::{
     logger::Logger,
     msg::{
         builtin_interfaces,
-        common_interfaces::{geometry_msgs, nav_msgs, sensor_msgs},
+        common_interfaces::{geometry_msgs, nav_msgs, sensor_msgs, std_msgs},
     },
     pr_info, pr_warn,
 };
@@ -24,6 +24,7 @@ const DEFAULT_ODOM_FRAME_ID: &str = "odom";
 const DEFAULT_BASE_FRAME_ID: &str = "base_footprint";
 const DEFAULT_OUTPUT_POSE_TOPIC: &str = "/slam_pose";
 const DEFAULT_OUTPUT_ODOM_TOPIC: &str = "/slam_odom";
+const DEFAULT_DIAGNOSTICS_TOPIC: &str = "/slam_diagnostics";
 const ICP_BLEND_ALPHA: f64 = 0.35;
 const MAX_ICP_TRANSLATION_CORRECTION: f64 = 0.25;
 const MAX_ICP_YAW_CORRECTION: f64 = 0.35;
@@ -60,6 +61,19 @@ struct SlamState {
     previous_scan: Option<DMatrix<f64>>,
     previous_raw_odom_at_scan: Option<Pose2D>,
     last_icp_log_at: Option<Instant>,
+}
+
+#[derive(Clone, Copy)]
+struct ScanDiagnostics {
+    scan_points: usize,
+    had_previous_scan: bool,
+    icp_converged: bool,
+    icp_iterations: usize,
+    icp_final_error: f64,
+    odom_delta: Option<MotionDelta>,
+    icp_delta: Option<MotionDelta>,
+    applied_delta: Option<MotionDelta>,
+    blend_applied: bool,
 }
 
 fn yaw_from_quaternion(x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -221,6 +235,62 @@ fn apply_yaw_to_pose(pose: &mut geometry_msgs::msg::Pose, yaw: f64) {
     pose.orientation.w = half_yaw.cos();
 }
 
+fn push_delta_fields(fields: &mut Vec<String>, prefix: &str, delta: Option<MotionDelta>) {
+    match delta {
+        Some(delta) => {
+            fields.push(format!("{}_dx={:.3}", prefix, delta.x));
+            fields.push(format!("{}_dy={:.3}", prefix, delta.y));
+            fields.push(format!("{}_dyaw={:.3}", prefix, delta.yaw));
+        }
+        None => {
+            fields.push(format!("{}_dx=na", prefix));
+            fields.push(format!("{}_dy=na", prefix));
+            fields.push(format!("{}_dyaw=na", prefix));
+        }
+    }
+}
+
+fn diagnostics_status(diagnostics: ScanDiagnostics) -> &'static str {
+    if !diagnostics.had_previous_scan {
+        "bootstrap"
+    } else if diagnostics.icp_converged {
+        "icp_ok"
+    } else {
+        "icp_rejected"
+    }
+}
+
+fn format_slam_diagnostics(
+    frame_id: &str,
+    raw_frame_id: &str,
+    raw_pose: Pose2D,
+    estimate_pose: Pose2D,
+    corrected_mode: bool,
+    diagnostics: ScanDiagnostics,
+) -> String {
+    let mut fields = vec![
+        format!("status={}", diagnostics_status(diagnostics)),
+        format!("frame={}", frame_id),
+        format!("raw_frame={}", raw_frame_id),
+        format!("corrected_mode={}", corrected_mode),
+        format!("scan_points={}", diagnostics.scan_points),
+        format!("icp_converged={}", diagnostics.icp_converged),
+        format!("icp_iterations={}", diagnostics.icp_iterations),
+        format!("icp_error={:.4}", diagnostics.icp_final_error),
+        format!("blend_applied={}", diagnostics.blend_applied),
+        format!("raw_x={:.3}", raw_pose.x),
+        format!("raw_y={:.3}", raw_pose.y),
+        format!("raw_yaw={:.3}", raw_pose.yaw),
+        format!("estimate_x={:.3}", estimate_pose.x),
+        format!("estimate_y={:.3}", estimate_pose.y),
+        format!("estimate_yaw={:.3}", estimate_pose.yaw),
+    ];
+    push_delta_fields(&mut fields, "odom", diagnostics.odom_delta);
+    push_delta_fields(&mut fields, "icp", diagnostics.icp_delta);
+    push_delta_fields(&mut fields, "applied", diagnostics.applied_delta);
+    fields.join(" ")
+}
+
 fn build_occupancy_grid_msg(
     map: &OccupancyGridMap,
     frame_id: &str,
@@ -291,10 +361,21 @@ fn publish_corrected_odom(
     Ok(())
 }
 
+fn publish_diagnostics(
+    publisher: &safe_drive::topic::publisher::Publisher<std_msgs::msg::String>,
+    status: &str,
+) -> Result<(), DynError> {
+    let mut msg = std_msgs::msg::String::new().ok_or("failed to allocate String")?;
+    let _ = msg.data.assign(status);
+    publisher.send(&msg)?;
+    Ok(())
+}
+
 fn main() -> Result<(), DynError> {
     let input_odom_topic = topic_from_env("SLAM_INPUT_ODOM_TOPIC", DEFAULT_INPUT_ODOM_TOPIC);
     let output_pose_topic = topic_from_env("SLAM_OUTPUT_POSE_TOPIC", DEFAULT_OUTPUT_POSE_TOPIC);
     let output_odom_topic = topic_from_env("SLAM_OUTPUT_ODOM_TOPIC", DEFAULT_OUTPUT_ODOM_TOPIC);
+    let diagnostics_topic = topic_from_env("SLAM_DIAGNOSTICS_TOPIC", DEFAULT_DIAGNOSTICS_TOPIC);
     let corrected_frame_id = topic_from_env("SLAM_CORRECTED_FRAME_ID", DEFAULT_MAP_FRAME_ID);
     let use_corrected_frame = bool_from_env("SLAM_USE_CORRECTED_FRAME", false);
 
@@ -308,6 +389,8 @@ fn main() -> Result<(), DynError> {
         node.create_publisher::<geometry_msgs::msg::PoseStamped>(&output_pose_topic, None)?;
     let corrected_odom_pub =
         node.create_publisher::<nav_msgs::msg::Odometry>(&output_odom_topic, None)?;
+    let diagnostics_pub =
+        node.create_publisher::<std_msgs::msg::String>(&diagnostics_topic, None)?;
 
     let map_config = OccupancyGridConfig {
         resolution: 0.2,
@@ -366,6 +449,7 @@ fn main() -> Result<(), DynError> {
     let pub_scan = map_pub;
     let pub_pose = corrected_pose_pub;
     let pub_odom = corrected_odom_pub;
+    let pub_diag = diagnostics_pub;
     let log_scan = Logger::new("slam_node");
     selector.add_subscriber(
         scan_sub,
@@ -393,9 +477,16 @@ fn main() -> Result<(), DynError> {
 
             let raw_odom = st.raw_odom.clone();
             let raw_pose = raw_odom.pose;
+            let had_previous_scan = st.previous_scan.is_some();
+            let mut icp_converged = false;
+            let mut icp_iterations = 0;
+            let mut icp_final_error = f64::NAN;
             let mut icp_delta = None;
             if let Some(previous) = st.previous_scan.as_ref() {
                 let icp_result = icp_matching(previous, &current_scan);
+                icp_converged = icp_result.converged;
+                icp_iterations = icp_result.iterations;
+                icp_final_error = icp_result.final_error;
                 icp_delta = icp_motion_delta(&icp_result);
                 let now = Instant::now();
                 if !icp_result.converged {
@@ -419,17 +510,23 @@ fn main() -> Result<(), DynError> {
                 }
             }
 
+            let odom_delta = st
+                .previous_raw_odom_at_scan
+                .map(|previous_raw_odom| relative_motion_local(previous_raw_odom, raw_pose));
+            let mut applied_delta = None;
+            let mut blend_applied = false;
             let pose = if use_corrected_frame {
                 if !st.corrected_initialized {
                     st.corrected_pose = raw_pose;
                     st.corrected_initialized = true;
-                } else if let Some(previous_raw_odom) = st.previous_raw_odom_at_scan {
-                    let odom_delta = relative_motion_local(previous_raw_odom, raw_pose);
+                } else if let Some(odom_delta) = odom_delta {
                     let blended_delta = if let Some(icp_delta) = icp_delta {
+                        blend_applied = true;
                         blend_motion_delta(odom_delta, icp_delta)
                     } else {
                         odom_delta
                     };
+                    applied_delta = Some(blended_delta);
                     st.corrected_pose = compose_pose_local(st.corrected_pose, blended_delta);
                 } else {
                     st.corrected_pose = raw_pose;
@@ -478,6 +575,28 @@ fn main() -> Result<(), DynError> {
                 }
             }
 
+            let diagnostics = format_slam_diagnostics(
+                &frame_id,
+                &raw_odom.frame_id,
+                raw_pose,
+                pose,
+                use_corrected_frame,
+                ScanDiagnostics {
+                    scan_points: current_scan.ncols(),
+                    had_previous_scan,
+                    icp_converged,
+                    icp_iterations,
+                    icp_final_error,
+                    odom_delta,
+                    icp_delta,
+                    applied_delta,
+                    blend_applied,
+                },
+            );
+            if let Err(err) = publish_diagnostics(&pub_diag, &diagnostics) {
+                pr_warn!(log_scan, "failed to publish slam diagnostics: {}", err);
+            }
+
             st.previous_scan = Some(current_scan);
             st.previous_raw_odom_at_scan = Some(raw_pose);
         }),
@@ -491,8 +610,9 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        blend_motion_delta, compose_pose_local, normalize_angle, odom_measurement_from_msg,
-        relative_motion_local, MotionDelta, Pose2D, DEFAULT_BASE_FRAME_ID, DEFAULT_ODOM_FRAME_ID,
+        blend_motion_delta, compose_pose_local, format_slam_diagnostics, normalize_angle,
+        odom_measurement_from_msg, relative_motion_local, MotionDelta, Pose2D, ScanDiagnostics,
+        DEFAULT_BASE_FRAME_ID, DEFAULT_ODOM_FRAME_ID,
     };
     use safe_drive::msg::common_interfaces::nav_msgs;
 
@@ -573,5 +693,51 @@ mod tests {
     fn normalize_angle_wraps_into_pi_range() {
         let wrapped = normalize_angle(3.5);
         assert!(wrapped < std::f64::consts::PI);
+    }
+
+    #[test]
+    fn format_slam_diagnostics_includes_status_and_deltas() {
+        let text = format_slam_diagnostics(
+            "map",
+            "odom",
+            Pose2D {
+                x: 1.0,
+                y: 2.0,
+                yaw: 0.3,
+            },
+            Pose2D {
+                x: 1.1,
+                y: 2.1,
+                yaw: 0.4,
+            },
+            true,
+            ScanDiagnostics {
+                scan_points: 42,
+                had_previous_scan: true,
+                icp_converged: true,
+                icp_iterations: 7,
+                icp_final_error: 0.12,
+                odom_delta: Some(MotionDelta {
+                    x: 0.1,
+                    y: 0.0,
+                    yaw: 0.01,
+                }),
+                icp_delta: Some(MotionDelta {
+                    x: 0.2,
+                    y: 0.1,
+                    yaw: 0.02,
+                }),
+                applied_delta: Some(MotionDelta {
+                    x: 0.15,
+                    y: 0.05,
+                    yaw: 0.015,
+                }),
+                blend_applied: true,
+            },
+        );
+        assert!(text.contains("status=icp_ok"));
+        assert!(text.contains("scan_points=42"));
+        assert!(text.contains("odom_dx=0.100"));
+        assert!(text.contains("applied_dyaw=0.015"));
     }
 }
