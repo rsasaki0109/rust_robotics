@@ -56,6 +56,7 @@ cargo test --workspace --lib --tests
   - Rebuilds its A* planner whenever `/map` updates
   - Converts occupied grid cells into A* obstacles
   - Uses the selected odometry topic pose as the robot start pose
+  - Publishes `/planned_path` in the same global frame named by the latest `/map.header.frame_id`
 
 ### `dwa_planner_node`
 
@@ -77,6 +78,9 @@ cargo test --workspace --lib --tests
   - `/odom` (`nav_msgs/Odometry`)
 - **Publications**:
   - `/map` (`nav_msgs/OccupancyGrid`)
+- **Notes**:
+  - The current Gazebo demo implementation updates the map directly from odom-aligned robot poses
+  - `/map.header.frame_id` therefore follows the input odom frame, which is `odom` by default
 
 ### `ekf_localizer_node`
 
@@ -106,6 +110,7 @@ cargo test --workspace --lib --tests
   - `/mission_markers` (`visualization_msgs/MarkerArray`)
 - **Configuration**:
   - `RUST_NAV_ODOM_TOPIC`
+  - `RUST_NAV_GLOBAL_FRAME`: frame id used for `/goal_pose` and `/mission_markers` headers, default `odom`
   - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited `x,y` mission string
   - `WAYPOINT_NAV_FRAME`: `map` or `relative_start`
   - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint reach tolerance \[m\]
@@ -114,6 +119,7 @@ cargo test --workspace --lib --tests
   - Waits for the selected odometry topic before sending the first goal
   - Republishes the active `/goal_pose` every 2 seconds until the planner reacts
   - `relative_start` resolves waypoints as offsets from the robot pose seen on the first odom sample
+  - In the current Gazebo demo, `WAYPOINT_NAV_FRAME=map` means "absolute in the selected global frame", which defaults to `odom`
   - Publishes human-readable mission / recovery summaries on `/mission_status`
   - Publishes RViz markers for the resolved route, active goal, and current mission state on `/mission_markers`
 
@@ -165,7 +171,7 @@ The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navig
 - can optionally launch the Gazebo GUI client with `enable_gazebo_gui:=true`
 - forwards the upstream TurtleBot3 world spawn defaults (`x=-2.0`, `y=-0.5`) as launch arguments
 - adds an extra `ros_gz_bridge` subscription so `/cmd_vel` accepts `geometry_msgs/Twist`
-- publishes an identity `map -> odom` static transform for RViz / debugging tools
+- can optionally publish a legacy identity `map -> odom` static transform with `publish_map_odom_tf:=true`
 - waits 5 seconds for Gazebo topics to appear
 - starts `slam_node`, `path_planner_node`, and `dwa_planner_node` from `target/release`
 
@@ -179,6 +185,12 @@ If you need a headless Gazebo server run:
 
 ```bash
 ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_gazebo_demo.sh
+```
+
+If you explicitly want the legacy `map -> odom` alias for RViz:
+
+```bash
+PUBLISH_MAP_ODOM_TF=true ./ros2_nodes/launch/run_gazebo_demo.sh
 ```
 
 The RViz layout is stored at [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
@@ -205,6 +217,7 @@ The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navi
 - `enable_ekf_localizer:=true`
 - `enable_rviz:=true` by default in `run_gazebo_mission_demo.sh` (override with `ENABLE_RVIZ=false`)
 - `nav_odom_topic:=/ekf_odom`
+- `nav_global_frame:=odom`
 - `dwa_goal_threshold:=0.3`
 - `waypoint_frame:=relative_start`
 - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited 2D mission
@@ -218,7 +231,8 @@ For observability during the mission demo:
 - `/mission_status` reports the current mission state, active waypoint, and recovery phase
 - `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
 - `odom_tf_broadcaster.py` republishes the selected nav odom topic as dynamic TF from `odom` to the robot base frame
-- the launch-time `map -> odom` static transform lets RViz show `/map`, `/planned_path`, `/ekf_odom`, `/mission_markers`, and the robot model in a single `map` fixed frame
+- by default `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` all use the same honest global frame, `odom`
+- `navigation_demo.rviz` therefore uses `odom` as its fixed frame by default
 
 Example looping square:
 
@@ -244,8 +258,8 @@ export ENABLE_GAZEBO_GUI=false
 The smoke script wraps [run_gazebo_mission_demo.sh](../ros2_nodes/launch/run_gazebo_mission_demo.sh) and verifies:
 
 - `waypoint_navigator_node` exposes `/mission_status`
+- `/map`, `/planned_path`, and `/mission_markers` share the selected nav odom frame id
 - typed `ros2 topic echo /mission_markers visualization_msgs/msg/MarkerArray --once` succeeds
-- `tf2_echo map odom` resolves the identity static transform published by `navigation_demo.launch.py`
 - `tf2_echo odom base_footprint` resolves the dynamic TF mirrored from the selected nav odom topic
 - the mission finishes with `mission complete`, `cleared active navigation goal`, `planned path cleared`, and `published stop command after path clear`
 
@@ -347,4 +361,4 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - Mission demo repeatedly logs recovery attempts:
   - Lower `WAYPOINT_NAV_STUCK_TIMEOUT` only if odom is stable enough; otherwise increase it or reduce `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` so slow-but-valid motion is not classified as stuck.
 - RViz shows `/map` but not the robot or path:
-  - Confirm the launch still includes the `map -> odom` static transform and that RViz is using the `map` fixed frame from [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
+  - Confirm `/map`, `/planned_path`, and the selected nav odom topic share the same frame id and that RViz is using the `odom` fixed frame from [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz). If you explicitly enabled `PUBLISH_MAP_ODOM_TF=true`, also confirm the alias transform is present.

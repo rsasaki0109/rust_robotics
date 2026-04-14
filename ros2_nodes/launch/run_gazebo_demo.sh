@@ -13,6 +13,8 @@ set -u
 export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-true}"
+export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
+export NAV_GLOBAL_FRAME="${NAV_GLOBAL_FRAME:-odom}"
 
 required_bins=(
   "$ROOT_DIR/ros2_nodes/path_planner_node/target/release/path_planner_node"
@@ -41,4 +43,6 @@ fi
 exec ros2 launch "$LAUNCH_FILE" \
   "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
   "enable_gazebo_gui:=${ENABLE_GAZEBO_GUI}" \
+  "publish_map_odom_tf:=${PUBLISH_MAP_ODOM_TF}" \
+  "nav_global_frame:=${NAV_GLOBAL_FRAME}" \
   "enable_rviz:=${ENABLE_RVIZ}"

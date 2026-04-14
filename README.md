@@ -150,7 +150,7 @@ For observability, `navigation_demo.launch.py` now also exposes:
 - `/mission_status` (`std_msgs/String`) for mission / recovery state summaries
 - `/mission_markers` (`visualization_msgs/MarkerArray`) for the route, active goal, and status text
 
-The launch file now gives RViz a full demo TF chain: identity `map -> odom`, then dynamic `odom -> base_footprint` from the selected nav odom topic. That still assumes the SLAM map and navigation odom remain aligned during the Gazebo mission demo.
+By default, the current Gazebo demo uses `odom` as its honest global frame: `slam_node` publishes `/map` in the raw odom frame it actually integrates against, `path_planner_node` republishes `/planned_path` in that same frame, and `waypoint_navigator_node` publishes `/goal_pose` plus `/mission_markers` in `RUST_NAV_GLOBAL_FRAME=odom`. If you still want the old RViz alias, you can opt into `PUBLISH_MAP_ODOM_TF=true` to add a legacy identity `map -> odom` transform.
 
 For a local ROS2/Gazebo regression check, run:
 
@@ -158,7 +158,7 @@ For a local ROS2/Gazebo regression check, run:
 ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
 
-The smoke script launches the mission demo, verifies `/mission_status`, typed `/mission_markers`, the `map -> odom` static transform, the dynamic nav odom TF, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
+The smoke script launches the mission demo, verifies `/map`, `/planned_path`, and typed `/mission_markers` all match the nav odom frame, checks the dynamic nav odom TF, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
 
 ## Benchmarks
 
