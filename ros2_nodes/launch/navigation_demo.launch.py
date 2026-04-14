@@ -79,7 +79,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("spawn_x", default_value="-2.0"),
             DeclareLaunchArgument("spawn_y", default_value="-0.5"),
             DeclareLaunchArgument("enable_gazebo_gui", default_value="true"),
-            DeclareLaunchArgument("publish_map_odom_tf", default_value="true"),
+            DeclareLaunchArgument("publish_map_odom_tf", default_value="false"),
             DeclareLaunchArgument("map_frame", default_value="map"),
             DeclareLaunchArgument("odom_frame", default_value="odom"),
             DeclareLaunchArgument("enable_rviz", default_value="false"),
@@ -87,6 +87,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
             DeclareLaunchArgument("enable_nav_tf_broadcaster", default_value="true"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("nav_global_frame", default_value="odom"),
             DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
@@ -209,6 +210,9 @@ def generate_launch_description() -> LaunchDescription:
                             "RUST_NAV_ODOM_TOPIC": LaunchConfiguration("nav_odom_topic"),
                             "WAYPOINT_NAV_WAYPOINTS": LaunchConfiguration(
                                 "waypoint_mission"
+                            ),
+                            "RUST_NAV_GLOBAL_FRAME": LaunchConfiguration(
+                                "nav_global_frame"
                             ),
                             "WAYPOINT_NAV_FRAME": LaunchConfiguration("waypoint_frame"),
                             "WAYPOINT_NAV_LOOP": LaunchConfiguration("waypoint_loop"),
