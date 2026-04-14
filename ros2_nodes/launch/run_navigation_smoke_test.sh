@@ -116,6 +116,49 @@ capture_topic_once() {
   return 1
 }
 
+capture_topic_stream_until() {
+  local topic="$1"
+  local topic_type="$2"
+  local output_file="$3"
+  local timeout_seconds="$4"
+  shift 4
+  local patterns=("$@")
+  local deadline=$((SECONDS + timeout_seconds))
+  local subscriber_pid=""
+
+  : >"$output_file"
+  stdbuf -oL -eL ros2 topic echo --full-length "$topic" "$topic_type" >"$output_file" 2>>"$LAUNCH_LOG" &
+  subscriber_pid=$!
+
+  while (( SECONDS < deadline )); do
+    if [[ -s "$output_file" ]]; then
+      local matched_all=true
+      local pattern
+      for pattern in "${patterns[@]}"; do
+        if ! rg -q "$pattern" "$output_file"; then
+          matched_all=false
+          break
+        fi
+      done
+      if [[ "$matched_all" == "true" ]]; then
+        kill "$subscriber_pid" 2>/dev/null || true
+        wait "$subscriber_pid" 2>/dev/null || true
+        return 0
+      fi
+    fi
+    if ! kill -0 "$subscriber_pid" 2>/dev/null; then
+      break
+    fi
+    sleep 1
+  done
+
+  kill "$subscriber_pid" 2>/dev/null || true
+  wait "$subscriber_pid" 2>/dev/null || true
+
+  echo "Timed out streaming topic $topic ($topic_type) for patterns: ${patterns[*]}" >&2
+  return 1
+}
+
 capture_nav_tf() {
   local timeout_seconds="$1"
   local deadline=$((SECONDS + timeout_seconds))
@@ -169,9 +212,9 @@ launch_pid=$!
 wait_for_log_pattern "observability topics: /mission_status and /mission_markers" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/map" "nav_msgs/msg/OccupancyGrid" "$MAP_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/planned_path" "nav_msgs/msg/Path" "$PATH_OUT" "$SMOKE_STARTUP_TIMEOUT"
-capture_topic_once "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
-capture_topic_once "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_STARTUP_TIMEOUT"
-capture_topic_once "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT"
+capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status="
+capture_topic_stream_until "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status=" "icp_" "blend_alpha=" "gate_reason="
+capture_topic_stream_until "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT" "ns: mission"
 capture_nav_tf "$SMOKE_STARTUP_TIMEOUT"
 
 parent_frame="$(awk '/frame_id:/{print $2; exit}' "$ODOM_OUT" | tr -d '"' | tr -d "'")"
@@ -180,20 +223,14 @@ if [[ -z "$parent_frame" ]]; then
   exit 1
 fi
 
-rg -q "data: status=" "$STATUS_OUT"
-rg -q "data: status=" "$SLAM_DIAG_OUT"
-rg -q "icp_" "$SLAM_DIAG_OUT"
 rg -q "frame_id: $parent_frame" "$MAP_OUT"
 rg -q "frame_id: $parent_frame" "$PATH_OUT"
-rg -q "ns: mission" "$MARKERS_OUT"
 rg -q "frame_id: $parent_frame" "$MARKERS_OUT"
 
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   capture_tf_between_frames "map" "odom" "$TF_MAP_ODOM_OUT" "$SMOKE_STARTUP_TIMEOUT"
   if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
-    capture_topic_once "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
-    rg -q "data: status=ok" "$SLAM_GT_STATUS_OUT"
-    rg -q "slam_xy_error=" "$SLAM_GT_STATUS_OUT"
+    capture_topic_stream_until "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status=ok" "slam_xy_error="
   fi
 fi
 
@@ -202,8 +239,7 @@ wait_for_log_pattern "cleared active navigation goal" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "planned path cleared" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "published stop command after path clear" "$SMOKE_MISSION_TIMEOUT"
 
-capture_topic_once "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT"
-rg -q "data: status=completed" "$STATUS_OUT"
+capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=completed"
 
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
