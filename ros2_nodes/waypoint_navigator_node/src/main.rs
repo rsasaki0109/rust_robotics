@@ -3,7 +3,7 @@ use safe_drive::{
     context::Context,
     error::DynError,
     logger::Logger,
-    msg::common_interfaces::{geometry_msgs, nav_msgs, std_msgs},
+    msg::common_interfaces::{geometry_msgs, nav_msgs, std_msgs, visualization_msgs},
     pr_info, pr_warn,
 };
 use std::{
@@ -21,6 +21,8 @@ const GOAL_REPUBLISH_INTERVAL: Duration = Duration::from_secs(2);
 const GOAL_PROGRESS_ARM_DISTANCE: f64 = 0.05;
 const GOAL_COMPLETION_ARM_DELAY: Duration = Duration::from_millis(500);
 const NAVIGATION_CANCEL_TOPIC: &str = "/navigation_cancel";
+const MISSION_STATUS_TOPIC: &str = "/mission_status";
+const MISSION_MARKERS_TOPIC: &str = "/mission_markers";
 const DEFAULT_STUCK_TIMEOUT: Duration = Duration::from_secs(6);
 const DEFAULT_STUCK_PROGRESS_DISTANCE: f64 = 0.05;
 const DEFAULT_MAX_RECOVERY_ATTEMPTS: u32 = 2;
@@ -29,6 +31,11 @@ const DEFAULT_RECOVERY_ROTATE_DURATION: Duration = Duration::from_millis(1400);
 const DEFAULT_RECOVERY_BACKOFF_DURATION: Duration = Duration::from_millis(900);
 const DEFAULT_RECOVERY_ROTATE_SPEED: f64 = 0.7;
 const DEFAULT_RECOVERY_BACKOFF_SPEED: f64 = 0.08;
+const MISSION_MARKER_NS: &str = "mission";
+const ROUTE_MARKER_ID: i32 = 0;
+const WAYPOINTS_MARKER_ID: i32 = 1;
+const ACTIVE_GOAL_MARKER_ID: i32 = 2;
+const STATUS_TEXT_MARKER_ID: i32 = 3;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MissionFrame {
@@ -63,6 +70,18 @@ enum MissionStatus {
     Completed,
 }
 
+impl MissionStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            MissionStatus::Idle => "idle",
+            MissionStatus::Running => "running",
+            MissionStatus::Recovering => "recovering",
+            MissionStatus::Failed => "failed",
+            MissionStatus::Completed => "completed",
+        }
+    }
+}
+
 #[derive(Clone)]
 struct RecoveryConfig {
     stuck_timeout: Duration,
@@ -80,6 +99,16 @@ enum RecoveryPhase {
     Settle,
     Rotate,
     Backoff,
+}
+
+impl RecoveryPhase {
+    fn as_str(self) -> &'static str {
+        match self {
+            RecoveryPhase::Settle => "settle",
+            RecoveryPhase::Rotate => "rotate",
+            RecoveryPhase::Backoff => "backoff",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,6 +160,16 @@ struct ActiveGoalState {
     published_at: Instant,
     last_progress_at: Instant,
     completion_armed: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ObservabilitySnapshot {
+    mission_status: MissionStatus,
+    current_waypoint_idx: Option<usize>,
+    current_waypoint_recovery_attempts: u32,
+    anchor_pose: Option<Point2D>,
+    active_goal: Option<ActiveGoalState>,
+    recovery: Option<RecoveryState>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -189,6 +228,19 @@ enum MissionEvent {
         current_idx: usize,
         goal: Point2D,
     },
+}
+
+impl NavigatorState {
+    fn observability_snapshot(&self) -> ObservabilitySnapshot {
+        ObservabilitySnapshot {
+            mission_status: self.mission_status,
+            current_waypoint_idx: self.current_waypoint_idx,
+            current_waypoint_recovery_attempts: self.current_waypoint_recovery_attempts,
+            anchor_pose: self.anchor_pose,
+            active_goal: self.active_goal,
+            recovery: self.recovery,
+        }
+    }
 }
 
 fn parse_waypoints(raw: &str) -> Result<Vec<Point2D>, String> {
@@ -306,7 +358,10 @@ fn load_positive_f64_env(name: &str, default: f64) -> Result<f64, String> {
                 .parse::<f64>()
                 .map_err(|_| format!("invalid {} '{}'", name, raw))?;
             if !value.is_finite() || value <= 0.0 {
-                return Err(format!("{} must be positive and finite, got {}", name, value));
+                return Err(format!(
+                    "{} must be positive and finite, got {}",
+                    name, value
+                ));
             }
             Ok(value)
         }
@@ -397,6 +452,294 @@ fn resolve_waypoint(
     }
 }
 
+fn resolved_waypoints(mission: &MissionConfig, snapshot: &ObservabilitySnapshot) -> Vec<Point2D> {
+    mission
+        .waypoints
+        .iter()
+        .map(|&waypoint| resolve_waypoint(waypoint, mission.frame, snapshot.anchor_pose))
+        .collect()
+}
+
+fn visualization_goal(
+    mission: &MissionConfig,
+    snapshot: &ObservabilitySnapshot,
+) -> Option<Point2D> {
+    snapshot
+        .active_goal
+        .map(|goal| goal.published_goal)
+        .or_else(|| snapshot.recovery.map(|recovery| recovery.goal))
+        .or_else(|| {
+            snapshot.current_waypoint_idx.map(|idx| {
+                resolve_waypoint(mission.waypoints[idx], mission.frame, snapshot.anchor_pose)
+            })
+        })
+}
+
+fn status_anchor_point(
+    mission: &MissionConfig,
+    snapshot: &ObservabilitySnapshot,
+    waypoints: &[Point2D],
+) -> Point2D {
+    visualization_goal(mission, snapshot)
+        .or_else(|| waypoints.last().copied())
+        .or(snapshot.anchor_pose)
+        .unwrap_or(Point2D::origin())
+}
+
+fn build_mission_status_message(
+    mission: &MissionConfig,
+    snapshot: &ObservabilitySnapshot,
+) -> String {
+    let waypoint_total = mission.waypoints.len();
+    let frame_suffix = if mission.frame == MissionFrame::RelativeStart {
+        match snapshot.anchor_pose {
+            Some(anchor) => format!(" anchor=({:.2},{:.2})", anchor.x, anchor.y),
+            None => " anchor=pending".to_string(),
+        }
+    } else {
+        String::new()
+    };
+
+    match snapshot.mission_status {
+        MissionStatus::Idle => format!(
+            "status={} waypoint=0/{} frame={}{}",
+            snapshot.mission_status.as_str(),
+            waypoint_total,
+            mission.frame.as_str(),
+            frame_suffix
+        ),
+        MissionStatus::Running => {
+            let idx = snapshot.current_waypoint_idx.unwrap_or(0);
+            let goal = visualization_goal(mission, snapshot).unwrap_or(Point2D::origin());
+            format!(
+                "status={} waypoint={}/{} goal=({:.2},{:.2}) attempts={} frame={}{}",
+                snapshot.mission_status.as_str(),
+                idx + 1,
+                waypoint_total,
+                goal.x,
+                goal.y,
+                snapshot.current_waypoint_recovery_attempts,
+                mission.frame.as_str(),
+                frame_suffix
+            )
+        }
+        MissionStatus::Recovering => match snapshot.recovery {
+            Some(recovery) => format!(
+                "status={} waypoint={}/{} goal=({:.2},{:.2}) attempt={} phase={} frame={}{}",
+                snapshot.mission_status.as_str(),
+                recovery.waypoint_idx + 1,
+                waypoint_total,
+                recovery.goal.x,
+                recovery.goal.y,
+                recovery.attempt,
+                recovery.phase.as_str(),
+                mission.frame.as_str(),
+                frame_suffix
+            ),
+            None => format!(
+                "status={} waypoint=unknown/{} frame={}{}",
+                snapshot.mission_status.as_str(),
+                waypoint_total,
+                mission.frame.as_str(),
+                frame_suffix
+            ),
+        },
+        MissionStatus::Failed => {
+            let goal = visualization_goal(mission, snapshot).unwrap_or(Point2D::origin());
+            let idx = snapshot.current_waypoint_idx.unwrap_or(0);
+            format!(
+                "status={} waypoint={}/{} goal=({:.2},{:.2}) attempts={} frame={}{}",
+                snapshot.mission_status.as_str(),
+                idx + 1,
+                waypoint_total,
+                goal.x,
+                goal.y,
+                snapshot.current_waypoint_recovery_attempts,
+                mission.frame.as_str(),
+                frame_suffix
+            )
+        }
+        MissionStatus::Completed => format!(
+            "status={} waypoint={}/{} frame={}{}",
+            snapshot.mission_status.as_str(),
+            waypoint_total,
+            waypoint_total,
+            mission.frame.as_str(),
+            frame_suffix
+        ),
+    }
+}
+
+fn marker_color_for_status(status: MissionStatus) -> (f32, f32, f32, f32) {
+    match status {
+        MissionStatus::Idle => (0.80, 0.80, 0.80, 1.0),
+        MissionStatus::Running => (1.00, 0.65, 0.10, 1.0),
+        MissionStatus::Recovering => (0.95, 0.25, 0.15, 1.0),
+        MissionStatus::Failed => (0.85, 0.05, 0.05, 1.0),
+        MissionStatus::Completed => (0.10, 0.75, 0.20, 1.0),
+    }
+}
+
+fn set_marker_color(color: &mut std_msgs::msg::ColorRGBA, rgba: (f32, f32, f32, f32)) {
+    color.r = rgba.0;
+    color.g = rgba.1;
+    color.b = rgba.2;
+    color.a = rgba.3;
+}
+
+fn init_marker(marker: &mut visualization_msgs::msg::Marker, id: i32, type_: i32, action: i32) {
+    let _ = marker.header.frame_id.assign(GOAL_FRAME_ID);
+    let _ = marker.ns.assign(MISSION_MARKER_NS);
+    marker.id = id;
+    marker.type_ = type_;
+    marker.action = action;
+    marker.pose.orientation.w = 1.0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+}
+
+fn assign_marker_points(
+    marker: &mut visualization_msgs::msg::Marker,
+    points: &[Point2D],
+) -> Result<(), DynError> {
+    let mut point_seq = geometry_msgs::msg::PointSeq::new(points.len())
+        .ok_or("failed to allocate marker points")?;
+    for (point_msg, point) in point_seq.as_slice_mut().iter_mut().zip(points.iter()) {
+        point_msg.x = point.x;
+        point_msg.y = point.y;
+        point_msg.z = 0.0;
+    }
+    marker.points = point_seq;
+    Ok(())
+}
+
+fn build_route_marker(
+    marker: &mut visualization_msgs::msg::Marker,
+    waypoints: &[Point2D],
+) -> Result<(), DynError> {
+    init_marker(
+        marker,
+        ROUTE_MARKER_ID,
+        visualization_msgs::msg::LINE_STRIP,
+        visualization_msgs::msg::ADD,
+    );
+    marker.scale.x = 0.05;
+    set_marker_color(&mut marker.color, (0.15, 0.80, 0.95, 0.95));
+    assign_marker_points(marker, waypoints)
+}
+
+fn build_waypoints_marker(
+    marker: &mut visualization_msgs::msg::Marker,
+    waypoints: &[Point2D],
+) -> Result<(), DynError> {
+    init_marker(
+        marker,
+        WAYPOINTS_MARKER_ID,
+        visualization_msgs::msg::SPHERE_LIST,
+        visualization_msgs::msg::ADD,
+    );
+    marker.scale.x = 0.16;
+    marker.scale.y = 0.16;
+    marker.scale.z = 0.16;
+    set_marker_color(&mut marker.color, (0.35, 0.55, 0.95, 0.90));
+    assign_marker_points(marker, waypoints)
+}
+
+fn build_active_goal_marker(
+    marker: &mut visualization_msgs::msg::Marker,
+    goal: Option<Point2D>,
+    status: MissionStatus,
+) {
+    init_marker(
+        marker,
+        ACTIVE_GOAL_MARKER_ID,
+        visualization_msgs::msg::SPHERE,
+        if goal.is_some() {
+            visualization_msgs::msg::ADD
+        } else {
+            visualization_msgs::msg::DELETE
+        },
+    );
+    marker.scale.x = 0.24;
+    marker.scale.y = 0.24;
+    marker.scale.z = 0.24;
+    set_marker_color(&mut marker.color, marker_color_for_status(status));
+    if let Some(goal) = goal {
+        marker.pose.position.x = goal.x;
+        marker.pose.position.y = goal.y;
+        marker.pose.position.z = 0.0;
+    }
+}
+
+fn build_status_text_marker(
+    marker: &mut visualization_msgs::msg::Marker,
+    text: &str,
+    anchor: Point2D,
+    status: MissionStatus,
+) {
+    init_marker(
+        marker,
+        STATUS_TEXT_MARKER_ID,
+        visualization_msgs::msg::TEXT_VIEW_FACING,
+        visualization_msgs::msg::ADD,
+    );
+    marker.scale.z = 0.24;
+    marker.pose.position.x = anchor.x;
+    marker.pose.position.y = anchor.y + 0.20;
+    marker.pose.position.z = 0.35;
+    let _ = marker.text.assign(text);
+    set_marker_color(&mut marker.color, marker_color_for_status(status));
+}
+
+fn build_mission_markers(
+    mission: &MissionConfig,
+    snapshot: &ObservabilitySnapshot,
+) -> Result<visualization_msgs::msg::MarkerArray, DynError> {
+    let mut marker_array =
+        visualization_msgs::msg::MarkerArray::new().ok_or("failed to allocate MarkerArray")?;
+    let mut markers = visualization_msgs::msg::MarkerSeq::new(4)
+        .ok_or("failed to allocate mission marker sequence")?;
+    let resolved = resolved_waypoints(mission, snapshot);
+    let goal = visualization_goal(mission, snapshot);
+    let status_text = build_mission_status_message(mission, snapshot);
+    let text_anchor = status_anchor_point(mission, snapshot, &resolved);
+    let markers_slice = markers.as_slice_mut();
+
+    build_route_marker(&mut markers_slice[0], &resolved)?;
+    build_waypoints_marker(&mut markers_slice[1], &resolved)?;
+    build_active_goal_marker(&mut markers_slice[2], goal, snapshot.mission_status);
+    build_status_text_marker(
+        &mut markers_slice[3],
+        &status_text,
+        text_anchor,
+        snapshot.mission_status,
+    );
+
+    marker_array.markers = markers;
+    Ok(marker_array)
+}
+
+fn publish_mission_status(
+    publisher: &safe_drive::topic::publisher::Publisher<std_msgs::msg::String>,
+    status: &str,
+) -> Result<(), DynError> {
+    let mut msg = std_msgs::msg::String::new().ok_or("failed to allocate String")?;
+    let _ = msg.data.assign(status);
+    publisher.send(&msg)?;
+    Ok(())
+}
+
+fn publish_mission_markers(
+    publisher: &safe_drive::topic::publisher::Publisher<visualization_msgs::msg::MarkerArray>,
+    mission: &MissionConfig,
+    snapshot: &ObservabilitySnapshot,
+) -> Result<(), DynError> {
+    let msg = build_mission_markers(mission, snapshot)?;
+    publisher.send(&msg)?;
+    Ok(())
+}
+
 fn new_active_goal(
     goal: Point2D,
     robot_pose: Point2D,
@@ -483,7 +826,11 @@ fn recovery_command_for_phase(
     match recovery.phase {
         RecoveryPhase::Settle => stop_command(),
         RecoveryPhase::Rotate => {
-            let direction = if recovery.attempt % 2 == 0 { -1.0 } else { 1.0 };
+            let direction = if recovery.attempt.is_multiple_of(2) {
+                -1.0
+            } else {
+                1.0
+            };
             VelocityCommand {
                 linear_x: 0.0,
                 angular_z: direction * config.rotate_speed,
@@ -613,6 +960,9 @@ fn main() -> Result<(), DynError> {
     let cancel_pub =
         node.create_publisher::<std_msgs::msg::Empty>(NAVIGATION_CANCEL_TOPIC, None)?;
     let cmd_pub = node.create_publisher::<geometry_msgs::msg::Twist>("/cmd_vel", None)?;
+    let status_pub = node.create_publisher::<std_msgs::msg::String>(MISSION_STATUS_TOPIC, None)?;
+    let marker_pub =
+        node.create_publisher::<visualization_msgs::msg::MarkerArray>(MISSION_MARKERS_TOPIC, None)?;
 
     let state = Arc::new(Mutex::new(NavigatorState::default()));
     let logger = Logger::new("waypoint_navigator_node");
@@ -626,6 +976,12 @@ fn main() -> Result<(), DynError> {
     );
     pr_info!(logger, "waypoint odom topic: {}", odom_topic);
     pr_info!(logger, "mission: {}", format_waypoints(&mission.waypoints));
+    pr_info!(
+        logger,
+        "observability topics: {} and {}",
+        MISSION_STATUS_TOPIC,
+        MISSION_MARKERS_TOPIC
+    );
     pr_info!(
         logger,
         "recovery: timeout={:.1}s, max_attempts={}, rotate={:.1}s@{:.2}rad/s, backoff={:.1}s@{:.2}m/s",
@@ -647,7 +1003,7 @@ fn main() -> Result<(), DynError> {
             let robot_pose = Point2D::new(msg.pose.pose.position.x, msg.pose.pose.position.y);
             let now = Instant::now();
 
-            let (event, recovery_cmd) = {
+            let (event, recovery_cmd, snapshot) = {
                 let mut st = match state_odom.lock() {
                     Ok(guard) => guard,
                     Err(_) => {
@@ -660,7 +1016,7 @@ fn main() -> Result<(), DynError> {
                     st.anchor_pose = Some(robot_pose);
                 }
 
-                match st.mission_status {
+                let (event, recovery_cmd) = match st.mission_status {
                     MissionStatus::Completed | MissionStatus::Failed => (None, None),
                     MissionStatus::Idle => {
                         let goal = resolve_waypoint(
@@ -889,7 +1245,9 @@ fn main() -> Result<(), DynError> {
                             }
                         }
                     },
-                }
+                };
+                let snapshot = st.observability_snapshot();
+                (event, recovery_cmd, snapshot)
             };
 
             match event {
@@ -1075,6 +1433,14 @@ fn main() -> Result<(), DynError> {
                     pr_warn!(log_odom, "failed to publish recovery velocity command: {}", err);
                 }
             }
+
+            let status_message = build_mission_status_message(&mission_cb, &snapshot);
+            if let Err(err) = publish_mission_status(&status_pub, &status_message) {
+                pr_warn!(log_odom, "failed to publish mission status: {}", err);
+            }
+            if let Err(err) = publish_mission_markers(&marker_pub, &mission_cb, &snapshot) {
+                pr_warn!(log_odom, "failed to publish mission markers: {}", err);
+            }
         }),
     );
 
@@ -1087,11 +1453,13 @@ fn main() -> Result<(), DynError> {
 mod tests {
     use super::{
         advance_recovery_phase, arm_goal_completion_if_progressed, begin_recovery_attempt,
-        goal_is_stuck, new_active_goal, parse_bool, parse_mission_frame, parse_waypoints,
-        recovery_command_for_phase, resolve_waypoint, resume_waypoint_after_recovery,
-        should_republish_goal, update_goal_progress, MissionEvent, MissionFrame, MissionStatus,
-        NavigatorState, RecoveryConfig, RecoveryPhase, RecoveryPhaseTransition, RecoveryState,
-        GOAL_COMPLETION_ARM_DELAY, GOAL_PROGRESS_ARM_DISTANCE, GOAL_REPUBLISH_INTERVAL,
+        build_mission_status_message, goal_is_stuck, new_active_goal, parse_bool,
+        parse_mission_frame, parse_waypoints, recovery_command_for_phase, resolve_waypoint,
+        resolved_waypoints, resume_waypoint_after_recovery, should_republish_goal,
+        update_goal_progress, MissionConfig, MissionEvent, MissionFrame, MissionStatus,
+        NavigatorState, ObservabilitySnapshot, RecoveryConfig, RecoveryPhase,
+        RecoveryPhaseTransition, RecoveryState, GOAL_COMPLETION_ARM_DELAY,
+        GOAL_PROGRESS_ARM_DISTANCE, GOAL_REPUBLISH_INTERVAL,
     };
     use rust_robotics_core::Point2D;
     use std::time::{Duration, Instant};
@@ -1106,6 +1474,16 @@ mod tests {
             backoff_duration: Duration::from_millis(800),
             rotate_speed: 0.7,
             backoff_speed: 0.08,
+        }
+    }
+
+    fn mission_config(frame: MissionFrame) -> MissionConfig {
+        MissionConfig {
+            waypoints: vec![Point2D::new(0.4, 0.0), Point2D::new(0.1, 0.4)],
+            goal_tolerance: 0.35,
+            loop_mission: false,
+            frame,
+            recovery: recovery_config(),
         }
     }
 
@@ -1156,6 +1534,49 @@ mod tests {
         );
         assert!((resolved.x + 1.5).abs() < 1e-9);
         assert!((resolved.y + 0.7).abs() < 1e-9);
+    }
+
+    #[test]
+    fn resolved_waypoints_follow_relative_start_anchor() {
+        let mission = mission_config(MissionFrame::RelativeStart);
+        let snapshot = ObservabilitySnapshot {
+            mission_status: MissionStatus::Running,
+            current_waypoint_idx: Some(0),
+            current_waypoint_recovery_attempts: 0,
+            anchor_pose: Some(Point2D::new(-2.0, -0.5)),
+            active_goal: None,
+            recovery: None,
+        };
+
+        let resolved = resolved_waypoints(&mission, &snapshot);
+        assert_eq!(resolved.len(), 2);
+        assert!((resolved[0].x + 1.6).abs() < 1e-9);
+        assert!((resolved[1].y + 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn mission_status_message_reports_recovery_phase() {
+        let mission = mission_config(MissionFrame::RelativeStart);
+        let snapshot = ObservabilitySnapshot {
+            mission_status: MissionStatus::Recovering,
+            current_waypoint_idx: Some(0),
+            current_waypoint_recovery_attempts: 1,
+            anchor_pose: Some(Point2D::new(-2.0, -0.5)),
+            active_goal: None,
+            recovery: Some(RecoveryState {
+                waypoint_idx: 0,
+                goal: Point2D::new(-1.6, -0.5),
+                attempt: 1,
+                phase: RecoveryPhase::Rotate,
+                phase_started_at: Instant::now(),
+            }),
+        };
+
+        let message = build_mission_status_message(&mission, &snapshot);
+        assert!(message.contains("status=recovering"));
+        assert!(message.contains("phase=rotate"));
+        assert!(message.contains("waypoint=1/2"));
+        assert!(message.contains("anchor=(-2.00,-0.50)"));
     }
 
     #[test]
@@ -1244,11 +1665,18 @@ mod tests {
     #[test]
     fn goal_is_stuck_after_progress_timeout() {
         let now = Instant::now();
-        let active_goal =
-            new_active_goal(Point2D::new(1.0, 0.0), Point2D::new(0.0, 0.0), 0.2, now);
+        let active_goal = new_active_goal(Point2D::new(1.0, 0.0), Point2D::new(0.0, 0.0), 0.2, now);
 
-        assert!(!goal_is_stuck(&active_goal, now + Duration::from_secs(1), Duration::from_secs(2)));
-        assert!(goal_is_stuck(&active_goal, now + Duration::from_secs(2), Duration::from_secs(2)));
+        assert!(!goal_is_stuck(
+            &active_goal,
+            now + Duration::from_secs(1),
+            Duration::from_secs(2)
+        ));
+        assert!(goal_is_stuck(
+            &active_goal,
+            now + Duration::from_secs(2),
+            Duration::from_secs(2)
+        ));
     }
 
     #[test]
@@ -1270,7 +1698,11 @@ mod tests {
         assert_eq!(recovery.phase, RecoveryPhase::Rotate);
 
         assert_eq!(
-            advance_recovery_phase(&mut recovery, now + config.settle_duration + config.rotate_duration, &config),
+            advance_recovery_phase(
+                &mut recovery,
+                now + config.settle_duration + config.rotate_duration,
+                &config
+            ),
             RecoveryPhaseTransition::ToBackoff
         );
         assert_eq!(recovery.phase, RecoveryPhase::Backoff);
@@ -1394,8 +1826,7 @@ mod tests {
             ..Default::default()
         };
 
-        let event =
-            resume_waypoint_after_recovery(&mut state, 0, goal, 1, robot_pose, 0.2, now);
+        let event = resume_waypoint_after_recovery(&mut state, 0, goal, 1, robot_pose, 0.2, now);
 
         match event {
             MissionEvent::RecoveryRetry {
