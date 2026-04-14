@@ -102,6 +102,8 @@ cargo test --workspace --lib --tests
   - `RUST_NAV_ODOM_TOPIC` (`nav_msgs/Odometry`, default `/odom`)
 - **Publications**:
   - `/goal_pose` (`geometry_msgs/PoseStamped`)
+  - `/mission_status` (`std_msgs/String`)
+  - `/mission_markers` (`visualization_msgs/MarkerArray`)
 - **Configuration**:
   - `RUST_NAV_ODOM_TOPIC`
   - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited `x,y` mission string
@@ -112,6 +114,8 @@ cargo test --workspace --lib --tests
   - Waits for the selected odometry topic before sending the first goal
   - Republishes the active `/goal_pose` every 2 seconds until the planner reacts
   - `relative_start` resolves waypoints as offsets from the robot pose seen on the first odom sample
+  - Publishes human-readable mission / recovery summaries on `/mission_status`
+  - Publishes RViz markers for the resolved route, active goal, and current mission state on `/mission_markers`
 
 ## Navigation Stack Architecture
 
@@ -160,8 +164,17 @@ The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navig
 - launches `turtlebot3_gazebo/turtlebot3_world.launch.py`
 - forwards the upstream TurtleBot3 world spawn defaults (`x=-2.0`, `y=-0.5`) as launch arguments
 - adds an extra `ros_gz_bridge` subscription so `/cmd_vel` accepts `geometry_msgs/Twist`
+- publishes an identity `map -> odom` static transform for RViz / debugging tools
 - waits 5 seconds for Gazebo topics to appear
 - starts `slam_node`, `path_planner_node`, and `dwa_planner_node` from `target/release`
+
+If you want RViz alongside Gazebo:
+
+```bash
+ENABLE_RVIZ=true ./ros2_nodes/launch/run_gazebo_demo.sh
+```
+
+The RViz layout is stored at [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
 
 Demo video: [gazebo_demo.mp4](./gazebo_demo.mp4)
 
@@ -183,6 +196,7 @@ The mission wrapper uses `WAYPOINT_NAV_FRAME=relative_start` by default, so the 
 The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
 
 - `enable_ekf_localizer:=true`
+- `enable_rviz:=true` by default in `run_gazebo_mission_demo.sh` (override with `ENABLE_RVIZ=false`)
 - `nav_odom_topic:=/ekf_odom`
 - `dwa_goal_threshold:=0.3`
 - `waypoint_frame:=relative_start`
@@ -191,6 +205,12 @@ The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navi
 - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
 
 `waypoint_navigator_node` also watches for stalled progress on the active waypoint. When odom does not move by at least `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` within `WAYPOINT_NAV_STUCK_TIMEOUT`, it transitions into a simple recovery sequence: `cancel -> settle -> rotate -> backoff -> reissue goal`.
+
+For observability during the mission demo:
+
+- `/mission_status` reports the current mission state, active waypoint, and recovery phase
+- `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
+- the launch-time `map -> odom` static transform lets RViz show `/map`, `/planned_path`, `/ekf_odom`, and `/mission_markers` in a single `map` fixed frame
 
 Example looping square:
 
@@ -227,6 +247,7 @@ ros2 topic echo /odom --once
 ros2 topic echo /ekf_odom --once
 ros2 topic echo /map --once
 ros2 topic echo /planned_path --qos-durability transient_local --once
+ros2 topic echo /mission_status --once
 ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 ```
 
@@ -295,3 +316,5 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
   - Check the selected mission odom topic and confirm the robot is entering `WAYPOINT_NAV_GOAL_TOLERANCE` around the active waypoint.
 - Mission demo repeatedly logs recovery attempts:
   - Lower `WAYPOINT_NAV_STUCK_TIMEOUT` only if odom is stable enough; otherwise increase it or reduce `WAYPOINT_NAV_STUCK_PROGRESS_DISTANCE` so slow-but-valid motion is not classified as stuck.
+- RViz shows `/map` but not the robot or path:
+  - Confirm the launch still includes the `map -> odom` static transform and that RViz is using the `map` fixed frame from [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
