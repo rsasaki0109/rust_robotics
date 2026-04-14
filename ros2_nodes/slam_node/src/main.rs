@@ -27,9 +27,10 @@ const DEFAULT_OUTPUT_ODOM_TOPIC: &str = "/slam_odom";
 const DEFAULT_DIAGNOSTICS_TOPIC: &str = "/slam_diagnostics";
 
 /// Default ICP blend / gate tuning (override with `SLAM_ICP_*` environment variables).
+/// Error gates use **mean** nearest-neighbor distance \[m/point\] from ICP (not sum over points).
 const DEFAULT_ICP_BLEND_ALPHA: f64 = 0.35;
-const DEFAULT_ICP_FULL_WEIGHT_ERROR: f64 = 2.0;
-const DEFAULT_ICP_REJECT_ERROR: f64 = 4.0;
+const DEFAULT_ICP_FULL_WEIGHT_ERROR: f64 = 0.007;
+const DEFAULT_ICP_REJECT_ERROR: f64 = 0.014;
 const DEFAULT_ICP_FULL_WEIGHT_ITERATIONS: f64 = 12.0;
 const DEFAULT_ICP_REJECT_ITERATIONS: f64 = 40.0;
 const DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION: f64 = 0.05;
@@ -572,7 +573,7 @@ fn format_slam_diagnostics(
         format!("scan_points={}", diagnostics.scan_points),
         format!("icp_converged={}", diagnostics.icp_converged),
         format!("icp_iterations={}", diagnostics.icp_iterations),
-        format!("icp_error={:.4}", diagnostics.icp_final_error),
+        format!("icp_error_mean={:.4}", diagnostics.icp_final_error),
         format!("blend_applied={}", diagnostics.blend_applied),
         format!("blend_alpha={:.3}", diagnostics.blend_alpha),
         format!("gate_reason={}", diagnostics.gate_reason),
@@ -811,15 +812,15 @@ fn main() -> Result<(), DynError> {
                 let icp_result = icp_matching(previous, &current_scan);
                 icp_converged = icp_result.converged;
                 icp_iterations = icp_result.iterations;
-                icp_final_error = icp_result.final_error;
+                icp_final_error = icp_result.final_error_mean;
                 icp_delta = icp_motion_delta(&icp_result);
                 let now = Instant::now();
                 if !icp_result.converged {
                     pr_warn!(
                         log_scan,
-                        "ICP did not converge: iter={}, error={:.4}",
+                        "ICP did not converge: iter={}, error_mean={:.4}",
                         icp_result.iterations,
-                        icp_result.final_error
+                        icp_result.final_error_mean
                     );
                     st.last_icp_log_at = Some(now);
                 } else if st.last_icp_log_at.map_or(true, |last_log_at| {
@@ -827,9 +828,9 @@ fn main() -> Result<(), DynError> {
                 }) {
                     pr_info!(
                         log_scan,
-                        "ICP converged: iter={}, error={:.4}",
+                        "ICP converged: iter={}, error_mean={:.4}",
                         icp_result.iterations,
-                        icp_result.final_error
+                        icp_result.final_error_mean
                     );
                     st.last_icp_log_at = Some(now);
                 }
@@ -1102,7 +1103,7 @@ mod tests {
             },
             true,
             5,
-            1.0,
+            0.005,
             &default_icp(),
         );
         assert!(decision.alpha > 0.0);
@@ -1125,7 +1126,7 @@ mod tests {
             },
             true,
             4,
-            1.2,
+            0.006,
             &default_icp(),
         );
         assert!((decision.alpha - DEFAULT_ICP_BLEND_ALPHA).abs() < 1e-9);
@@ -1159,7 +1160,7 @@ mod tests {
                 had_previous_scan: true,
                 icp_converged: true,
                 icp_iterations: 7,
-                icp_final_error: 0.12,
+                icp_final_error: 0.006,
                 odom_delta: Some(MotionDelta {
                     x: 0.1,
                     y: 0.0,
@@ -1182,6 +1183,7 @@ mod tests {
             DEFAULT_ICP_BLEND_ALPHA,
         );
         assert!(text.contains("status=icp_ok"));
+        assert!(text.contains("icp_error_mean=0.006"));
         assert!(text.contains("scan_points=42"));
         assert!(text.contains("odom_dx=0.100"));
         assert!(text.contains("applied_dyaw=0.015"));
