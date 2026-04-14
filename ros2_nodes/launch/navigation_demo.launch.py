@@ -61,6 +61,9 @@ def generate_launch_description() -> LaunchDescription:
     map_odom_tf_broadcaster = os.path.join(
         ros2_nodes_dir, "launch", "map_odom_tf_broadcaster.py"
     )
+    slam_ground_truth_monitor = os.path.join(
+        ros2_nodes_dir, "launch", "slam_ground_truth_monitor.py"
+    )
     turtlebot3_launch_dir = os.path.join(
         get_package_share_directory("turtlebot3_gazebo"),
         "launch",
@@ -97,6 +100,17 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("enable_slam_map_odom_tf", default_value="false"),
             DeclareLaunchArgument("slam_pose_topic", default_value="/slam_pose"),
             DeclareLaunchArgument("slam_odom_topic", default_value="/slam_odom"),
+            DeclareLaunchArgument("slam_diagnostics_topic", default_value="/slam_diagnostics"),
+            DeclareLaunchArgument("enable_slam_ground_truth_monitor", default_value="false"),
+            DeclareLaunchArgument(
+                "ground_truth_gz_pose_topic",
+                default_value="/world/default/dynamic_pose/info",
+            ),
+            DeclareLaunchArgument("ground_truth_entity_name", default_value="burger"),
+            DeclareLaunchArgument(
+                "slam_ground_truth_status_topic",
+                default_value="/slam_ground_truth_status",
+            ),
             DeclareLaunchArgument("dwa_goal_threshold", default_value="0.3"),
             DeclareLaunchArgument("enable_waypoint_navigator", default_value="false"),
             DeclareLaunchArgument(
@@ -180,6 +194,9 @@ def generate_launch_description() -> LaunchDescription:
                             "SLAM_INPUT_ODOM_TOPIC": LaunchConfiguration("raw_odom_topic"),
                             "SLAM_OUTPUT_POSE_TOPIC": LaunchConfiguration("slam_pose_topic"),
                             "SLAM_OUTPUT_ODOM_TOPIC": LaunchConfiguration("slam_odom_topic"),
+                            "SLAM_DIAGNOSTICS_TOPIC": LaunchConfiguration(
+                                "slam_diagnostics_topic"
+                            ),
                             "SLAM_USE_CORRECTED_FRAME": LaunchConfiguration(
                                 "enable_slam_corrected_frame"
                             ),
@@ -232,6 +249,25 @@ def generate_launch_description() -> LaunchDescription:
                         ],
                         condition=IfCondition(
                             LaunchConfiguration("enable_slam_map_odom_tf")
+                        ),
+                    ),
+                    python_script_process(
+                        slam_ground_truth_monitor,
+                        "slam_ground_truth_monitor",
+                        args=[
+                            "--raw-odom-topic",
+                            LaunchConfiguration("raw_odom_topic"),
+                            "--slam-odom-topic",
+                            LaunchConfiguration("slam_odom_topic"),
+                            "--gz-pose-topic",
+                            LaunchConfiguration("ground_truth_gz_pose_topic"),
+                            "--ground-truth-entity-name",
+                            LaunchConfiguration("ground_truth_entity_name"),
+                            "--status-topic",
+                            LaunchConfiguration("slam_ground_truth_status_topic"),
+                        ],
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_slam_ground_truth_monitor")
                         ),
                     ),
                     rust_node_process(
