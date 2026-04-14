@@ -15,9 +15,27 @@ export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-89}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-false}"
+export ENABLE_SLAM_CORRECTED_FRAME="${ENABLE_SLAM_CORRECTED_FRAME:-false}"
 export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
-export NAV_ODOM_TOPIC="${NAV_ODOM_TOPIC:-/ekf_odom}"
-export NAV_GLOBAL_FRAME="${NAV_GLOBAL_FRAME:-odom}"
+export RAW_ODOM_TOPIC="${RAW_ODOM_TOPIC:-/ekf_odom}"
+export BASE_TF_ODOM_TOPIC="${BASE_TF_ODOM_TOPIC:-$RAW_ODOM_TOPIC}"
+export SLAM_POSE_TOPIC="${SLAM_POSE_TOPIC:-/slam_pose}"
+export SLAM_ODOM_TOPIC="${SLAM_ODOM_TOPIC:-/slam_odom}"
+export ENABLE_SLAM_MAP_ODOM_TF="${ENABLE_SLAM_MAP_ODOM_TF:-$ENABLE_SLAM_CORRECTED_FRAME}"
+if [[ -z "${NAV_ODOM_TOPIC:-}" ]]; then
+  if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+    export NAV_ODOM_TOPIC="$SLAM_ODOM_TOPIC"
+  else
+    export NAV_ODOM_TOPIC="$RAW_ODOM_TOPIC"
+  fi
+fi
+if [[ -z "${NAV_GLOBAL_FRAME:-}" ]]; then
+  if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+    export NAV_GLOBAL_FRAME="map"
+  else
+    export NAV_GLOBAL_FRAME="odom"
+  fi
+fi
 export WAYPOINT_NAV_FRAME="${WAYPOINT_NAV_FRAME:-relative_start}"
 export WAYPOINT_NAV_WAYPOINTS="${WAYPOINT_NAV_WAYPOINTS:-0.4,0.0;0.1,0.4}"
 export WAYPOINT_NAV_LOOP="${WAYPOINT_NAV_LOOP:-false}"
@@ -34,6 +52,7 @@ STATUS_OUT="$TMP_DIR/mission_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
 ODOM_OUT="$TMP_DIR/nav_odom.txt"
 TF_NAV_OUT="$TMP_DIR/tf_nav.txt"
+TF_MAP_ODOM_OUT="$TMP_DIR/tf_map_odom.txt"
 MAP_OUT="$TMP_DIR/map.txt"
 PATH_OUT="$TMP_DIR/planned_path.txt"
 launch_pid=""
@@ -117,6 +136,25 @@ capture_nav_tf() {
   return 1
 }
 
+capture_tf_between_frames() {
+  local parent_frame="$1"
+  local child_frame="$2"
+  local output_file="$3"
+  local timeout_seconds="$4"
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while (( SECONDS < deadline )); do
+    timeout 8s ros2 run tf2_ros tf2_echo "$parent_frame" "$child_frame" >"$output_file" 2>&1 || true
+    if rg -q "Translation:" "$output_file" && rg -q "Rotation: in Quaternion \(xyzw\)" "$output_file"; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Timed out resolving TF $parent_frame -> $child_frame" >&2
+  return 1
+}
+
 echo "Starting navigation smoke test on ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
 setsid "$MISSION_WRAPPER" >"$LAUNCH_LOG" 2>&1 &
 launch_pid=$!
@@ -140,6 +178,10 @@ rg -q "frame_id: $parent_frame" "$PATH_OUT"
 rg -q "ns: mission" "$MARKERS_OUT"
 rg -q "frame_id: $parent_frame" "$MARKERS_OUT"
 
+if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+  capture_tf_between_frames "map" "odom" "$TF_MAP_ODOM_OUT" "$SMOKE_STARTUP_TIMEOUT"
+fi
+
 wait_for_log_pattern "mission complete at waypoint" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "cleared active navigation goal" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "planned path cleared" "$SMOKE_MISSION_TIMEOUT"
@@ -152,4 +194,7 @@ echo "Verified mission status topic:"
 cat "$STATUS_OUT"
 echo
 echo "Verified /map, /planned_path, /mission_markers, and nav TF in frame '$parent_frame'."
+if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+  echo "Verified dynamic TF map -> odom."
+fi
 echo "Navigation smoke test passed."
