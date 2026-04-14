@@ -84,6 +84,7 @@ The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive 
 - Path Planner (A*)
 - DWA Local Planner
 - SLAM Node
+- SLAM Corrected Odom (optional)
 - EKF Localizer
 - Waypoint Navigator
 
@@ -152,6 +153,14 @@ For observability, `navigation_demo.launch.py` now also exposes:
 
 By default, the current Gazebo demo uses `odom` as its honest global frame: `slam_node` publishes `/map` in the raw odom frame it actually integrates against, `path_planner_node` republishes `/planned_path` in that same frame, and `waypoint_navigator_node` publishes `/goal_pose` plus `/mission_markers` in `RUST_NAV_GLOBAL_FRAME=odom`. If you still want the old RViz alias, you can opt into `PUBLISH_MAP_ODOM_TF=true` to add a legacy identity `map -> odom` transform.
 
+If you want the experimental corrected SLAM frame, enable:
+
+```bash
+ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_gazebo_mission_demo.sh
+```
+
+That switches the mission stack to `NAV_ODOM_TOPIC=/slam_odom` and `NAV_GLOBAL_FRAME=map`. In this mode, `slam_node` publishes `/slam_pose` plus `/slam_odom`, the map is integrated in `map`, and [map_odom_tf_broadcaster.py](./ros2_nodes/launch/map_odom_tf_broadcaster.py) estimates a dynamic `map -> odom` transform from `/slam_odom` against the raw odom stream.
+
 For a local ROS2/Gazebo regression check, run:
 
 ```bash
@@ -159,6 +168,15 @@ ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/r
 ```
 
 The smoke script launches the mission demo, verifies `/map`, `/planned_path`, and typed `/mission_markers` all match the nav odom frame, checks the dynamic nav odom TF, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
+
+To smoke-test the corrected SLAM frame as well:
+
+```bash
+ROS_DOMAIN_ID=90 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ENABLE_SLAM_CORRECTED_FRAME=true \
+  ./ros2_nodes/launch/run_navigation_smoke_test.sh
+```
+
+In corrected mode, the same script also verifies dynamic `map -> odom`.
 
 ## Benchmarks
 
