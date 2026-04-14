@@ -142,6 +142,14 @@ WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4" \
 
 `waypoint_navigator_node` now includes a simple recovery state machine. If the active waypoint stays outside tolerance without measurable odom progress for `WAYPOINT_NAV_STUCK_TIMEOUT` seconds, it issues `navigation_cancel`, waits briefly, rotates in place, backs off, then republishes the active waypoint. The main tuning knobs are `WAYPOINT_NAV_MAX_RECOVERY_ATTEMPTS`, `WAYPOINT_NAV_RECOVERY_ROTATE_SECONDS`, `WAYPOINT_NAV_RECOVERY_BACKOFF_SECONDS`, and `WAYPOINT_NAV_RECOVERY_BACKOFF_SPEED`.
 
+For observability, `navigation_demo.launch.py` now also exposes:
+
+- `ENABLE_RVIZ=true ./ros2_nodes/launch/run_gazebo_demo.sh` to open RViz with [navigation_demo.rviz](./ros2_nodes/launch/navigation_demo.rviz)
+- `/mission_status` (`std_msgs/String`) for mission / recovery state summaries
+- `/mission_markers` (`visualization_msgs/MarkerArray`) for the route, active goal, and status text
+
+The launch file also publishes an identity `map -> odom` static transform for RViz. That matches the current demo stack assumption that the SLAM map and navigation odom remain aligned during the Gazebo mission demo.
+
 ## Benchmarks
 
 ### Rust vs Python Speed Comparison
