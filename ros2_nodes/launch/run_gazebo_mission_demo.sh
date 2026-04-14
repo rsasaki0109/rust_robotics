@@ -21,6 +21,8 @@ export WAYPOINT_NAV_GOAL_TOLERANCE="${WAYPOINT_NAV_GOAL_TOLERANCE:-0.35}"
 export DWA_GOAL_THRESHOLD="${DWA_GOAL_THRESHOLD:-0.3}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-true}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-true}"
+export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
+export NAV_GLOBAL_FRAME="${NAV_GLOBAL_FRAME:-odom}"
 
 required_bins=(
   "$ROOT_DIR/ros2_nodes/path_planner_node/target/release/path_planner_node"
@@ -53,6 +55,8 @@ fi
 exec ros2 launch "$LAUNCH_FILE" \
   "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
   "enable_gazebo_gui:=${ENABLE_GAZEBO_GUI}" \
+  "publish_map_odom_tf:=${PUBLISH_MAP_ODOM_TF}" \
+  "nav_global_frame:=${NAV_GLOBAL_FRAME}" \
   "enable_rviz:=${ENABLE_RVIZ}" \
   "enable_ekf_localizer:=true" \
   "nav_odom_topic:=${NAV_ODOM_TOPIC}" \
