@@ -16,7 +16,7 @@ const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const DEFAULT_WAYPOINTS: &str = "0.5,0.0;0.5,0.5;0.0,0.5";
 const DEFAULT_GOAL_TOLERANCE: f64 = 0.35;
 const DEFAULT_WAYPOINT_FRAME: &str = "map";
-const GOAL_FRAME_ID: &str = "map";
+const DEFAULT_GLOBAL_FRAME_ID: &str = "odom";
 const GOAL_REPUBLISH_INTERVAL: Duration = Duration::from_secs(2);
 const GOAL_PROGRESS_ARM_DISTANCE: f64 = 0.05;
 const GOAL_COMPLETION_ARM_DELAY: Duration = Duration::from_millis(500);
@@ -58,6 +58,7 @@ struct MissionConfig {
     goal_tolerance: f64,
     loop_mission: bool,
     frame: MissionFrame,
+    global_frame_id: String,
     recovery: RecoveryConfig,
 }
 
@@ -339,6 +340,10 @@ fn load_mission_config() -> Result<MissionConfig, String> {
         _ => parse_mission_frame(DEFAULT_WAYPOINT_FRAME)
             .expect("DEFAULT_WAYPOINT_FRAME must be valid"),
     };
+    let global_frame_id = env::var("RUST_NAV_GLOBAL_FRAME")
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_GLOBAL_FRAME_ID.to_string());
     let recovery = load_recovery_config()?;
 
     Ok(MissionConfig {
@@ -346,6 +351,7 @@ fn load_mission_config() -> Result<MissionConfig, String> {
         goal_tolerance,
         loop_mission,
         frame,
+        global_frame_id,
         recovery,
     })
 }
@@ -587,8 +593,14 @@ fn set_marker_color(color: &mut std_msgs::msg::ColorRGBA, rgba: (f32, f32, f32, 
     color.a = rgba.3;
 }
 
-fn init_marker(marker: &mut visualization_msgs::msg::Marker, id: i32, type_: i32, action: i32) {
-    let _ = marker.header.frame_id.assign(GOAL_FRAME_ID);
+fn init_marker(
+    marker: &mut visualization_msgs::msg::Marker,
+    frame_id: &str,
+    id: i32,
+    type_: i32,
+    action: i32,
+) {
+    let _ = marker.header.frame_id.assign(frame_id);
     let _ = marker.ns.assign(MISSION_MARKER_NS);
     marker.id = id;
     marker.type_ = type_;
@@ -616,10 +628,12 @@ fn assign_marker_points(
 
 fn build_route_marker(
     marker: &mut visualization_msgs::msg::Marker,
+    frame_id: &str,
     waypoints: &[Point2D],
 ) -> Result<(), DynError> {
     init_marker(
         marker,
+        frame_id,
         ROUTE_MARKER_ID,
         visualization_msgs::msg::LINE_STRIP,
         visualization_msgs::msg::ADD,
@@ -631,10 +645,12 @@ fn build_route_marker(
 
 fn build_waypoints_marker(
     marker: &mut visualization_msgs::msg::Marker,
+    frame_id: &str,
     waypoints: &[Point2D],
 ) -> Result<(), DynError> {
     init_marker(
         marker,
+        frame_id,
         WAYPOINTS_MARKER_ID,
         visualization_msgs::msg::SPHERE_LIST,
         visualization_msgs::msg::ADD,
@@ -648,11 +664,13 @@ fn build_waypoints_marker(
 
 fn build_active_goal_marker(
     marker: &mut visualization_msgs::msg::Marker,
+    frame_id: &str,
     goal: Option<Point2D>,
     status: MissionStatus,
 ) {
     init_marker(
         marker,
+        frame_id,
         ACTIVE_GOAL_MARKER_ID,
         visualization_msgs::msg::SPHERE,
         if goal.is_some() {
@@ -674,12 +692,14 @@ fn build_active_goal_marker(
 
 fn build_status_text_marker(
     marker: &mut visualization_msgs::msg::Marker,
+    frame_id: &str,
     text: &str,
     anchor: Point2D,
     status: MissionStatus,
 ) {
     init_marker(
         marker,
+        frame_id,
         STATUS_TEXT_MARKER_ID,
         visualization_msgs::msg::TEXT_VIEW_FACING,
         visualization_msgs::msg::ADD,
@@ -706,11 +726,17 @@ fn build_mission_markers(
     let text_anchor = status_anchor_point(mission, snapshot, &resolved);
     let markers_slice = markers.as_slice_mut();
 
-    build_route_marker(&mut markers_slice[0], &resolved)?;
-    build_waypoints_marker(&mut markers_slice[1], &resolved)?;
-    build_active_goal_marker(&mut markers_slice[2], goal, snapshot.mission_status);
+    build_route_marker(&mut markers_slice[0], &mission.global_frame_id, &resolved)?;
+    build_waypoints_marker(&mut markers_slice[1], &mission.global_frame_id, &resolved)?;
+    build_active_goal_marker(
+        &mut markers_slice[2],
+        &mission.global_frame_id,
+        goal,
+        snapshot.mission_status,
+    );
     build_status_text_marker(
         &mut markers_slice[3],
+        &mission.global_frame_id,
         &status_text,
         text_anchor,
         snapshot.mission_status,
@@ -930,9 +956,10 @@ fn resume_waypoint_after_recovery(
 fn publish_goal(
     publisher: &safe_drive::topic::publisher::Publisher<geometry_msgs::msg::PoseStamped>,
     waypoint: Point2D,
+    frame_id: &str,
 ) -> Result<(), DynError> {
     let mut msg = geometry_msgs::msg::PoseStamped::new().ok_or("failed to allocate PoseStamped")?;
-    let _ = msg.header.frame_id.assign(GOAL_FRAME_ID);
+    let _ = msg.header.frame_id.assign(frame_id);
     msg.pose.position.x = waypoint.x;
     msg.pose.position.y = waypoint.y;
     msg.pose.position.z = 0.0;
@@ -974,6 +1001,7 @@ fn main() -> Result<(), DynError> {
         mission.loop_mission,
         mission.frame.as_str()
     );
+    pr_info!(logger, "waypoint global frame: {}", mission.global_frame_id);
     pr_info!(logger, "waypoint odom topic: {}", odom_topic);
     pr_info!(logger, "mission: {}", format_waypoints(&mission.waypoints));
     pr_info!(
@@ -1252,7 +1280,9 @@ fn main() -> Result<(), DynError> {
 
             match event {
                 Some(MissionEvent::Start { next_idx, goal }) => {
-                    if let Err(err) = publish_goal(&goal_pub, goal) {
+                        if let Err(err) =
+                            publish_goal(&goal_pub, goal, &mission_cb.global_frame_id)
+                        {
                         pr_warn!(log_odom, "failed to publish first goal: {}", err);
                         return;
                     }
@@ -1271,7 +1301,9 @@ fn main() -> Result<(), DynError> {
                     next_idx,
                     next_goal,
                 }) => {
-                    if let Err(err) = publish_goal(&goal_pub, next_goal) {
+                    if let Err(err) =
+                        publish_goal(&goal_pub, next_goal, &mission_cb.global_frame_id)
+                    {
                         pr_warn!(log_odom, "failed to publish next goal: {}", err);
                         return;
                     }
@@ -1294,7 +1326,9 @@ fn main() -> Result<(), DynError> {
                     next_idx,
                     next_goal,
                 }) => {
-                    if let Err(err) = publish_goal(&goal_pub, next_goal) {
+                    if let Err(err) =
+                        publish_goal(&goal_pub, next_goal, &mission_cb.global_frame_id)
+                    {
                         pr_warn!(log_odom, "failed to publish looped goal: {}", err);
                         return;
                     }
@@ -1380,7 +1414,9 @@ fn main() -> Result<(), DynError> {
                     goal,
                     attempt,
                 }) => {
-                    if let Err(err) = publish_goal(&goal_pub, goal) {
+                    if let Err(err) =
+                        publish_goal(&goal_pub, goal, &mission_cb.global_frame_id)
+                    {
                         pr_warn!(log_odom, "failed to republish recovered goal: {}", err);
                     }
                     pr_info!(
@@ -1412,7 +1448,9 @@ fn main() -> Result<(), DynError> {
                     );
                 }
                 Some(MissionEvent::Republish { current_idx, goal }) => {
-                    if let Err(err) = publish_goal(&goal_pub, goal) {
+                    if let Err(err) =
+                        publish_goal(&goal_pub, goal, &mission_cb.global_frame_id)
+                    {
                         pr_warn!(log_odom, "failed to republish active goal: {}", err);
                         return;
                     }
@@ -1483,6 +1521,7 @@ mod tests {
             goal_tolerance: 0.35,
             loop_mission: false,
             frame,
+            global_frame_id: "odom".to_string(),
             recovery: recovery_config(),
         }
     }
