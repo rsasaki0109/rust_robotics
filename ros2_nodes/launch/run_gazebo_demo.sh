@@ -16,10 +16,15 @@ export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-true}"
 export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
 export ENABLE_SLAM_CORRECTED_FRAME="${ENABLE_SLAM_CORRECTED_FRAME:-false}"
 export ENABLE_SLAM_MAP_ODOM_TF="${ENABLE_SLAM_MAP_ODOM_TF:-$ENABLE_SLAM_CORRECTED_FRAME}"
+export ENABLE_SLAM_GROUND_TRUTH_MONITOR="${ENABLE_SLAM_GROUND_TRUTH_MONITOR:-$ENABLE_SLAM_CORRECTED_FRAME}"
 export RAW_ODOM_TOPIC="${RAW_ODOM_TOPIC:-/odom}"
 export BASE_TF_ODOM_TOPIC="${BASE_TF_ODOM_TOPIC:-$RAW_ODOM_TOPIC}"
 export SLAM_POSE_TOPIC="${SLAM_POSE_TOPIC:-/slam_pose}"
 export SLAM_ODOM_TOPIC="${SLAM_ODOM_TOPIC:-/slam_odom}"
+export SLAM_DIAGNOSTICS_TOPIC="${SLAM_DIAGNOSTICS_TOPIC:-/slam_diagnostics}"
+export SLAM_GROUND_TRUTH_STATUS_TOPIC="${SLAM_GROUND_TRUTH_STATUS_TOPIC:-/slam_ground_truth_status}"
+export GROUND_TRUTH_GZ_POSE_TOPIC="${GROUND_TRUTH_GZ_POSE_TOPIC:-/world/default/dynamic_pose/info}"
+export GROUND_TRUTH_ENTITY_NAME="${GROUND_TRUTH_ENTITY_NAME:-${TURTLEBOT3_MODEL}}"
 if [[ -z "${NAV_ODOM_TOPIC:-}" ]]; then
   if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
     export NAV_ODOM_TOPIC="$SLAM_ODOM_TOPIC"
@@ -69,6 +74,11 @@ exec ros2 launch "$LAUNCH_FILE" \
   "nav_global_frame:=${NAV_GLOBAL_FRAME}" \
   "enable_slam_corrected_frame:=${ENABLE_SLAM_CORRECTED_FRAME}" \
   "enable_slam_map_odom_tf:=${ENABLE_SLAM_MAP_ODOM_TF}" \
+  "enable_slam_ground_truth_monitor:=${ENABLE_SLAM_GROUND_TRUTH_MONITOR}" \
   "slam_pose_topic:=${SLAM_POSE_TOPIC}" \
   "slam_odom_topic:=${SLAM_ODOM_TOPIC}" \
+  "slam_diagnostics_topic:=${SLAM_DIAGNOSTICS_TOPIC}" \
+  "ground_truth_gz_pose_topic:=${GROUND_TRUTH_GZ_POSE_TOPIC}" \
+  "ground_truth_entity_name:=${GROUND_TRUTH_ENTITY_NAME}" \
+  "slam_ground_truth_status_topic:=${SLAM_GROUND_TRUTH_STATUS_TOPIC}" \
   "enable_rviz:=${ENABLE_RVIZ}"
