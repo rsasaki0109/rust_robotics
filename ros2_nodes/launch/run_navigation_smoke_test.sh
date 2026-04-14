@@ -15,7 +15,9 @@ export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-89}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-false}"
+export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
 export NAV_ODOM_TOPIC="${NAV_ODOM_TOPIC:-/ekf_odom}"
+export NAV_GLOBAL_FRAME="${NAV_GLOBAL_FRAME:-odom}"
 export WAYPOINT_NAV_FRAME="${WAYPOINT_NAV_FRAME:-relative_start}"
 export WAYPOINT_NAV_WAYPOINTS="${WAYPOINT_NAV_WAYPOINTS:-0.4,0.0;0.1,0.4}"
 export WAYPOINT_NAV_LOOP="${WAYPOINT_NAV_LOOP:-false}"
@@ -30,9 +32,10 @@ TMP_DIR="$(mktemp -d)"
 LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
 STATUS_OUT="$TMP_DIR/mission_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
-TF_OUT="$TMP_DIR/tf_map_odom.txt"
 ODOM_OUT="$TMP_DIR/nav_odom.txt"
 TF_NAV_OUT="$TMP_DIR/tf_nav.txt"
+MAP_OUT="$TMP_DIR/map.txt"
+PATH_OUT="$TMP_DIR/planned_path.txt"
 launch_pid=""
 
 cleanup() {
@@ -87,23 +90,6 @@ capture_topic_once() {
   return 1
 }
 
-capture_tf_identity() {
-  local timeout_seconds="$1"
-  local deadline=$((SECONDS + timeout_seconds))
-
-  while (( SECONDS < deadline )); do
-    timeout 8s ros2 run tf2_ros tf2_echo map odom >"$TF_OUT" 2>&1 || true
-    if rg -q "Translation: \[0\.000, 0\.000, 0\.000\]" "$TF_OUT" &&
-      rg -q "Rotation: in Quaternion \(xyzw\) \[0\.000, 0\.000, 0\.000, 1\.000\]" "$TF_OUT"; then
-      return 0
-    fi
-    sleep 1
-  done
-
-  echo "Timed out resolving map -> odom identity transform" >&2
-  return 1
-}
-
 capture_nav_tf() {
   local timeout_seconds="$1"
   local deadline=$((SECONDS + timeout_seconds))
@@ -136,14 +122,23 @@ setsid "$MISSION_WRAPPER" >"$LAUNCH_LOG" 2>&1 &
 launch_pid=$!
 
 wait_for_log_pattern "observability topics: /mission_status and /mission_markers" "$SMOKE_STARTUP_TIMEOUT"
+capture_topic_once "/map" "nav_msgs/msg/OccupancyGrid" "$MAP_OUT" "$SMOKE_STARTUP_TIMEOUT"
+capture_topic_once "/planned_path" "nav_msgs/msg/Path" "$PATH_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT"
-capture_tf_identity "$SMOKE_STARTUP_TIMEOUT"
 capture_nav_tf "$SMOKE_STARTUP_TIMEOUT"
 
+parent_frame="$(awk '/frame_id:/{print $2; exit}' "$ODOM_OUT" | tr -d '"' | tr -d "'")"
+if [[ -z "$parent_frame" ]]; then
+  echo "Failed to infer nav odom parent frame from $NAV_ODOM_TOPIC" >&2
+  exit 1
+fi
+
 rg -q "data: status=" "$STATUS_OUT"
+rg -q "frame_id: $parent_frame" "$MAP_OUT"
+rg -q "frame_id: $parent_frame" "$PATH_OUT"
 rg -q "ns: mission" "$MARKERS_OUT"
-rg -q "frame_id: map" "$MARKERS_OUT"
+rg -q "frame_id: $parent_frame" "$MARKERS_OUT"
 
 wait_for_log_pattern "mission complete at waypoint" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "cleared active navigation goal" "$SMOKE_MISSION_TIMEOUT"
@@ -156,5 +151,5 @@ rg -q "data: status=completed" "$STATUS_OUT"
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
 echo
-echo "Verified mission markers topic and TF chain (map -> odom plus nav odom -> base frame)."
+echo "Verified /map, /planned_path, /mission_markers, and nav TF in frame '$parent_frame'."
 echo "Navigation smoke test passed."

@@ -18,13 +18,26 @@ const MAP_OCCUPANCY_THRESHOLD: i8 = 60;
 const MAP_REBUILD_LOG_INTERVAL: Duration = Duration::from_secs(5);
 const QUERY_SNAP_MAX_DISTANCE: f64 = 0.35;
 const NAVIGATION_CANCEL_TOPIC: &str = "/navigation_cancel";
+const DEFAULT_GLOBAL_FRAME: &str = "odom";
 
-#[derive(Default)]
 struct PlannerState {
     robot_pose: Option<Point2D>,
     goal_pose: Option<Point2D>,
     planner: Option<Arc<AStarPlanner>>,
+    map_frame_id: String,
     last_map_log_at: Option<Instant>,
+}
+
+impl Default for PlannerState {
+    fn default() -> Self {
+        Self {
+            robot_pose: None,
+            goal_pose: None,
+            planner: None,
+            map_frame_id: DEFAULT_GLOBAL_FRAME.to_string(),
+            last_map_log_at: None,
+        }
+    }
 }
 
 struct MapPlannerUpdate {
@@ -126,16 +139,17 @@ fn rebuild_planner_from_map(
 fn publish_path(
     publisher: &safe_drive::topic::publisher::Publisher<nav_msgs::msg::Path>,
     path_points: &[Point2D],
+    frame_id: &str,
 ) -> Result<(), DynError> {
     let mut path_msg = nav_msgs::msg::Path::new().ok_or("failed to allocate nav_msgs/Path")?;
-    let _ = path_msg.header.frame_id.assign("map");
+    let _ = path_msg.header.frame_id.assign(frame_id);
 
     let mut pose_seq = geometry_msgs::msg::PoseStampedSeq::<0>::new(path_points.len())
         .ok_or("failed to allocate pose sequence")?;
 
     for (idx, point) in path_points.iter().enumerate() {
         let pose = &mut pose_seq.as_slice_mut()[idx];
-        let _ = pose.header.frame_id.assign("map");
+        let _ = pose.header.frame_id.assign(frame_id);
         pose.pose.position.x = point.x;
         pose.pose.position.y = point.y;
         pose.pose.position.z = 0.0;
@@ -154,6 +168,7 @@ fn attempt_plan(
     planner: Arc<AStarPlanner>,
     start: Point2D,
     goal: Point2D,
+    frame_id: &str,
     publisher: &safe_drive::topic::publisher::Publisher<nav_msgs::msg::Path>,
     logger: &Logger,
     log_success: bool,
@@ -163,7 +178,7 @@ fn attempt_plan(
 
     match planner.plan(start, goal) {
         Ok(path) => {
-            if let Err(err) = publish_path(publisher, &path.points) {
+            if let Err(err) = publish_path(publisher, &path.points, frame_id) {
                 pr_warn!(logger, "failed to publish path: {}", err);
                 return;
             }
@@ -335,6 +350,12 @@ fn main() -> Result<(), DynError> {
                     }
                 };
                 st.planner = Some(planner_update.planner.clone());
+                let map_frame_id = msg.header.frame_id.get_string();
+                st.map_frame_id = if map_frame_id.is_empty() {
+                    DEFAULT_GLOBAL_FRAME.to_string()
+                } else {
+                    map_frame_id
+                };
                 let now = Instant::now();
                 let should_log_rebuild = st.last_map_log_at.map_or(true, |last_log_at| {
                     now.duration_since(last_log_at) >= MAP_REBUILD_LOG_INTERVAL
@@ -345,7 +366,12 @@ fn main() -> Result<(), DynError> {
                 (
                     match (st.robot_pose, st.goal_pose) {
                         (Some(start), Some(goal)) => {
-                            Some((planner_update.planner.clone(), start, goal))
+                            Some((
+                                planner_update.planner.clone(),
+                                start,
+                                goal,
+                                st.map_frame_id.clone(),
+                            ))
                         }
                         _ => None,
                     },
@@ -364,8 +390,16 @@ fn main() -> Result<(), DynError> {
                 );
             }
 
-            if let Some((planner, start, goal)) = replan_request {
-                attempt_plan(planner, start, goal, pub_map.as_ref(), &log_map, false);
+            if let Some((planner, start, goal, frame_id)) = replan_request {
+                attempt_plan(
+                    planner,
+                    start,
+                    goal,
+                    &frame_id,
+                    pub_map.as_ref(),
+                    &log_map,
+                    false,
+                );
             }
         }),
     );
@@ -406,13 +440,14 @@ fn main() -> Result<(), DynError> {
                         return;
                     }
                 };
-                (planner, start, goal_world)
+                (planner, start, goal_world, st.map_frame_id.clone())
             };
 
             attempt_plan(
                 plan_request.0,
                 plan_request.1,
                 plan_request.2,
+                &plan_request.3,
                 pub_goal.as_ref(),
                 &log_goal,
                 true,
@@ -426,7 +461,7 @@ fn main() -> Result<(), DynError> {
     selector.add_subscriber(
         cancel_sub,
         Box::new(move |_msg| {
-            let had_goal = {
+            let (had_goal, frame_id) = {
                 let mut st = match state_cancel.lock() {
                     Ok(guard) => guard,
                     Err(_) => {
@@ -434,10 +469,10 @@ fn main() -> Result<(), DynError> {
                         return;
                     }
                 };
-                st.goal_pose.take().is_some()
+                (st.goal_pose.take().is_some(), st.map_frame_id.clone())
             };
 
-            if let Err(err) = publish_path(pub_cancel.as_ref(), &[]) {
+            if let Err(err) = publish_path(pub_cancel.as_ref(), &[], &frame_id) {
                 pr_warn!(log_cancel, "failed to clear published path: {}", err);
                 return;
             }
