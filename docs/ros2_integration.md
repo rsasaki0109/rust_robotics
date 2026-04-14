@@ -26,6 +26,7 @@ source /opt/ros/jazzy/setup.bash
 cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
 ```
 
 ### Core library workspace
@@ -70,6 +71,21 @@ cargo test --workspace --lib --tests
 - **Publications**:
   - `/map` (`nav_msgs/OccupancyGrid`)
 
+### `waypoint_navigator_node`
+
+- **Role**: Mission-level sequencing of multiple 2D goals
+- **Subscriptions**:
+  - `/odom` (`nav_msgs/Odometry`)
+- **Publications**:
+  - `/goal_pose` (`geometry_msgs/PoseStamped`)
+- **Configuration**:
+  - `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited `x,y` mission string
+  - `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint reach tolerance \[m\]
+  - `WAYPOINT_NAV_LOOP`: whether to restart after the last waypoint
+- **Notes**:
+  - Waits for `/odom` before sending the first goal
+  - Publishes the next `/goal_pose` only when the current waypoint is reached
+
 ## Navigation Stack Architecture
 
 ```text
@@ -88,10 +104,11 @@ cargo test --workspace --lib --tests
              ^           ^                  v
              |           |           +--------------+
            /odom     /goal_pose ---> | dwa_planner |
-                                     +--------------+
-                                            |
-                                            v
-                                         /cmd_vel
+             ^                       +--------------+
+             |                              |
+   +-------------------------+              v
+   | waypoint_navigator_node |           /cmd_vel
+   +-------------------------+
 ```
 
 ## Gazebo Demo
@@ -115,6 +132,31 @@ The wrapper script starts [navigation_demo.launch.py](../ros2_nodes/launch/navig
 
 Demo video: [gazebo_demo.mp4](./gazebo_demo.mp4)
 
+### Launch the mission demo
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=42
+export TURTLEBOT3_MODEL=burger
+export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5"
+
+./ros2_nodes/launch/run_gazebo_mission_demo.sh
+```
+
+The mission wrapper reuses [navigation_demo.launch.py](../ros2_nodes/launch/navigation_demo.launch.py) and enables `waypoint_navigator_node` with:
+
+- `WAYPOINT_NAV_WAYPOINTS`: semicolon-delimited 2D mission
+- `WAYPOINT_NAV_LOOP`: `true` or `false`
+- `WAYPOINT_NAV_GOAL_TOLERANCE`: waypoint completion radius
+
+Example looping square:
+
+```bash
+export WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5;0.0,0.0"
+export WAYPOINT_NAV_LOOP=true
+./ros2_nodes/launch/run_gazebo_mission_demo.sh
+```
+
 ### Send a goal
 
 ```bash
@@ -125,9 +167,10 @@ ros2 topic pub --once /goal_pose geometry_msgs/msg/PoseStamped \
 ### Expected data flow
 
 1. `slam_node` receives `/scan` and `/odom`, then publishes `/map`.
-2. `path_planner_node` rebuilds A* from `/map` and publishes `/planned_path`.
-3. `dwa_planner_node` follows `/planned_path` while avoiding live laser obstacles and publishes `/cmd_vel`.
-4. TurtleBot3 moves toward the requested goal in Gazebo.
+2. `waypoint_navigator_node` publishes the current mission waypoint on `/goal_pose`.
+3. `path_planner_node` rebuilds A* from `/map` and publishes `/planned_path`.
+4. `dwa_planner_node` follows `/planned_path` while avoiding live laser obstacles and publishes `/cmd_vel`.
+5. TurtleBot3 moves toward the requested goal in Gazebo.
 
 ### Verify topic wiring
 
@@ -163,6 +206,12 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `occupied_log_odds` / `free_log_odds`: Bayesian update weights
 - `icp_max_iterations` (from algorithm defaults): ICP optimization limit
 
+### `waypoint_navigator_node`
+
+- `WAYPOINT_NAV_WAYPOINTS` (default `"0.5,0.0;0.5,0.5;0.0,0.5"`): mission waypoints in the `map` frame
+- `WAYPOINT_NAV_GOAL_TOLERANCE` (default `0.35`): distance threshold for waypoint completion \[m\]
+- `WAYPOINT_NAV_LOOP` (default `false`): restart the mission after the last waypoint
+
 ## Troubleshooting
 
 - `run_gazebo_demo.sh` reports missing binaries:
@@ -177,3 +226,5 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
   - The goal may be outside the current map bounds or inside an occupied cell.
 - No robot motion despite `/planned_path`:
   - Check `/cmd_vel` output from `dwa_planner_node` and verify TurtleBot3 Gazebo is subscribed to `/cmd_vel`.
+- Mission demo does not advance to the next waypoint:
+  - Check `/odom` and confirm the robot is entering `WAYPOINT_NAV_GOAL_TOLERANCE` around the active waypoint.

@@ -83,6 +83,7 @@ The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive 
 - Path Planner (A*)
 - DWA Local Planner
 - SLAM Node
+- Waypoint Navigator
 
 ```text
                  TurtleBot3 Gazebo
@@ -100,7 +101,11 @@ The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive 
              ^           ^                  v
              |           |           +--------------+
            /odom     /goal_pose ---> | dwa_planner |
-                                     +--------------+
+             ^                       +--------------+
+             |
+   +-------------------------+
+   | waypoint_navigator_node |
+   +-------------------------+
 ```
 
 Demo video: [docs/gazebo_demo.mp4](./docs/gazebo_demo.mp4)
@@ -114,9 +119,14 @@ export ROS_DOMAIN_ID=42  # optional but recommended if other ROS graphs are alre
 cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
 cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
 
 export TURTLEBOT3_MODEL=burger
 ./ros2_nodes/launch/run_gazebo_demo.sh
+
+# Multi-goal mission demo
+WAYPOINT_NAV_WAYPOINTS="0.5,0.0;0.5,0.5;0.0,0.5" \
+  ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
 ## Benchmarks
