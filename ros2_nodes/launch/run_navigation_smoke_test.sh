@@ -31,6 +31,8 @@ LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
 STATUS_OUT="$TMP_DIR/mission_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
 TF_OUT="$TMP_DIR/tf_map_odom.txt"
+ODOM_OUT="$TMP_DIR/nav_odom.txt"
+TF_NAV_OUT="$TMP_DIR/tf_nav.txt"
 launch_pid=""
 
 cleanup() {
@@ -102,6 +104,33 @@ capture_tf_identity() {
   return 1
 }
 
+capture_nav_tf() {
+  local timeout_seconds="$1"
+  local deadline=$((SECONDS + timeout_seconds))
+
+  while (( SECONDS < deadline )); do
+    capture_topic_once "$NAV_ODOM_TOPIC" "nav_msgs/msg/Odometry" "$ODOM_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT"
+    local parent_frame
+    local child_frame
+    parent_frame="$(awk '/frame_id:/{print $2; exit}' "$ODOM_OUT" | tr -d '"' | tr -d "'")"
+    child_frame="$(awk '/child_frame_id:/{print $2; exit}' "$ODOM_OUT" | tr -d '"' | tr -d "'")"
+
+    if [[ -z "$parent_frame" || -z "$child_frame" ]]; then
+      sleep 1
+      continue
+    fi
+
+    timeout 8s ros2 run tf2_ros tf2_echo "$parent_frame" "$child_frame" >"$TF_NAV_OUT" 2>&1 || true
+    if rg -q "Translation:" "$TF_NAV_OUT" && rg -q "Rotation: in Quaternion \(xyzw\)" "$TF_NAV_OUT"; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Timed out resolving dynamic nav TF from $NAV_ODOM_TOPIC" >&2
+  return 1
+}
+
 echo "Starting navigation smoke test on ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
 setsid "$MISSION_WRAPPER" >"$LAUNCH_LOG" 2>&1 &
 launch_pid=$!
@@ -110,6 +139,7 @@ wait_for_log_pattern "observability topics: /mission_status and /mission_markers
 capture_topic_once "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_tf_identity "$SMOKE_STARTUP_TIMEOUT"
+capture_nav_tf "$SMOKE_STARTUP_TIMEOUT"
 
 rg -q "data: status=" "$STATUS_OUT"
 rg -q "ns: mission" "$MARKERS_OUT"
@@ -126,5 +156,5 @@ rg -q "data: status=completed" "$STATUS_OUT"
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
 echo
-echo "Verified mission markers topic and map -> odom static transform."
+echo "Verified mission markers topic and TF chain (map -> odom plus nav odom -> base frame)."
 echo "Navigation smoke test passed."
