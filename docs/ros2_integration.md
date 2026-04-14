@@ -375,6 +375,7 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `SLAM_USE_CORRECTED_FRAME` (default `false`): whether to integrate `/map` and outputs in `SLAM_CORRECTED_FRAME_ID`
 - `SLAM_CORRECTED_FRAME_ID` (default `"map"`): corrected global frame name used by `/map`, `/slam_pose`, and `/slam_odom`
 - **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. On startup with corrected mode, `slam_node` logs the resolved numeric values.
+- **Tuning note (Gazebo TurtleBot3 burger smoke, 2026-04):** Headless `run_navigation_smoke_test.sh` with `ENABLE_SLAM_CORRECTED_FRAME=true` and defaults usually matched EKF `/ekf_odom` within about 1 mm RMSE vs Gazebo ground truth (`improvement_xy` near zero). Raising `SLAM_ICP_REJECT_ERROR` to 5.0–7.0 or widening the error ramp (`SLAM_ICP_FULL_WEIGHT_ERROR` / `SLAM_ICP_REJECT_ERROR`) often **increased** `slam_xy_error` relative to raw odom—noisy ICP matches were being rejected for a reason. Use small steps and compare `slam_ground_truth_status` (`improvement_xy`, `slam_better_xy`) across several runs before changing shipped defaults.
 
 ### `ekf_localizer_node`
 
