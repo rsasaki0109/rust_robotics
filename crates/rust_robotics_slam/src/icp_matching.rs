@@ -30,7 +30,11 @@ pub struct ICPResult {
     pub rotation: DMatrix<f64>,
     pub translation: DVector<f64>,
     pub iterations: usize,
+    /// Sum of nearest-neighbor distances (legacy; scales with point count).
     pub final_error: f64,
+    /// Mean nearest-neighbor distance \[m/point\]: `final_error / point_count`.
+    pub final_error_mean: f64,
+    pub point_count: usize,
     pub converged: bool,
 }
 
@@ -82,11 +86,16 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
     let rotation = h.view((0, 0), (dim, dim)).into_owned();
     let translation = h.column(dim).rows(0, dim).into_owned();
 
+    let point_count = current_points.ncols().max(1);
+    let final_error_mean = pre_error / point_count as f64;
+
     ICPResult {
         rotation,
         translation,
         iterations: count,
         final_error: pre_error,
+        final_error_mean,
+        point_count,
         converged: d_error <= EPS && count < MAX_ITER,
     }
 }
@@ -323,6 +332,6 @@ mod tests {
         let result = icp_matching(&previous_points, &current_points);
 
         assert!(result.converged);
-        assert!(result.final_error < 1.0);
+        assert!(result.final_error_mean < 0.5);
     }
 }
