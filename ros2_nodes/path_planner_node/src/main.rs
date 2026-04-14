@@ -16,6 +16,7 @@ const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const ROBOT_RADIUS: f64 = 0.4;
 const MAP_OCCUPANCY_THRESHOLD: i8 = 60;
 const MAP_REBUILD_LOG_INTERVAL: Duration = Duration::from_secs(5);
+const QUERY_SNAP_MAX_DISTANCE: f64 = 0.35;
 
 #[derive(Default)]
 struct PlannerState {
@@ -156,6 +157,9 @@ fn attempt_plan(
     logger: &Logger,
     log_success: bool,
 ) {
+    let start = snap_query_point(&planner, start, "start", QUERY_SNAP_MAX_DISTANCE, logger);
+    let goal = snap_query_point(&planner, goal, "goal", QUERY_SNAP_MAX_DISTANCE, logger);
+
     match planner.plan(start, goal) {
         Ok(path) => {
             if let Err(err) = publish_path(publisher, &path.points) {
@@ -186,6 +190,86 @@ fn attempt_plan(
             );
         }
     }
+}
+
+fn snap_query_point(
+    planner: &AStarPlanner,
+    point: Point2D,
+    label: &str,
+    max_distance: f64,
+    logger: &Logger,
+) -> Point2D {
+    if !max_distance.is_finite() || max_distance <= 0.0 {
+        return point;
+    }
+
+    let grid = planner.grid_map();
+    let query_x = grid.calc_x_index(point.x);
+    let query_y = grid.calc_y_index(point.y);
+    if grid.is_valid(query_x, query_y) {
+        return point;
+    }
+
+    let Some(snapped) = find_nearest_valid_query_point(planner, point, max_distance) else {
+        return point;
+    };
+
+    pr_warn!(
+        logger,
+        "{} query snapped from ({:.2},{:.2}) to ({:.2},{:.2})",
+        label,
+        point.x,
+        point.y,
+        snapped.x,
+        snapped.y
+    );
+    snapped
+}
+
+fn find_nearest_valid_query_point(
+    planner: &AStarPlanner,
+    point: Point2D,
+    max_distance: f64,
+) -> Option<Point2D> {
+    if !max_distance.is_finite() || max_distance < 0.0 {
+        return None;
+    }
+
+    let grid = planner.grid_map();
+    let query_x = grid.calc_x_index(point.x);
+    let query_y = grid.calc_y_index(point.y);
+    if grid.is_valid(query_x, query_y) {
+        return Some(point);
+    }
+
+    let search_radius = (max_distance / grid.resolution).ceil() as i32;
+    let max_distance_sq = max_distance * max_distance;
+    let mut best: Option<(Point2D, f64)> = None;
+
+    for dx in -search_radius..=search_radius {
+        for dy in -search_radius..=search_radius {
+            let cell_x = query_x + dx;
+            let cell_y = query_y + dy;
+            if !grid.is_valid(cell_x, cell_y) {
+                continue;
+            }
+
+            let candidate = Point2D::new(grid.calc_x_position(cell_x), grid.calc_y_position(cell_y));
+            let distance_sq = (candidate.x - point.x).powi(2) + (candidate.y - point.y).powi(2);
+            if distance_sq > max_distance_sq {
+                continue;
+            }
+
+            let replace = best
+                .as_ref()
+                .is_none_or(|(_, best_distance_sq)| distance_sq < *best_distance_sq);
+            if replace {
+                best = Some((candidate, distance_sq));
+            }
+        }
+    }
+
+    best.map(|(candidate, _)| candidate)
 }
 
 fn main() -> Result<(), DynError> {
@@ -336,5 +420,69 @@ fn main() -> Result<(), DynError> {
 
     loop {
         selector.wait()?;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_nearest_valid_query_point;
+    use rust_robotics_core::Point2D;
+    use rust_robotics_planning::{AStarConfig, AStarPlanner};
+
+    fn make_test_planner() -> AStarPlanner {
+        let mut ox = Vec::new();
+        let mut oy = Vec::new();
+
+        for i in 0..=4 {
+            let v = i as f64;
+            ox.push(v);
+            oy.push(0.0);
+            ox.push(v);
+            oy.push(4.0);
+            ox.push(0.0);
+            oy.push(v);
+            ox.push(4.0);
+            oy.push(v);
+        }
+        ox.push(2.0);
+        oy.push(2.0);
+
+        AStarPlanner::new(
+            &ox,
+            &oy,
+            AStarConfig {
+                resolution: 1.0,
+                robot_radius: 0.0,
+                ..Default::default()
+            },
+        )
+    }
+
+    #[test]
+    fn find_nearest_valid_query_point_returns_original_for_valid_query() {
+        let planner = make_test_planner();
+        let query = Point2D::new(1.0, 1.0);
+        let snapped = find_nearest_valid_query_point(&planner, query, 1.0).unwrap();
+        assert!((snapped.x - query.x).abs() < 1e-9);
+        assert!((snapped.y - query.y).abs() < 1e-9);
+    }
+
+    #[test]
+    fn find_nearest_valid_query_point_snaps_invalid_goal_to_neighbor() {
+        let planner = make_test_planner();
+        let query = Point2D::new(2.0, 2.0);
+        let snapped = find_nearest_valid_query_point(&planner, query, 1.1).unwrap();
+
+        assert!((snapped.x - query.x).abs() > 1e-9 || (snapped.y - query.y).abs() > 1e-9);
+        let grid = planner.grid_map();
+        assert!(grid.is_valid(grid.calc_x_index(snapped.x), grid.calc_y_index(snapped.y)));
+        assert!((snapped.x - query.x).powi(2) + (snapped.y - query.y).powi(2) <= 1.1f64.powi(2));
+    }
+
+    #[test]
+    fn find_nearest_valid_query_point_respects_distance_cap() {
+        let planner = make_test_planner();
+        let query = Point2D::new(2.0, 2.0);
+        assert!(find_nearest_valid_query_point(&planner, query, 0.5).is_none());
     }
 }

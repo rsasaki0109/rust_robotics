@@ -9,12 +9,14 @@ use safe_drive::{
 use std::{
     env, io,
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 const DEFAULT_ODOM_TOPIC: &str = "/odom";
 const DEFAULT_WAYPOINTS: &str = "0.5,0.0;0.5,0.5;0.0,0.5";
 const DEFAULT_GOAL_TOLERANCE: f64 = 0.35;
 const GOAL_FRAME_ID: &str = "map";
+const GOAL_REPUBLISH_INTERVAL: Duration = Duration::from_secs(2);
 
 #[derive(Clone)]
 struct MissionConfig {
@@ -27,6 +29,7 @@ struct MissionConfig {
 struct NavigatorState {
     current_waypoint_idx: Option<usize>,
     mission_completed: bool,
+    last_goal_publish_at: Option<Instant>,
 }
 
 enum MissionEvent {
@@ -34,6 +37,7 @@ enum MissionEvent {
     Advance { reached_idx: usize, next_idx: usize },
     Loop { reached_idx: usize, next_idx: usize },
     Complete { reached_idx: usize },
+    Republish { current_idx: usize },
 }
 
 fn parse_waypoints(raw: &str) -> Result<Vec<Point2D>, String> {
@@ -137,6 +141,13 @@ fn distance(a: Point2D, b: Point2D) -> f64 {
     ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt()
 }
 
+fn should_republish_goal(last_goal_publish_at: Option<Instant>, now: Instant) -> bool {
+    match last_goal_publish_at {
+        Some(last_sent_at) => now.duration_since(last_sent_at) >= GOAL_REPUBLISH_INTERVAL,
+        None => true,
+    }
+}
+
 fn publish_goal(
     publisher: &safe_drive::topic::publisher::Publisher<geometry_msgs::msg::PoseStamped>,
     waypoint: Point2D,
@@ -188,6 +199,7 @@ fn main() -> Result<(), DynError> {
         odom_sub,
         Box::new(move |msg| {
             let robot_pose = Point2D::new(msg.pose.pose.position.x, msg.pose.pose.position.y);
+            let now = Instant::now();
 
             let event = {
                 let mut st = match state_odom.lock() {
@@ -204,21 +216,29 @@ fn main() -> Result<(), DynError> {
                     match st.current_waypoint_idx {
                         None => {
                             st.current_waypoint_idx = Some(0);
+                            st.last_goal_publish_at = Some(now);
                             Some(MissionEvent::Start { next_idx: 0 })
                         }
                         Some(current_idx) => {
                             let current_goal = mission_cb.waypoints[current_idx];
                             if distance(robot_pose, current_goal) > mission_cb.goal_tolerance {
-                                None
+                                if should_republish_goal(st.last_goal_publish_at, now) {
+                                    st.last_goal_publish_at = Some(now);
+                                    Some(MissionEvent::Republish { current_idx })
+                                } else {
+                                    None
+                                }
                             } else if current_idx + 1 < mission_cb.waypoints.len() {
                                 let next_idx = current_idx + 1;
                                 st.current_waypoint_idx = Some(next_idx);
+                                st.last_goal_publish_at = Some(now);
                                 Some(MissionEvent::Advance {
                                     reached_idx: current_idx,
                                     next_idx,
                                 })
                             } else if mission_cb.loop_mission {
                                 st.current_waypoint_idx = Some(0);
+                                st.last_goal_publish_at = Some(now);
                                 Some(MissionEvent::Loop {
                                     reached_idx: current_idx,
                                     next_idx: 0,
@@ -226,6 +246,7 @@ fn main() -> Result<(), DynError> {
                             } else {
                                 st.current_waypoint_idx = None;
                                 st.mission_completed = true;
+                                st.last_goal_publish_at = None;
                                 Some(MissionEvent::Complete {
                                     reached_idx: current_idx,
                                 })
@@ -304,6 +325,21 @@ fn main() -> Result<(), DynError> {
                         reached.y
                     );
                 }
+                Some(MissionEvent::Republish { current_idx }) => {
+                    let goal = mission_cb.waypoints[current_idx];
+                    if let Err(err) = publish_goal(&goal_pub, goal) {
+                        pr_warn!(log_odom, "failed to republish active goal: {}", err);
+                        return;
+                    }
+                    pr_info!(
+                        log_odom,
+                        "republishing waypoint {}/{} -> ({:.2}, {:.2})",
+                        current_idx + 1,
+                        mission_cb.waypoints.len(),
+                        goal.x,
+                        goal.y
+                    );
+                }
                 None => {}
             }
         }),
@@ -316,7 +352,8 @@ fn main() -> Result<(), DynError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_bool, parse_waypoints};
+    use super::{parse_bool, parse_waypoints, should_republish_goal, GOAL_REPUBLISH_INTERVAL};
+    use std::time::{Duration, Instant};
 
     #[test]
     fn parse_waypoints_accepts_semicolon_delimited_points() {
@@ -340,5 +377,24 @@ mod tests {
         assert_eq!(parse_bool("0"), Some(false));
         assert_eq!(parse_bool("no"), Some(false));
         assert_eq!(parse_bool("maybe"), None);
+    }
+
+    #[test]
+    fn should_republish_goal_triggers_without_history() {
+        assert!(should_republish_goal(None, Instant::now()));
+    }
+
+    #[test]
+    fn should_republish_goal_waits_for_interval() {
+        let now = Instant::now();
+        assert!(!should_republish_goal(Some(now), now));
+        assert!(!should_republish_goal(
+            Some(now),
+            now + GOAL_REPUBLISH_INTERVAL - Duration::from_millis(1)
+        ));
+        assert!(should_republish_goal(
+            Some(now),
+            now + GOAL_REPUBLISH_INTERVAL
+        ));
     }
 }
