@@ -210,6 +210,13 @@ ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_gazebo_demo.sh
 
 That switches the planner stack to `/slam_odom`, uses `map` as the global frame, and enables [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) to estimate `map -> odom` from `/slam_odom` against the raw odom stream.
 
+Corrected mode also enables:
+
+- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, and applied correction deltas
+- `/slam_ground_truth_status` (`std_msgs/String`) with relative-start Gazebo ground-truth error metrics computed from `gz topic -e -t /world/default/dynamic_pose/info --json-output`
+
+The ground-truth monitor defaults to `GROUND_TRUTH_ENTITY_NAME=$TURTLEBOT3_MODEL`, subtracts the first world pose sample, and compares `/ekf_odom` plus `/slam_odom` against that relative ground-truth trajectory. Override `GROUND_TRUTH_GZ_POSE_TOPIC` or `GROUND_TRUTH_ENTITY_NAME` if your Gazebo world uses different names.
+
 The RViz layout is stored at [navigation_demo.rviz](../ros2_nodes/launch/navigation_demo.rviz).
 
 Demo video: [gazebo_demo.mp4](./gazebo_demo.mp4)
@@ -262,6 +269,8 @@ For observability during the mission demo:
 
 - `/mission_status` reports the current mission state, active waypoint, and recovery phase
 - `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
+- `/slam_diagnostics` summarizes ICP health and applied SLAM correction per scan
+- `/slam_ground_truth_status` reports raw-vs-corrected odom error against Gazebo ground truth in corrected mode
 - `odom_tf_broadcaster.py` republishes `base_tf_odom_topic` as dynamic TF from the raw odom frame to the robot base frame
 - by default `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` all use the same honest global frame, `odom`
 - with `ENABLE_SLAM_CORRECTED_FRAME=true`, `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` switch to `map`, while [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) supplies dynamic `map -> odom`
@@ -306,6 +315,7 @@ export ENABLE_SLAM_CORRECTED_FRAME=true
 ```
 
 In corrected mode, the script additionally verifies `tf2_echo map odom`.
+When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it also checks that `/slam_ground_truth_status` reaches `status=ok` and includes `slam_xy_error=`.
 
 ### Send a goal
 
