@@ -12,6 +12,7 @@ source /opt/ros/jazzy/setup.bash
 set -u
 export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
+export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-true}"
 
 required_bins=(
   "$ROOT_DIR/ros2_nodes/path_planner_node/target/release/path_planner_node"
@@ -39,4 +40,5 @@ fi
 
 exec ros2 launch "$LAUNCH_FILE" \
   "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
+  "enable_gazebo_gui:=${ENABLE_GAZEBO_GUI}" \
   "enable_rviz:=${ENABLE_RVIZ}"

@@ -6,6 +6,7 @@ import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, LaunchService
 from launch.actions import (
+    AppendEnvironmentVariable,
     DeclareLaunchArgument,
     ExecuteProcess,
     IncludeLaunchDescription,
@@ -38,10 +39,19 @@ def rust_node_process(
 def generate_launch_description() -> LaunchDescription:
     ros2_nodes_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     default_rviz_config = os.path.join(ros2_nodes_dir, "launch", "navigation_demo.rviz")
-    turtlebot3_launch = os.path.join(
+    turtlebot3_launch_dir = os.path.join(
         get_package_share_directory("turtlebot3_gazebo"),
         "launch",
-        "turtlebot3_world.launch.py",
+    )
+    ros_gz_launch = os.path.join(
+        get_package_share_directory("ros_gz_sim"),
+        "launch",
+        "gz_sim.launch.py",
+    )
+    turtlebot3_world = os.path.join(
+        get_package_share_directory("turtlebot3_gazebo"),
+        "worlds",
+        "turtlebot3_world.world",
     )
 
     return LaunchDescription(
@@ -49,6 +59,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("turtlebot3_model", default_value="burger"),
             DeclareLaunchArgument("spawn_x", default_value="-2.0"),
             DeclareLaunchArgument("spawn_y", default_value="-0.5"),
+            DeclareLaunchArgument("enable_gazebo_gui", default_value="true"),
             DeclareLaunchArgument("publish_map_odom_tf", default_value="true"),
             DeclareLaunchArgument("map_frame", default_value="map"),
             DeclareLaunchArgument("odom_frame", default_value="odom"),
@@ -67,8 +78,35 @@ def generate_launch_description() -> LaunchDescription:
             SetEnvironmentVariable(
                 "TURTLEBOT3_MODEL", LaunchConfiguration("turtlebot3_model")
             ),
+            AppendEnvironmentVariable(
+                "GZ_SIM_RESOURCE_PATH",
+                os.path.join(get_package_share_directory("turtlebot3_gazebo"), "models"),
+            ),
             IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(turtlebot3_launch),
+                PythonLaunchDescriptionSource(ros_gz_launch),
+                launch_arguments={
+                    "gz_args": f"-r -s -v2 {turtlebot3_world}",
+                    "on_exit_shutdown": "true",
+                }.items(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(ros_gz_launch),
+                launch_arguments={
+                    "gz_args": "-g -v2",
+                    "on_exit_shutdown": "true",
+                }.items(),
+                condition=IfCondition(LaunchConfiguration("enable_gazebo_gui")),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(turtlebot3_launch_dir, "robot_state_publisher.launch.py")
+                ),
+                launch_arguments={"use_sim_time": "true"}.items(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    os.path.join(turtlebot3_launch_dir, "spawn_turtlebot3.launch.py")
+                ),
                 launch_arguments={
                     "x_pose": LaunchConfiguration("spawn_x"),
                     "y_pose": LaunchConfiguration("spawn_y"),
