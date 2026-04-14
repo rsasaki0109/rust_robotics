@@ -150,6 +150,14 @@ For observability, `navigation_demo.launch.py` now also exposes:
 
 The launch file also publishes an identity `map -> odom` static transform for RViz. That matches the current demo stack assumption that the SLAM map and navigation odom remain aligned during the Gazebo mission demo.
 
+For a local ROS2/Gazebo regression check, run:
+
+```bash
+ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ./ros2_nodes/launch/run_navigation_smoke_test.sh
+```
+
+The smoke script launches the mission demo, verifies `/mission_status`, typed `/mission_markers`, the `map -> odom` static transform, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
+
 ## Benchmarks
 
 ### Rust vs Python Speed Comparison

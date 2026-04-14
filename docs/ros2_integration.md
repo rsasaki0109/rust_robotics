@@ -221,6 +221,26 @@ export WAYPOINT_NAV_LOOP=true
 ./ros2_nodes/launch/run_gazebo_mission_demo.sh
 ```
 
+### Run the launch smoke test
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=89
+export TURTLEBOT3_MODEL=burger
+export ENABLE_RVIZ=false
+
+./ros2_nodes/launch/run_navigation_smoke_test.sh
+```
+
+The smoke script wraps [run_gazebo_mission_demo.sh](../ros2_nodes/launch/run_gazebo_mission_demo.sh) and verifies:
+
+- `waypoint_navigator_node` exposes `/mission_status`
+- typed `ros2 topic echo /mission_markers visualization_msgs/msg/MarkerArray --once` succeeds
+- `tf2_echo map odom` resolves the identity static transform published by `navigation_demo.launch.py`
+- the mission finishes with `mission complete`, `cleared active navigation goal`, `planned path cleared`, and `published stop command after path clear`
+
+The script defaults to `WAYPOINT_NAV_FRAME=relative_start` and the verified two-waypoint route `(0.4, 0.0) -> (0.1, 0.4)`, but it respects the same mission tuning environment variables as `run_gazebo_mission_demo.sh`.
+
 ### Send a goal
 
 ```bash
