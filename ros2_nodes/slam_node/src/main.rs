@@ -9,6 +9,9 @@ use safe_drive::{
     pr_info, pr_warn,
 };
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+
+const ICP_INFO_LOG_INTERVAL: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Copy)]
 struct Pose2D {
@@ -21,6 +24,7 @@ struct SlamState {
     pose: Pose2D,
     map: OccupancyGridMap,
     previous_scan: Option<DMatrix<f64>>,
+    last_icp_log_at: Option<Instant>,
 }
 
 fn yaw_from_quaternion(x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -102,6 +106,7 @@ fn main() -> Result<(), DynError> {
         },
         map: OccupancyGridMap::new(map_config),
         previous_scan: None,
+        last_icp_log_at: None,
     }));
 
     let logger = Logger::new("slam_node");
@@ -146,13 +151,26 @@ fn main() -> Result<(), DynError> {
 
             if let Some(previous) = st.previous_scan.as_ref() {
                 let icp_result = icp_matching(previous, &current_scan);
-                pr_info!(
-                    log_scan,
-                    "ICP: converged={}, iter={}, error={:.4}",
-                    icp_result.converged,
-                    icp_result.iterations,
-                    icp_result.final_error
-                );
+                let now = Instant::now();
+                if !icp_result.converged {
+                    pr_warn!(
+                        log_scan,
+                        "ICP did not converge: iter={}, error={:.4}",
+                        icp_result.iterations,
+                        icp_result.final_error
+                    );
+                    st.last_icp_log_at = Some(now);
+                } else if st.last_icp_log_at.map_or(true, |last_log_at| {
+                    now.duration_since(last_log_at) >= ICP_INFO_LOG_INTERVAL
+                }) {
+                    pr_info!(
+                        log_scan,
+                        "ICP converged: iter={}, error={:.4}",
+                        icp_result.iterations,
+                        icp_result.final_error
+                    );
+                    st.last_icp_log_at = Some(now);
+                }
             }
 
             let pose = st.pose;

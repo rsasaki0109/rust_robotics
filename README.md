@@ -85,24 +85,40 @@ The workspace includes ready-to-use ROS2 navigation nodes built with safe_drive 
 - SLAM Node
 
 ```text
-sensor/odom,map inputs
-        |
-        v
-+-------------------+      global path      +----------------------+
-| Path Planner (A*) | --------------------> | DWA Local Planner    |
-+-------------------+                       +----------------------+
-         ^                                            |
-         | map updates                                | cmd_vel
-         |                                            v
-   +------------------+                         Robot Base
-   | SLAM Node        |
-   +------------------+
+                 TurtleBot3 Gazebo
+              /scan  /odom  /cmd_vel
+                 |      |       ^
+                 v      |       |
+            +-----------+       |
+            | slam_node | ----- +
+            +-----------+    /map
+                   |
+                   v
+          +-------------------+
+          | path_planner_node | ---> /planned_path
+          +-------------------+             |
+             ^           ^                  v
+             |           |           +--------------+
+           /odom     /goal_pose ---> | dwa_planner |
+                                     +--------------+
 ```
+
+![Gazebo navigation demo](./docs/gazebo_demo.png)
+
+Demo video: [docs/gazebo_demo.mp4](./docs/gazebo_demo.mp4)
 
 See [docs/ros2_integration.md](./docs/ros2_integration.md) for details.
 
 ```bash
-cargo build --manifest-path ros2_nodes/path_planner_node/Cargo.toml
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=42  # optional but recommended if other ROS graphs are already running
+
+cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
+cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+
+export TURTLEBOT3_MODEL=burger
+./ros2_nodes/launch/run_gazebo_demo.sh
 ```
 
 ## Benchmarks

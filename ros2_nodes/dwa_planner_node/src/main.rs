@@ -6,6 +6,7 @@ use safe_drive::{
     error::DynError,
     logger::Logger,
     msg::common_interfaces::{geometry_msgs, nav_msgs, sensor_msgs},
+    qos::{policy::DurabilityPolicy, Profile},
     pr_info, pr_warn,
 };
 use std::sync::{Arc, Mutex};
@@ -24,6 +25,7 @@ struct PlannerState {
     odom: Option<OdomState>,
     global_path: Vec<Point2D>,
     obstacles: Vec<Point2D>,
+    warned_missing_path: bool,
 }
 
 fn yaw_from_quaternion(x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -64,9 +66,12 @@ fn main() -> Result<(), DynError> {
     let ctx = Context::new()?;
     let node = ctx.create_node("dwa_planner_node", None, Default::default())?;
 
+    let mut path_qos = Profile::default();
+    path_qos.durability = DurabilityPolicy::TransientLocal;
+
     let scan_sub = node.create_subscriber::<sensor_msgs::msg::LaserScan>("/scan", None)?;
     let odom_sub = node.create_subscriber::<nav_msgs::msg::Odometry>("/odom", None)?;
-    let path_sub = node.create_subscriber::<nav_msgs::msg::Path>("/planned_path", None)?;
+    let path_sub = node.create_subscriber::<nav_msgs::msg::Path>("/planned_path", Some(path_qos))?;
     let cmd_pub = node.create_publisher::<geometry_msgs::msg::Twist>("/cmd_vel", None)?;
 
     let mut config = DWAConfig::default();
@@ -81,6 +86,7 @@ fn main() -> Result<(), DynError> {
     let mut selector = ctx.create_selector()?;
 
     let state_path = state.clone();
+    let log_path = Logger::new("dwa_planner_node");
     selector.add_subscriber(
         path_sub,
         Box::new(move |msg| {
@@ -89,7 +95,21 @@ fn main() -> Result<(), DynError> {
                 points.push(Point2D::new(pose.pose.position.x, pose.pose.position.y));
             }
             if let Ok(mut st) = state_path.lock() {
+                let had_path = !st.global_path.is_empty();
                 st.global_path = points;
+                if st.global_path.is_empty() {
+                    if had_path {
+                        st.warned_missing_path = true;
+                        pr_warn!(log_path, "planned path cleared");
+                    }
+                } else {
+                    st.warned_missing_path = false;
+                    pr_info!(
+                        log_path,
+                        "received planned path with {} points",
+                        st.global_path.len()
+                    );
+                }
             }
         }),
     );
@@ -129,7 +149,7 @@ fn main() -> Result<(), DynError> {
                 omega: msg.twist.twist.angular.z,
             };
 
-            let (goal, obstacles) = {
+            let (goal, obstacles, should_warn_missing_path) = {
                 let mut st = match state_odom.lock() {
                     Ok(guard) => guard,
                     Err(_) => {
@@ -139,13 +159,19 @@ fn main() -> Result<(), DynError> {
                 };
                 st.odom = Some(odom);
                 let goal = nearest_goal(&st.global_path, odom.x, odom.y);
-                (goal, st.obstacles.clone())
+                let should_warn_missing_path = goal.is_none() && !st.warned_missing_path;
+                if goal.is_none() {
+                    st.warned_missing_path = true;
+                }
+                (goal, st.obstacles.clone(), should_warn_missing_path)
             };
 
             let goal = match goal {
                 Some(goal) => goal,
                 None => {
-                    pr_warn!(log_odom, "planned path is empty; skipping DWA step");
+                    if should_warn_missing_path {
+                        pr_warn!(log_odom, "planned path is empty; waiting for planner output");
+                    }
                     return;
                 }
             };
