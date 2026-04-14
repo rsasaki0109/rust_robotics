@@ -145,6 +145,7 @@ WAYPOINT_NAV_WAYPOINTS="0.4,0.0;0.1,0.4" \
 For observability, `navigation_demo.launch.py` now also exposes:
 
 - `ENABLE_RVIZ=true ./ros2_nodes/launch/run_gazebo_demo.sh` to open RViz with [navigation_demo.rviz](./ros2_nodes/launch/navigation_demo.rviz)
+- `ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_gazebo_demo.sh` for a headless Gazebo server run
 - `/mission_status` (`std_msgs/String`) for mission / recovery state summaries
 - `/mission_markers` (`visualization_msgs/MarkerArray`) for the route, active goal, and status text
 
@@ -153,7 +154,7 @@ The launch file also publishes an identity `map -> odom` static transform for RV
 For a local ROS2/Gazebo regression check, run:
 
 ```bash
-ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ./ros2_nodes/launch/run_navigation_smoke_test.sh
+ROS_DOMAIN_ID=89 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
 
 The smoke script launches the mission demo, verifies `/mission_status`, typed `/mission_markers`, the `map -> odom` static transform, and waits for `mission complete -> goal cleared -> stop command` in the navigation logs.
