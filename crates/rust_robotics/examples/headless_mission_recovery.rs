@@ -103,7 +103,7 @@ fn perform_recovery_sequence(
     }
 
     println!("recovery attempt {attempt}: rotate");
-    let rotate_direction = if attempt % 2 == 0 { -1.0 } else { 1.0 };
+    let rotate_direction = if attempt.is_multiple_of(2) { -1.0 } else { 1.0 };
     for _ in 0..ROTATE_STEPS {
         let _ = apply_control_step(
             true_state,
@@ -166,7 +166,7 @@ fn main() -> RoboticsResult<()> {
         let mut applied = DWAPlanner::control_to_input(&planned);
 
         let inject_stall =
-            progress.current_idx == 0 && progress.total_recoveries == 0 && step >= 12 && step < 48;
+            progress.current_idx == 0 && progress.total_recoveries == 0 && (12..48).contains(&step);
         if inject_stall {
             applied = ControlInput::zero();
         }
@@ -242,7 +242,7 @@ fn main() -> RoboticsResult<()> {
             continue;
         }
 
-        if step % 40 == 0 {
+        if step.is_multiple_of(40) {
             println!(
                 "step={step:03} waypoint={}/{} true=({:.2}, {:.2}) est=({:.2}, {:.2}) dist={:.2}",
                 progress.current_idx + 1,
