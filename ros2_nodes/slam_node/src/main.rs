@@ -157,6 +157,32 @@ fn scan_to_point_matrix(scan: &sensor_msgs::msg::LaserScan) -> Option<DMatrix<f6
     Some(m)
 }
 
+/// Keep every `stride`-th column for ICP (1 = full resolution). Reduces noise and cost when `stride > 1`.
+fn subsample_points_for_icp(m: &DMatrix<f64>, stride: usize) -> DMatrix<f64> {
+    if stride <= 1 || m.ncols() == 0 {
+        return m.clone();
+    }
+    let idx: Vec<usize> = (0..m.ncols()).step_by(stride).collect();
+    const MIN_ICP_POINTS: usize = 4;
+    if idx.len() < MIN_ICP_POINTS {
+        return m.clone();
+    }
+    let mut out = DMatrix::zeros(2, idx.len());
+    for (j, &i) in idx.iter().enumerate() {
+        out[(0, j)] = m[(0, i)];
+        out[(1, j)] = m[(1, i)];
+    }
+    out
+}
+
+fn icp_point_stride_from_env() -> usize {
+    let s = env::var("SLAM_ICP_POINT_STRIDE")
+        .ok()
+        .and_then(|raw| raw.trim().parse::<usize>().ok())
+        .unwrap_or(1);
+    s.clamp(1, 16)
+}
+
 fn copy_stamp(
     target: &mut builtin_interfaces::UnsafeTime,
     source: &builtin_interfaces::UnsafeTime,
@@ -720,6 +746,14 @@ fn main() -> Result<(), DynError> {
             icp_params.full_weight_yaw_motion
         );
     }
+    let icp_point_stride = icp_point_stride_from_env();
+    if use_corrected_frame {
+        pr_info!(
+            logger,
+            "ICP scan subsample stride={} (SLAM_ICP_POINT_STRIDE, 1=full resolution)",
+            icp_point_stride
+        );
+    }
 
     let mut selector = ctx.create_selector()?;
 
@@ -735,6 +769,7 @@ fn main() -> Result<(), DynError> {
 
     let state_scan = state.clone();
     let icp_params_scan = icp_params;
+    let icp_stride_scan = icp_point_stride;
     let pub_scan = map_pub;
     let pub_pose = corrected_pose_pub;
     let pub_odom = corrected_odom_pub;
@@ -743,10 +778,11 @@ fn main() -> Result<(), DynError> {
     selector.add_subscriber(
         scan_sub,
         Box::new(move |msg| {
-            let current_scan = match scan_to_point_matrix(&msg) {
+            let full_scan = match scan_to_point_matrix(&msg) {
                 Some(m) => m,
                 None => return,
             };
+            let current_scan = subsample_points_for_icp(&full_scan, icp_stride_scan);
 
             let mut st = match state_scan.lock() {
                 Ok(guard) => guard,
@@ -926,13 +962,34 @@ mod tests {
     use super::{
         blend_motion_delta, compose_pose_local, compute_icp_blend_decision,
         format_slam_diagnostics, normalize_angle, odom_measurement_from_msg,
-        relative_motion_local, IcpGatingParams, MotionDelta, Pose2D, ScanDiagnostics,
-        DEFAULT_BASE_FRAME_ID, DEFAULT_ICP_BLEND_ALPHA, DEFAULT_ODOM_FRAME_ID,
+        relative_motion_local, subsample_points_for_icp, IcpGatingParams, MotionDelta, Pose2D,
+        ScanDiagnostics, DEFAULT_BASE_FRAME_ID, DEFAULT_ICP_BLEND_ALPHA, DEFAULT_ODOM_FRAME_ID,
     };
+    use nalgebra::DMatrix;
     use safe_drive::msg::common_interfaces::nav_msgs;
 
     fn default_icp() -> IcpGatingParams {
         IcpGatingParams::default()
+    }
+
+    #[test]
+    fn subsample_points_for_icp_stride_one_is_identity() {
+        let m = DMatrix::from_row_slice(2, 4, &[1.0, 2.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0]);
+        let out = subsample_points_for_icp(&m, 1);
+        assert_eq!(out.ncols(), 4);
+        assert_eq!(out[(0, 0)], 1.0);
+    }
+
+    #[test]
+    fn subsample_points_for_icp_stride_two_halves_columns() {
+        let m = DMatrix::from_row_slice(2, 8, &[
+            0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, //
+            10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0,
+        ]);
+        let out = subsample_points_for_icp(&m, 2);
+        assert_eq!(out.ncols(), 4);
+        assert_eq!(out[(0, 0)], 0.0);
+        assert_eq!(out[(0, 1)], 2.0);
     }
 
     #[test]
