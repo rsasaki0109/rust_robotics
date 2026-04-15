@@ -208,11 +208,11 @@ If you want the corrected SLAM frame:
 ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_gazebo_demo.sh
 ```
 
-That switches the planner stack to `/slam_odom`, uses `map` as the global frame, and enables [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) to estimate `map -> odom` from `/slam_odom` against the raw odom stream.
+That switches the planner stack to `/slam_odom`, uses `map` as the global frame, and enables [map_odom_tf_broadcaster.py](../ros2_nodes/launch/map_odom_tf_broadcaster.py) to estimate `map -> odom` from `/slam_odom` against the raw odom stream. In corrected mode, `slam_node` now quality-gates ICP before mixing it into the corrected pose: high-error or outlier matches fall back to raw odom, while borderline matches are attenuated via a reduced blend alpha.
 
 Corrected mode also enables:
 
-- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, and applied correction deltas
+- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, `blend_alpha`, `gate_reason`, and applied correction deltas
 - `/slam_ground_truth_status` (`std_msgs/String`) with relative-start Gazebo ground-truth error metrics computed from `gz topic -e -t /world/default/dynamic_pose/info --json-output`
 
 The ground-truth monitor defaults to `GROUND_TRUTH_ENTITY_NAME=$TURTLEBOT3_MODEL`, subtracts the first world pose sample, and compares `/ekf_odom` plus `/slam_odom` against that relative ground-truth trajectory. Override `GROUND_TRUTH_GZ_POSE_TOPIC` or `GROUND_TRUTH_ENTITY_NAME` if your Gazebo world uses different names.
@@ -269,7 +269,7 @@ For observability during the mission demo:
 
 - `/mission_status` reports the current mission state, active waypoint, and recovery phase
 - `/mission_markers` visualizes the resolved route, active goal, and a text status overlay in RViz
-- `/slam_diagnostics` summarizes ICP health and applied SLAM correction per scan
+- `/slam_diagnostics` summarizes ICP health, `blend_alpha`, `gate_reason`, and applied SLAM correction per scan
 - `/slam_ground_truth_status` reports raw-vs-corrected odom error against Gazebo ground truth in corrected mode
 - `odom_tf_broadcaster.py` republishes `base_tf_odom_topic` as dynamic TF from the raw odom frame to the robot base frame
 - by default `/map`, `/planned_path`, `/goal_pose`, and `/mission_markers` all use the same honest global frame, `odom`
