@@ -5,13 +5,14 @@ use safe_drive::{
     context::Context,
     error::DynError,
     logger::Logger,
-    msg::common_interfaces::{nav_msgs, sensor_msgs},
+    msg::{builtin_interfaces, common_interfaces::{nav_msgs, sensor_msgs}},
     pr_info, pr_warn,
 };
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 const ICP_INFO_LOG_INTERVAL: Duration = Duration::from_secs(5);
+const DEFAULT_MAP_FRAME_ID: &str = "odom";
 
 #[derive(Clone, Copy)]
 struct Pose2D {
@@ -23,6 +24,7 @@ struct Pose2D {
 struct SlamState {
     pose: Pose2D,
     map: OccupancyGridMap,
+    odom_frame_id: String,
     previous_scan: Option<DMatrix<f64>>,
     last_icp_log_at: Option<Instant>,
 }
@@ -57,9 +59,31 @@ fn scan_to_point_matrix(scan: &sensor_msgs::msg::LaserScan) -> Option<DMatrix<f6
     Some(m)
 }
 
-fn build_occupancy_grid_msg(map: &OccupancyGridMap) -> Result<nav_msgs::msg::OccupancyGrid, DynError> {
+fn copy_stamp(
+    target: &mut builtin_interfaces::UnsafeTime,
+    source: &builtin_interfaces::UnsafeTime,
+) {
+    target.sec = source.sec;
+    target.nanosec = source.nanosec;
+}
+
+fn map_frame_id_from_odom(msg: &nav_msgs::msg::Odometry) -> String {
+    let frame_id = msg.header.frame_id.get_string();
+    if frame_id.is_empty() {
+        DEFAULT_MAP_FRAME_ID.to_string()
+    } else {
+        frame_id
+    }
+}
+
+fn build_occupancy_grid_msg(
+    map: &OccupancyGridMap,
+    frame_id: &str,
+    stamp: &builtin_interfaces::UnsafeTime,
+) -> Result<nav_msgs::msg::OccupancyGrid, DynError> {
     let mut msg = nav_msgs::msg::OccupancyGrid::new().ok_or("failed to allocate OccupancyGrid")?;
-    let _ = msg.header.frame_id.assign("map");
+    let _ = msg.header.frame_id.assign(frame_id);
+    copy_stamp(&mut msg.header.stamp, stamp);
 
     msg.info.resolution = map.config.resolution as f32;
     msg.info.width = map.config.width as u32;
@@ -105,6 +129,7 @@ fn main() -> Result<(), DynError> {
             yaw: 0.0,
         },
         map: OccupancyGridMap::new(map_config),
+        odom_frame_id: DEFAULT_MAP_FRAME_ID.to_string(),
         previous_scan: None,
         last_icp_log_at: None,
     }));
@@ -126,6 +151,7 @@ fn main() -> Result<(), DynError> {
                     y: msg.pose.pose.position.y,
                     yaw,
                 };
+                st.odom_frame_id = map_frame_id_from_odom(&msg);
             }
         }),
     );
@@ -184,7 +210,8 @@ fn main() -> Result<(), DynError> {
                 msg.angle_increment as f64,
             );
 
-            match build_occupancy_grid_msg(&st.map) {
+            let frame_id = st.odom_frame_id.clone();
+            match build_occupancy_grid_msg(&st.map, &frame_id, &msg.header.stamp) {
                 Ok(map_msg) => {
                     if let Err(err) = pub_scan.send(&map_msg) {
                         pr_warn!(log_scan, "failed to publish map: {}", err);
@@ -201,5 +228,24 @@ fn main() -> Result<(), DynError> {
 
     loop {
         selector.wait()?;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{map_frame_id_from_odom, DEFAULT_MAP_FRAME_ID};
+    use safe_drive::msg::common_interfaces::nav_msgs;
+
+    #[test]
+    fn map_frame_defaults_to_odom_when_header_is_empty() {
+        let msg = nav_msgs::msg::Odometry::new().expect("odom");
+        assert_eq!(map_frame_id_from_odom(&msg), DEFAULT_MAP_FRAME_ID);
+    }
+
+    #[test]
+    fn map_frame_uses_source_odom_header() {
+        let mut msg = nav_msgs::msg::Odometry::new().expect("odom");
+        let _ = msg.header.frame_id.assign("odom_filtered");
+        assert_eq!(map_frame_id_from_odom(&msg), "odom_filtered");
     }
 }
