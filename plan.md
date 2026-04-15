@@ -455,3 +455,8 @@ If you only remember five things, remember these:
 3. The central remaining technical problem is not wiring, but whether corrected SLAM is measurably better than raw odom.
 4. The next good move is: tune corrected mode against ground-truth metrics, then consider quantitative smoke thresholds.
 5. Treat `run_navigation_smoke_test.sh` as part of the product; its stability defines how credible corrected-mode tuning is.
+
+## 12. Recent stack updates (2026)
+
+- **ICP error scale:** `rust_robotics_slam::icp_matching` now exposes `final_error_mean` (and `point_count`) alongside the legacy sum `final_error`. `slam_node` gates and `/slam_diagnostics` use **mean** NN distance \[m/point\], so `SLAM_ICP_FULL_WEIGHT_ERROR` / `SLAM_ICP_REJECT_ERROR` are interpretable and no longer depend on laser point count the same way sum error did.
+- **Multi-mission revaluation:** `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` runs several `WAYPOINT_NAV_WAYPOINTS` profiles sequentially with corrected-frame smoke and prints ground-truth `improvement_xy` snippets (see `docs/ros2_integration.md`).
