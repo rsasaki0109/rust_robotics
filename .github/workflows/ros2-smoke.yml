@@ -1,0 +1,81 @@
+name: ROS2 Smoke
+
+on:
+  push:
+    branches: [ main, dev/*, feat/*, task/* ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+  ROS_DISTROS: jazzy
+  SAFE_DRIVE_REF: e14f6332b27a3be263ba41e19d0654897a195830
+  ROS_DOMAIN_ID: 89
+  TURTLEBOT3_MODEL: burger
+  ENABLE_RVIZ: "false"
+  ENABLE_GAZEBO_GUI: "false"
+  LIBGL_ALWAYS_SOFTWARE: "1"
+
+jobs:
+  navigation-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "20.x"
+
+    - name: Install ROS 2 Jazzy
+      uses: ros-tooling/setup-ros@v0.7
+      with:
+        required-ros-distributions: ${{ env.ROS_DISTROS }}
+
+    - name: Install Gazebo Harmonic with ros_gz
+      uses: gazebo-tooling/setup-gazebo@v0.3.0
+      with:
+        required-gazebo-distributions: harmonic
+        install-ros-gz: ${{ env.ROS_DISTROS }}
+
+    - name: Install TurtleBot3 simulation packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          ros-jazzy-turtlebot3-bringup \
+          ros-jazzy-turtlebot3-description \
+          ros-jazzy-turtlebot3-gazebo
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+          ros2_nodes/*/target/
+        key: ${{ runner.os }}-ros2-smoke-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Clone safe_drive sibling
+      run: |
+        git clone https://github.com/tier4/safe_drive.git ../safe_drive
+        git -C ../safe_drive checkout "$SAFE_DRIVE_REF"
+
+    - name: Build ROS2 node release binaries
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        cargo build --release --manifest-path ros2_nodes/path_planner_node/Cargo.toml
+        cargo build --release --manifest-path ros2_nodes/dwa_planner_node/Cargo.toml
+        cargo build --release --manifest-path ros2_nodes/slam_node/Cargo.toml
+        cargo build --release --manifest-path ros2_nodes/ekf_localizer_node/Cargo.toml
+        cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
+
+    - name: Run headless navigation smoke test
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        timeout 20m ./ros2_nodes/launch/run_navigation_smoke_test.sh
