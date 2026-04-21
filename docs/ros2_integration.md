@@ -317,6 +317,15 @@ export ENABLE_SLAM_CORRECTED_FRAME=true
 In corrected mode, the script additionally verifies `tf2_echo map odom`.
 When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it also checks that `/slam_ground_truth_status` reaches `status=ok` and includes `slam_xy_error=`.
 
+To verify the corrected-frame ICP gate without Gazebo variance, run the synthetic acceptance smoke:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+ROS_DOMAIN_ID=88 ./ros2_nodes/launch/run_slam_icp_acceptance_test.sh
+```
+
+That starts `slam_node` alone, feeds deterministic synthetic odom plus `/scan`, and waits for `/synthetic_slam_diagnostics` to report `status=icp_ok`, `gate_reason=accepted`, and `blend_applied=true`. This is a controlled positive test for clean scan-to-scan matches; it does not replace the Gazebo ground-truth revaluation below.
+
 To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions, run the matrix script. It starts a fresh Gazebo + navigation stack per scenario and writes one metrics row per scenario to CSV and JSONL.
 
 ```bash
@@ -443,6 +452,7 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. **`SLAM_ICP_FULL_WEIGHT_ERROR` and `SLAM_ICP_REJECT_ERROR` apply to mean nearest-neighbor ICP error** \[m/point\] (not the legacy sum over all points). The built-in mean-error window is full weight at `0.007` and reject at `0.011`; on startup with corrected mode, `slam_node` logs all resolved numeric values.
 - **Tuning note (Gazebo TurtleBot3 burger smoke, 2026-04):** Headless `run_navigation_revaluation_matrix.sh` with `SLAM_REVALUATION_PROFILE_SET=tuning` showed the previous `SLAM_ICP_REJECT_ERROR=0.014` default allowed small attenuated corrections that made corrected SLAM about 4-10 mm worse than raw EKF odom in the bundled scenarios. Tightening the reject threshold to `0.011` made the tested scenarios raw-equivalent by rejecting those weak matches. Loosening the **mean-error** gate far above defaults often increased `slam_xy_error` relative to raw odom—noisy ICP matches were being rejected for a reason. `SLAM_ICP_POINT_STRIDE=2` in the same scenario also tended to worsen `improvement_xy` versus stride `1`. Use small steps and compare `slam_ground_truth_status` (`improvement_xy`, `slam_better_xy`) across several runs before changing shipped defaults.
 - **Biased odom note (Gazebo TurtleBot3 burger smoke, 2026-04):** `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` completed 9/9 bundled runs with the current strict ICP gate. The `odom_xy_scale_1pct` profile made corrected SLAM about 1-2 mm worse than raw because ICP was rejected and the biased odom passed through. The `odom_yaw_drift_1deg_per_m` profile stayed raw-equivalent overall and improved `long_two_legs` by about 2 mm. This confirms the bias harness works, but scan-to-scan ICP still needs a controlled acceptance case before claiming raw-better corrected SLAM.
+- **Synthetic acceptance smoke:** `run_slam_icp_acceptance_test.sh` starts only `slam_node`, publishes deterministic synthetic odom plus scan data, and requires `status=icp_ok gate_reason=accepted blend_applied=true` on `/synthetic_slam_diagnostics`. Use it as the positive-control check that clean ICP matches can still pass the strict gate.
 
 ### `biased_odom_publisher.py`
 
