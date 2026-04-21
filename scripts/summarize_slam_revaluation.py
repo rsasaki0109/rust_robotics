@@ -101,23 +101,28 @@ def load_rows(paths: list[Path]) -> list[dict[str, str]]:
                 raise ValueError(f"{path}: missing required column(s): {missing_list}")
             for row in reader:
                 row["_source"] = str(path)
+                row.setdefault("odom_profile", "raw_realistic")
                 row.setdefault("profile", "default")
                 rows.append(row)
     return rows
 
 
-def profile_sort_key(item: tuple[str, ProfileSummary]) -> tuple[int, float, str]:
-    profile, summary = item
-    return (-summary.completed, -summary.avg_improvement, profile)
+def profile_sort_key(
+    item: tuple[tuple[str, str], ProfileSummary],
+) -> tuple[int, float, str, str]:
+    (odom_profile, profile), summary = item
+    return (-summary.completed, -summary.avg_improvement, odom_profile, profile)
 
 
-def scenario_winners(rows: list[dict[str, str]]) -> list[tuple[str, dict[str, str]]]:
-    by_scenario: dict[str, list[dict[str, str]]] = defaultdict(list)
+def scenario_winners(
+    rows: list[dict[str, str]],
+) -> list[tuple[tuple[str, str], dict[str, str]]]:
+    by_scenario: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
     for row in rows:
-        by_scenario[row["scenario"]].append(row)
+        by_scenario[(row["odom_profile"], row["scenario"])].append(row)
 
     winners = []
-    for scenario, scenario_rows in sorted(by_scenario.items()):
+    for key, scenario_rows in sorted(by_scenario.items()):
         best = max(
             scenario_rows,
             key=lambda row: (
@@ -126,23 +131,26 @@ def scenario_winners(rows: list[dict[str, str]]) -> list[tuple[str, dict[str, st
                 parse_bool(row.get("slam_better_xy", "")),
             ),
         )
-        winners.append((scenario, best))
+        winners.append((key, best))
     return winners
 
 
 def print_profile_summary(rows: list[dict[str, str]]) -> None:
-    summaries: dict[str, ProfileSummary] = defaultdict(ProfileSummary)
+    summaries: dict[tuple[str, str], ProfileSummary] = defaultdict(ProfileSummary)
     for row in rows:
-        summaries[row["profile"]].add(row)
+        summaries[(row["odom_profile"], row["profile"])].add(row)
 
     print("Profile summary")
     print(
-        f"{'profile':<18} {'completed':>11} {'better_xy':>10} "
+        f"{'odom_profile':<24} {'profile':<18} {'completed':>11} {'better_xy':>10} "
         f"{'avg_xy':>9} {'min_xy':>9} {'max_xy':>9} gate_counts"
     )
-    print("-" * 96)
-    for profile, summary in sorted(summaries.items(), key=profile_sort_key):
+    print("-" * 122)
+    for (odom_profile, profile), summary in sorted(
+        summaries.items(), key=profile_sort_key
+    ):
         print(
+            f"{odom_profile:<24} "
             f"{profile:<18} "
             f"{summary.completed:>5}/{summary.rows:<5} "
             f"{summary.better_xy:>4}/{summary.rows:<5} "
@@ -156,10 +164,14 @@ def print_profile_summary(rows: list[dict[str, str]]) -> None:
 def print_scenario_winners(rows: list[dict[str, str]]) -> None:
     print()
     print("Scenario winners")
-    print(f"{'scenario':<18} {'profile':<18} {'improvement_xy':>14} {'completed':>10}")
-    print("-" * 68)
-    for scenario, row in scenario_winners(rows):
+    print(
+        f"{'odom_profile':<24} {'scenario':<18} {'profile':<18} "
+        f"{'improvement_xy':>14} {'completed':>10}"
+    )
+    print("-" * 94)
+    for (odom_profile, scenario), row in scenario_winners(rows):
         print(
+            f"{odom_profile:<24} "
             f"{scenario:<18} "
             f"{row['profile']:<18} "
             f"{parse_float(row.get('improvement_xy', '')):>14.4f} "

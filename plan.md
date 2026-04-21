@@ -427,11 +427,15 @@ Recommended order:
    - `low_alpha` (`SLAM_ICP_BLEND_ALPHA=0.10`)
    - `strict_error` (`SLAM_ICP_REJECT_ERROR=0.011`)
    - `strict_low_alpha` (both overrides)
-3. Check whether gating is too conservative:
+3. Run `SLAM_REVALUATION_ODOM_PROFILE_SET=biased ros2_nodes/launch/run_navigation_revaluation_matrix.sh` when you need to test whether corrected SLAM can recover from intentionally degraded SLAM input odom while keeping `/ekf_odom` as the raw ground-truth baseline:
+   - `raw_realistic`
+   - `odom_xy_scale_1pct`
+   - `odom_yaw_drift_1deg_per_m`
+4. Check whether gating is too conservative:
    - too many `high_error` or `low_motion` rejections may mean corrected mode is effectively disabled
-4. Check whether attenuation thresholds are too loose:
+5. Check whether attenuation thresholds are too loose:
    - if bad corrections still slip through, tighten correction/error limits
-5. Only after the behavior is more stable, promote the smoke test to enforce a quantitative improvement condition
+6. Only after the behavior is more stable, promote the smoke test to enforce a quantitative improvement condition
 
 ### After the quality story is good enough
 
@@ -471,7 +475,9 @@ If you only remember five things, remember these:
 - **ICP error scale:** `rust_robotics_slam::icp_matching` now exposes `final_error_mean` (and `point_count`) alongside the legacy sum `final_error`. `slam_node` gates and `/slam_diagnostics` use **mean** NN distance \[m/point\], so `SLAM_ICP_FULL_WEIGHT_ERROR` / `SLAM_ICP_REJECT_ERROR` are interpretable and no longer depend on laser point count the same way sum error did.
 - **Multi-mission revaluation:** `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` runs several `WAYPOINT_NAV_WAYPOINTS` profiles sequentially with corrected-frame smoke and writes ignored CSV/JSONL reports under `reports/slam_revaluation/` by default. Rows include mission completion, ground-truth XY/yaw error metrics, ICP mean error, blend alpha, and gate/status counts. `SLAM_REVALUATION_PROFILE_SET=tuning` adds a small conservative ICP sweep (`default`, `low_alpha`, `strict_error`, `strict_low_alpha`) for comparing tuning changes without editing the script (see `docs/ros2_integration.md`).
 - **ICP reject default tightened:** A 12-run Gazebo tuning matrix (`SLAM_REVALUATION_PROFILE_SET=tuning`, 4 profiles x 3 scenarios) showed the older mean-error reject threshold `0.014` let small attenuated ICP corrections degrade XY by roughly 4-10 mm in the bundled missions. The shipped `DEFAULT_ICP_REJECT_ERROR` is now `0.011`, matching the `strict_error` profile that kept all tested scenarios mission-complete and raw-equivalent in XY by rejecting weak matches.
-- **Revaluation summaries:** `scripts/summarize_slam_revaluation.py` summarizes one or more generated CSV reports by profile and scenario, including completion counts, `slam_better_xy`, `improvement_xy` average/min/max, scenario winners, and aggregate ICP gate/status counts. It also supports earlier CSV reports without profile columns by treating them as `profile=default`.
+- **SLAM-input odom bias profiles:** `ros2_nodes/launch/biased_odom_publisher.py` can degrade only `slam_node`'s odom input while leaving `/ekf_odom` as the raw ground-truth baseline. `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` adds `raw_realistic`, `odom_xy_scale_1pct`, and `odom_yaw_drift_1deg_per_m` to the revaluation matrix.
+- **Biased odom matrix result:** A 9-run Gazebo matrix with `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` completed all bundled runs. `odom_xy_scale_1pct` degraded corrected SLAM by about 1-2 mm because strict ICP rejected the weak matches and passed biased odom through; `odom_yaw_drift_1deg_per_m` stayed raw-equivalent overall and improved `long_two_legs` by about 2 mm. The harness is useful, but raw-better corrected SLAM still needs a scenario where ICP can be safely accepted.
+- **Revaluation summaries:** `scripts/summarize_slam_revaluation.py` summarizes one or more generated CSV reports by odom profile, ICP profile, and scenario, including completion counts, `slam_better_xy`, `improvement_xy` average/min/max, scenario winners, and aggregate ICP gate/status counts. It also supports earlier CSV reports without profile columns by treating them as `odom_profile=raw_realistic` and `profile=default`.
 
 ## 13. CI regression fix (2026-04-16) — what broke and what changed
 
