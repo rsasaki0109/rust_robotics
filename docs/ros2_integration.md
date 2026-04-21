@@ -357,6 +357,15 @@ That runs each scenario with these profiles:
 
 Report rows include `profile`, `profile_description`, and `profile_env`, so tuning runs can be grouped by scenario or by ICP profile.
 
+To summarize a report after a run:
+
+```bash
+python3 scripts/summarize_slam_revaluation.py \
+  reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.csv
+```
+
+The summary prints profile-level mission completion counts, `slam_better_xy` counts, average/min/max `improvement_xy`, scenario winners, and aggregate ICP gate/status counts. It can also read older reports that do not have profile columns; those rows are treated as `profile=default`.
+
 Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation. Treat this report as measurement data first. Do not turn `improvement_xy` into a hard CI threshold until the scenario variance is understood.
 
 ### Send a goal
