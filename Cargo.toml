@@ -23,8 +23,8 @@ categories = ["algorithms", "science::robotics", "simulation"]
 
 [workspace.dependencies]
 nalgebra = "0.33"
-rand = "0.8"
-rand_distr = "0.4"
+rand = "0.9.3"
+rand_distr = "0.5.1"
 itertools = "0.13"
 ordered-float = "4.2"
 gnuplot = "0.0.43"
@@ -37,3 +37,7 @@ rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.1.
 rust_robotics_mapping = { path = "crates/rust_robotics_mapping", version = "0.1.0" }
 rust_robotics_slam = { path = "crates/rust_robotics_slam", version = "0.1.0" }
 rust_robotics_viz = { path = "crates/rust_robotics_viz", version = "0.1.0" }
+
+[patch.crates-io]
+raw_sync_2 = { path = "vendor/raw_sync_2" }
+shared_memory_extended = { path = "vendor/shared_memory_extended" }

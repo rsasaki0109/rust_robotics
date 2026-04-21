@@ -307,7 +307,7 @@ fn resample_with_rng<R: Rng + ?Sized>(particles: &mut Vec<Particle>, rng: &mut R
         cum_sum[i + 1] = cum_sum[i] + p.weight;
     }
 
-    let uniform = Uniform::new(0.0, 1.0 / n as f64);
+    let uniform = Uniform::new(0.0, 1.0 / n as f64).expect("valid resampling range");
     let mut r = uniform.sample(rng);
     let mut j = 0;
     for _ in 0..n {
