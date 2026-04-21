@@ -1,14 +1,14 @@
 # RustRobotics Handoff Plan
 
-Last updated: 2026-04-15  
-Audience: Copilot / next agent taking over this repository  
-Status: Phase 4 is no longer "to do". The Gazebo navigation demo and the first real ROS2 navigation stack slices are already merged. This file is now a handoff document, not a design sketch.
+Last updated: 2026-04-16  
+Audience: Copilot, Claude Code, and the next agent taking over this repository  
+Status: Phase 4 is no longer "to do". The Gazebo navigation demo and the first real ROS2 navigation stack slices are already merged. This file is now a handoff document, not a design sketch. **2026-04-16:** CI regression on `main` was fixed and pushed; see Section 13.
 
 ## 1. Current Repository Snapshot
 
 - Git repo: `rust_robotics/`
 - Current branch: `main`
-- Remote state at last handoff update: `main` includes the ICP blend-gating merge (ICP blend gating + smoke capture hardening + docs; builds on `9547124`).
+- Remote state at last handoff update: `main` includes the ICP blend-gating merge (ICP blend gating + smoke capture hardening + docs; builds on `9547124`), plus the **2026-04-16 CI hotfix** commit `0caef92` (`fix(ci): stabilize BIT* prune test; use grep in ROS smoke script`).
 - Worktree state: clean after that merge unless you have new local edits.
 
 This repo lives inside a larger directory that is not itself a git repo:
@@ -287,7 +287,7 @@ Fix applied in the merge:
 - added `capture_topic_stream_until()`
 - this runs a background subscriber with:
   - `ros2 topic echo --full-length`
-- it waits until specific regex patterns appear in the capture file
+- it waits until specific substring patterns appear in the capture file (matched with `grep -Fq` as of 2026-04-16; see Section 13)
 - it replaced brittle `--once` capture for:
   - `/mission_status`
   - `/slam_diagnostics`
@@ -300,6 +300,8 @@ This matters because the corrected-frame validation depends on being able to rel
 - `gate_reason=...`
 - `status=completed`
 - `slam_xy_error=...`
+
+**Update (2026-04-16):** CI runners did not have `rg` (ripgrep) installed; `wait_for_log_pattern` and related checks were switched from `rg -q` to `grep -Fq`. Do not rely on `rg` being on `PATH` in GitHub Actions unless the workflow installs it.
 
 ### 6.3 Files: `README.md`, `docs/ros2_integration.md`
 
@@ -460,3 +462,111 @@ If you only remember five things, remember these:
 
 - **ICP error scale:** `rust_robotics_slam::icp_matching` now exposes `final_error_mean` (and `point_count`) alongside the legacy sum `final_error`. `slam_node` gates and `/slam_diagnostics` use **mean** NN distance \[m/point\], so `SLAM_ICP_FULL_WEIGHT_ERROR` / `SLAM_ICP_REJECT_ERROR` are interpretable and no longer depend on laser point count the same way sum error did.
 - **Multi-mission revaluation:** `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` runs several `WAYPOINT_NAV_WAYPOINTS` profiles sequentially with corrected-frame smoke and prints ground-truth `improvement_xy` snippets (see `docs/ros2_integration.md`).
+
+## 13. CI regression fix (2026-04-16) — what broke and what changed
+
+This section documents a real `main` breakage and the fix, so the next agent does not rediscover it from scratch.
+
+### 13.1 Symptom on GitHub Actions
+
+Two workflows failed on the same push (example run IDs from 2026-04-15):
+
+- **`.github/workflows/ci.yml` → job `build-test` → step "Run headless tests (no default features)"**  
+  - Failure: `batch_informed_rrt_star::tests::test_pruning_reduces_tree_size` panicked.  
+  - Message shape: `Pruning should keep tree size reasonable: 189 vs 28` (numbers vary; the assertion compared two **independent** stochastic planner runs).
+
+- **`.github/workflows/ros2-smoke.yml` → job `navigation-smoke` → step "Run headless navigation smoke test"**  
+  - Failure: `./ros2_nodes/launch/run_navigation_smoke_test.sh: line 89: rg: command not found` (repeated in a loop).  
+  - Root cause: the smoke script used **ripgrep** (`rg`) for `wait_for_log_pattern` and other checks, but **`rg` is not installed by default** on `ubuntu-latest` GitHub runners.
+
+Local developer machines often have `rg` installed; CI did not, so the smoke test passed locally for some people and failed in CI.
+
+### 13.2 Fix (commit `0caef92` on `main`)
+
+**Rust / BIT\* test**
+
+- File: `crates/rust_robotics_planning/src/batch_informed_rrt_star.rs`
+- Removed the flaky test that compared tree sizes between two planners using `rand::thread_rng()` (non-deterministic across runners).
+- Added a **deterministic** unit test `test_prune_nodes_removes_dominated_leaf` that builds a minimal two-node tree, sets `c_best` so the leaf is prunable under `prune_nodes`, and asserts the leaf is removed.
+- Added `#[cfg(test)] impl BatchInformedRRTStar { fn prune_nodes_for_test(...) }` as a thin wrapper around private `prune_nodes` for that test.
+
+**ROS2 smoke script**
+
+- File: `ros2_nodes/launch/run_navigation_smoke_test.sh`
+- Replaced `rg -q` with **`grep -Fq`** (fixed-string match) everywhere this script greps log or capture files.
+- TF echo checks now use the literal substring `Rotation: in Quaternion (xyzw)` (no regex escapes; `-F` is fixed string).
+
+After push, **CI**, **ROS2 Smoke**, and **Pages** workflows for that commit completed **success** on GitHub.
+
+### 13.3 Implications for future edits
+
+- **Do not reintroduce `rg` as a hard dependency** in `run_navigation_smoke_test.sh` unless the workflow installs ripgrep (e.g. `sudo apt-get install -y ripgrep`). Prefer POSIX `grep` for CI portability.
+- **Avoid tests that compare two separate `thread_rng()` planning runs** unless you inject a seeded RNG into the planner (not currently exposed).
+- The smoke script still uses **stream capture** and **pattern waits** as in Section 6.2; only the **grep implementation** changed from ripgrep to grep.
+
+### 13.4 Optional follow-ups (not done in `0caef92`)
+
+- **Dependabot:** GitHub may report a low-severity dependency alert on the default branch; review Security / Dependabot separately from this handoff.
+- **Node 20 deprecation warnings** on Actions: informational only for now; consider bumping action versions or `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` when you next touch workflows.
+
+## 14. Handoff for Claude Code / 次エージェント向け（長め）
+
+Read this block first if you are continuing in Claude or another IDE agent.
+
+### 14.1 Repository and workspace
+
+- Treat **`rust_robotics/`** as the only git root for this project in the typical layout. The parent folder **`rust_robo_ws/`** may not be a git repository; clones are often `.../rust_robo_ws/rust_robotics`.
+- Remote: `git@github.com:rsasaki0109/rust_robotics.git` (also HTTPS equivalent). Default branch: **`main`**.
+- ROS2 nodes under `ros2_nodes/*` are **not** workspace members; build with `--manifest-path` per node (see Section 5.1).
+- `safe_drive` is expected as **`../safe_drive`** relative to the repo root when building ROS2 nodes (CI clones it in the sibling workflow step).
+
+### 14.2 What is “done” vs what is “next”
+
+- **Done:** End-to-end Gazebo mission demo, EKF path, DWA, SLAM map publishing, waypoint mission + recovery, RViz topics, headless examples, ROS2 smoke in CI, corrected-frame pipeline, ICP blend gating, mean-ICP diagnostics, revaluation script (Sections 2, 6, 12).
+- **Next (product / research):** Corrected SLAM should become **measurably** better than raw odom on agreed metrics (Section 8–9). Smoke tests verify plumbing, not yet strict accuracy thresholds.
+
+### 14.3 CI map (quick reference)
+
+| Workflow file | Purpose |
+|----------------|---------|
+| `.github/workflows/ci.yml` | Rust: build, test, `--no-default-features` tests, headless examples, clippy, rustdoc `-D warnings`, fmt, cargo-deny, tarpaulin → Codecov, optional semver on PR |
+| `.github/workflows/ros2-smoke.yml` | Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, TurtleBot3 sim, build ROS2 nodes, run `run_navigation_smoke_test.sh` (and corrected-frame variant) |
+| `.github/workflows/pages.yml` | `cargo doc` + copy `docs/` and `api/` to GitHub Pages |
+
+If you change `run_navigation_smoke_test.sh`, assume **both** local ROS users and **headless CI** must succeed without extra packages unless you add them to the workflow.
+
+### 14.4 Files to open before touching corrected SLAM or smoke
+
+1. `ros2_nodes/slam_node/src/main.rs` — ICP blend, gating, diagnostics strings  
+2. `ros2_nodes/launch/run_navigation_smoke_test.sh` — mission + topic + TF verification (**grep**, not `rg`)  
+3. `ros2_nodes/launch/map_odom_tf_broadcaster.py`, `slam_ground_truth_monitor.py` — corrected frame + GT  
+4. `docs/ros2_integration.md` — documented behavior  
+5. `CLAUDE.md` — short crate layout and `cargo` commands for the **library** workspace
+
+### 14.5 Commands the next agent will likely run
+
+Library workspace (from repo root):
+
+```bash
+cargo build --workspace --lib --tests --examples
+cargo test --workspace --lib --tests
+cargo test -p rust_robotics_planning --no-default-features --lib --tests   # includes BIT* prune test
+cargo clippy --workspace --all-targets -- -W clippy::all -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+cargo fmt --all -- --check
+```
+
+ROS2 (with Jazzy sourced):
+
+```bash
+bash -n ros2_nodes/launch/run_navigation_smoke_test.sh
+# full smoke: see Section 5.2
+```
+
+### 14.6 Communication note
+
+Previous session (Cursor) fixed **`main` CI** via `0caef92`, verified **green** CI + ROS2 Smoke + Pages on GitHub, and updated **`plan.md`** for handoff. If `main` has moved, run `git log -1` and compare with Section 13.
+
+## 15. One-line summary for Claude
+
+**`main` is CI-green after `0caef92`; BIT\* pruning is tested deterministically; ROS smoke uses `grep -Fq` not `rg`; next priority is corrected-frame accuracy tuning (Sections 8–9), not demo plumbing.**

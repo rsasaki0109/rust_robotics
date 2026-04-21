@@ -86,7 +86,7 @@ wait_for_log_pattern() {
   local timeout_seconds="$2"
   local deadline=$((SECONDS + timeout_seconds))
 
-  until rg -q "$pattern" "$LAUNCH_LOG"; do
+  until grep -Fq "$pattern" "$LAUNCH_LOG"; do
     if (( SECONDS >= deadline )); then
       echo "Timed out waiting for log pattern: $pattern" >&2
       return 1
@@ -135,7 +135,7 @@ capture_topic_stream_until() {
       local matched_all=true
       local pattern
       for pattern in "${patterns[@]}"; do
-        if ! rg -q "$pattern" "$output_file"; then
+        if ! grep -Fq "$pattern" "$output_file"; then
           matched_all=false
           break
         fi
@@ -176,7 +176,7 @@ capture_nav_tf() {
     fi
 
     timeout 8s ros2 run tf2_ros tf2_echo "$parent_frame" "$child_frame" >"$TF_NAV_OUT" 2>&1 || true
-    if rg -q "Translation:" "$TF_NAV_OUT" && rg -q "Rotation: in Quaternion \(xyzw\)" "$TF_NAV_OUT"; then
+    if grep -Fq "Translation:" "$TF_NAV_OUT" && grep -Fq "Rotation: in Quaternion (xyzw)" "$TF_NAV_OUT"; then
       return 0
     fi
     sleep 1
@@ -195,7 +195,7 @@ capture_tf_between_frames() {
 
   while (( SECONDS < deadline )); do
     timeout 8s ros2 run tf2_ros tf2_echo "$parent_frame" "$child_frame" >"$output_file" 2>&1 || true
-    if rg -q "Translation:" "$output_file" && rg -q "Rotation: in Quaternion \(xyzw\)" "$output_file"; then
+    if grep -Fq "Translation:" "$output_file" && grep -Fq "Rotation: in Quaternion (xyzw)" "$output_file"; then
       return 0
     fi
     sleep 1
@@ -223,9 +223,9 @@ if [[ -z "$parent_frame" ]]; then
   exit 1
 fi
 
-rg -q "frame_id: $parent_frame" "$MAP_OUT"
-rg -q "frame_id: $parent_frame" "$PATH_OUT"
-rg -q "frame_id: $parent_frame" "$MARKERS_OUT"
+grep -Fq "frame_id: $parent_frame" "$MAP_OUT"
+grep -Fq "frame_id: $parent_frame" "$PATH_OUT"
+grep -Fq "frame_id: $parent_frame" "$MARKERS_OUT"
 
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   capture_tf_between_frames "map" "odom" "$TF_MAP_ODOM_OUT" "$SMOKE_STARTUP_TIMEOUT"
