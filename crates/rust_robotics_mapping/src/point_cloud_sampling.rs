@@ -80,7 +80,7 @@ pub fn farthest_point_sampling(
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let n = points.len();
-    let first = rng.gen_range(0..n);
+    let first = rng.random_range(0..n);
 
     let mut min_distances = vec![f64::INFINITY; n];
     let mut selected_ids: Vec<usize> = vec![first];
@@ -139,12 +139,12 @@ pub fn poisson_disk_sampling(
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     let n = points.len();
-    let first = rng.gen_range(0..n);
+    let first = rng.random_range(0..n);
     let mut selected_ids: Vec<usize> = vec![first];
 
     let mut loop_count = 0;
     while selected_ids.len() < n_points && loop_count <= max_iter {
-        let candidate = rng.gen_range(0..n);
+        let candidate = rng.random_range(0..n);
         let base = &points[candidate];
 
         let min_dist_to_selected = selected_ids

@@ -212,12 +212,12 @@ impl RRTStarRSPlanner {
     // -----------------------------------------------------------------------
 
     fn get_random_node(&self) -> RRTStarRSNode {
-        let mut rng = rand::thread_rng();
-        if rng.gen_range(0..=100) > self.config.goal_sample_rate {
+        let mut rng = rand::rng();
+        if rng.random_range(0..=100) > self.config.goal_sample_rate {
             RRTStarRSNode::new(
-                rng.gen_range(self.rand_area.xmin..=self.rand_area.xmax),
-                rng.gen_range(self.rand_area.ymin..=self.rand_area.ymax),
-                rng.gen_range(-PI..=PI),
+                rng.random_range(self.rand_area.xmin..=self.rand_area.xmax),
+                rng.random_range(self.rand_area.ymin..=self.rand_area.ymax),
+                rng.random_range(-PI..=PI),
             )
         } else {
             RRTStarRSNode::new(self.goal.x, self.goal.y, self.goal.yaw)

@@ -221,9 +221,9 @@ impl InformedRRTStar {
     }
 
     fn sample_unit_ball(&self) -> [f64; 2] {
-        let mut rng = rand::thread_rng();
-        let a: f64 = rng.gen();
-        let b: f64 = rng.gen();
+        let mut rng = rand::rng();
+        let a: f64 = rng.random();
+        let b: f64 = rng.random();
 
         Self::sample_unit_ball_from_uniforms(a, b)
     }
@@ -235,11 +235,11 @@ impl InformedRRTStar {
     }
 
     fn sample_free_space(&self) -> [f64; 2] {
-        let mut rng = rand::thread_rng();
-        if rng.gen_range(0..=100) > self.goal_sample_rate {
+        let mut rng = rand::rng();
+        if rng.random_range(0..=100) > self.goal_sample_rate {
             [
-                rng.gen_range(self.min_rand..=self.max_rand),
-                rng.gen_range(self.min_rand..=self.max_rand),
+                rng.random_range(self.min_rand..=self.max_rand),
+                rng.random_range(self.min_rand..=self.max_rand),
             ]
         } else {
             [self.goal.x, self.goal.y]

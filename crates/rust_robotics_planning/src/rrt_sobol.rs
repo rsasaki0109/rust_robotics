@@ -164,10 +164,10 @@ impl RRTSobolPlanner {
         let goal_y = goal.y;
         let rand_area = self.rand_area.clone();
         let mut sobol = SobolSequence2D::new();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let path = planner.plan_with_sampler(start, goal, move |_| {
-            if rng.gen_range(0..=100) > goal_sample_rate {
+            if rng.random_range(0..=100) > goal_sample_rate {
                 let sample = sobol.next_in_bounds(&rand_area);
                 RRTNode::new(sample[0], sample[1])
             } else {
