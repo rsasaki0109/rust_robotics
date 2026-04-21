@@ -392,7 +392,7 @@ impl<'a, T: Float, const D: usize> KdTree<'a, T, D> {
 mod tests {
     use super::*;
 
-    use rand::distributions::{Distribution, Uniform};
+    use rand::Rng;
 
     fn to_vecs(data: &[[f64; 2]]) -> Vec<SVector<f64, 2>> {
         data.iter()
@@ -763,14 +763,13 @@ mod tests {
 
     #[test]
     fn test_search_on_uniform_random_f64() {
-        let between = Uniform::from(-100..100);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         const D: usize = 5;
         let mut random_uniform_vector = || {
             let mut v = SVector::<f64, D>::default();
             for i in 0..D {
-                v[i] = between.sample(&mut rng) as f64;
+                v[i] = rng.random_range(-100..100) as f64;
             }
             v
         };
@@ -796,14 +795,13 @@ mod tests {
 
     #[test]
     fn test_search_on_uniform_random_f32() {
-        let between = Uniform::from(-100..100);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         const D: usize = 5;
         let mut random_uniform_vector = || {
             let mut v = SVector::<f32, D>::default();
             for i in 0..D {
-                v[i] = between.sample(&mut rng) as f32;
+                v[i] = rng.random_range(-100..100) as f32;
             }
             v
         };

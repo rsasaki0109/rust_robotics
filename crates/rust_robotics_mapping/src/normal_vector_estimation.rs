@@ -4,7 +4,7 @@
 //! plane fitting with normal vector estimation.
 
 use nalgebra::Vector3;
-use rand::seq::SliceRandom;
+use rand::prelude::IndexedRandom;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 

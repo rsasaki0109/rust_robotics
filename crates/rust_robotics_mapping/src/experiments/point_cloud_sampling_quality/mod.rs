@@ -9,6 +9,7 @@ use std::f64::consts::PI;
 use std::time::Instant;
 
 use nalgebra::DVector;
+use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};

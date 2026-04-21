@@ -216,7 +216,7 @@ fn resample(particles: &mut Vec<Particle>) {
     }
 
     // Systematic resampling
-    let uniform = Uniform::new(0.0, 1.0 / n as f64);
+    let uniform = Uniform::new(0.0, 1.0 / n as f64).expect("valid resampling range");
     let mut r = uniform.sample(&mut rand::thread_rng());
 
     let mut j = 0;
