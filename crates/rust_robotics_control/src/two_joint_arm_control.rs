@@ -308,14 +308,14 @@ impl TwoJointArm {
 
     pub fn run_random_targets_demo(&mut self, num_targets: usize) {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         println!("Starting Two Joint Arm random targets demo...");
 
         for i in 0..num_targets {
             // Generate random target within workspace
-            let angle = rng.gen::<f64>() * 2.0 * PI;
-            let radius = rng.gen::<f64>() * (L1 + L2 - 0.1); // Slightly inside workspace
+            let angle = rng.random::<f64>() * 2.0 * PI;
+            let radius = rng.random::<f64>() * (L1 + L2 - 0.1); // Slightly inside workspace
             let target_x = radius * angle.cos();
             let target_y = radius * angle.sin();
 

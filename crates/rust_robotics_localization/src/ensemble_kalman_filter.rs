@@ -107,7 +107,7 @@ impl EnKFLocalizer {
         config.validate()?;
         let np = config.num_particles;
         // Initialize ensemble with small random perturbations to avoid degeneracy
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let noise = Normal::new(0.0, 0.1).unwrap();
         let mut ensemble = DMatrix::zeros(4, np);
         for j in 0..np {
@@ -146,7 +146,7 @@ impl EnKFLocalizer {
         let mut enkf = Self::try_new(config)?;
         enkf.x = initial_state;
         // Initialize ensemble around the initial state with small perturbations
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let noise = Normal::new(0.0, 0.1).unwrap();
         for j in 0..enkf.ensemble.ncols() {
             for i in 0..4 {
@@ -228,7 +228,7 @@ impl EnKFLocalizer {
         Self::validate_control(control)?;
         Self::validate_dt(dt)?;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let v_noise = Normal::new(0.0, self.config.process_noise_std[0]).map_err(|e| {
             RoboticsError::InvalidParameter(format!("Invalid velocity noise distribution: {}", e))
         })?;

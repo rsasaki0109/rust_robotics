@@ -343,7 +343,7 @@ pub fn get_observations(
 
         if d <= MAX_RANGE {
             // Add noise to measurement
-            let d_noisy = d + normal.sample(&mut rand::thread_rng()) * RANGE_STD * 0.1;
+            let d_noisy = d + normal.sample(&mut rand::rng()) * RANGE_STD * 0.1;
             z.push((d_noisy, *lx, *ly));
         }
     }

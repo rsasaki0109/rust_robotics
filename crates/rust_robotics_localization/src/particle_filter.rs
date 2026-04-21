@@ -174,15 +174,15 @@ impl ParticleFilterLocalizer {
         config.validate()?;
         Self::validate_state(&initial_state)?;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n = config.n_particles;
         let mut particles = Vec::with_capacity(n);
 
         for _ in 0..n {
-            let x = initial_state[0] + rng.gen::<f64>() * 2.0 - 1.0;
-            let y = initial_state[1] + rng.gen::<f64>() * 2.0 - 1.0;
-            let yaw = initial_state[2] + rng.gen::<f64>() * 0.5 - 0.25;
-            let v = initial_state[3] + rng.gen::<f64>() * 1.0 - 0.5;
+            let x = initial_state[0] + rng.random::<f64>() * 2.0 - 1.0;
+            let y = initial_state[1] + rng.random::<f64>() * 2.0 - 1.0;
+            let yaw = initial_state[2] + rng.random::<f64>() * 0.5 - 0.25;
+            let v = initial_state[3] + rng.random::<f64>() * 1.0 - 0.5;
             particles.push(Particle::new(x, y, yaw, v, n));
         }
 
@@ -244,7 +244,7 @@ impl ParticleFilterLocalizer {
     pub fn try_predict_with_control(&mut self, control: &PFControl) -> RoboticsResult<()> {
         Self::validate_control(control)?;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let normal_v = if self.config.velocity_noise > 0.0 {
             Some(Normal::new(0.0, self.config.velocity_noise).map_err(|_| {
                 RoboticsError::InvalidParameter(
@@ -429,7 +429,7 @@ impl ParticleFilterLocalizer {
 
     /// Systematic resampling
     fn resample_particles(&mut self) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n = self.config.n_particles;
         let mut new_particles = Vec::with_capacity(n);
 
@@ -442,7 +442,7 @@ impl ParticleFilterLocalizer {
         }
 
         for _ in 0..n {
-            let r = rng.gen::<f64>();
+            let r = rng.random::<f64>();
 
             // Find particle to resample
             let mut index = 0;

@@ -525,8 +525,8 @@ pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<
             let angle = normalize_angle(dy.atan2(dx) - x_true[2]);
 
             // Add noise
-            let d_noisy = d + normal.sample(&mut rand::thread_rng()) * r[(0, 0)].sqrt();
-            let angle_noisy = angle + normal.sample(&mut rand::thread_rng()) * r[(1, 1)].sqrt();
+            let d_noisy = d + normal.sample(&mut rand::rng()) * r[(0, 0)].sqrt();
+            let angle_noisy = angle + normal.sample(&mut rand::rng()) * r[(1, 1)].sqrt();
 
             z.push((d_noisy, angle_noisy));
         }
@@ -553,8 +553,8 @@ pub fn get_observations_with_id(
             let angle = normalize_angle(dy.atan2(dx) - x_true[2]);
 
             // Add noise
-            let d_noisy = d + normal.sample(&mut rand::thread_rng()) * r[(0, 0)].sqrt();
-            let angle_noisy = angle + normal.sample(&mut rand::thread_rng()) * r[(1, 1)].sqrt();
+            let d_noisy = d + normal.sample(&mut rand::rng()) * r[(0, 0)].sqrt();
+            let angle_noisy = angle + normal.sample(&mut rand::rng()) * r[(1, 1)].sqrt();
 
             z.push((d_noisy, angle_noisy, lm_id));
         }

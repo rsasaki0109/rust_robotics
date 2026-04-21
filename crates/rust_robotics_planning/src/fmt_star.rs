@@ -223,8 +223,8 @@ impl FMTStarPlanner {
 
         while points.len() < self.config.n_samples + 1 {
             let point = Point2D::new(
-                rng.gen_range(self.rand_area.xmin..=self.rand_area.xmax),
-                rng.gen_range(self.rand_area.ymin..=self.rand_area.ymax),
+                rng.random_range(self.rand_area.xmin..=self.rand_area.xmax),
+                rng.random_range(self.rand_area.ymin..=self.rand_area.ymax),
             );
             if self.is_state_collision_free(point) {
                 points.push(point);
@@ -300,7 +300,7 @@ impl FMTStarPlanner {
 
 impl PathPlanner for FMTStarPlanner {
     fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         self.plan_with_rng(start, goal, &mut rng)
     }
 }

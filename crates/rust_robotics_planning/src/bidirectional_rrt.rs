@@ -106,10 +106,10 @@ impl BidirectionalRRTPlanner {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     fn get_random_node(&self) -> RRTNode {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         RRTNode::new(
-            rng.gen_range(self.rand_area.xmin..=self.rand_area.xmax),
-            rng.gen_range(self.rand_area.ymin..=self.rand_area.ymax),
+            rng.random_range(self.rand_area.xmin..=self.rand_area.xmax),
+            rng.random_range(self.rand_area.ymin..=self.rand_area.ymax),
         )
     }
 

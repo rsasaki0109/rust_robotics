@@ -131,12 +131,12 @@ impl RRTStar {
     }
 
     fn get_random_node(&self) -> Node {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
-        if rng.gen_range(0..=100) > self.goal_sample_rate {
+        if rng.random_range(0..=100) > self.goal_sample_rate {
             Node::new(
-                rng.gen_range(self.min_rand..=self.max_rand),
-                rng.gen_range(self.min_rand..=self.max_rand),
+                rng.random_range(self.min_rand..=self.max_rand),
+                rng.random_range(self.min_rand..=self.max_rand),
             )
         } else {
             Node::new(self.end.x, self.end.y)

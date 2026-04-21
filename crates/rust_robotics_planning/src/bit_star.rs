@@ -216,7 +216,7 @@ impl BITStar {
     /// Sample new vertices using informed (ellipsoidal) sampling when a solution exists,
     /// or uniform sampling otherwise.
     fn add_samples(&mut self, best_cost: f64) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let c_min = (self.goal - self.start).norm();
 
         for _ in 0..self.config.batch_size {
@@ -224,8 +224,8 @@ impl BITStar {
                 self.sample_ellipse(best_cost, c_min, &mut rng)
             } else {
                 Vector2::new(
-                    rng.gen_range(self.area_min..=self.area_max),
-                    rng.gen_range(self.area_min..=self.area_max),
+                    rng.random_range(self.area_min..=self.area_max),
+                    rng.random_range(self.area_min..=self.area_max),
                 )
             };
 
@@ -249,8 +249,8 @@ impl BITStar {
         let r2 = (c_best * c_best - c_min * c_min).max(0.0).sqrt() / 2.0;
 
         // Uniform sampling inside an ellipse via unit-disk transform.
-        let theta = rng.gen_range(0.0..2.0 * PI);
-        let r = rng.gen::<f64>().sqrt();
+        let theta = rng.random_range(0.0..2.0 * PI);
+        let r = rng.random::<f64>().sqrt();
         let unit = Vector2::new(r * theta.cos(), r * theta.sin());
         let scaled = Vector2::new(r1 * unit.x, r2 * unit.y);
 

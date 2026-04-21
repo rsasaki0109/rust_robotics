@@ -822,9 +822,9 @@ fn generate_twin_cluster_points(
     for _ in 0..cluster_count {
         points.push(jittered_point(
             [
-                -7.0 + rng.gen_range(-2.4..2.4),
-                -2.0 + rng.gen_range(-2.6..2.6),
-                1.0 + rng.gen_range(-1.5..1.5),
+                -7.0 + rng.random_range(-2.4..2.4),
+                -2.0 + rng.random_range(-2.6..2.6),
+                1.0 + rng.random_range(-1.5..1.5),
             ],
             jitter_scale,
             rng,
@@ -833,9 +833,9 @@ fn generate_twin_cluster_points(
     for _ in 0..cluster_count {
         points.push(jittered_point(
             [
-                7.0 + rng.gen_range(-2.2..2.2),
-                2.0 + rng.gen_range(-2.3..2.3),
-                -0.8 + rng.gen_range(-1.3..1.3),
+                7.0 + rng.random_range(-2.2..2.2),
+                2.0 + rng.random_range(-2.3..2.3),
+                -0.8 + rng.random_range(-1.3..1.3),
             ],
             jitter_scale,
             rng,
@@ -876,11 +876,11 @@ fn generate_ring_points(
         points.push(jittered_point([x, y, z], jitter_scale, rng));
     }
     for _ in 0..core_count {
-        let theta = rng.gen_range(0.0..2.0 * PI);
-        let radius = rng.gen_range(0.0..3.0);
+        let theta = rng.random_range(0.0..2.0 * PI);
+        let radius = rng.random_range(0.0..3.0);
         let x = radius * theta.cos();
         let y = radius * theta.sin();
-        let z = rng.gen_range(-1.5..1.5);
+        let z = rng.random_range(-1.5..1.5);
         points.push(jittered_point([x, y, z], jitter_scale, rng));
     }
     points
@@ -889,9 +889,9 @@ fn generate_ring_points(
 fn append_outliers(points: &mut Vec<DVector<f64>>, outlier_count: usize, rng: &mut StdRng) {
     for _ in 0..outlier_count {
         points.push(DVector::from_vec(vec![
-            rng.gen_range(-18.0..18.0),
-            rng.gen_range(-18.0..18.0),
-            rng.gen_range(-6.0..6.0),
+            rng.random_range(-18.0..18.0),
+            rng.random_range(-18.0..18.0),
+            rng.random_range(-6.0..6.0),
         ]));
     }
 }
@@ -913,7 +913,7 @@ fn apply_extra_noise(
         for dim in 0..3 {
             let amplitude = case.base_jitter_scale * noise_scales[dim] * severity;
             if amplitude > 0.0 {
-                point[dim] += rng.gen_range(-amplitude..amplitude);
+                point[dim] += rng.random_range(-amplitude..amplitude);
             }
         }
     }
@@ -955,9 +955,9 @@ fn append_burst_outliers(
     for index in 0..extra_count {
         let center = centers[index % centers.len()];
         points.push(DVector::from_vec(vec![
-            center[0] + rng.gen_range(-1.4 * severity..1.4 * severity),
-            center[1] + rng.gen_range(-1.2 * severity..1.2 * severity),
-            center[2] + rng.gen_range(-severity..severity),
+            center[0] + rng.random_range(-1.4 * severity..1.4 * severity),
+            center[1] + rng.random_range(-1.2 * severity..1.2 * severity),
+            center[2] + rng.random_range(-severity..severity),
         ]));
     }
 }
@@ -993,7 +993,7 @@ fn apply_structured_corruption(
         } => {
             points.retain(|point| {
                 let in_slab = (point[axis] - center).abs() <= half_width;
-                !(in_slab && rng.gen_bool((drop_probability * severity_scale).clamp(0.0, 0.98)))
+                !(in_slab && rng.random_bool((drop_probability * severity_scale).clamp(0.0, 0.98)))
             });
         }
         CloudCorruptionMode::DensityShift {
@@ -1009,18 +1009,19 @@ fn apply_structured_corruption(
                 let favored = (point[axis] - center).abs() <= half_width;
                 if favored {
                     shifted.push(point.clone());
-                    if rng.gen_bool((dense_duplicate_probability * severity_scale).clamp(0.0, 0.98))
-                    {
+                    if rng.random_bool(
+                        (dense_duplicate_probability * severity_scale).clamp(0.0, 0.98),
+                    ) {
                         let mut duplicate = point.clone();
                         let amplitude = case.base_jitter_scale * (0.35 + bucket as f64 / 480.0);
                         for dim in 0..duplicate.len() {
                             let axis_scale = if dim == axis { 1.0 } else { 0.35 };
                             duplicate[dim] +=
-                                rng.gen_range(-amplitude * axis_scale..amplitude * axis_scale);
+                                rng.random_range(-amplitude * axis_scale..amplitude * axis_scale);
                         }
                         shifted.push(duplicate);
                     }
-                } else if rng.gen_bool(
+                } else if rng.random_bool(
                     (sparse_keep_probability + 0.15 * (1.0 - severity_scale)).clamp(0.0, 1.0),
                 ) {
                     shifted.push(point.clone());
@@ -1052,7 +1053,8 @@ fn apply_structured_corruption(
                 let theta = point[1].atan2(point[0]);
                 let normalized = if theta < 0.0 { theta + 2.0 * PI } else { theta };
                 let in_sector = normalized >= start_angle && normalized <= end_angle;
-                !(in_sector && rng.gen_bool((drop_probability * severity_scale).clamp(0.0, 0.98)))
+                !(in_sector
+                    && rng.random_bool((drop_probability * severity_scale).clamp(0.0, 0.98)))
             });
         }
     }
@@ -1060,9 +1062,9 @@ fn apply_structured_corruption(
 
 fn jittered_point(base: [f64; 3], jitter_scale: f64, rng: &mut StdRng) -> DVector<f64> {
     DVector::from_vec(vec![
-        base[0] + rng.gen_range(-jitter_scale..jitter_scale),
-        base[1] + rng.gen_range(-jitter_scale..jitter_scale),
-        base[2] + rng.gen_range(-0.8 * jitter_scale..0.8 * jitter_scale),
+        base[0] + rng.random_range(-jitter_scale..jitter_scale),
+        base[1] + rng.random_range(-jitter_scale..jitter_scale),
+        base[2] + rng.random_range(-0.8 * jitter_scale..0.8 * jitter_scale),
     ])
 }
 

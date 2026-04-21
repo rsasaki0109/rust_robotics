@@ -232,8 +232,8 @@ mod tests {
         let mut y = Vec::new();
         for &(cx, cy) in centers {
             for _ in 0..points_per_cluster {
-                x.push(cx + spread * (rng.gen::<f64>() - 0.5));
-                y.push(cy + spread * (rng.gen::<f64>() - 0.5));
+                x.push(cx + spread * (rng.random::<f64>() - 0.5));
+                y.push(cy + spread * (rng.random::<f64>() - 0.5));
             }
         }
         (x, y)

@@ -255,12 +255,12 @@ fn svd_motion_estimation(
 
 /// Generate random 2D point cloud for testing
 pub fn generate_2d_points(n_points: usize, field_length: f64) -> DMatrix<f64> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut points = DMatrix::zeros(2, n_points);
 
     for j in 0..n_points {
-        points[(0, j)] = (rng.gen::<f64>() - 0.5) * field_length;
-        points[(1, j)] = (rng.gen::<f64>() - 0.5) * field_length;
+        points[(0, j)] = (rng.random::<f64>() - 0.5) * field_length;
+        points[(1, j)] = (rng.random::<f64>() - 0.5) * field_length;
     }
 
     points
@@ -299,8 +299,8 @@ mod tests {
         let mut points = DMatrix::zeros(2, n_points);
 
         for j in 0..n_points {
-            points[(0, j)] = (rng.gen::<f64>() - 0.5) * field_length;
-            points[(1, j)] = (rng.gen::<f64>() - 0.5) * field_length;
+            points[(0, j)] = (rng.random::<f64>() - 0.5) * field_length;
+            points[(1, j)] = (rng.random::<f64>() - 0.5) * field_length;
         }
 
         points

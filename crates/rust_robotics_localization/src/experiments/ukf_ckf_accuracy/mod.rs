@@ -1411,7 +1411,7 @@ fn generate_sim_data(case: &AccuracyExperimentCase, bucket: u32, slot: usize) ->
         );
         if outlier_burst_steps_remaining == 0
             && profile.observation_outlier_probability > 0.0
-            && rng.gen::<f64>() < profile.observation_outlier_probability
+            && rng.random::<f64>() < profile.observation_outlier_probability
         {
             outlier_burst_steps_remaining = profile.observation_outlier_burst_len.max(1);
             outlier_offset = Vector2::new(
@@ -1440,7 +1440,9 @@ fn generate_sim_data(case: &AccuracyExperimentCase, bucket: u32, slot: usize) ->
         };
         let noisy_observation = match (reused_by_cadence, last_observation) {
             (true, _) | (_, None) => cadence_observation,
-            (false, Some(prev)) if rng.gen::<f64>() < profile.observation_hold_probability => prev,
+            (false, Some(prev)) if rng.random::<f64>() < profile.observation_hold_probability => {
+                prev
+            }
             _ => bias_adjusted_observation,
         };
 

@@ -341,7 +341,7 @@ pub fn observation(
     [f64; 2],
 ) {
     let normal = Normal::new(0.0, 1.0).unwrap();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // True state update
     let x_true_new = motion_model(x_true, u);

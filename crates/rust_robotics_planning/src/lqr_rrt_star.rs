@@ -161,11 +161,11 @@ impl LqrRrtStar {
 
     /// Sample a random node, with goal bias.
     fn get_random_node(&self) -> Node {
-        let mut rng = rand::thread_rng();
-        if rng.gen_range(0..=100) > self.config.goal_sample_rate {
+        let mut rng = rand::rng();
+        if rng.random_range(0..=100) > self.config.goal_sample_rate {
             Node::new(
-                rng.gen_range(self.config.min_rand..=self.config.max_rand),
-                rng.gen_range(self.config.min_rand..=self.config.max_rand),
+                rng.random_range(self.config.min_rand..=self.config.max_rand),
+                rng.random_range(self.config.min_rand..=self.config.max_rand),
             )
         } else {
             Node::new(self.end.x, self.end.y)
