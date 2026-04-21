@@ -61,6 +61,9 @@ def generate_launch_description() -> LaunchDescription:
     map_odom_tf_broadcaster = os.path.join(
         ros2_nodes_dir, "launch", "map_odom_tf_broadcaster.py"
     )
+    biased_odom_publisher = os.path.join(
+        ros2_nodes_dir, "launch", "biased_odom_publisher.py"
+    )
     slam_ground_truth_monitor = os.path.join(
         ros2_nodes_dir, "launch", "slam_ground_truth_monitor.py"
     )
@@ -92,6 +95,14 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("rviz_config", default_value=default_rviz_config),
             DeclareLaunchArgument("enable_ekf_localizer", default_value="false"),
             DeclareLaunchArgument("raw_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("slam_input_odom_topic", default_value="/odom"),
+            DeclareLaunchArgument("enable_slam_input_odom_bias", default_value="false"),
+            DeclareLaunchArgument("slam_input_odom_xy_scale", default_value="1.0"),
+            DeclareLaunchArgument("slam_input_odom_yaw_scale", default_value="1.0"),
+            DeclareLaunchArgument("slam_input_odom_yaw_bias_rad", default_value="0.0"),
+            DeclareLaunchArgument(
+                "slam_input_odom_yaw_bias_per_meter", default_value="0.0"
+            ),
             DeclareLaunchArgument("base_tf_odom_topic", default_value="/odom"),
             DeclareLaunchArgument("enable_nav_tf_broadcaster", default_value="true"),
             DeclareLaunchArgument("nav_odom_topic", default_value="/odom"),
@@ -187,11 +198,34 @@ def generate_launch_description() -> LaunchDescription:
             TimerAction(
                 period=5.0,
                 actions=[
+                    python_script_process(
+                        biased_odom_publisher,
+                        "biased_odom_publisher",
+                        args=[
+                            "--input-topic",
+                            LaunchConfiguration("raw_odom_topic"),
+                            "--output-topic",
+                            LaunchConfiguration("slam_input_odom_topic"),
+                            "--xy-scale",
+                            LaunchConfiguration("slam_input_odom_xy_scale"),
+                            "--yaw-scale",
+                            LaunchConfiguration("slam_input_odom_yaw_scale"),
+                            "--yaw-bias-rad",
+                            LaunchConfiguration("slam_input_odom_yaw_bias_rad"),
+                            "--yaw-bias-per-meter",
+                            LaunchConfiguration("slam_input_odom_yaw_bias_per_meter"),
+                        ],
+                        condition=IfCondition(
+                            LaunchConfiguration("enable_slam_input_odom_bias")
+                        ),
+                    ),
                     rust_node_process(
                         ros2_nodes_dir,
                         "slam_node",
                         additional_env={
-                            "SLAM_INPUT_ODOM_TOPIC": LaunchConfiguration("raw_odom_topic"),
+                            "SLAM_INPUT_ODOM_TOPIC": LaunchConfiguration(
+                                "slam_input_odom_topic"
+                            ),
                             "SLAM_OUTPUT_POSE_TOPIC": LaunchConfiguration("slam_pose_topic"),
                             "SLAM_OUTPUT_ODOM_TOPIC": LaunchConfiguration("slam_odom_topic"),
                             "SLAM_DIAGNOSTICS_TOPIC": LaunchConfiguration(

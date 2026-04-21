@@ -16,6 +16,19 @@ export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ENABLE_SLAM_CORRECTED_FRAME="${ENABLE_SLAM_CORRECTED_FRAME:-false}"
 export ENABLE_SLAM_GROUND_TRUTH_MONITOR="${ENABLE_SLAM_GROUND_TRUTH_MONITOR:-$ENABLE_SLAM_CORRECTED_FRAME}"
 export RAW_ODOM_TOPIC="${RAW_ODOM_TOPIC:-/ekf_odom}"
+export ENABLE_SLAM_INPUT_ODOM_BIAS="${ENABLE_SLAM_INPUT_ODOM_BIAS:-false}"
+export BIASED_SLAM_ODOM_TOPIC="${BIASED_SLAM_ODOM_TOPIC:-/slam_input_odom}"
+if [[ -z "${SLAM_INPUT_ODOM_TOPIC:-}" ]]; then
+  if [[ "$ENABLE_SLAM_INPUT_ODOM_BIAS" == "true" ]]; then
+    export SLAM_INPUT_ODOM_TOPIC="$BIASED_SLAM_ODOM_TOPIC"
+  else
+    export SLAM_INPUT_ODOM_TOPIC="$RAW_ODOM_TOPIC"
+  fi
+fi
+export SLAM_INPUT_ODOM_XY_SCALE="${SLAM_INPUT_ODOM_XY_SCALE:-1.0}"
+export SLAM_INPUT_ODOM_YAW_SCALE="${SLAM_INPUT_ODOM_YAW_SCALE:-1.0}"
+export SLAM_INPUT_ODOM_YAW_BIAS_RAD="${SLAM_INPUT_ODOM_YAW_BIAS_RAD:-0.0}"
+export SLAM_INPUT_ODOM_YAW_BIAS_PER_METER="${SLAM_INPUT_ODOM_YAW_BIAS_PER_METER:-0.0}"
 export BASE_TF_ODOM_TOPIC="${BASE_TF_ODOM_TOPIC:-$RAW_ODOM_TOPIC}"
 export SLAM_POSE_TOPIC="${SLAM_POSE_TOPIC:-/slam_pose}"
 export SLAM_ODOM_TOPIC="${SLAM_ODOM_TOPIC:-/slam_odom}"
@@ -85,6 +98,12 @@ exec ros2 launch "$LAUNCH_FILE" \
   "enable_rviz:=${ENABLE_RVIZ}" \
   "enable_ekf_localizer:=true" \
   "nav_odom_topic:=${NAV_ODOM_TOPIC}" \
+  "slam_input_odom_topic:=${SLAM_INPUT_ODOM_TOPIC}" \
+  "enable_slam_input_odom_bias:=${ENABLE_SLAM_INPUT_ODOM_BIAS}" \
+  "slam_input_odom_xy_scale:=${SLAM_INPUT_ODOM_XY_SCALE}" \
+  "slam_input_odom_yaw_scale:=${SLAM_INPUT_ODOM_YAW_SCALE}" \
+  "slam_input_odom_yaw_bias_rad:=${SLAM_INPUT_ODOM_YAW_BIAS_RAD}" \
+  "slam_input_odom_yaw_bias_per_meter:=${SLAM_INPUT_ODOM_YAW_BIAS_PER_METER}" \
   "enable_slam_corrected_frame:=${ENABLE_SLAM_CORRECTED_FRAME}" \
   "enable_slam_map_odom_tf:=${ENABLE_SLAM_MAP_ODOM_TF}" \
   "enable_slam_ground_truth_monitor:=${ENABLE_SLAM_GROUND_TRUTH_MONITOR}" \

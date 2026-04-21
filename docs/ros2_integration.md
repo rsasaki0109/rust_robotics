@@ -341,6 +341,19 @@ SLAM_REVALUATION_REPORT_DIR=/tmp/rust_robotics_slam_reports \
 ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
 ```
 
+To test whether corrected SLAM can recover from intentionally degraded odom input, enable the biased odom profile set:
+
+```bash
+SLAM_REVALUATION_ODOM_PROFILE_SET=biased \
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+That keeps `/ekf_odom` as the raw baseline used by `/slam_ground_truth_status`, but feeds `slam_node` through `/slam_input_odom` for biased profiles. The bundled odom profiles are:
+
+- `raw_realistic`: raw EKF odom as SLAM input
+- `odom_xy_scale_1pct`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.01`
+- `odom_yaw_drift_1deg_per_m`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.017453292519943295`
+
 To run a small ICP tuning sweep, enable the `tuning` profile set:
 
 ```bash
@@ -356,6 +369,7 @@ That runs each scenario with these profiles:
 - `strict_low_alpha`: `SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.011`
 
 Report rows include `profile`, `profile_description`, and `profile_env`, so tuning runs can be grouped by scenario or by ICP profile.
+When odom profiles are enabled, rows also include `odom_profile`, `odom_profile_description`, and `odom_profile_env`.
 
 To summarize a report after a run:
 
@@ -364,7 +378,7 @@ python3 scripts/summarize_slam_revaluation.py \
   reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.csv
 ```
 
-The summary prints profile-level mission completion counts, `slam_better_xy` counts, average/min/max `improvement_xy`, scenario winners, and aggregate ICP gate/status counts. It can also read older reports that do not have profile columns; those rows are treated as `profile=default`.
+The summary prints odom/profile-level mission completion counts, `slam_better_xy` counts, average/min/max `improvement_xy`, scenario winners, and aggregate ICP gate/status counts. It can also read older reports that do not have odom/profile columns; those rows are treated as `odom_profile=raw_realistic` and `profile=default`.
 
 Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation. Treat this report as measurement data first. Do not turn `improvement_xy` into a hard CI threshold until the scenario variance is understood.
 
@@ -428,6 +442,19 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `SLAM_ICP_POINT_STRIDE` (default `1`): use every N-th laser hit for scan-to-scan ICP only (occupancy map still uses the full scan). Values `2`–`16` thin out points to reduce noise and CPU; if the subsampled count would fall below four points, the node falls back to full resolution for that frame.
 - **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. **`SLAM_ICP_FULL_WEIGHT_ERROR` and `SLAM_ICP_REJECT_ERROR` apply to mean nearest-neighbor ICP error** \[m/point\] (not the legacy sum over all points). The built-in mean-error window is full weight at `0.007` and reject at `0.011`; on startup with corrected mode, `slam_node` logs all resolved numeric values.
 - **Tuning note (Gazebo TurtleBot3 burger smoke, 2026-04):** Headless `run_navigation_revaluation_matrix.sh` with `SLAM_REVALUATION_PROFILE_SET=tuning` showed the previous `SLAM_ICP_REJECT_ERROR=0.014` default allowed small attenuated corrections that made corrected SLAM about 4-10 mm worse than raw EKF odom in the bundled scenarios. Tightening the reject threshold to `0.011` made the tested scenarios raw-equivalent by rejecting those weak matches. Loosening the **mean-error** gate far above defaults often increased `slam_xy_error` relative to raw odom—noisy ICP matches were being rejected for a reason. `SLAM_ICP_POINT_STRIDE=2` in the same scenario also tended to worsen `improvement_xy` versus stride `1`. Use small steps and compare `slam_ground_truth_status` (`improvement_xy`, `slam_better_xy`) across several runs before changing shipped defaults.
+- **Biased odom note (Gazebo TurtleBot3 burger smoke, 2026-04):** `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` completed 9/9 bundled runs with the current strict ICP gate. The `odom_xy_scale_1pct` profile made corrected SLAM about 1-2 mm worse than raw because ICP was rejected and the biased odom passed through. The `odom_yaw_drift_1deg_per_m` profile stayed raw-equivalent overall and improved `long_two_legs` by about 2 mm. This confirms the bias harness works, but scan-to-scan ICP still needs a controlled acceptance case before claiming raw-better corrected SLAM.
+
+### `biased_odom_publisher.py`
+
+This launch helper is for evaluation only. It subscribes to `RAW_ODOM_TOPIC`, anchors the first pose, applies drift to relative motion, and republishes the result to `SLAM_INPUT_ODOM_TOPIC` when `ENABLE_SLAM_INPUT_ODOM_BIAS=true`. The ground-truth monitor still compares raw `/ekf_odom` against `/slam_odom`, so the raw baseline remains honest while only SLAM's odom input is degraded.
+
+- `ENABLE_SLAM_INPUT_ODOM_BIAS` (default `false`): start the biased odom helper
+- `SLAM_INPUT_ODOM_TOPIC` (default `RAW_ODOM_TOPIC`, or `/slam_input_odom` when bias is enabled): topic consumed by `slam_node`
+- `BIASED_SLAM_ODOM_TOPIC` (default `/slam_input_odom`): default biased output topic used by the wrappers
+- `SLAM_INPUT_ODOM_XY_SCALE` (default `1.0`): scale relative x/y motion from the initial odom anchor
+- `SLAM_INPUT_ODOM_YAW_SCALE` (default `1.0`): scale relative yaw from the initial odom anchor
+- `SLAM_INPUT_ODOM_YAW_BIAS_RAD` (default `0.0`): constant yaw offset applied to relative motion
+- `SLAM_INPUT_ODOM_YAW_BIAS_PER_METER` (default `0.0`): yaw drift added per meter of relative travel
 
 ### `ekf_localizer_node`
 
