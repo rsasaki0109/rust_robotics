@@ -75,6 +75,11 @@ jobs:
         cargo build --release --manifest-path ros2_nodes/ekf_localizer_node/Cargo.toml
         cargo build --release --manifest-path ros2_nodes/waypoint_navigator_node/Cargo.toml
 
+    - name: Run synthetic SLAM ICP acceptance test
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        ROS_DOMAIN_ID=88 timeout 2m ./ros2_nodes/launch/run_slam_icp_acceptance_test.sh
+
     - name: Run headless navigation smoke test
       run: |
         source /opt/ros/jazzy/setup.bash

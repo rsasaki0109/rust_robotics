@@ -414,7 +414,8 @@ Tune corrected-frame quality using the new diagnostics and ground truth.
 
 Recommended order:
 
-1. Run `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` and compare the generated CSV/JSONL rows:
+1. Run `ros2_nodes/launch/run_slam_icp_acceptance_test.sh` as a positive control before tuning. It verifies that a clean synthetic scan-to-scan match reaches `status=icp_ok`, `gate_reason=accepted`, and `blend_applied=true`.
+2. Run `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` and compare the generated CSV/JSONL rows:
    - `raw_xy_error`
    - `slam_xy_error`
    - `improvement_xy`
@@ -422,20 +423,20 @@ Recommended order:
    - `blend_alpha`
    - `gate_reason`
    - `gate_reason_counts`
-2. Run `SLAM_REVALUATION_PROFILE_SET=tuning ros2_nodes/launch/run_navigation_revaluation_matrix.sh` when you need a small conservative ICP sweep:
+3. Run `SLAM_REVALUATION_PROFILE_SET=tuning ros2_nodes/launch/run_navigation_revaluation_matrix.sh` when you need a small conservative ICP sweep:
    - `default`
    - `low_alpha` (`SLAM_ICP_BLEND_ALPHA=0.10`)
    - `strict_error` (`SLAM_ICP_REJECT_ERROR=0.011`)
    - `strict_low_alpha` (both overrides)
-3. Run `SLAM_REVALUATION_ODOM_PROFILE_SET=biased ros2_nodes/launch/run_navigation_revaluation_matrix.sh` when you need to test whether corrected SLAM can recover from intentionally degraded SLAM input odom while keeping `/ekf_odom` as the raw ground-truth baseline:
+4. Run `SLAM_REVALUATION_ODOM_PROFILE_SET=biased ros2_nodes/launch/run_navigation_revaluation_matrix.sh` when you need to test whether corrected SLAM can recover from intentionally degraded SLAM input odom while keeping `/ekf_odom` as the raw ground-truth baseline:
    - `raw_realistic`
    - `odom_xy_scale_1pct`
    - `odom_yaw_drift_1deg_per_m`
-4. Check whether gating is too conservative:
+5. Check whether gating is too conservative:
    - too many `high_error` or `low_motion` rejections may mean corrected mode is effectively disabled
-5. Check whether attenuation thresholds are too loose:
+6. Check whether attenuation thresholds are too loose:
    - if bad corrections still slip through, tighten correction/error limits
-6. Only after the behavior is more stable, promote the smoke test to enforce a quantitative improvement condition
+7. Only after the behavior is more stable, promote the smoke test to enforce a quantitative improvement condition
 
 ### After the quality story is good enough
 
@@ -477,6 +478,7 @@ If you only remember five things, remember these:
 - **ICP reject default tightened:** A 12-run Gazebo tuning matrix (`SLAM_REVALUATION_PROFILE_SET=tuning`, 4 profiles x 3 scenarios) showed the older mean-error reject threshold `0.014` let small attenuated ICP corrections degrade XY by roughly 4-10 mm in the bundled missions. The shipped `DEFAULT_ICP_REJECT_ERROR` is now `0.011`, matching the `strict_error` profile that kept all tested scenarios mission-complete and raw-equivalent in XY by rejecting weak matches.
 - **SLAM-input odom bias profiles:** `ros2_nodes/launch/biased_odom_publisher.py` can degrade only `slam_node`'s odom input while leaving `/ekf_odom` as the raw ground-truth baseline. `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` adds `raw_realistic`, `odom_xy_scale_1pct`, and `odom_yaw_drift_1deg_per_m` to the revaluation matrix.
 - **Biased odom matrix result:** A 9-run Gazebo matrix with `SLAM_REVALUATION_ODOM_PROFILE_SET=biased` completed all bundled runs. `odom_xy_scale_1pct` degraded corrected SLAM by about 1-2 mm because strict ICP rejected the weak matches and passed biased odom through; `odom_yaw_drift_1deg_per_m` stayed raw-equivalent overall and improved `long_two_legs` by about 2 mm. The harness is useful, but raw-better corrected SLAM still needs a scenario where ICP can be safely accepted.
+- **Synthetic ICP acceptance smoke:** `ros2_nodes/launch/run_slam_icp_acceptance_test.sh` starts `slam_node` without Gazebo, feeds deterministic synthetic `/scan` plus `/synthetic_odom`, and requires `/synthetic_slam_diagnostics` to report `status=icp_ok`, `gate_reason=accepted`, and `blend_applied=true`. This is the positive-control check that strict gating can still accept a clean match.
 - **Revaluation summaries:** `scripts/summarize_slam_revaluation.py` summarizes one or more generated CSV reports by odom profile, ICP profile, and scenario, including completion counts, `slam_better_xy`, `improvement_xy` average/min/max, scenario winners, and aggregate ICP gate/status counts. It also supports earlier CSV reports without profile columns by treating them as `odom_profile=raw_realistic` and `profile=default`.
 
 ## 13. CI regression fix (2026-04-16) — what broke and what changed
