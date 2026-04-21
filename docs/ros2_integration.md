@@ -317,14 +317,47 @@ export ENABLE_SLAM_CORRECTED_FRAME=true
 In corrected mode, the script additionally verifies `tf2_echo map odom`.
 When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it also checks that `/slam_ground_truth_status` reaches `status=ok` and includes `slam_xy_error=`.
 
-To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions (sequential Gazebo runs, prints last `improvement_xy` lines per scenario):
+To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions, run the matrix script. It starts a fresh Gazebo + navigation stack per scenario and writes one metrics row per scenario to CSV and JSONL.
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
 ```
 
-Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation.
+By default, generated reports are ignored by git and written under:
+
+```text
+reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.csv
+reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.jsonl
+```
+
+Each row records the scenario, exit code, mission completion flag, waypoint string, last ground-truth metrics (`raw_xy_error`, `slam_xy_error`, RMSE/max fields, `improvement_xy`, `slam_better_xy`), and last SLAM ICP diagnostics (`icp_error_mean`, `blend_alpha`, `gate_reason`, plus status/gate counts observed in the captured smoke output).
+
+Useful overrides:
+
+```bash
+ROS_DOMAIN_ID_BASE=210 \
+SLAM_REVALUATION_REPORT_DIR=/tmp/rust_robotics_slam_reports \
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+To run a small ICP tuning sweep, enable the `tuning` profile set:
+
+```bash
+SLAM_REVALUATION_PROFILE_SET=tuning \
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+That runs each scenario with these profiles:
+
+- `default`: built-in ICP gating defaults
+- `low_alpha`: `SLAM_ICP_BLEND_ALPHA=0.10`
+- `strict_error`: `SLAM_ICP_REJECT_ERROR=0.011`
+- `strict_low_alpha`: `SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.011`
+
+Report rows include `profile`, `profile_description`, and `profile_env`, so tuning runs can be grouped by scenario or by ICP profile.
+
+Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation. Treat this report as measurement data first. Do not turn `improvement_xy` into a hard CI threshold until the scenario variance is understood.
 
 ### Send a goal
 
@@ -384,8 +417,8 @@ ros2 topic echo /cmd_vel geometry_msgs/msg/Twist --once
 - `SLAM_USE_CORRECTED_FRAME` (default `false`): whether to integrate `/map` and outputs in `SLAM_CORRECTED_FRAME_ID`
 - `SLAM_CORRECTED_FRAME_ID` (default `"map"`): corrected global frame name used by `/map`, `/slam_pose`, and `/slam_odom`
 - `SLAM_ICP_POINT_STRIDE` (default `1`): use every N-th laser hit for scan-to-scan ICP only (occupancy map still uses the full scan). Values `2`–`16` thin out points to reduce noise and CPU; if the subsampled count would fall below four points, the node falls back to full resolution for that frame.
-- **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. **`SLAM_ICP_FULL_WEIGHT_ERROR` and `SLAM_ICP_REJECT_ERROR` apply to mean nearest-neighbor ICP error** \[m/point\] (not the legacy sum over all points). On startup with corrected mode, `slam_node` logs the resolved numeric values.
-- **Tuning note (Gazebo TurtleBot3 burger smoke, 2026-04):** Headless `run_navigation_smoke_test.sh` with `ENABLE_SLAM_CORRECTED_FRAME=true` and defaults usually matched EKF `/ekf_odom` within about 1 mm RMSE vs Gazebo ground truth (`improvement_xy` near zero). Loosening the **mean-error** gate (raising `SLAM_ICP_REJECT_ERROR` far above defaults) often **increased** `slam_xy_error` relative to raw odom—noisy ICP matches were being rejected for a reason. `SLAM_ICP_POINT_STRIDE=2` in the same scenario also tended to worsen `improvement_xy` versus stride `1`. Use small steps and compare `slam_ground_truth_status` (`improvement_xy`, `slam_better_xy`) across several runs before changing shipped defaults.
+- **ICP blend gating** (corrected mode only; unset uses built-in defaults): `SLAM_ICP_BLEND_ALPHA`, `SLAM_ICP_FULL_WEIGHT_ERROR`, `SLAM_ICP_REJECT_ERROR`, `SLAM_ICP_FULL_WEIGHT_ITERATIONS`, `SLAM_ICP_REJECT_ITERATIONS`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION`, `SLAM_ICP_MAX_TRANSLATION_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_YAW_CORRECTION`, `SLAM_ICP_MAX_YAW_CORRECTION`, `SLAM_ICP_FULL_WEIGHT_TRANSLATION_MOTION`, `SLAM_ICP_FULL_WEIGHT_YAW_MOTION`. **`SLAM_ICP_FULL_WEIGHT_ERROR` and `SLAM_ICP_REJECT_ERROR` apply to mean nearest-neighbor ICP error** \[m/point\] (not the legacy sum over all points). The built-in mean-error window is full weight at `0.007` and reject at `0.011`; on startup with corrected mode, `slam_node` logs all resolved numeric values.
+- **Tuning note (Gazebo TurtleBot3 burger smoke, 2026-04):** Headless `run_navigation_revaluation_matrix.sh` with `SLAM_REVALUATION_PROFILE_SET=tuning` showed the previous `SLAM_ICP_REJECT_ERROR=0.014` default allowed small attenuated corrections that made corrected SLAM about 4-10 mm worse than raw EKF odom in the bundled scenarios. Tightening the reject threshold to `0.011` made the tested scenarios raw-equivalent by rejecting those weak matches. Loosening the **mean-error** gate far above defaults often increased `slam_xy_error` relative to raw odom—noisy ICP matches were being rejected for a reason. `SLAM_ICP_POINT_STRIDE=2` in the same scenario also tended to worsen `improvement_xy` versus stride `1`. Use small steps and compare `slam_ground_truth_status` (`improvement_xy`, `slam_better_xy`) across several runs before changing shipped defaults.
 
 ### `ekf_localizer_node`
 
