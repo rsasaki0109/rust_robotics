@@ -30,7 +30,7 @@ const DEFAULT_DIAGNOSTICS_TOPIC: &str = "/slam_diagnostics";
 /// Error gates use **mean** nearest-neighbor distance \[m/point\] from ICP (not sum over points).
 const DEFAULT_ICP_BLEND_ALPHA: f64 = 0.35;
 const DEFAULT_ICP_FULL_WEIGHT_ERROR: f64 = 0.007;
-const DEFAULT_ICP_REJECT_ERROR: f64 = 0.014;
+const DEFAULT_ICP_REJECT_ERROR: f64 = 0.011;
 const DEFAULT_ICP_FULL_WEIGHT_ITERATIONS: f64 = 12.0;
 const DEFAULT_ICP_REJECT_ITERATIONS: f64 = 40.0;
 const DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION: f64 = 0.05;
