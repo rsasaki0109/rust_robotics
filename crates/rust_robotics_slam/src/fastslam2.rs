@@ -378,7 +378,7 @@ pub fn fastslam2_update(
     u: Vector2<f64>,
     z: &[(f64, f64, usize)], // (distance, angle, landmark_id)
 ) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     fastslam2_update_with_rng(particles, u, z, &mut rng);
 }
 
@@ -415,7 +415,7 @@ fn get_observations_with_rng<R: Rng + ?Sized>(
 }
 
 pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<(f64, f64, usize)> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     get_observations_with_rng(x_true, landmarks, &mut rng)
 }
 

@@ -184,14 +184,14 @@ impl MonteCarloLocalizer {
             ));
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let n = config.min_particles;
         let mut particles = Vec::with_capacity(n);
         for _ in 0..n {
-            let x = initial_state[0] + rng.gen_range(-1.0..1.0);
-            let y = initial_state[1] + rng.gen_range(-1.0..1.0);
-            let yaw = initial_state[2] + rng.gen_range(-0.25..0.25);
-            let v = initial_state[3] + rng.gen_range(-0.5..0.5);
+            let x = initial_state[0] + rng.random_range(-1.0..1.0);
+            let y = initial_state[1] + rng.random_range(-1.0..1.0);
+            let yaw = initial_state[2] + rng.random_range(-0.25..0.25);
+            let v = initial_state[3] + rng.random_range(-0.5..0.5);
             particles.push(Particle::new(x, y, yaw, v, n));
         }
 
@@ -213,7 +213,7 @@ impl MonteCarloLocalizer {
             ));
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let normal_v = if self.config.velocity_noise > 0.0 {
             Some(Normal::new(0.0, self.config.velocity_noise).map_err(|_| {
                 RoboticsError::InvalidParameter(
@@ -335,13 +335,13 @@ impl MonteCarloLocalizer {
             *last = 1.0;
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut bins: HashSet<(i32, i32, i32)> = HashSet::new();
         let mut new_particles = Vec::with_capacity(self.config.max_particles);
         let mut required = self.config.min_particles;
 
         while new_particles.len() < self.config.max_particles {
-            let idx = Self::sample_index(&cumulative_weights, rng.gen::<f64>());
+            let idx = Self::sample_index(&cumulative_weights, rng.random::<f64>());
             let sampled = &self.particles[idx];
 
             bins.insert(Self::quantize_particle(sampled));

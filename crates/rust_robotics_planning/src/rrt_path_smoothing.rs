@@ -178,7 +178,7 @@ pub fn shortcut_path_smoothing(
     robot_radius: f64,
     sample_step: f64,
 ) -> Path2D {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     shortcut_path_smoothing_with_sampler(
         path,
         max_iter,
@@ -186,8 +186,8 @@ pub fn shortcut_path_smoothing(
         robot_radius,
         sample_step,
         move |length| {
-            let first = rng.gen_range(0.0..=length);
-            let second = rng.gen_range(0.0..=length);
+            let first = rng.random_range(0.0..=length);
+            let second = rng.random_range(0.0..=length);
             (first, second)
         },
     )

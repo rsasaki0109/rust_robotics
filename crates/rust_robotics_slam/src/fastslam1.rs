@@ -126,8 +126,8 @@ fn predict_particle(particle: &mut Particle, u: Vector2<f64>) {
 
     // Add noise to control
     let u_noisy = Vector2::new(
-        u[0] + normal.sample(&mut rand::thread_rng()) * q[(0, 0)].sqrt(),
-        u[1] + normal.sample(&mut rand::thread_rng()) * q[(1, 1)].sqrt(),
+        u[0] + normal.sample(&mut rand::rng()) * q[(0, 0)].sqrt(),
+        u[1] + normal.sample(&mut rand::rng()) * q[(1, 1)].sqrt(),
     );
 
     let pose = motion_model(particle.pose(), u_noisy);
@@ -217,7 +217,7 @@ fn resample(particles: &mut Vec<Particle>) {
 
     // Systematic resampling
     let uniform = Uniform::new(0.0, 1.0 / n as f64).expect("valid resampling range");
-    let mut r = uniform.sample(&mut rand::thread_rng());
+    let mut r = uniform.sample(&mut rand::rng());
 
     let mut j = 0;
     for _ in 0..n {
@@ -288,8 +288,8 @@ pub fn get_observations(x_true: &Vector3<f64>, landmarks: &[(f64, f64)]) -> Vec<
             let angle = normalize_angle(dy.atan2(dx) - x_true[2]);
 
             // Add noise
-            let d_noisy = d + normal.sample(&mut rand::thread_rng()) * r[(0, 0)].sqrt();
-            let angle_noisy = angle + normal.sample(&mut rand::thread_rng()) * r[(1, 1)].sqrt();
+            let d_noisy = d + normal.sample(&mut rand::rng()) * r[(0, 0)].sqrt();
+            let angle_noisy = angle + normal.sample(&mut rand::rng()) * r[(1, 1)].sqrt();
 
             z.push((d_noisy, angle_noisy, lm_id));
         }

@@ -151,13 +151,13 @@ impl PRMPlanner {
         robot_radius: f64,
         obstacle_tree: &KDTree,
     ) -> (Vec<f64>, Vec<f64>) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut sample_x = Vec::new();
         let mut sample_y = Vec::new();
 
         while sample_x.len() < N_SAMPLE {
-            let x = rng.gen_range(min_x..max_x);
-            let y = rng.gen_range(min_y..max_y);
+            let x = rng.random_range(min_x..max_x);
+            let y = rng.random_range(min_y..max_y);
 
             let min_dist = obstacle_tree.min_distance(x, y);
             if min_dist > robot_radius {

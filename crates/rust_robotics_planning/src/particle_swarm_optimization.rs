@@ -133,10 +133,10 @@ struct Particle {
 impl Particle {
     fn new<R: Rng>(search_bounds: &Bounds2D, spawn_bounds: &Bounds2D, rng: &mut R) -> Self {
         let position = [
-            rng.gen_range(spawn_bounds.x_min..=spawn_bounds.x_max),
-            rng.gen_range(spawn_bounds.y_min..=spawn_bounds.y_max),
+            rng.random_range(spawn_bounds.x_min..=spawn_bounds.x_max),
+            rng.random_range(spawn_bounds.y_min..=spawn_bounds.y_max),
         ];
-        let velocity = [rng.gen_range(-0.1..0.1), rng.gen_range(-0.1..0.1)];
+        let velocity = [rng.random_range(-0.1..0.1), rng.random_range(-0.1..0.1)];
         let max_velocity = [
             (search_bounds.x_max - search_bounds.x_min) * 0.05,
             (search_bounds.y_max - search_bounds.y_min) * 0.05,
@@ -160,8 +160,8 @@ impl Particle {
         rng: &mut R,
     ) {
         for (i, &gbest) in gbest_pos.iter().enumerate() {
-            let r1: f64 = rng.gen();
-            let r2: f64 = rng.gen();
+            let r1: f64 = rng.random();
+            let r2: f64 = rng.random();
             let cognitive = c1 * r1 * (self.personal_best_position[i] - self.position[i]);
             let social = c2 * r2 * (gbest - self.position[i]);
             self.velocity[i] = w * self.velocity[i] + cognitive + social;
@@ -205,7 +205,7 @@ impl PsoPlanner {
 
     /// Run the PSO optimisation and return the result.
     pub fn plan(&self) -> PsoResult {
-        self.plan_with_rng(&mut rand::thread_rng())
+        self.plan_with_rng(&mut rand::rng())
     }
 
     /// Run with an explicit RNG (useful for deterministic tests).

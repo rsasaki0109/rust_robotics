@@ -134,12 +134,12 @@ impl RRGPlanner {
         self.nodes.clear();
         self.nodes.push(RRGNode::new(start.x, start.y)); // index 0
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for _ in 0..self.config.max_iter {
             // Sample a random point inside the area bounds.
-            let rx = rng.gen_range(self.rand_area.xmin..=self.rand_area.xmax);
-            let ry = rng.gen_range(self.rand_area.ymin..=self.rand_area.ymax);
+            let rx = rng.random_range(self.rand_area.xmin..=self.rand_area.xmax);
+            let ry = rng.random_range(self.rand_area.ymin..=self.rand_area.ymax);
 
             // Find nearest existing node.
             let nearest_idx = self.nearest_index(rx, ry);

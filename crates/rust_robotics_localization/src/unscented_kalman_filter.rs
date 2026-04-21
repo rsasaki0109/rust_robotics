@@ -730,19 +730,19 @@ pub fn observation(
     const GPS_NOISE_X: f64 = 0.5;
     const GPS_NOISE_Y: f64 = 0.5;
 
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     *x_true = motion_model(x_true, u);
 
     let z = observation_model(x_true)
         + Vector2::new(
-            GPS_NOISE_X * rng.gen::<f64>() - GPS_NOISE_X / 2.0,
-            GPS_NOISE_Y * rng.gen::<f64>() - GPS_NOISE_Y / 2.0,
+            GPS_NOISE_X * rng.random::<f64>() - GPS_NOISE_X / 2.0,
+            GPS_NOISE_Y * rng.random::<f64>() - GPS_NOISE_Y / 2.0,
         );
 
     let u_noisy = u + Vector2::new(
-        INPUT_NOISE_V * rng.gen::<f64>() - INPUT_NOISE_V / 2.0,
-        INPUT_NOISE_YAW * rng.gen::<f64>() - INPUT_NOISE_YAW / 2.0,
+        INPUT_NOISE_V * rng.random::<f64>() - INPUT_NOISE_V / 2.0,
+        INPUT_NOISE_YAW * rng.random::<f64>() - INPUT_NOISE_YAW / 2.0,
     );
 
     *x_dr = motion_model(x_dr, &u_noisy);

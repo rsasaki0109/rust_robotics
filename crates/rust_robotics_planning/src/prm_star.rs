@@ -206,13 +206,13 @@ impl PRMStarPlanner {
         robot_radius: f64,
         obstacle_tree: &KDTree,
     ) -> (Vec<f64>, Vec<f64>) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut sample_x = Vec::with_capacity(n_samples + 2);
         let mut sample_y = Vec::with_capacity(n_samples + 2);
 
         while sample_x.len() < n_samples {
-            let x = rng.gen_range(min_x..max_x);
-            let y = rng.gen_range(min_y..max_y);
+            let x = rng.random_range(min_x..max_x);
+            let y = rng.random_range(min_y..max_y);
             if obstacle_tree.min_distance(x, y) > robot_radius {
                 sample_x.push(x);
                 sample_y.push(y);

@@ -112,7 +112,7 @@ impl RRTStarArmPlanner {
 
         for _ in 0..self.config.max_iterations {
             // Sample random config or goal with bias
-            let sample = if rng.gen::<f64>() < self.config.goal_bias {
+            let sample = if rng.random::<f64>() < self.config.goal_bias {
                 goal.to_vec()
             } else {
                 self.sample_random(&mut rng)
@@ -203,7 +203,7 @@ impl RRTStarArmPlanner {
         self.config
             .joint_limits
             .iter()
-            .map(|&(lo, hi)| rng.gen_range(lo..=hi))
+            .map(|&(lo, hi)| rng.random_range(lo..=hi))
             .collect()
     }
 
