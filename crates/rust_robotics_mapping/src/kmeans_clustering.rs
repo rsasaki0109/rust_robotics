@@ -104,11 +104,11 @@ pub fn kmeans_clustering(x: &[f64], y: &[f64], config: &KMeansConfig) -> KMeansR
     // reproducibility while varying with different inputs.
     let seed = n as u64 ^ k as u64 ^ x[0].to_bits() ^ y[0].to_bits();
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let mut labels: Vec<usize> = (0..n).map(|_| rng.gen_range(0..k)).collect();
+    let mut labels = vec![0; n];
     let mut center_x = vec![0.0; k];
     let mut center_y = vec![0.0; k];
 
-    calc_centroids(x, y, &labels, k, &mut center_x, &mut center_y);
+    init_centroids(x, y, k, &mut rng, &mut center_x, &mut center_y);
 
     let mut pre_cost = f64::INFINITY;
     for _ in 0..config.max_iterations {
@@ -129,6 +129,39 @@ pub fn kmeans_clustering(x: &[f64], y: &[f64], config: &KMeansConfig) -> KMeansR
         center_x,
         center_y,
         k,
+    }
+}
+
+/// Initialize centroids with a deterministic farthest-point spread.
+fn init_centroids(
+    x: &[f64],
+    y: &[f64],
+    k: usize,
+    rng: &mut rand::rngs::StdRng,
+    center_x: &mut [f64],
+    center_y: &mut [f64],
+) {
+    let n = x.len();
+    let first = rng.random_range(0..n);
+    center_x[0] = x[first];
+    center_y[0] = y[first];
+
+    for label in 1..k {
+        let mut farthest_index = 0;
+        let mut farthest_dist = f64::NEG_INFINITY;
+        for i in 0..n {
+            let nearest_dist = (0..label)
+                .map(|existing| {
+                    (x[i] - center_x[existing]).powi(2) + (y[i] - center_y[existing]).powi(2)
+                })
+                .fold(f64::INFINITY, f64::min);
+            if nearest_dist > farthest_dist {
+                farthest_dist = nearest_dist;
+                farthest_index = i;
+            }
+        }
+        center_x[label] = x[farthest_index];
+        center_y[label] = y[farthest_index];
     }
 }
 

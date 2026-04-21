@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use nalgebra::{Matrix2, SymmetricEigen, Vector2};
-use rand::prelude::*;
 use rand_distr::{Distribution, Uniform};
 
 /// A single cell in the NDT grid, storing distribution parameters.
@@ -226,8 +225,8 @@ pub fn create_dummy_observation_data() -> (Vec<f64>, Vec<f64>) {
         oy.push(y as f64);
     }
 
-    let mut rng = thread_rng();
-    let uni = Uniform::new(0.0, 1.0);
+    let mut rng = rand::rng();
+    let uni = Uniform::new(0.0, 1.0).expect("valid uniform noise range");
     for i in 0..ox.len() {
         ox[i] += uni.sample(&mut rng);
         oy[i] += uni.sample(&mut rng);
