@@ -507,6 +507,19 @@ impl BatchInformedRRTStar {
 }
 
 #[cfg(test)]
+impl BatchInformedRRTStar {
+    fn prune_nodes_for_test(
+        &mut self,
+        c_best: f64,
+        c_min: f64,
+        x_center: &[f64; 2],
+        rotation_matrix: &[[f64; 2]; 2],
+    ) {
+        self.prune_nodes(c_best, c_min, x_center, rotation_matrix);
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -824,28 +837,32 @@ mod tests {
     }
 
     #[test]
-    fn test_pruning_reduces_tree_size() {
-        // After finding a solution, pruning should remove nodes outside the
-        // informed region. We verify by checking tree size before/after pruning.
-        let mut planner = create_planner(vec![], 200, 1);
-
-        // First batch: build a large tree in open space.
-        let _ = planner.planning();
-        let size_after_first = planner.node_list.len();
-
-        // Now run with multiple batches so pruning kicks in.
-        let mut planner2 = create_planner(vec![], 100, 3);
-        let _ = planner2.planning();
-        let size_after_pruning = planner2.node_list.len();
-
-        // With 300 total samples and pruning, the tree should be smaller than
-        // one with 200 samples and no pruning (pruning removes distant leaves).
-        // This is a soft check - pruning should have some effect.
+    fn test_prune_nodes_removes_dominated_leaf() {
+        // Deterministic check: a leaf whose cost + straight-line-to-goal exceeds
+        // c_best must be removed (see `prune_nodes`). Comparing two stochastic
+        // planning runs was flaky across CI runners due to `thread_rng()`.
+        let mut planner = create_planner(vec![], 10, 1);
+        planner.node_list = vec![
+            Node {
+                x: 0.0,
+                y: 0.0,
+                cost: 0.0,
+                parent: None,
+            },
+            Node {
+                x: 100.0,
+                y: 100.0,
+                cost: 5.0,
+                parent: Some(0),
+            },
+        ];
+        let (c_min, x_center, rotation_matrix) = planner.sampling_frame();
+        let c_best = 15.0;
         assert!(
-            size_after_pruning <= size_after_first + 150,
-            "Pruning should keep tree size reasonable: {} vs {}",
-            size_after_pruning,
-            size_after_first
+            planner.node_list[1].cost + planner.dist_to_goal(&planner.node_list[1]) > c_best,
+            "fixture leaf should be prunable"
         );
+        planner.prune_nodes_for_test(c_best, c_min, &x_center, &rotation_matrix);
+        assert_eq!(planner.node_list.len(), 1);
     }
 }

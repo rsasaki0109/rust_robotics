@@ -4,8 +4,8 @@
 
 - ROS2 Jazzy installed and sourced before build or run:
   - `source /opt/ros/jazzy/setup.bash`
-- `safe_drive` repository available at:
-  - `/media/sasaki/aiueo/ai_coding_ws/rust_robo_ws/safe_drive`
+- `safe_drive` repository available as a sibling checkout:
+  - `../safe_drive` relative to this repository root
 - Rust toolchain (stable) with `cargo`
 - Gazebo demo packages installed:
   - `ros-jazzy-turtlebot3-gazebo`
