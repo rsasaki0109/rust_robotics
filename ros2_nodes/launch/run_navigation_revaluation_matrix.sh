@@ -8,6 +8,7 @@
 #   ROS_DOMAIN_ID_BASE=210  # first run uses this ID, then increments per scenario
 #   SLAM_REVALUATION_REPORT_DIR=reports/slam_revaluation
 #   SLAM_REVALUATION_PROFILE_SET=tuning  # baseline (default) or tuning
+#   SLAM_REVALUATION_ODOM_PROFILE_SET=biased  # baseline (default) or biased
 #
 # Scenarios edit below: name|WAYPOINT_NAV_WAYPOINTS|SMOKE_MISSION_TIMEOUT
 # Profiles edit below: name|description|env assignments
@@ -34,6 +35,7 @@ REPORT_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 CSV_REPORT="${SLAM_REVALUATION_CSV:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}.csv}"
 JSONL_REPORT="${SLAM_REVALUATION_JSONL:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}.jsonl}"
 PROFILE_SET="${SLAM_REVALUATION_PROFILE_SET:-baseline}"
+ODOM_PROFILE_SET="${SLAM_REVALUATION_ODOM_PROFILE_SET:-baseline}"
 
 # name|waypoints|mission_timeout_sec
 # Keep segments moderate: four+ waypoints often hit smoke mission timeout (stuck/recovery) in Gazebo.
@@ -63,7 +65,26 @@ case "$PROFILE_SET" in
     ;;
 esac
 
-RUN_COUNT=$((${#ICP_PROFILES[@]} * ${#SCENARIOS[@]}))
+case "$ODOM_PROFILE_SET" in
+  baseline)
+    ODOM_PROFILES=(
+      "raw_realistic|use raw EKF odom as SLAM input|"
+    )
+    ;;
+  biased)
+    ODOM_PROFILES=(
+      "raw_realistic|use raw EKF odom as SLAM input|"
+      "odom_xy_scale_1pct|feed SLAM input odom with 1 percent relative XY scale drift|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.01"
+      "odom_yaw_drift_1deg_per_m|feed SLAM input odom with 1 degree yaw drift per meter|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.017453292519943295"
+    )
+    ;;
+  *)
+    echo "Unknown SLAM_REVALUATION_ODOM_PROFILE_SET=$ODOM_PROFILE_SET (expected baseline or biased)" >&2
+    exit 2
+    ;;
+esac
+
+RUN_COUNT=$((${#ODOM_PROFILES[@]} * ${#ICP_PROFILES[@]} * ${#SCENARIOS[@]}))
 LAST_DOMAIN_ID=$((BASE_ID + RUN_COUNT - 1))
 if (( BASE_ID < 0 || LAST_DOMAIN_ID > 232 )); then
   echo "ROS_DOMAIN_ID_BASE=$BASE_ID with $RUN_COUNT run(s) would use ROS_DOMAIN_ID $BASE_ID..$LAST_DOMAIN_ID." >&2
@@ -168,6 +189,9 @@ count_key_values_with_token() {
 
 mkdir -p "$(dirname "$CSV_REPORT")" "$(dirname "$JSONL_REPORT")"
 write_csv_row "$CSV_REPORT" \
+  "odom_profile" \
+  "odom_profile_description" \
+  "odom_profile_env" \
   "profile" \
   "profile_description" \
   "profile_env" \
@@ -206,152 +230,172 @@ echo "=== Corrected-frame revaluation matrix ==="
 echo "ROOT_DIR=$ROOT_DIR"
 echo "TURTLEBOT3_MODEL=$TURTLEBOT3_MODEL"
 echo "PROFILE_SET=$PROFILE_SET"
+echo "ODOM_PROFILE_SET=$ODOM_PROFILE_SET"
 echo "CSV_REPORT=$CSV_REPORT"
 echo "JSONL_REPORT=$JSONL_REPORT"
 echo
 
 run_idx=0
 failed=0
-for profile_entry in "${ICP_PROFILES[@]}"; do
-  IFS='|' read -r profile_name profile_description profile_env <<<"$profile_entry"
-  profile_env_args=()
-  if [[ -n "$profile_env" ]]; then
-    read -r -a profile_env_args <<<"$profile_env"
+for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
+  IFS='|' read -r odom_profile_name odom_profile_description odom_profile_env <<<"$odom_profile_entry"
+  odom_profile_env_args=()
+  if [[ -n "$odom_profile_env" ]]; then
+    read -r -a odom_profile_env_args <<<"$odom_profile_env"
   fi
 
-  for entry in "${SCENARIOS[@]}"; do
-    IFS='|' read -r name wps mission_to <<<"$entry"
-    export WAYPOINT_NAV_WAYPOINTS="$wps"
-    export SMOKE_MISSION_TIMEOUT="$mission_to"
-    export ROS_DOMAIN_ID=$((BASE_ID + run_idx))
-    run_idx=$((run_idx + 1))
-
-    out="$(mktemp)"
-    echo ">>> Profile: $profile_name"
-    echo "    $profile_description"
+  for profile_entry in "${ICP_PROFILES[@]}"; do
+    IFS='|' read -r profile_name profile_description profile_env <<<"$profile_entry"
+    profile_env_args=()
     if [[ -n "$profile_env" ]]; then
-      echo "    Profile env: $profile_env"
-    fi
-    echo ">>> Scenario: $name"
-    echo "    WAYPOINT_NAV_WAYPOINTS=$WAYPOINT_NAV_WAYPOINTS"
-    echo "    SMOKE_MISSION_TIMEOUT=${SMOKE_MISSION_TIMEOUT}s ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
-    set +e
-    env "${profile_env_args[@]}" "$SMOKE" >"$out" 2>&1
-    rc=$?
-    set -e
-
-    mission_completed=false
-    if [[ "$rc" -eq 0 ]] || grep -Fq "status=completed" "$out"; then
-      mission_completed=true
+      read -r -a profile_env_args <<<"$profile_env"
     fi
 
-    gt_line="$(last_data_line_with "slam_xy_error=" "$out")"
-    diag_line="$(last_data_line_with "blend_alpha=" "$out")"
-    gate_reason_counts="$(count_key_values_with_token "$out" "gate_reason=" "gate_reason")"
-    diagnostics_status_counts="$(count_key_values_with_token "$out" "gate_reason=" "status")"
+    for entry in "${SCENARIOS[@]}"; do
+      IFS='|' read -r name wps mission_to <<<"$entry"
+      export WAYPOINT_NAV_WAYPOINTS="$wps"
+      export SMOKE_MISSION_TIMEOUT="$mission_to"
+      export ROS_DOMAIN_ID=$((BASE_ID + run_idx))
+      run_idx=$((run_idx + 1))
 
-    samples="$(kv_get "$gt_line" "samples")"
-    raw_xy_error="$(kv_get "$gt_line" "raw_xy_error")"
-    slam_xy_error="$(kv_get "$gt_line" "slam_xy_error")"
-    improvement_xy="$(kv_get "$gt_line" "improvement_xy")"
-    slam_better_xy="$(kv_get "$gt_line" "slam_better_xy")"
-    raw_xy_rmse="$(kv_get "$gt_line" "raw_xy_rmse")"
-    slam_xy_rmse="$(kv_get "$gt_line" "slam_xy_rmse")"
-    raw_xy_max="$(kv_get "$gt_line" "raw_xy_max")"
-    slam_xy_max="$(kv_get "$gt_line" "slam_xy_max")"
-    raw_yaw_error="$(kv_get "$gt_line" "raw_yaw_error")"
-    slam_yaw_error="$(kv_get "$gt_line" "slam_yaw_error")"
-    improvement_yaw="$(kv_get "$gt_line" "improvement_yaw")"
-    slam_better_yaw="$(kv_get "$gt_line" "slam_better_yaw")"
+      out="$(mktemp)"
+      echo ">>> Odom profile: $odom_profile_name"
+      echo "    $odom_profile_description"
+      if [[ -n "$odom_profile_env" ]]; then
+        echo "    Odom profile env: $odom_profile_env"
+      fi
+      echo ">>> ICP profile: $profile_name"
+      echo "    $profile_description"
+      if [[ -n "$profile_env" ]]; then
+        echo "    ICP profile env: $profile_env"
+      fi
+      echo ">>> Scenario: $name"
+      echo "    WAYPOINT_NAV_WAYPOINTS=$WAYPOINT_NAV_WAYPOINTS"
+      echo "    SMOKE_MISSION_TIMEOUT=${SMOKE_MISSION_TIMEOUT}s ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
+      set +e
+      env "${odom_profile_env_args[@]}" "${profile_env_args[@]}" "$SMOKE" >"$out" 2>&1
+      rc=$?
+      set -e
 
-    icp_status="$(kv_get "$diag_line" "status")"
-    icp_error_mean="$(kv_get "$diag_line" "icp_error_mean")"
-    icp_iterations="$(kv_get "$diag_line" "icp_iterations")"
-    icp_converged="$(kv_get "$diag_line" "icp_converged")"
-    scan_points="$(kv_get "$diag_line" "scan_points")"
-    blend_alpha="$(kv_get "$diag_line" "blend_alpha")"
-    blend_applied="$(kv_get "$diag_line" "blend_applied")"
-    gate_reason="$(kv_get "$diag_line" "gate_reason")"
+      mission_completed=false
+      if [[ "$rc" -eq 0 ]] || grep -Fq "status=completed" "$out"; then
+        mission_completed=true
+      fi
 
-    write_csv_row "$CSV_REPORT" \
-      "$profile_name" \
-      "$profile_description" \
-      "$profile_env" \
-      "$name" \
-      "$rc" \
-      "$mission_completed" \
-      "$ROS_DOMAIN_ID" \
-      "$WAYPOINT_NAV_WAYPOINTS" \
-      "$SMOKE_MISSION_TIMEOUT" \
-      "$samples" \
-      "$raw_xy_error" \
-      "$slam_xy_error" \
-      "$improvement_xy" \
-      "$slam_better_xy" \
-      "$raw_xy_rmse" \
-      "$slam_xy_rmse" \
-      "$raw_xy_max" \
-      "$slam_xy_max" \
-      "$raw_yaw_error" \
-      "$slam_yaw_error" \
-      "$improvement_yaw" \
-      "$slam_better_yaw" \
-      "$icp_status" \
-      "$icp_error_mean" \
-      "$icp_iterations" \
-      "$icp_converged" \
-      "$scan_points" \
-      "$blend_alpha" \
-      "$blend_applied" \
-      "$gate_reason" \
-      "$gate_reason_counts" \
-      "$diagnostics_status_counts"
+      gt_line="$(last_data_line_with "slam_xy_error=" "$out")"
+      diag_line="$(last_data_line_with "blend_alpha=" "$out")"
+      gate_reason_counts="$(count_key_values_with_token "$out" "gate_reason=" "gate_reason")"
+      diagnostics_status_counts="$(count_key_values_with_token "$out" "gate_reason=" "status")"
 
-    write_jsonl_row "$JSONL_REPORT" \
-      "profile" "$profile_name" \
-      "profile_description" "$profile_description" \
-      "profile_env" "$profile_env" \
-      "scenario" "$name" \
-      "exit_code" "$rc" \
-      "mission_completed" "$mission_completed" \
-      "ros_domain_id" "$ROS_DOMAIN_ID" \
-      "waypoints" "$WAYPOINT_NAV_WAYPOINTS" \
-      "mission_timeout_sec" "$SMOKE_MISSION_TIMEOUT" \
-      "samples" "$samples" \
-      "raw_xy_error" "$raw_xy_error" \
-      "slam_xy_error" "$slam_xy_error" \
-      "improvement_xy" "$improvement_xy" \
-      "slam_better_xy" "$slam_better_xy" \
-      "raw_xy_rmse" "$raw_xy_rmse" \
-      "slam_xy_rmse" "$slam_xy_rmse" \
-      "raw_xy_max" "$raw_xy_max" \
-      "slam_xy_max" "$slam_xy_max" \
-      "raw_yaw_error" "$raw_yaw_error" \
-      "slam_yaw_error" "$slam_yaw_error" \
-      "improvement_yaw" "$improvement_yaw" \
-      "slam_better_yaw" "$slam_better_yaw" \
-      "icp_status" "$icp_status" \
-      "icp_error_mean" "$icp_error_mean" \
-      "icp_iterations" "$icp_iterations" \
-      "icp_converged" "$icp_converged" \
-      "scan_points" "$scan_points" \
-      "blend_alpha" "$blend_alpha" \
-      "blend_applied" "$blend_applied" \
-      "gate_reason" "$gate_reason" \
-      "gate_reason_counts" "$gate_reason_counts" \
-      "diagnostics_status_counts" "$diagnostics_status_counts"
+      samples="$(kv_get "$gt_line" "samples")"
+      raw_xy_error="$(kv_get "$gt_line" "raw_xy_error")"
+      slam_xy_error="$(kv_get "$gt_line" "slam_xy_error")"
+      improvement_xy="$(kv_get "$gt_line" "improvement_xy")"
+      slam_better_xy="$(kv_get "$gt_line" "slam_better_xy")"
+      raw_xy_rmse="$(kv_get "$gt_line" "raw_xy_rmse")"
+      slam_xy_rmse="$(kv_get "$gt_line" "slam_xy_rmse")"
+      raw_xy_max="$(kv_get "$gt_line" "raw_xy_max")"
+      slam_xy_max="$(kv_get "$gt_line" "slam_xy_max")"
+      raw_yaw_error="$(kv_get "$gt_line" "raw_yaw_error")"
+      slam_yaw_error="$(kv_get "$gt_line" "slam_yaw_error")"
+      improvement_yaw="$(kv_get "$gt_line" "improvement_yaw")"
+      slam_better_yaw="$(kv_get "$gt_line" "slam_better_yaw")"
 
-    if [[ "$rc" -ne 0 ]]; then
-      echo "    RESULT: FAIL (exit $rc)"
-      failed=$((failed + 1))
-      tail -25 "$out" >&2 || true
-    else
-      echo "    RESULT: OK"
-      echo "    Metrics: raw_xy_error=${raw_xy_error:-n/a} slam_xy_error=${slam_xy_error:-n/a} improvement_xy=${improvement_xy:-n/a} slam_better_xy=${slam_better_xy:-n/a}"
-      echo "    ICP: status=${icp_status:-n/a} icp_error_mean=${icp_error_mean:-n/a} blend_alpha=${blend_alpha:-n/a} gate_reason=${gate_reason:-n/a}"
-    fi
-    echo
-    rm -f "$out"
+      icp_status="$(kv_get "$diag_line" "status")"
+      icp_error_mean="$(kv_get "$diag_line" "icp_error_mean")"
+      icp_iterations="$(kv_get "$diag_line" "icp_iterations")"
+      icp_converged="$(kv_get "$diag_line" "icp_converged")"
+      scan_points="$(kv_get "$diag_line" "scan_points")"
+      blend_alpha="$(kv_get "$diag_line" "blend_alpha")"
+      blend_applied="$(kv_get "$diag_line" "blend_applied")"
+      gate_reason="$(kv_get "$diag_line" "gate_reason")"
+
+      write_csv_row "$CSV_REPORT" \
+        "$odom_profile_name" \
+        "$odom_profile_description" \
+        "$odom_profile_env" \
+        "$profile_name" \
+        "$profile_description" \
+        "$profile_env" \
+        "$name" \
+        "$rc" \
+        "$mission_completed" \
+        "$ROS_DOMAIN_ID" \
+        "$WAYPOINT_NAV_WAYPOINTS" \
+        "$SMOKE_MISSION_TIMEOUT" \
+        "$samples" \
+        "$raw_xy_error" \
+        "$slam_xy_error" \
+        "$improvement_xy" \
+        "$slam_better_xy" \
+        "$raw_xy_rmse" \
+        "$slam_xy_rmse" \
+        "$raw_xy_max" \
+        "$slam_xy_max" \
+        "$raw_yaw_error" \
+        "$slam_yaw_error" \
+        "$improvement_yaw" \
+        "$slam_better_yaw" \
+        "$icp_status" \
+        "$icp_error_mean" \
+        "$icp_iterations" \
+        "$icp_converged" \
+        "$scan_points" \
+        "$blend_alpha" \
+        "$blend_applied" \
+        "$gate_reason" \
+        "$gate_reason_counts" \
+        "$diagnostics_status_counts"
+
+      write_jsonl_row "$JSONL_REPORT" \
+        "odom_profile" "$odom_profile_name" \
+        "odom_profile_description" "$odom_profile_description" \
+        "odom_profile_env" "$odom_profile_env" \
+        "profile" "$profile_name" \
+        "profile_description" "$profile_description" \
+        "profile_env" "$profile_env" \
+        "scenario" "$name" \
+        "exit_code" "$rc" \
+        "mission_completed" "$mission_completed" \
+        "ros_domain_id" "$ROS_DOMAIN_ID" \
+        "waypoints" "$WAYPOINT_NAV_WAYPOINTS" \
+        "mission_timeout_sec" "$SMOKE_MISSION_TIMEOUT" \
+        "samples" "$samples" \
+        "raw_xy_error" "$raw_xy_error" \
+        "slam_xy_error" "$slam_xy_error" \
+        "improvement_xy" "$improvement_xy" \
+        "slam_better_xy" "$slam_better_xy" \
+        "raw_xy_rmse" "$raw_xy_rmse" \
+        "slam_xy_rmse" "$slam_xy_rmse" \
+        "raw_xy_max" "$raw_xy_max" \
+        "slam_xy_max" "$slam_xy_max" \
+        "raw_yaw_error" "$raw_yaw_error" \
+        "slam_yaw_error" "$slam_yaw_error" \
+        "improvement_yaw" "$improvement_yaw" \
+        "slam_better_yaw" "$slam_better_yaw" \
+        "icp_status" "$icp_status" \
+        "icp_error_mean" "$icp_error_mean" \
+        "icp_iterations" "$icp_iterations" \
+        "icp_converged" "$icp_converged" \
+        "scan_points" "$scan_points" \
+        "blend_alpha" "$blend_alpha" \
+        "blend_applied" "$blend_applied" \
+        "gate_reason" "$gate_reason" \
+        "gate_reason_counts" "$gate_reason_counts" \
+        "diagnostics_status_counts" "$diagnostics_status_counts"
+
+      if [[ "$rc" -ne 0 ]]; then
+        echo "    RESULT: FAIL (exit $rc)"
+        failed=$((failed + 1))
+        tail -25 "$out" >&2 || true
+      else
+        echo "    RESULT: OK"
+        echo "    Metrics: raw_xy_error=${raw_xy_error:-n/a} slam_xy_error=${slam_xy_error:-n/a} improvement_xy=${improvement_xy:-n/a} slam_better_xy=${slam_better_xy:-n/a}"
+        echo "    ICP: status=${icp_status:-n/a} icp_error_mean=${icp_error_mean:-n/a} blend_alpha=${blend_alpha:-n/a} gate_reason=${gate_reason:-n/a}"
+      fi
+      echo
+      rm -f "$out"
+    done
   done
 done
 
