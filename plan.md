@@ -1,15 +1,30 @@
 # RustRobotics Handoff Plan
 
-Last updated: 2026-04-16  
+Last updated: 2026-04-20
 Audience: Copilot, Claude Code, and the next agent taking over this repository  
-Status: Phase 4 is no longer "to do". The Gazebo navigation demo and the first real ROS2 navigation stack slices are already merged. This file is now a handoff document, not a design sketch. **2026-04-16:** CI regression on `main` was fixed and pushed; see Section 13.
+Status: Phase 4 is no longer "to do". The Gazebo navigation demo and the first real ROS2 navigation stack slices are already merged. This file is now a handoff document, not a design sketch.
+
+## 0. Current Short Summary
+
+As of the current local work:
+
+- the ROS2/Gazebo navigation stack works end to end
+- corrected-frame SLAM is wired, observable, and re-evaluable
+- `run_navigation_revaluation_matrix.sh` records final ground-truth metrics, ICP gate summaries, RMSE deltas, and ICP acceptance ratio into `summary.tsv`
+- optional metric gates can turn the matrix from observational into accuracy-enforcing:
+  - `REVALUATION_MAX_SLAM_XY_RMSE`
+  - `REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE`
+  - `REVALUATION_MIN_ICP_ACCEPTANCE_RATIO`
+- `ENABLE_SYNTHETIC_SCAN=true` provides a headless/rootless fallback when Gazebo GPU lidar cannot run
+- synthetic fallback is useful for smoke and matrix plumbing, but real GPU-lidar Gazebo runs remain the fidelity target
+- the remaining research/product question is still whether corrected SLAM is consistently better than raw odom under agreed real-lidar metrics
 
 ## 1. Current Repository Snapshot
 
 - Git repo: `rust_robotics/`
 - Current branch: `main`
 - Remote state at last handoff update: `main` includes the ICP blend-gating merge (ICP blend gating + smoke capture hardening + docs; builds on `9547124`), plus the **2026-04-16 CI hotfix** commit `0caef92` (`fix(ci): stabilize BIT* prune test; use grep in ROS smoke script`).
-- Worktree state: clean after that merge unless you have new local edits.
+- Current local worktree: contains local WIP for synthetic scan fallback, revaluation matrix summaries, metric gates, docs, and this handoff update. These edits may not be merged or committed yet.
 
 This repo lives inside a larger directory that is not itself a git repo:
 
@@ -38,6 +53,9 @@ The original "Phase 4 Gazebo navigation demo" plan is complete and significantly
 - ROS2 smoke testing, including headless CI coverage
 - optional corrected SLAM frame pipeline
 - SLAM diagnostics and Gazebo ground-truth comparison
+- corrected-frame revaluation matrix with TSV output
+- optional quantitative gates for corrected-frame RMSE and ICP acceptance
+- synthetic scan fallback for headless/rootless environments where GPU lidar fails
 
 The most important merged milestones on `main` are:
 
@@ -147,6 +165,10 @@ The repo now has several layers of observability:
   - `ros2_nodes/launch/navigation_demo.rviz`
 - Local smoke:
   - `ros2_nodes/launch/run_navigation_smoke_test.sh`
+- Revaluation matrix:
+  - `ros2_nodes/launch/run_navigation_revaluation_matrix.sh`
+  - writes per-scenario logs and `summary.tsv` under `target/navigation_revaluation/<utc-timestamp>/`
+  - records raw/slam errors, RMSE, RMSE delta, latest ICP gate, blend alpha, ICP accepted count, and ICP acceptance ratio
 - CI smoke:
   - `.github/workflows/ros2-smoke.yml`
 
@@ -217,6 +239,36 @@ export ENABLE_GAZEBO_GUI=false
 export ENABLE_SLAM_CORRECTED_FRAME=true
 ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
+
+Corrected-frame revaluation matrix:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID_BASE=210
+export ENABLE_RVIZ=false
+export ENABLE_GAZEBO_GUI=false
+export ENABLE_SLAM_CORRECTED_FRAME=true
+export ENABLE_SLAM_GROUND_TRUTH_MONITOR=true
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+Metric-gated matrix example:
+
+```bash
+export REVALUATION_MAX_SLAM_XY_RMSE=0.02
+export REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE=0.001
+export REVALUATION_MIN_ICP_ACCEPTANCE_RATIO=0.0
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+Synthetic scan fallback for headless/rootless environments:
+
+```bash
+export ENABLE_SYNTHETIC_SCAN=true
+./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+Synthetic mode spawns a sensorless TurtleBot3 model and publishes deterministic `/scan` data from Gazebo ground truth. It is not equivalent to real GPU lidar validation.
 
 ## 6. Recently Merged: ICP Quality Gating and Smoke Stability
 
@@ -380,20 +432,24 @@ That means:
 - ground-truth comparison is available
 - but the correction policy still needs tuning before it can be called trustworthy
 
-### 8.2 Success criteria are not yet quantitative enough
+### 8.2 Quantitative gates exist, but thresholds are not yet agreed
 
-The smoke test currently verifies:
+The smoke test still primarily verifies plumbing:
 
 - mission completes
 - observability topics exist
 - TF exists
 - corrected mode publishes diagnostics and ground-truth status
 
-It does not yet enforce a quantitative condition like:
+The revaluation matrix can now enforce quantitative conditions when explicitly configured:
 
-- corrected SLAM must beat raw odom in XY RMSE
-- corrected SLAM must not exceed some drift threshold
-- a minimum fraction of scans must be accepted instead of rejected
+- `REVALUATION_MAX_SLAM_XY_RMSE`
+- `REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE`
+- `REVALUATION_MIN_ICP_ACCEPTANCE_RATIO`
+
+Those gates are intentionally unset by default. The missing piece is not wiring
+anymore; it is choosing thresholds that are meaningful for real GPU-lidar Gazebo
+runs and stable enough for CI / regression use.
 
 ### 8.3 Diagnostics are still string-based
 
@@ -410,27 +466,31 @@ would be a better interface for downstream tooling.
 
 ### Immediate next step
 
-Tune corrected-frame quality using the new diagnostics and ground truth.
+Use the matrix on a real GPU-lidar Gazebo environment, then tune corrected-frame
+quality using the new diagnostics and ground truth.
 
 Recommended order:
 
-1. Gather several corrected-frame smoke runs and record:
-   - `raw_xy_error`
-   - `slam_xy_error`
+1. Gather several corrected-frame matrix runs and record:
+   - `raw_xy_rmse`
+   - `slam_xy_rmse`
+   - `slam_minus_raw_xy_rmse`
    - `blend_alpha`
    - `gate_reason`
+   - `icp_acceptance_ratio`
 2. Check whether gating is too conservative:
    - too many `high_error` or `low_motion` rejections may mean corrected mode is effectively disabled
 3. Check whether attenuation thresholds are too loose:
    - if bad corrections still slip through, tighten correction/error limits
-4. Only after the behavior is more stable, promote the smoke test to enforce a quantitative improvement condition
+4. Once behavior is stable, pick real thresholds for the matrix gates
+5. Only after those thresholds are proven stable, consider moving strict accuracy gates into CI
 
 ### After the quality story is good enough
 
 Then the next clean follow-ups are:
 
 1. move diagnostics away from ad hoc strings
-2. consider making quality thresholds configurable via env
+2. consider making any remaining quality thresholds configurable via env
 3. add a longer corrected-frame regression scenario
 4. decide whether corrected mode should remain experimental or become the default
 
@@ -454,14 +514,16 @@ If you only remember five things, remember these:
 
 1. The Gazebo navigation demo is done. This is no longer a "build the demo" repo state.
 2. `main` through `9547124` already had mission stack, recovery, observability, corrected-frame pipeline, and ground-truth monitoring; the ICP blend-gating merge adds ICP gating and smoke stability.
-3. The central remaining technical problem is not wiring, but whether corrected SLAM is measurably better than raw odom.
-4. The next good move is: tune corrected mode against ground-truth metrics, then consider quantitative smoke thresholds.
+3. The central remaining technical problem is not wiring, but whether corrected SLAM is measurably better than raw odom under agreed real-lidar metrics.
+4. The next good move is: run the matrix on real GPU-lidar Gazebo, choose thresholds, then decide whether any strict gates belong in CI.
 5. Treat `run_navigation_smoke_test.sh` as part of the product; its stability defines how credible corrected-mode tuning is.
 
 ## 12. Recent stack updates (2026)
 
 - **ICP error scale:** `rust_robotics_slam::icp_matching` now exposes `final_error_mean` (and `point_count`) alongside the legacy sum `final_error`. `slam_node` gates and `/slam_diagnostics` use **mean** NN distance \[m/point\], so `SLAM_ICP_FULL_WEIGHT_ERROR` / `SLAM_ICP_REJECT_ERROR` are interpretable and no longer depend on laser point count the same way sum error did.
-- **Multi-mission revaluation:** `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` runs several `WAYPOINT_NAV_WAYPOINTS` profiles sequentially with corrected-frame smoke and prints ground-truth `improvement_xy` snippets (see `docs/ros2_integration.md`).
+- **Multi-mission revaluation:** `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` runs several `WAYPOINT_NAV_WAYPOINTS` profiles sequentially with corrected-frame smoke and records final ground-truth / ICP-gate summaries in `target/navigation_revaluation/<utc-timestamp>/summary.tsv` (see `docs/ros2_integration.md`). Optional `REVALUATION_MAX_SLAM_XY_RMSE`, `REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE`, and `REVALUATION_MIN_ICP_ACCEPTANCE_RATIO` gates can promote the matrix from observational to accuracy-enforcing.
+- **Synthetic scan fallback:** `ENABLE_SYNTHETIC_SCAN=true` runs a sensorless TurtleBot3 plus deterministic `/scan` publisher for headless/rootless environments where Gazebo GPU lidar is unavailable. This is useful for smoke/revaluation plumbing, but real lidar Gazebo runs remain the fidelity target.
+- **Smoke ICP stream summary:** `run_navigation_smoke_test.sh` now keeps a background `/slam_diagnostics` subscription during the mission and prints `icp_total`, `icp_accepted`, and `icp_acceptance_ratio`; the matrix carries those into `summary.tsv`.
 
 ## 13. CI regression fix (2026-04-16) — what broke and what changed
 
@@ -522,8 +584,8 @@ Read this block first if you are continuing in Claude or another IDE agent.
 
 ### 14.2 What is “done” vs what is “next”
 
-- **Done:** End-to-end Gazebo mission demo, EKF path, DWA, SLAM map publishing, waypoint mission + recovery, RViz topics, headless examples, ROS2 smoke in CI, corrected-frame pipeline, ICP blend gating, mean-ICP diagnostics, revaluation script (Sections 2, 6, 12).
-- **Next (product / research):** Corrected SLAM should become **measurably** better than raw odom on agreed metrics (Section 8–9). Smoke tests verify plumbing, not yet strict accuracy thresholds.
+- **Done:** End-to-end Gazebo mission demo, EKF path, DWA, SLAM map publishing, waypoint mission + recovery, RViz topics, headless examples, ROS2 smoke in CI, corrected-frame pipeline, ICP blend gating, mean-ICP diagnostics, revaluation matrix, synthetic scan fallback, optional RMSE / ICP acceptance gates (Sections 2, 6, 12).
+- **Next (product / research):** Run corrected-frame revaluation on a real GPU-lidar Gazebo host, choose stable thresholds for `REVALUATION_*` gates, then decide whether corrected mode is good enough to keep experimental, promote, or tune further.
 
 ### 14.3 CI map (quick reference)
 
@@ -539,9 +601,11 @@ If you change `run_navigation_smoke_test.sh`, assume **both** local ROS users an
 
 1. `ros2_nodes/slam_node/src/main.rs` — ICP blend, gating, diagnostics strings  
 2. `ros2_nodes/launch/run_navigation_smoke_test.sh` — mission + topic + TF verification (**grep**, not `rg`)  
-3. `ros2_nodes/launch/map_odom_tf_broadcaster.py`, `slam_ground_truth_monitor.py` — corrected frame + GT  
-4. `docs/ros2_integration.md` — documented behavior  
-5. `CLAUDE.md` — short crate layout and `cargo` commands for the **library** workspace
+3. `ros2_nodes/launch/run_navigation_revaluation_matrix.sh` — scenario matrix, `summary.tsv`, metric gates
+4. `ros2_nodes/launch/synthetic_scan_publisher.py` — headless fallback scan source
+5. `ros2_nodes/launch/map_odom_tf_broadcaster.py`, `slam_ground_truth_monitor.py` — corrected frame + GT
+6. `docs/ros2_integration.md` — documented behavior
+7. `CLAUDE.md` — short crate layout and `cargo` commands for the **library** workspace
 
 ### 14.5 Commands the next agent will likely run
 
@@ -560,13 +624,14 @@ ROS2 (with Jazzy sourced):
 
 ```bash
 bash -n ros2_nodes/launch/run_navigation_smoke_test.sh
+bash -n ros2_nodes/launch/run_navigation_revaluation_matrix.sh
 # full smoke: see Section 5.2
 ```
 
 ### 14.6 Communication note
 
-Previous session (Cursor) fixed **`main` CI** via `0caef92`, verified **green** CI + ROS2 Smoke + Pages on GitHub, and updated **`plan.md`** for handoff. If `main` has moved, run `git log -1` and compare with Section 13.
+Previous session (Cursor) fixed **`main` CI** via `0caef92`, verified **green** CI + ROS2 Smoke + Pages on GitHub, and updated **`plan.md`** for handoff. Later local work added the synthetic scan fallback, revaluation matrix output, metric gates, and ICP acceptance summaries. If `main` has moved, run `git log -1` and compare with Section 13.
 
 ## 15. One-line summary for Claude
 
-**`main` is CI-green after `0caef92`; BIT\* pruning is tested deterministically; ROS smoke uses `grep -Fq` not `rg`; next priority is corrected-frame accuracy tuning (Sections 8–9), not demo plumbing.**
+**The demo plumbing is done; current local WIP adds synthetic scan fallback plus corrected-frame revaluation summaries and gates. Next priority is real GPU-lidar revaluation and threshold selection, not more launch wiring.**

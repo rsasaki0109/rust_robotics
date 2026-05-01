@@ -37,6 +37,7 @@ export WAYPOINT_NAV_GOAL_TOLERANCE="${WAYPOINT_NAV_GOAL_TOLERANCE:-0.35}"
 export DWA_GOAL_THRESHOLD="${DWA_GOAL_THRESHOLD:-0.3}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-true}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-true}"
+export ENABLE_SYNTHETIC_SCAN="${ENABLE_SYNTHETIC_SCAN:-false}"
 export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
 export ENABLE_SLAM_MAP_ODOM_TF="${ENABLE_SLAM_MAP_ODOM_TF:-$ENABLE_SLAM_CORRECTED_FRAME}"
 if [[ -z "${NAV_GLOBAL_FRAME:-}" ]]; then
@@ -78,6 +79,7 @@ fi
 exec ros2 launch "$LAUNCH_FILE" \
   "turtlebot3_model:=${TURTLEBOT3_MODEL}" \
   "enable_gazebo_gui:=${ENABLE_GAZEBO_GUI}" \
+  "enable_synthetic_scan:=${ENABLE_SYNTHETIC_SCAN}" \
   "publish_map_odom_tf:=${PUBLISH_MAP_ODOM_TF}" \
   "raw_odom_topic:=${RAW_ODOM_TOPIC}" \
   "base_tf_odom_topic:=${BASE_TF_ODOM_TOPIC}" \

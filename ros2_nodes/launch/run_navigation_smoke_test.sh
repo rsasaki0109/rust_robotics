@@ -15,6 +15,7 @@ export TURTLEBOT3_MODEL="${TURTLEBOT3_MODEL:-burger}"
 export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-89}"
 export ENABLE_RVIZ="${ENABLE_RVIZ:-false}"
 export ENABLE_GAZEBO_GUI="${ENABLE_GAZEBO_GUI:-false}"
+export ENABLE_SYNTHETIC_SCAN="${ENABLE_SYNTHETIC_SCAN:-false}"
 export ENABLE_SLAM_CORRECTED_FRAME="${ENABLE_SLAM_CORRECTED_FRAME:-false}"
 export ENABLE_SLAM_GROUND_TRUTH_MONITOR="${ENABLE_SLAM_GROUND_TRUTH_MONITOR:-$ENABLE_SLAM_CORRECTED_FRAME}"
 export PUBLISH_MAP_ODOM_TF="${PUBLISH_MAP_ODOM_TF:-false}"
@@ -55,6 +56,7 @@ TMP_DIR="$(mktemp -d)"
 LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
 STATUS_OUT="$TMP_DIR/mission_status.txt"
 SLAM_DIAG_OUT="$TMP_DIR/slam_diagnostics.txt"
+SLAM_DIAG_STREAM_OUT="$TMP_DIR/slam_diagnostics_stream.txt"
 SLAM_GT_STATUS_OUT="$TMP_DIR/slam_ground_truth_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
 ODOM_OUT="$TMP_DIR/nav_odom.txt"
@@ -63,9 +65,15 @@ TF_MAP_ODOM_OUT="$TMP_DIR/tf_map_odom.txt"
 MAP_OUT="$TMP_DIR/map.txt"
 PATH_OUT="$TMP_DIR/planned_path.txt"
 launch_pid=""
+slam_diag_stream_pid=""
 
 cleanup() {
   local exit_code=$?
+  if [[ -n "$slam_diag_stream_pid" ]] && kill -0 "$slam_diag_stream_pid" 2>/dev/null; then
+    kill "$slam_diag_stream_pid" 2>/dev/null || true
+    wait "$slam_diag_stream_pid" 2>/dev/null || true
+  fi
+
   if [[ -n "$launch_pid" ]] && kill -0 "$launch_pid" 2>/dev/null; then
     kill -INT -- "-$launch_pid" 2>/dev/null || true
     wait "$launch_pid" 2>/dev/null || true
@@ -159,6 +167,68 @@ capture_topic_stream_until() {
   return 1
 }
 
+start_topic_stream_capture() {
+  local topic="$1"
+  local topic_type="$2"
+  local output_file="$3"
+
+  : >"$output_file"
+  stdbuf -oL -eL ros2 topic echo --full-length "$topic" "$topic_type" >"$output_file" 2>>"$LAUNCH_LOG" &
+  echo "$!"
+}
+
+stop_topic_stream_capture() {
+  local subscriber_pid="$1"
+  if [[ -n "$subscriber_pid" ]] && kill -0 "$subscriber_pid" 2>/dev/null; then
+    kill "$subscriber_pid" 2>/dev/null || true
+    wait "$subscriber_pid" 2>/dev/null || true
+  fi
+}
+
+count_stream_pattern() {
+  local pattern="$1"
+  local file="$2"
+  grep -Ec "$pattern" "$file" 2>/dev/null || true
+}
+
+ratio_or_zero() {
+  local numerator="$1"
+  local denominator="$2"
+  awk -v numerator="$numerator" -v denominator="$denominator" 'BEGIN {
+    if (denominator > 0) {
+      printf "%.3f", numerator / denominator
+    } else {
+      printf "0.000"
+    }
+  }'
+}
+
+print_slam_diagnostics_stream_summary() {
+  local icp_ok
+  local icp_attenuated
+  local icp_rejected
+  local icp_accepted
+  local icp_total
+  local icp_acceptance_ratio
+
+  icp_ok="$(count_stream_pattern 'data: status=icp_ok([[:space:]]|$)' "$SLAM_DIAG_STREAM_OUT")"
+  icp_attenuated="$(count_stream_pattern 'data: status=icp_attenuated([[:space:]]|$)' "$SLAM_DIAG_STREAM_OUT")"
+  icp_rejected="$(count_stream_pattern 'data: status=icp_rejected([[:space:]]|$)' "$SLAM_DIAG_STREAM_OUT")"
+  icp_accepted=$((icp_ok + icp_attenuated))
+  icp_total=$((icp_accepted + icp_rejected))
+  icp_acceptance_ratio="$(ratio_or_zero "$icp_accepted" "$icp_total")"
+
+  echo "Verified slam diagnostics stream summary:"
+  printf 'data: icp_total=%s icp_accepted=%s icp_ok=%s icp_attenuated=%s icp_rejected=%s icp_acceptance_ratio=%s\n' \
+    "$icp_total" \
+    "$icp_accepted" \
+    "$icp_ok" \
+    "$icp_attenuated" \
+    "$icp_rejected" \
+    "$icp_acceptance_ratio"
+  echo
+}
+
 capture_nav_tf() {
   local timeout_seconds="$1"
   local deadline=$((SECONDS + timeout_seconds))
@@ -208,6 +278,7 @@ capture_tf_between_frames() {
 echo "Starting navigation smoke test on ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
 setsid "$MISSION_WRAPPER" >"$LAUNCH_LOG" 2>&1 &
 launch_pid=$!
+slam_diag_stream_pid="$(start_topic_stream_capture "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_STREAM_OUT")"
 
 wait_for_log_pattern "observability topics: /mission_status and /mission_markers" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_once "/map" "nav_msgs/msg/OccupancyGrid" "$MAP_OUT" "$SMOKE_STARTUP_TIMEOUT"
@@ -240,6 +311,12 @@ wait_for_log_pattern "planned path cleared" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "published stop command after path clear" "$SMOKE_MISSION_TIMEOUT"
 
 capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=completed"
+capture_topic_stream_until "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=" "icp_" "blend_alpha=" "gate_reason="
+if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" && "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
+  capture_topic_stream_until "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=ok" "raw_xy_rmse=" "slam_xy_rmse=" "improvement_xy="
+fi
+stop_topic_stream_capture "$slam_diag_stream_pid"
+slam_diag_stream_pid=""
 
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
@@ -247,6 +324,7 @@ echo
 echo "Verified slam diagnostics topic:"
 cat "$SLAM_DIAG_OUT"
 echo
+print_slam_diagnostics_stream_summary
 echo "Verified /map, /planned_path, /mission_markers, and nav TF in frame '$parent_frame'."
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   echo "Verified dynamic TF map -> odom."

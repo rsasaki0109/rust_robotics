@@ -183,7 +183,30 @@ ROS_DOMAIN_ID=90 ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ENABLE_SLAM_CORRECTED
   ./ros2_nodes/launch/run_navigation_smoke_test.sh
 ```
 
-In corrected mode, the same script also verifies dynamic `map -> odom`.
+In corrected mode, the same script also verifies dynamic `map -> odom` and captures final ground-truth metrics after mission completion. For repeated corrected-frame checks across several waypoint routes, run:
+
+```bash
+ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
+
+The revaluation script stores per-scenario logs plus `summary.tsv` under `target/navigation_revaluation/<utc-timestamp>/` by default.
+It can also enforce optional quantitative gates:
+`REVALUATION_MAX_SLAM_XY_RMSE` limits corrected-frame RMSE, and
+`REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE=0.0` requires corrected RMSE to be no
+worse than raw odom. `REVALUATION_MIN_ICP_ACCEPTANCE_RATIO` can additionally
+require a minimum fraction of `icp_ok` / `icp_attenuated` diagnostics among
+accepted-or-rejected ICP updates.
+
+For headless environments where Gazebo's GPU lidar cannot start, use
+`ENABLE_SYNTHETIC_SCAN=true`. This spawns a sensorless TurtleBot3 model and
+publishes a deterministic synthetic `/scan` from Gazebo ground truth. It is a
+fallback for CI/rootless smoke and revaluation runs, not a substitute for a real
+Gazebo lidar validation:
+
+```bash
+ENABLE_RVIZ=false ENABLE_GAZEBO_GUI=false ENABLE_SYNTHETIC_SCAN=true \
+  ENABLE_SLAM_CORRECTED_FRAME=true ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+```
 
 ## Benchmarks
 

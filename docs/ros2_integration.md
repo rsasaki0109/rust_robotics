@@ -315,16 +315,39 @@ export ENABLE_SLAM_CORRECTED_FRAME=true
 ```
 
 In corrected mode, the script additionally verifies `tf2_echo map odom`.
-When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it also checks that `/slam_ground_truth_status` reaches `status=ok` and includes `slam_xy_error=`.
+When `ENABLE_SLAM_GROUND_TRUTH_MONITOR=true` as well, it checks that `/slam_ground_truth_status` reaches `status=ok` and, after mission completion, captures a fresh status containing `raw_xy_rmse=`, `slam_xy_rmse=`, and `improvement_xy=`. This keeps the printed corrected-frame metrics tied to the completed mission instead of an early startup sample.
 
-To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions (sequential Gazebo runs, prints last `improvement_xy` lines per scenario):
+To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions (sequential Gazebo runs, records final ground-truth and ICP-gate summaries per scenario):
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
 ```
 
-Edit the `SCENARIOS=(...)` list in that script to add routes; very long or four-plus-hop missions may time out the smoke waiter in simulation.
+By default, the revaluation script writes per-scenario logs and a tab-separated
+summary to `target/navigation_revaluation/<utc-timestamp>/summary.tsv`.
+Override the destination with `REVALUATION_OUTPUT_DIR=/path/to/output`. Edit
+the `SCENARIOS=(...)` list in that script to add routes; very long or
+four-plus-hop missions may time out the smoke waiter in simulation.
+
+The matrix also supports opt-in quantitative gates:
+
+- `REVALUATION_MAX_SLAM_XY_RMSE`: fail a scenario when corrected-frame XY RMSE exceeds this value \[m\]
+- `REVALUATION_MAX_SLAM_MINUS_RAW_XY_RMSE`: fail a scenario when `slam_xy_rmse - raw_xy_rmse` exceeds this value \[m\]. Use `0.0` to require corrected RMSE to be no worse than raw odom.
+- `REVALUATION_MIN_ICP_ACCEPTANCE_RATIO`: fail a scenario when the fraction of `icp_ok` plus `icp_attenuated` diagnostics among accepted-or-rejected ICP updates is below this value. This is useful for catching a corrected mode that is technically running but almost always falling back to odom.
+
+These gates are unset by default, so the script remains an observational
+revaluation unless you explicitly ask it to enforce accuracy.
+
+If the host cannot run Gazebo's GPU lidar stack, set `ENABLE_SYNTHETIC_SCAN=true`.
+The launch file then spawns a TurtleBot3 model with the lidar sensor removed and
+starts [synthetic_scan_publisher.py](../ros2_nodes/launch/synthetic_scan_publisher.py),
+which derives a deterministic `/scan` from Gazebo ground truth and stamps it
+with `/clock`. In this mode, `run_navigation_revaluation_matrix.sh` switches to
+shorter synthetic scenarios and defaults `WAYPOINT_NAV_GOAL_TOLERANCE=0.25` plus
+`DWA_GOAL_THRESHOLD=0.22` unless you override them. Treat this as a headless
+smoke/revaluation fallback; real lidar/Gazebo runs remain the higher-fidelity
+validation path.
 
 ### Send a goal
 
