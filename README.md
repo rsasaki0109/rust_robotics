@@ -163,7 +163,7 @@ That switches the mission stack to `NAV_ODOM_TOPIC=/slam_odom` and `NAV_GLOBAL_F
 
 Corrected mode also exposes two extra observability topics:
 
-- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error, `blend_alpha`, `gate_reason`, and applied correction deltas
+- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, error distribution, inlier ratio, `blend_alpha`, `gate_reason`, and applied correction deltas
 - `/slam_ground_truth_status` (`std_msgs/String`) with relative-start Gazebo ground-truth error metrics derived from `gz topic -e -t /world/default/dynamic_pose/info --json-output`
 
 The ground-truth monitor defaults to the spawned model name (`GROUND_TRUTH_ENTITY_NAME=$TURTLEBOT3_MODEL`) and compares `/ekf_odom` plus `/slam_odom` against the model pose after subtracting the first ground-truth sample. You can override the Gazebo source with `GROUND_TRUTH_GZ_POSE_TOPIC` if needed.

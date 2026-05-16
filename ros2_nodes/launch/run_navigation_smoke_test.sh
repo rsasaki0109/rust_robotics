@@ -50,6 +50,12 @@ export DWA_GOAL_THRESHOLD="${DWA_GOAL_THRESHOLD:-0.3}"
 SMOKE_STARTUP_TIMEOUT="${SMOKE_STARTUP_TIMEOUT:-90}"
 SMOKE_MISSION_TIMEOUT="${SMOKE_MISSION_TIMEOUT:-120}"
 SMOKE_TOPIC_CAPTURE_TIMEOUT="${SMOKE_TOPIC_CAPTURE_TIMEOUT:-20}"
+SMOKE_ENABLE_CORRECTED_SAFETY_GUARD="${SMOKE_ENABLE_CORRECTED_SAFETY_GUARD:-true}"
+SMOKE_MAX_SLAM_XY_ERROR="${SMOKE_MAX_SLAM_XY_ERROR:-0.50}"
+SMOKE_MAX_SLAM_YAW_ERROR="${SMOKE_MAX_SLAM_YAW_ERROR:-0.524}"
+SMOKE_MAX_SLAM_XY_MAX="${SMOKE_MAX_SLAM_XY_MAX:-0.75}"
+SMOKE_MAX_APPLIED_TRANSLATION_DELTA="${SMOKE_MAX_APPLIED_TRANSLATION_DELTA:-0.20}"
+SMOKE_MAX_APPLIED_YAW_DELTA="${SMOKE_MAX_APPLIED_YAW_DELTA:-0.35}"
 
 TMP_DIR="$(mktemp -d)"
 LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
@@ -159,6 +165,114 @@ capture_topic_stream_until() {
   return 1
 }
 
+last_data_line_with() {
+  local token="$1"
+  local file="$2"
+  grep -F "$token" "$file" \
+    | sed -n 's/^[[:space:]]*data:[[:space:]]*//p' \
+    | sed "s/^'//; s/'$//" \
+    | tail -1 || true
+}
+
+kv_get() {
+  local line="$1"
+  local key="$2"
+  local token
+  for token in $line; do
+    if [[ "$token" == "$key="* ]]; then
+      printf '%s' "${token#*=}"
+      return 0
+    fi
+  done
+  return 0
+}
+
+assert_float_le() {
+  local label="$1"
+  local value="$2"
+  local limit="$3"
+  if [[ -z "$value" || "$value" == "na" ]]; then
+    echo "Missing numeric value for $label" >&2
+    return 1
+  fi
+  awk -v label="$label" -v value="$value" -v limit="$limit" '
+    BEGIN {
+      if ((value + 0) > (limit + 0)) {
+        printf "%s=%s exceeds limit %s\n", label, value, limit > "/dev/stderr"
+        exit 1
+      }
+    }
+  '
+}
+
+assert_abs_float_le() {
+  local label="$1"
+  local value="$2"
+  local limit="$3"
+  if [[ -z "$value" || "$value" == "na" ]]; then
+    echo "Missing numeric value for $label" >&2
+    return 1
+  fi
+  awk -v label="$label" -v value="$value" -v limit="$limit" '
+    BEGIN {
+      abs_value = value + 0
+      if (abs_value < 0) {
+        abs_value = -abs_value
+      }
+      if (abs_value > (limit + 0)) {
+        printf "|%s|=%s exceeds limit %s\n", label, abs_value, limit > "/dev/stderr"
+        exit 1
+      }
+    }
+  '
+}
+
+assert_hypot_float_le() {
+  local label="$1"
+  local x="$2"
+  local y="$3"
+  local limit="$4"
+  if [[ -z "$x" || "$x" == "na" || -z "$y" || "$y" == "na" ]]; then
+    echo "Missing numeric value for $label" >&2
+    return 1
+  fi
+  awk -v label="$label" -v x="$x" -v y="$y" -v limit="$limit" '
+    BEGIN {
+      magnitude = sqrt((x + 0) * (x + 0) + (y + 0) * (y + 0))
+      if (magnitude > (limit + 0)) {
+        printf "%s=%s exceeds limit %s\n", label, magnitude, limit > "/dev/stderr"
+        exit 1
+      }
+    }
+  '
+}
+
+validate_corrected_safety_guard() {
+  local gt_line
+  local diag_line
+  gt_line="$(last_data_line_with "slam_xy_error=" "$SLAM_GT_STATUS_OUT")"
+  diag_line="$(last_data_line_with "blend_alpha=" "$SLAM_DIAG_OUT")"
+
+  local slam_xy_error
+  local slam_yaw_error
+  local slam_xy_max
+  local applied_dx
+  local applied_dy
+  local applied_dyaw
+  slam_xy_error="$(kv_get "$gt_line" "slam_xy_error")"
+  slam_yaw_error="$(kv_get "$gt_line" "slam_yaw_error")"
+  slam_xy_max="$(kv_get "$gt_line" "slam_xy_max")"
+  applied_dx="$(kv_get "$diag_line" "applied_dx")"
+  applied_dy="$(kv_get "$diag_line" "applied_dy")"
+  applied_dyaw="$(kv_get "$diag_line" "applied_dyaw")"
+
+  assert_float_le "slam_xy_error" "$slam_xy_error" "$SMOKE_MAX_SLAM_XY_ERROR"
+  assert_float_le "slam_yaw_error" "$slam_yaw_error" "$SMOKE_MAX_SLAM_YAW_ERROR"
+  assert_float_le "slam_xy_max" "$slam_xy_max" "$SMOKE_MAX_SLAM_XY_MAX"
+  assert_hypot_float_le "applied_translation_delta" "$applied_dx" "$applied_dy" "$SMOKE_MAX_APPLIED_TRANSLATION_DELTA"
+  assert_abs_float_le "applied_dyaw" "$applied_dyaw" "$SMOKE_MAX_APPLIED_YAW_DELTA"
+}
+
 capture_nav_tf() {
   local timeout_seconds="$1"
   local deadline=$((SECONDS + timeout_seconds))
@@ -240,6 +354,16 @@ wait_for_log_pattern "planned path cleared" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "published stop command after path clear" "$SMOKE_MISSION_TIMEOUT"
 
 capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=completed"
+
+if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+  capture_topic_stream_until "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=" "icp_" "blend_alpha=" "gate_reason="
+  if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
+    capture_topic_stream_until "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=ok" "slam_xy_error="
+    if [[ "$SMOKE_ENABLE_CORRECTED_SAFETY_GUARD" == "true" ]]; then
+      validate_corrected_safety_guard
+    fi
+  fi
+fi
 
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
