@@ -11,6 +11,8 @@
 #   SLAM_REVALUATION_LOG_DIR=reports/slam_revaluation/run_logs
 #   SLAM_REVALUATION_PROFILE_SET=tuning  # baseline (default) or tuning
 #   SLAM_REVALUATION_ODOM_PROFILE_SET=biased  # baseline (default) or biased
+#   SLAM_REVALUATION_START_INDEX=0  # zero-based index into the expanded matrix
+#   SLAM_REVALUATION_MAX_RUNS=0  # 0 means run all remaining rows
 #
 # Scenarios edit below: name|WAYPOINT_NAV_WAYPOINTS|SMOKE_MISSION_TIMEOUT
 # Profiles edit below: name|description|env assignments
@@ -40,6 +42,8 @@ SUMMARY_REPORT="${SLAM_REVALUATION_SUMMARY:-$REPORT_DIR/navigation_revaluation_$
 RUN_LOG_DIR="${SLAM_REVALUATION_LOG_DIR:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}_logs}"
 PROFILE_SET="${SLAM_REVALUATION_PROFILE_SET:-baseline}"
 ODOM_PROFILE_SET="${SLAM_REVALUATION_ODOM_PROFILE_SET:-baseline}"
+START_INDEX="${SLAM_REVALUATION_START_INDEX:-0}"
+MAX_RUNS="${SLAM_REVALUATION_MAX_RUNS:-0}"
 
 # name|waypoints|mission_timeout_sec
 # Keep segments moderate: four+ waypoints often hit smoke mission timeout (stuck/recovery) in Gazebo.
@@ -92,9 +96,21 @@ case "$ODOM_PROFILE_SET" in
 esac
 
 RUN_COUNT=$((${#ODOM_PROFILES[@]} * ${#ICP_PROFILES[@]} * ${#SCENARIOS[@]}))
-LAST_DOMAIN_ID=$((BASE_ID + RUN_COUNT - 1))
+if ! [[ "$START_INDEX" =~ ^[0-9]+$ && "$MAX_RUNS" =~ ^[0-9]+$ ]]; then
+  echo "SLAM_REVALUATION_START_INDEX and SLAM_REVALUATION_MAX_RUNS must be non-negative integers." >&2
+  exit 2
+fi
+if (( START_INDEX >= RUN_COUNT )); then
+  echo "SLAM_REVALUATION_START_INDEX=$START_INDEX is outside the $RUN_COUNT run matrix." >&2
+  exit 2
+fi
+SELECTED_RUN_COUNT=$((RUN_COUNT - START_INDEX))
+if (( MAX_RUNS > 0 && MAX_RUNS < SELECTED_RUN_COUNT )); then
+  SELECTED_RUN_COUNT=$MAX_RUNS
+fi
+LAST_DOMAIN_ID=$((BASE_ID + SELECTED_RUN_COUNT - 1))
 if (( BASE_ID < 0 || LAST_DOMAIN_ID > 232 )); then
-  echo "ROS_DOMAIN_ID_BASE=$BASE_ID with $RUN_COUNT run(s) would use ROS_DOMAIN_ID $BASE_ID..$LAST_DOMAIN_ID." >&2
+  echo "ROS_DOMAIN_ID_BASE=$BASE_ID with $SELECTED_RUN_COUNT selected run(s) would use ROS_DOMAIN_ID $BASE_ID..$LAST_DOMAIN_ID." >&2
   echo "Fast DDS commonly requires ROS_DOMAIN_ID <= 232; choose a lower ROS_DOMAIN_ID_BASE." >&2
   exit 2
 fi
@@ -243,6 +259,10 @@ echo "ROOT_DIR=$ROOT_DIR"
 echo "TURTLEBOT3_MODEL=$TURTLEBOT3_MODEL"
 echo "PROFILE_SET=$PROFILE_SET"
 echo "ODOM_PROFILE_SET=$ODOM_PROFILE_SET"
+echo "RUN_COUNT=$RUN_COUNT"
+echo "START_INDEX=$START_INDEX"
+echo "MAX_RUNS=$MAX_RUNS"
+echo "SELECTED_RUN_COUNT=$SELECTED_RUN_COUNT"
 echo "CSV_REPORT=$CSV_REPORT"
 echo "JSONL_REPORT=$JSONL_REPORT"
 echo "SUMMARY_REPORT=$SUMMARY_REPORT"
@@ -250,6 +270,7 @@ echo "RUN_LOG_DIR=$RUN_LOG_DIR"
 echo
 
 run_idx=0
+selected_run_idx=0
 failed=0
 for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
   IFS='|' read -r odom_profile_name odom_profile_description odom_profile_env <<<"$odom_profile_entry"
@@ -267,11 +288,20 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
 
     for entry in "${SCENARIOS[@]}"; do
       IFS='|' read -r name wps mission_to <<<"$entry"
+      matrix_idx=$run_idx
+      run_idx=$((run_idx + 1))
+      if (( matrix_idx < START_INDEX )); then
+        continue
+      fi
+      if (( selected_run_idx >= SELECTED_RUN_COUNT )); then
+        continue
+      fi
+
       export WAYPOINT_NAV_WAYPOINTS="$wps"
       export SMOKE_MISSION_TIMEOUT="$mission_to"
-      export ROS_DOMAIN_ID=$((BASE_ID + run_idx))
-      printf -v run_label "%02d_%s_%s_%s" "$run_idx" "$odom_profile_name" "$profile_name" "$name"
-      run_idx=$((run_idx + 1))
+      export ROS_DOMAIN_ID=$((BASE_ID + selected_run_idx))
+      printf -v run_label "%02d_%s_%s_%s" "$matrix_idx" "$odom_profile_name" "$profile_name" "$name"
+      selected_run_idx=$((selected_run_idx + 1))
 
       out="$RUN_LOG_DIR/${run_label}.log"
       : >"$out"
@@ -435,6 +465,10 @@ done
   echo "- generated_at_utc: $REPORT_STAMP"
   echo "- profile_set: $PROFILE_SET"
   echo "- odom_profile_set: $ODOM_PROFILE_SET"
+  echo "- total_run_count: $RUN_COUNT"
+  echo "- start_index: $START_INDEX"
+  echo "- max_runs: $MAX_RUNS"
+  echo "- selected_run_count: $SELECTED_RUN_COUNT"
   echo "- turtlebot3_model: $TURTLEBOT3_MODEL"
   echo "- csv: $CSV_REPORT"
   echo "- jsonl: $JSONL_REPORT"
