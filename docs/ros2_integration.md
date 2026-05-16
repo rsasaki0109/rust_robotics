@@ -212,7 +212,7 @@ That switches the planner stack to `/slam_odom`, uses `map` as the global frame,
 
 Corrected mode also enables:
 
-- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, `icp_error_mean` (mean NN distance in meters per point), `blend_alpha`, `gate_reason`, and applied correction deltas
+- `/slam_diagnostics` (`std_msgs/String`) with per-scan ICP convergence, `icp_error_mean` (mean NN distance in meters per point), `icp_error_median`, `icp_error_p90`, `icp_inlier_ratio_5cm`, `icp_relative_error_reduction`, `blend_alpha`, `gate_reason`, and applied correction deltas
 - `/slam_ground_truth_status` (`std_msgs/String`) with relative-start Gazebo ground-truth error metrics computed from `gz topic -e -t /world/default/dynamic_pose/info --json-output`
 
 The ground-truth monitor defaults to `GROUND_TRUTH_ENTITY_NAME=$TURTLEBOT3_MODEL`, subtracts the first world pose sample, and compares `/ekf_odom` plus `/slam_odom` against that relative ground-truth trajectory. Override `GROUND_TRUTH_GZ_POSE_TOPIC` or `GROUND_TRUTH_ENTITY_NAME` if your Gazebo world uses different names.
@@ -338,9 +338,11 @@ By default, generated reports are ignored by git and written under:
 ```text
 reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.csv
 reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.jsonl
+reports/slam_revaluation/navigation_revaluation_<UTC timestamp>.summary.md
+reports/slam_revaluation/navigation_revaluation_<UTC timestamp>_logs/
 ```
 
-Each row records the scenario, exit code, mission completion flag, waypoint string, last ground-truth metrics (`raw_xy_error`, `slam_xy_error`, RMSE/max fields, `improvement_xy`, `slam_better_xy`), and last SLAM ICP diagnostics (`icp_error_mean`, `blend_alpha`, `gate_reason`, plus status/gate counts observed in the captured smoke output).
+Each row records the scenario, exit code, mission completion flag, waypoint string, last ground-truth metrics (`raw_xy_error`, `slam_xy_error`, RMSE/max fields, `improvement_xy`, `slam_better_xy`), and last SLAM ICP diagnostics (`icp_error_mean`, `icp_error_p90`, `icp_inlier_ratio_5cm`, `icp_relative_error_reduction`, `blend_alpha`, `gate_reason`, plus status/gate counts observed in the captured smoke output). The Markdown summary embeds `scripts/summarize_slam_revaluation.py` output, and the per-run logs preserve the raw smoke output used to derive each row.
 
 Useful overrides:
 
@@ -361,7 +363,10 @@ That keeps `/ekf_odom` as the raw baseline used by `/slam_ground_truth_status`, 
 
 - `raw_realistic`: raw EKF odom as SLAM input
 - `odom_xy_scale_1pct`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.01`
+- `odom_xy_scale_3pct`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.03`
 - `odom_yaw_drift_1deg_per_m`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.017453292519943295`
+- `odom_yaw_drift_3deg_per_m`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.05235987755982988`
+- `odom_turn_yaw_scale_3pct`: `ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_SCALE=1.03`
 
 To run a small ICP tuning sweep, enable the `tuning` profile set:
 

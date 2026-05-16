@@ -7,6 +7,8 @@
 # Optional:
 #   ROS_DOMAIN_ID_BASE=210  # first run uses this ID, then increments per scenario
 #   SLAM_REVALUATION_REPORT_DIR=reports/slam_revaluation
+#   SLAM_REVALUATION_SUMMARY=reports/slam_revaluation/summary.md
+#   SLAM_REVALUATION_LOG_DIR=reports/slam_revaluation/run_logs
 #   SLAM_REVALUATION_PROFILE_SET=tuning  # baseline (default) or tuning
 #   SLAM_REVALUATION_ODOM_PROFILE_SET=biased  # baseline (default) or biased
 #
@@ -34,6 +36,8 @@ REPORT_DIR="${SLAM_REVALUATION_REPORT_DIR:-$ROOT_DIR/reports/slam_revaluation}"
 REPORT_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 CSV_REPORT="${SLAM_REVALUATION_CSV:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}.csv}"
 JSONL_REPORT="${SLAM_REVALUATION_JSONL:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}.jsonl}"
+SUMMARY_REPORT="${SLAM_REVALUATION_SUMMARY:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}.summary.md}"
+RUN_LOG_DIR="${SLAM_REVALUATION_LOG_DIR:-$REPORT_DIR/navigation_revaluation_${REPORT_STAMP}_logs}"
 PROFILE_SET="${SLAM_REVALUATION_PROFILE_SET:-baseline}"
 ODOM_PROFILE_SET="${SLAM_REVALUATION_ODOM_PROFILE_SET:-baseline}"
 
@@ -75,7 +79,10 @@ case "$ODOM_PROFILE_SET" in
     ODOM_PROFILES=(
       "raw_realistic|use raw EKF odom as SLAM input|"
       "odom_xy_scale_1pct|feed SLAM input odom with 1 percent relative XY scale drift|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.01"
+      "odom_xy_scale_3pct|feed SLAM input odom with 3 percent relative XY scale drift|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_XY_SCALE=1.03"
       "odom_yaw_drift_1deg_per_m|feed SLAM input odom with 1 degree yaw drift per meter|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.017453292519943295"
+      "odom_yaw_drift_3deg_per_m|feed SLAM input odom with 3 degree yaw drift per meter|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_BIAS_PER_METER=0.05235987755982988"
+      "odom_turn_yaw_scale_3pct|feed SLAM input odom with 3 percent relative yaw scale drift|ENABLE_SLAM_INPUT_ODOM_BIAS=true SLAM_INPUT_ODOM_YAW_SCALE=1.03"
     )
     ;;
   *)
@@ -187,7 +194,7 @@ count_key_values_with_token() {
   printf '%s' "$values"
 }
 
-mkdir -p "$(dirname "$CSV_REPORT")" "$(dirname "$JSONL_REPORT")"
+mkdir -p "$(dirname "$CSV_REPORT")" "$(dirname "$JSONL_REPORT")" "$(dirname "$SUMMARY_REPORT")" "$RUN_LOG_DIR"
 write_csv_row "$CSV_REPORT" \
   "odom_profile" \
   "odom_profile_description" \
@@ -216,6 +223,11 @@ write_csv_row "$CSV_REPORT" \
   "slam_better_yaw" \
   "icp_status" \
   "icp_error_mean" \
+  "icp_initial_error_mean" \
+  "icp_error_median" \
+  "icp_error_p90" \
+  "icp_inlier_ratio_5cm" \
+  "icp_relative_error_reduction" \
   "icp_iterations" \
   "icp_converged" \
   "scan_points" \
@@ -233,6 +245,8 @@ echo "PROFILE_SET=$PROFILE_SET"
 echo "ODOM_PROFILE_SET=$ODOM_PROFILE_SET"
 echo "CSV_REPORT=$CSV_REPORT"
 echo "JSONL_REPORT=$JSONL_REPORT"
+echo "SUMMARY_REPORT=$SUMMARY_REPORT"
+echo "RUN_LOG_DIR=$RUN_LOG_DIR"
 echo
 
 run_idx=0
@@ -256,9 +270,11 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
       export WAYPOINT_NAV_WAYPOINTS="$wps"
       export SMOKE_MISSION_TIMEOUT="$mission_to"
       export ROS_DOMAIN_ID=$((BASE_ID + run_idx))
+      printf -v run_label "%02d_%s_%s_%s" "$run_idx" "$odom_profile_name" "$profile_name" "$name"
       run_idx=$((run_idx + 1))
 
-      out="$(mktemp)"
+      out="$RUN_LOG_DIR/${run_label}.log"
+      : >"$out"
       echo ">>> Odom profile: $odom_profile_name"
       echo "    $odom_profile_description"
       if [[ -n "$odom_profile_env" ]]; then
@@ -303,6 +319,11 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
 
       icp_status="$(kv_get "$diag_line" "status")"
       icp_error_mean="$(kv_get "$diag_line" "icp_error_mean")"
+      icp_initial_error_mean="$(kv_get "$diag_line" "icp_initial_error_mean")"
+      icp_error_median="$(kv_get "$diag_line" "icp_error_median")"
+      icp_error_p90="$(kv_get "$diag_line" "icp_error_p90")"
+      icp_inlier_ratio_5cm="$(kv_get "$diag_line" "icp_inlier_ratio_5cm")"
+      icp_relative_error_reduction="$(kv_get "$diag_line" "icp_relative_error_reduction")"
       icp_iterations="$(kv_get "$diag_line" "icp_iterations")"
       icp_converged="$(kv_get "$diag_line" "icp_converged")"
       scan_points="$(kv_get "$diag_line" "scan_points")"
@@ -338,6 +359,11 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
         "$slam_better_yaw" \
         "$icp_status" \
         "$icp_error_mean" \
+        "$icp_initial_error_mean" \
+        "$icp_error_median" \
+        "$icp_error_p90" \
+        "$icp_inlier_ratio_5cm" \
+        "$icp_relative_error_reduction" \
         "$icp_iterations" \
         "$icp_converged" \
         "$scan_points" \
@@ -375,6 +401,11 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
         "slam_better_yaw" "$slam_better_yaw" \
         "icp_status" "$icp_status" \
         "icp_error_mean" "$icp_error_mean" \
+        "icp_initial_error_mean" "$icp_initial_error_mean" \
+        "icp_error_median" "$icp_error_median" \
+        "icp_error_p90" "$icp_error_p90" \
+        "icp_inlier_ratio_5cm" "$icp_inlier_ratio_5cm" \
+        "icp_relative_error_reduction" "$icp_relative_error_reduction" \
         "icp_iterations" "$icp_iterations" \
         "icp_converged" "$icp_converged" \
         "scan_points" "$scan_points" \
@@ -391,17 +422,34 @@ for odom_profile_entry in "${ODOM_PROFILES[@]}"; do
       else
         echo "    RESULT: OK"
         echo "    Metrics: raw_xy_error=${raw_xy_error:-n/a} slam_xy_error=${slam_xy_error:-n/a} improvement_xy=${improvement_xy:-n/a} slam_better_xy=${slam_better_xy:-n/a}"
-        echo "    ICP: status=${icp_status:-n/a} icp_error_mean=${icp_error_mean:-n/a} blend_alpha=${blend_alpha:-n/a} gate_reason=${gate_reason:-n/a}"
+        echo "    ICP: status=${icp_status:-n/a} icp_error_mean=${icp_error_mean:-n/a} icp_error_p90=${icp_error_p90:-n/a} inlier_5cm=${icp_inlier_ratio_5cm:-n/a} blend_alpha=${blend_alpha:-n/a} gate_reason=${gate_reason:-n/a}"
       fi
       echo
-      rm -f "$out"
     done
   done
 done
 
+{
+  echo "# Corrected-frame SLAM revaluation summary"
+  echo
+  echo "- generated_at_utc: $REPORT_STAMP"
+  echo "- profile_set: $PROFILE_SET"
+  echo "- odom_profile_set: $ODOM_PROFILE_SET"
+  echo "- turtlebot3_model: $TURTLEBOT3_MODEL"
+  echo "- csv: $CSV_REPORT"
+  echo "- jsonl: $JSONL_REPORT"
+  echo "- logs: $RUN_LOG_DIR"
+  echo
+  echo '```text'
+  python3 "$ROOT_DIR/scripts/summarize_slam_revaluation.py" "$CSV_REPORT"
+  echo '```'
+} >"$SUMMARY_REPORT"
+
 echo "Reports written:"
 echo "  CSV:   $CSV_REPORT"
 echo "  JSONL: $JSONL_REPORT"
+echo "  Summary: $SUMMARY_REPORT"
+echo "  Logs:    $RUN_LOG_DIR"
 echo
 
 if [[ "$failed" -eq 0 ]]; then
