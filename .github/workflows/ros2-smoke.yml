@@ -120,7 +120,7 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_revaluation == 'true' }}
       run: |
         source /opt/ros/jazzy/setup.bash
-        ROS_DOMAIN_ID_BASE=200 \
+        ROS_DOMAIN_ID_BASE=120 \
         SLAM_REVALUATION_PROFILE_SET="${{ inputs.revaluation_profile_set }}" \
         SLAM_REVALUATION_ODOM_PROFILE_SET="${{ inputs.revaluation_odom_profile_set }}" \
         timeout 75m ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
