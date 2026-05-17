@@ -47,10 +47,15 @@ MAX_RUNS="${SLAM_REVALUATION_MAX_RUNS:-0}"
 
 # name|waypoints|mission_timeout_sec
 # Keep segments moderate: four+ waypoints often hit smoke mission timeout (stuck/recovery) in Gazebo.
+# rich_geometry_turns extends sustained forward motion past the LIDAR noise floor
+# (~1.3 cm mean residual) so scan-to-scan ICP has something to correct; it keeps
+# per-segment length at 0.55 m (matching the working scenarios) and stays clear
+# of the turtlebot3_world cylinder grid at x=-1.1,0,1.1 and y=-1.1,0,1.1.
 SCENARIOS=(
   "short_default|0.4,0.0;0.1,0.4|150"
   "three_hops|0.45,0.0;0.35,0.45;0.05,0.5|200"
   "long_two_legs|0.55,0.0;0.2,0.55|200"
+  "rich_geometry_turns|0.55,0.0;1.10,0.0;1.10,0.55;0.55,0.55|240"
 )
 
 case "$PROFILE_SET" in
@@ -63,8 +68,8 @@ case "$PROFILE_SET" in
     ICP_PROFILES=(
       "default|built-in ICP gating defaults|"
       "low_alpha|reduce accepted ICP correction weight|SLAM_ICP_BLEND_ALPHA=0.10"
-      "strict_error|reject weaker ICP matches earlier|SLAM_ICP_REJECT_ERROR=0.011"
-      "strict_low_alpha|lower blend weight and reject weaker ICP matches earlier|SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.011"
+      "strict_error|reject weaker ICP matches earlier|SLAM_ICP_REJECT_ERROR=0.008"
+      "strict_low_alpha|lower blend weight and reject weaker ICP matches earlier|SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.008"
       "loose_error|raise ICP reject error past LIDAR noise floor|SLAM_ICP_REJECT_ERROR=0.018"
       "loose_error_low_alpha|raise ICP reject error and lower blend weight|SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.018"
       "very_loose_error|raise ICP reject error to 2.3x default|SLAM_ICP_REJECT_ERROR=0.025"
