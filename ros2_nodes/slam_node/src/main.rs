@@ -114,6 +114,11 @@ struct ScanDiagnostics {
     icp_converged: bool,
     icp_iterations: usize,
     icp_final_error: f64,
+    icp_initial_error: f64,
+    icp_error_median: f64,
+    icp_error_p90: f64,
+    icp_inlier_ratio_5cm: f64,
+    icp_relative_error_reduction: f64,
     odom_delta: Option<MotionDelta>,
     icp_delta: Option<MotionDelta>,
     applied_delta: Option<MotionDelta>,
@@ -574,6 +579,14 @@ fn format_slam_diagnostics(
         format!("icp_converged={}", diagnostics.icp_converged),
         format!("icp_iterations={}", diagnostics.icp_iterations),
         format!("icp_error_mean={:.4}", diagnostics.icp_final_error),
+        format!("icp_initial_error_mean={:.4}", diagnostics.icp_initial_error),
+        format!("icp_error_median={:.4}", diagnostics.icp_error_median),
+        format!("icp_error_p90={:.4}", diagnostics.icp_error_p90),
+        format!("icp_inlier_ratio_5cm={:.3}", diagnostics.icp_inlier_ratio_5cm),
+        format!(
+            "icp_relative_error_reduction={:.3}",
+            diagnostics.icp_relative_error_reduction
+        ),
         format!("blend_applied={}", diagnostics.blend_applied),
         format!("blend_alpha={:.3}", diagnostics.blend_alpha),
         format!("gate_reason={}", diagnostics.gate_reason),
@@ -807,12 +820,22 @@ fn main() -> Result<(), DynError> {
             let mut icp_converged = false;
             let mut icp_iterations = 0;
             let mut icp_final_error = f64::NAN;
+            let mut icp_initial_error = f64::NAN;
+            let mut icp_error_median = f64::NAN;
+            let mut icp_error_p90 = f64::NAN;
+            let mut icp_inlier_ratio_5cm = f64::NAN;
+            let mut icp_relative_error_reduction = f64::NAN;
             let mut icp_delta = None;
             if let Some(previous) = st.previous_scan.as_ref() {
                 let icp_result = icp_matching(previous, &current_scan);
                 icp_converged = icp_result.converged;
                 icp_iterations = icp_result.iterations;
                 icp_final_error = icp_result.final_error_mean;
+                icp_initial_error = icp_result.initial_error_mean;
+                icp_error_median = icp_result.final_error_median;
+                icp_error_p90 = icp_result.final_error_p90;
+                icp_inlier_ratio_5cm = icp_result.inlier_ratio_5cm;
+                icp_relative_error_reduction = icp_result.relative_error_reduction;
                 icp_delta = icp_motion_delta(&icp_result);
                 let now = Instant::now();
                 if !icp_result.converged {
@@ -935,6 +958,11 @@ fn main() -> Result<(), DynError> {
                     icp_converged,
                     icp_iterations,
                     icp_final_error,
+                    icp_initial_error,
+                    icp_error_median,
+                    icp_error_p90,
+                    icp_inlier_ratio_5cm,
+                    icp_relative_error_reduction,
                     odom_delta,
                     icp_delta,
                     applied_delta,
@@ -1161,6 +1189,11 @@ mod tests {
                 icp_converged: true,
                 icp_iterations: 7,
                 icp_final_error: 0.006,
+                icp_initial_error: 0.040,
+                icp_error_median: 0.005,
+                icp_error_p90: 0.010,
+                icp_inlier_ratio_5cm: 0.950,
+                icp_relative_error_reduction: 0.850,
                 odom_delta: Some(MotionDelta {
                     x: 0.1,
                     y: 0.0,
@@ -1184,6 +1217,9 @@ mod tests {
         );
         assert!(text.contains("status=icp_ok"));
         assert!(text.contains("icp_error_mean=0.006"));
+        assert!(text.contains("icp_error_p90=0.010"));
+        assert!(text.contains("icp_inlier_ratio_5cm=0.950"));
+        assert!(text.contains("icp_relative_error_reduction=0.850"));
         assert!(text.contains("scan_points=42"));
         assert!(text.contains("odom_dx=0.100"));
         assert!(text.contains("applied_dyaw=0.015"));
