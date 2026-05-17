@@ -339,6 +339,16 @@ capture_topic_once "/map" "nav_msgs/msg/OccupancyGrid" "$MAP_OUT" "$SMOKE_STARTU
 capture_topic_once "/planned_path" "nav_msgs/msg/Path" "$PATH_OUT" "$SMOKE_STARTUP_TIMEOUT"
 capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status="
 capture_topic_stream_until "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status=" "icp_" "blend_alpha=" "gate_reason="
+# /slam_diagnostics is now alive; subscribe continuously so the mission
+# window (motion) is captured. The remaining startup waits plus the
+# post-completion verifications would otherwise let the robot reach the
+# goal before the later capture started, yielding only stationary samples.
+if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
+  : >"$SLAM_DIAG_MISSION_OUT"
+  stdbuf -oL -eL ros2 topic echo --full-length "$SLAM_DIAGNOSTICS_TOPIC" std_msgs/msg/String \
+    >"$SLAM_DIAG_MISSION_OUT" 2>>"$LAUNCH_LOG" &
+  mission_diag_pid=$!
+fi
 capture_topic_stream_until "/mission_markers" "visualization_msgs/msg/MarkerArray" "$MARKERS_OUT" "$SMOKE_STARTUP_TIMEOUT" "ns: mission"
 capture_nav_tf "$SMOKE_STARTUP_TIMEOUT"
 
@@ -357,10 +367,6 @@ if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
     capture_topic_stream_until "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status=ok" "slam_xy_error="
   fi
-  : >"$SLAM_DIAG_MISSION_OUT"
-  stdbuf -oL -eL ros2 topic echo --full-length "$SLAM_DIAGNOSTICS_TOPIC" std_msgs/msg/String \
-    >"$SLAM_DIAG_MISSION_OUT" 2>>"$LAUNCH_LOG" &
-  mission_diag_pid=$!
 fi
 
 wait_for_log_pattern "mission complete at waypoint" "$SMOKE_MISSION_TIMEOUT"
