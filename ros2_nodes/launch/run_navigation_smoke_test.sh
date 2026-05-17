@@ -61,6 +61,7 @@ TMP_DIR="$(mktemp -d)"
 LAUNCH_LOG="$TMP_DIR/navigation_demo.log"
 STATUS_OUT="$TMP_DIR/mission_status.txt"
 SLAM_DIAG_OUT="$TMP_DIR/slam_diagnostics.txt"
+SLAM_DIAG_MISSION_OUT="$TMP_DIR/slam_diagnostics_mission.txt"
 SLAM_GT_STATUS_OUT="$TMP_DIR/slam_ground_truth_status.txt"
 MARKERS_OUT="$TMP_DIR/mission_markers.txt"
 ODOM_OUT="$TMP_DIR/nav_odom.txt"
@@ -69,9 +70,14 @@ TF_MAP_ODOM_OUT="$TMP_DIR/tf_map_odom.txt"
 MAP_OUT="$TMP_DIR/map.txt"
 PATH_OUT="$TMP_DIR/planned_path.txt"
 launch_pid=""
+mission_diag_pid=""
 
 cleanup() {
   local exit_code=$?
+  if [[ -n "$mission_diag_pid" ]] && kill -0 "$mission_diag_pid" 2>/dev/null; then
+    kill "$mission_diag_pid" 2>/dev/null || true
+    wait "$mission_diag_pid" 2>/dev/null || true
+  fi
   if [[ -n "$launch_pid" ]] && kill -0 "$launch_pid" 2>/dev/null; then
     kill -INT -- "-$launch_pid" 2>/dev/null || true
     wait "$launch_pid" 2>/dev/null || true
@@ -79,6 +85,11 @@ cleanup() {
 
   if [[ "$exit_code" -ne 0 ]]; then
     echo
+    if [[ -s "$SLAM_DIAG_MISSION_OUT" ]]; then
+      echo "Mission-window slam diagnostics (captured before failure):" >&2
+      cat "$SLAM_DIAG_MISSION_OUT" >&2 || true
+      echo >&2
+    fi
     echo "Smoke test failed. Launch log tail:" >&2
     tail -n 120 "$LAUNCH_LOG" >&2 || true
   fi
@@ -346,6 +357,10 @@ if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   if [[ "$ENABLE_SLAM_GROUND_TRUTH_MONITOR" == "true" ]]; then
     capture_topic_stream_until "$SLAM_GROUND_TRUTH_STATUS_TOPIC" "std_msgs/msg/String" "$SLAM_GT_STATUS_OUT" "$SMOKE_STARTUP_TIMEOUT" "data: status=ok" "slam_xy_error="
   fi
+  : >"$SLAM_DIAG_MISSION_OUT"
+  stdbuf -oL -eL ros2 topic echo --full-length "$SLAM_DIAGNOSTICS_TOPIC" std_msgs/msg/String \
+    >"$SLAM_DIAG_MISSION_OUT" 2>>"$LAUNCH_LOG" &
+  mission_diag_pid=$!
 fi
 
 wait_for_log_pattern "mission complete at waypoint" "$SMOKE_MISSION_TIMEOUT"
@@ -354,6 +369,12 @@ wait_for_log_pattern "planned path cleared" "$SMOKE_MISSION_TIMEOUT"
 wait_for_log_pattern "published stop command after path clear" "$SMOKE_MISSION_TIMEOUT"
 
 capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=completed"
+
+if [[ -n "$mission_diag_pid" ]] && kill -0 "$mission_diag_pid" 2>/dev/null; then
+  kill "$mission_diag_pid" 2>/dev/null || true
+  wait "$mission_diag_pid" 2>/dev/null || true
+fi
+mission_diag_pid=""
 
 if [[ "$ENABLE_SLAM_CORRECTED_FRAME" == "true" ]]; then
   capture_topic_stream_until "$SLAM_DIAGNOSTICS_TOPIC" "std_msgs/msg/String" "$SLAM_DIAG_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=" "icp_" "blend_alpha=" "gate_reason="
@@ -368,6 +389,11 @@ fi
 echo "Verified mission status topic:"
 cat "$STATUS_OUT"
 echo
+if [[ -s "$SLAM_DIAG_MISSION_OUT" ]]; then
+  echo "Mission-window slam diagnostics:"
+  cat "$SLAM_DIAG_MISSION_OUT"
+  echo
+fi
 echo "Verified slam diagnostics topic:"
 cat "$SLAM_DIAG_OUT"
 echo
