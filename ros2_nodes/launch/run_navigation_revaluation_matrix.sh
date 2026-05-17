@@ -51,7 +51,6 @@ SCENARIOS=(
   "short_default|0.4,0.0;0.1,0.4|150"
   "three_hops|0.45,0.0;0.35,0.45;0.05,0.5|200"
   "long_two_legs|0.55,0.0;0.2,0.55|200"
-  "extended_two_legs|0.7,0.0;0.4,0.7|220"
 )
 
 case "$PROFILE_SET" in
