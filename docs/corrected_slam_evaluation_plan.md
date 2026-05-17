@@ -351,14 +351,62 @@ Paths considered earlier:
 - Path D (document findings, pause tuning): done in this section.
 - Path E (new, the actual next step): scenario-side fix described above.
 
+### First rich_geometry_turns attempt — scenario design works, path was too tight
+
+The first shape committed for `rich_geometry_turns` was
+`0.55,0.0;1.10,0.0;1.10,0.55;0.55,0.55` (4 waypoints, 2.2 m, two 90-degree
+turns). The mission did **not** complete on the baseline odom + default
+profile validation run (Actions run `26015254947`,
+`navigation_revaluation_20260518T053249Z`). The robot reached waypoint 1
+`(0.55, 0)` and then republished waypoint 2 `(1.10, 0)` until the 240 s
+timeout: world `(-0.9, -0.5)` requires squeezing between the
+turtlebot3_world cylinder columns at `x=-1.1` and `x=0`, where the path
+clearance to the `(-1.1, 0)` cylinder is only about 0.5 m. After DWA
+costmap inflation the navigable corridor is roughly 0.245 m on each side,
+which the burger could not fit through reliably. The existing successful
+scenarios (`short_default`, `three_hops`, `long_two_legs`) all stay at
+relative `x <= 0.55`, i.e. world `x <= -1.45`, and never cross any
+cylinder column — that is why they complete.
+
+However the 1314 mid-mission diagnostic samples captured during that
+failed run are an unexpectedly clean positive control for the scenario
+design itself:
+
+- `icp_initial_error_mean = 0.110` (large per-scan nearest-neighbor
+  distance before ICP transform; consistent with the robot actually
+  rotating and translating between scans)
+- `icp_error_mean = 0.014` after ICP convergence
+- `icp_relative_error_reduction = 0.873` (about 87 percent)
+- `icp_inlier_ratio_5cm = 0.991`
+- `icp_iterations = 28` (median; converges with effort, well below the
+  100-iteration cap)
+- All 1314 samples gated `high_error` because `0.014 > DEFAULT_ICP_REJECT_ERROR (0.011)`
+
+This is the regime the previous scenarios never reached: ICP is finding
+a meaningful correction signal, but the default reject threshold is just
+below the converged residual floor and rejects every match. With
+`loose_error (0.018)` the same samples would mostly be admitted through
+the attenuated path with nonzero blend alpha. So once a navigable
+rich_geometry_turns variant exists, the next tuning question becomes:
+"on this scenario, with this much actual ICP signal, does `loose_error`
+help, hurt, or stay neutral?"
+
+Reshaped path (current): `0.55,0.0;0.55,0.5;0.0,0.5` — three waypoints,
+two 90-degree turns, ~1.6 m total, all inside the working-scenario
+corridor at relative `x <= 0.55`. Pending fresh validation.
+
 ### Followups not addressed yet
 
-- `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) matrix rows 60-62 were
-  never executed; the workflow run hit a step timeout at 6/9 results. Do
-  not re-run loose sweeps until a positive-control scenario with sustained
-  forward motion is in place. Without one, looser thresholds just admit
-  more LIDAR noise.
-- The `strict_error` / `strict_low_alpha` duplicate-of-default bug above.
-- The biased-odom revaluation still has no positive-control scenario. Add
-  `rich_geometry_turns` (and optionally `long_loop_return`) per the
-  Scenario Roadmap before the next tuning sprint.
+- `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) matrix rows 60-62
+  from the older biased sweep were never executed; do not re-run loose
+  sweeps on short_default / three_hops / long_two_legs (those are
+  rotation-dominated and the loose threshold just admits noise).
+  Re-evaluate only after rich_geometry_turns is reliably completing.
+- Once `rich_geometry_turns` passes the baseline+default validation, the
+  natural next sweep is **baseline odom × tuning ICP profiles × all four
+  scenarios** (28 runs). That isolates whether `loose_error` helps when
+  ICP actually has signal, without the biased odom confound. Only then
+  expand to biased odom.
+- The biased-odom revaluation still has no positive-control scenario for
+  drift correction. Consider `long_loop_return` (6-10 m, returns near
+  start) after rich_geometry_turns stabilizes.
