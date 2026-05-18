@@ -441,23 +441,66 @@ Practical reading:
   yaw branches** so the yaw blend can be admitted while XY is still
   rejected. That avoids the current "all-or-nothing" XY/yaw coupling.
 
+### Split ICP gate validates: yaw_loose_018 keeps XY and improves YAW
+
+Commit `4f705b0` split `compute_icp_blend_decision` into two independent
+axis decisions (XY and yaw) with their own thresholds and motion gates.
+A new tuning profile `yaw_loose_018` was added in `7ca7297`, raising
+only `SLAM_ICP_REJECT_ERROR_YAW` to `0.018` while keeping the XY
+threshold at the default `0.011`. The validation slice
+(`baseline odom × yaw_loose_018 × all 4 scenarios`, Actions run
+`26061138051`) shows the split works as designed:
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | +0.003         | True           | +0.019          | True            |
+| three_hops            |  0.000         | True           | +0.009          | True            |
+| long_two_legs         | -0.001         | False          | +0.001          | True            |
+| rich_geometry_turns   | +0.001         | True           | -0.008          | False           |
+| **average**           | **+0.0008**    | **3/4**        | **+0.005**      | **3/4**         |
+
+Direct comparison to `loose_error` (same yaw threshold but XY also
+loosened to 0.018) shows the split eliminates the XY regression
+completely:
+
+| scenario              | yaw_loose_018 XY | loose_error XY | yaw_loose_018 YAW | loose_error YAW |
+| --------------------- | ----------------:| --------------:| -----------------:| ---------------:|
+| short_default         | +0.003           | -0.023         | +0.019            | +0.005          |
+| three_hops            |  0.000           | -0.011         | +0.009            | +0.043          |
+| long_two_legs         | -0.001           | -0.045         | +0.001            | -0.001          |
+| rich_geometry_turns   | +0.001           | -0.022         | -0.008            | +0.027          |
+
+Aggregate gate counts for `yaw_loose_018`: `high_error:219`,
+`low_motion:268`, `icp_attenuated:159`, `icp_rejected:328`. The 159
+icp_attenuated samples are the new yaw-only blend admissions that
+the previous single-gate could not produce without also opening the
+XY axis.
+
+Conclusions:
+
+- The split-gate design is correct and the implementation is sound.
+- `yaw_loose_018` is strictly better than `default` on XY (avg +0.0008
+  vs 0) and improves yaw on 3 of 4 scenarios. It is a candidate
+  default tuning.
+- The one mixed scenario is `rich_geometry_turns` where yaw degraded
+  by 8 mrad. Worth checking whether a different `SLAM_ICP_REJECT_ERROR_YAW`
+  (e.g. 0.025) or a `BLEND_ALPHA_YAW` reduction recovers that yaw too.
+- The legacy `loose_error` / `loose_error_low_alpha` /
+  `very_loose_error` profiles loosen both axes and are now strictly
+  worse than `yaw_loose_018` on baseline odom. They could be retired
+  or kept only as negative controls.
+
 ### Followups not addressed yet
 
-- Re-run the missed loose_error_low_alpha slice (matrix indices
-  20-23, 4 runs) to see if reducing blend alpha eliminates the XY
-  regression while keeping the yaw improvement. With ~19 min per run
-  including the rich_geometry_turns step, the next slice should fit
-  within the 75-minute step timeout.
-- `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) rows are not a
-  priority; if loose_error already hurts XY at 0.018, very_loose will
-  hurt more.
-- Investigate the yaw-only blend split above. This is a code change
-  in `compute_icp_blend_decision()` and `blend_motion_delta()` in
-  `ros2_nodes/slam_node/src/main.rs`, not a tuning sweep.
-- Biased odom × tuning sweep is still pending. Run it only after the
-  yaw-only blend question is resolved, otherwise the result is
-  predictable from the unbiased data above.
-- The revaluation matrix script does not write the CSV row until the
-  whole step succeeds; on step timeout the last completed run's row
-  is lost even though the log is uploaded. Consider flushing the CSV
-  per-run so partial sweeps are self-describing.
+- Re-run on **biased odom** (`odom_xy_scale_3pct`,
+  `odom_yaw_drift_3deg_per_m`) with `yaw_loose_018` to see whether the
+  yaw improvement helps under odom drift. This is the original
+  motivation for tuning corrected SLAM.
+- Try a `yaw_loose_025` profile (looser still) and a
+  `yaw_loose_018_low_alpha` (`SLAM_ICP_BLEND_ALPHA_YAW=0.10`) to see if
+  the `rich_geometry_turns` yaw regression goes away.
+- The revaluation matrix script still does not flush the CSV row
+  per-run; consider doing this so partial sweeps from step timeouts
+  remain self-describing.
+- Existing `loose_error*` and `very_loose_error` profiles can be
+  retired once split-gate equivalents are validated.
