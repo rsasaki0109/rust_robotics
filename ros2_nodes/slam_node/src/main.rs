@@ -111,6 +111,36 @@ struct SlamState {
     previous_scan: Option<DMatrix<f64>>,
     previous_raw_odom_at_scan: Option<Pose2D>,
     last_icp_log_at: Option<Instant>,
+    /// Accumulated local point cloud in the corrected world frame. Only
+    /// populated when `SLAM_ICP_MODE=scan_to_map`.
+    local_submap_world: Option<DMatrix<f64>>,
+    /// Number of scans appended into `local_submap_world` since startup;
+    /// gates the bootstrap before scan-to-map ICP is allowed to run.
+    local_submap_scan_count: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum IcpMode {
+    ScanToScan,
+    ScanToMap,
+}
+
+impl IcpMode {
+    fn as_str(self) -> &'static str {
+        match self {
+            IcpMode::ScanToScan => "scan_to_scan",
+            IcpMode::ScanToMap => "scan_to_map",
+        }
+    }
+}
+
+/// Submap tuning loaded from env at startup. Holds capacity bounds plus the
+/// bootstrap-scan count that gates scan-to-map ICP off until the submap has
+/// enough material to match against.
+#[derive(Clone, Copy, Debug)]
+struct SubmapParams {
+    budget: SubmapBudget,
+    bootstrap_scans: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -133,6 +163,11 @@ struct ScanDiagnostics {
     blend_alpha_yaw: f64,
     gate_reason: &'static str,
     gate_reason_yaw: &'static str,
+    /// Which ICP target was matched against on this scan. Always reported so
+    /// downstream summarizers can split rows by mode without parsing env.
+    icp_mode: &'static str,
+    /// Submap point count after this scan was processed. 0 under scan_to_scan.
+    submap_points: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -213,6 +248,45 @@ fn icp_point_stride_from_env() -> usize {
         .and_then(|raw| raw.trim().parse::<usize>().ok())
         .unwrap_or(1);
     s.clamp(1, 16)
+}
+
+/// Read `SLAM_ICP_MODE`. Default is scan-to-scan so the existing smoke and
+/// matrix paths behave identically when the flag is unset.
+fn icp_mode_from_env() -> IcpMode {
+    match env::var("SLAM_ICP_MODE").ok().as_deref() {
+        Some(raw) => match raw.trim().to_ascii_lowercase().as_str() {
+            "scan_to_map" | "scan-to-map" | "scantomap" => IcpMode::ScanToMap,
+            _ => IcpMode::ScanToScan,
+        },
+        None => IcpMode::ScanToScan,
+    }
+}
+
+const DEFAULT_SUBMAP_MAX_POINTS: usize = 6_400;
+const DEFAULT_SUBMAP_RADIUS_M: f64 = 3.0;
+const DEFAULT_SUBMAP_BOOTSTRAP_SCANS: usize = 3;
+
+fn submap_params_from_env() -> SubmapParams {
+    let max_points = env::var("SLAM_SUBMAP_MAX_POINTS")
+        .ok()
+        .and_then(|raw| raw.trim().parse::<usize>().ok())
+        .unwrap_or(DEFAULT_SUBMAP_MAX_POINTS);
+    let max_radius_m = env::var("SLAM_SUBMAP_RADIUS_M")
+        .ok()
+        .and_then(|raw| raw.trim().parse::<f64>().ok())
+        .filter(|v| v.is_finite() && *v > 0.0)
+        .unwrap_or(DEFAULT_SUBMAP_RADIUS_M);
+    let bootstrap_scans = env::var("SLAM_SUBMAP_BOOTSTRAP_SCANS")
+        .ok()
+        .and_then(|raw| raw.trim().parse::<usize>().ok())
+        .unwrap_or(DEFAULT_SUBMAP_BOOTSTRAP_SCANS);
+    SubmapParams {
+        budget: SubmapBudget {
+            max_points,
+            max_radius_m,
+        },
+        bootstrap_scans,
+    }
 }
 
 fn copy_stamp(
@@ -388,7 +462,6 @@ fn translation_magnitude(delta: MotionDelta) -> f64 {
 ///
 /// Each column is a 2D point `(x, y)` in `pose`'s body frame. Returns a fresh
 /// `2×N` matrix of the same points expressed in the world frame.
-#[allow(dead_code)] // wired into the scan callback in scan-to-map Phase 2.
 fn transform_scan_to_world(scan_body: &DMatrix<f64>, pose: Pose2D) -> DMatrix<f64> {
     if scan_body.nrows() < 2 || scan_body.ncols() == 0 {
         return DMatrix::zeros(scan_body.nrows().max(2), scan_body.ncols());
@@ -411,7 +484,6 @@ fn transform_scan_to_world(scan_body: &DMatrix<f64>, pose: Pose2D) -> DMatrix<f6
 /// `residual.yaw`, then translate by `(residual.x, residual.y)`, and add
 /// `residual.yaw` to the predicted yaw. This is the inverse mapping of how
 /// scan-to-map ICP returns its residual (it rotates *points* in world frame).
-#[allow(dead_code)] // consumed by the scan-to-map blending seam in Phase 2.
 fn apply_world_residual(predicted: Pose2D, residual_world: MotionDelta) -> Pose2D {
     let cos_yaw = residual_world.yaw.cos();
     let sin_yaw = residual_world.yaw.sin();
@@ -427,7 +499,6 @@ fn apply_world_residual(predicted: Pose2D, residual_world: MotionDelta) -> Pose2
 /// `max_points` caps point count so ICP cost stays predictable; `max_radius_m`
 /// is the L2 radius around `anchor` outside of which points are pruned, so the
 /// submap stays a *local* reference as the robot drives.
-#[allow(dead_code)] // populated by Phase 2 submap state plumbing.
 #[derive(Clone, Copy, Debug)]
 struct SubmapBudget {
     max_points: usize,
@@ -747,6 +818,8 @@ fn format_slam_diagnostics(
         format!("raw_frame={}", raw_frame_id),
         format!("corrected_mode={}", corrected_mode),
         format!("scan_points={}", diagnostics.scan_points),
+        format!("icp_mode={}", diagnostics.icp_mode),
+        format!("submap_points={}", diagnostics.submap_points),
         format!("icp_converged={}", diagnostics.icp_converged),
         format!("icp_iterations={}", diagnostics.icp_iterations),
         format!("icp_error_mean={:.4}", diagnostics.icp_final_error),
@@ -908,6 +981,8 @@ fn main() -> Result<(), DynError> {
         previous_scan: None,
         previous_raw_odom_at_scan: None,
         last_icp_log_at: None,
+        local_submap_world: None,
+        local_submap_scan_count: 0,
     }));
 
     let logger = Logger::new("slam_node");
@@ -931,6 +1006,18 @@ fn main() -> Result<(), DynError> {
             icp_params.max_yaw_correction,
             icp_params.full_weight_translation_motion,
             icp_params.full_weight_yaw_motion
+        );
+    }
+    let icp_mode = icp_mode_from_env();
+    let submap_params = submap_params_from_env();
+    if use_corrected_frame {
+        pr_info!(
+            logger,
+            "ICP mode={} (submap max_points={} radius_m={:.2} bootstrap_scans={})",
+            icp_mode.as_str(),
+            submap_params.budget.max_points,
+            submap_params.budget.max_radius_m,
+            submap_params.bootstrap_scans
         );
     }
     let icp_point_stride = icp_point_stride_from_env();
@@ -957,6 +1044,8 @@ fn main() -> Result<(), DynError> {
     let state_scan = state.clone();
     let icp_params_scan = icp_params;
     let icp_stride_scan = icp_point_stride;
+    let icp_mode_scan = icp_mode;
+    let submap_params_scan = submap_params;
     let pub_scan = map_pub;
     let pub_pose = corrected_pose_pub;
     let pub_odom = corrected_odom_pub;
@@ -990,6 +1079,9 @@ fn main() -> Result<(), DynError> {
             let raw_odom = st.raw_odom.clone();
             let raw_pose = raw_odom.pose;
             let had_previous_scan = st.previous_scan.is_some();
+            let odom_delta = st
+                .previous_raw_odom_at_scan
+                .map(|previous_raw_odom| relative_motion_local(previous_raw_odom, raw_pose));
             let mut icp_converged = false;
             let mut icp_iterations = 0;
             let mut icp_final_error = f64::NAN;
@@ -998,9 +1090,37 @@ fn main() -> Result<(), DynError> {
             let mut icp_error_p90 = f64::NAN;
             let mut icp_inlier_ratio_5cm = f64::NAN;
             let mut icp_relative_error_reduction = f64::NAN;
-            let mut icp_delta = None;
-            if let Some(previous) = st.previous_scan.as_ref() {
-                let icp_result = icp_matching(previous, &current_scan);
+            let mut icp_delta: Option<MotionDelta> = None;
+            let prev_corrected = st.corrected_pose;
+            let icp_result_opt = match icp_mode_scan {
+                IcpMode::ScanToScan => st
+                    .previous_scan
+                    .as_ref()
+                    .map(|previous| icp_matching(previous, &current_scan)),
+                IcpMode::ScanToMap => {
+                    // Need the submap warmed up plus an odom delta to seed the prediction.
+                    let bootstrap_done = st.corrected_initialized
+                        && st.local_submap_scan_count >= submap_params_scan.bootstrap_scans;
+                    match (st.local_submap_world.as_ref(), odom_delta, bootstrap_done) {
+                        (Some(submap), Some(od), true) => {
+                            let predicted = compose_pose_local(prev_corrected, od);
+                            let current_world = transform_scan_to_world(&current_scan, predicted);
+                            let result = icp_matching(submap, &current_world);
+                            if let Some(residual_world) = icp_motion_delta(&result) {
+                                let corrected_candidate =
+                                    apply_world_residual(predicted, residual_world);
+                                icp_delta = Some(relative_motion_local(
+                                    prev_corrected,
+                                    corrected_candidate,
+                                ));
+                            }
+                            Some(result)
+                        }
+                        _ => None,
+                    }
+                }
+            };
+            if let Some(icp_result) = icp_result_opt {
                 icp_converged = icp_result.converged;
                 icp_iterations = icp_result.iterations;
                 icp_final_error = icp_result.final_error_mean;
@@ -1009,7 +1129,11 @@ fn main() -> Result<(), DynError> {
                 icp_error_p90 = icp_result.final_error_p90;
                 icp_inlier_ratio_5cm = icp_result.inlier_ratio_5cm;
                 icp_relative_error_reduction = icp_result.relative_error_reduction;
-                icp_delta = icp_motion_delta(&icp_result);
+                // For scan-to-scan, derive the per-scan body delta directly. For
+                // scan-to-map, icp_delta is already set above from the world residual.
+                if matches!(icp_mode_scan, IcpMode::ScanToScan) {
+                    icp_delta = icp_motion_delta(&icp_result);
+                }
                 let now = Instant::now();
                 if !icp_result.converged {
                     pr_warn!(
@@ -1031,10 +1155,6 @@ fn main() -> Result<(), DynError> {
                     st.last_icp_log_at = Some(now);
                 }
             }
-
-            let odom_delta = st
-                .previous_raw_odom_at_scan
-                .map(|previous_raw_odom| relative_motion_local(previous_raw_odom, raw_pose));
             let mut applied_delta = None;
             let mut blend_applied = false;
             let mut blend_alpha = 0.0;
@@ -1102,6 +1222,25 @@ fn main() -> Result<(), DynError> {
                 msg.angle_increment as f64,
             );
 
+            // Maintain the local submap *after* the corrected pose has been updated for
+            // this scan, so the appended points reflect the just-corrected pose.
+            if matches!(icp_mode_scan, IcpMode::ScanToMap) && st.corrected_initialized {
+                let anchor = st.corrected_pose;
+                let scan_world_corrected = transform_scan_to_world(&current_scan, anchor);
+                let new_submap = append_and_prune(
+                    st.local_submap_world.take(),
+                    &scan_world_corrected,
+                    anchor,
+                    submap_params_scan.budget,
+                );
+                st.local_submap_world = Some(new_submap);
+                st.local_submap_scan_count = st.local_submap_scan_count.saturating_add(1);
+            }
+            let submap_points = st
+                .local_submap_world
+                .as_ref()
+                .map_or(0, |m| m.ncols());
+
             let frame_id = if use_corrected_frame {
                 corrected_frame_id.clone()
             } else {
@@ -1156,6 +1295,8 @@ fn main() -> Result<(), DynError> {
                     blend_alpha_yaw,
                     gate_reason,
                     gate_reason_yaw,
+                    icp_mode: icp_mode_scan.as_str(),
+                    submap_points,
                 },
                 icp_params_scan.blend_alpha,
             );
@@ -1408,10 +1549,14 @@ mod tests {
                 blend_alpha_yaw: DEFAULT_ICP_BLEND_ALPHA,
                 gate_reason: "accepted",
                 gate_reason_yaw: "accepted",
+                icp_mode: "scan_to_scan",
+                submap_points: 0,
             },
             DEFAULT_ICP_BLEND_ALPHA,
         );
         assert!(text.contains("status=icp_ok"));
+        assert!(text.contains("icp_mode=scan_to_scan"));
+        assert!(text.contains("submap_points=0"));
         assert!(text.contains("icp_error_mean=0.006"));
         assert!(text.contains("icp_error_p90=0.010"));
         assert!(text.contains("icp_inlier_ratio_5cm=0.950"));
