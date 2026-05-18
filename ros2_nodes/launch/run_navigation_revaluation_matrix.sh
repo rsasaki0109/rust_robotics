@@ -48,14 +48,18 @@ MAX_RUNS="${SLAM_REVALUATION_MAX_RUNS:-0}"
 # name|waypoints|mission_timeout_sec
 # Keep segments moderate: four+ waypoints often hit smoke mission timeout (stuck/recovery) in Gazebo.
 # rich_geometry_turns extends sustained forward motion past the LIDAR noise floor
-# (~1.3 cm mean residual) so scan-to-scan ICP has something to correct; it keeps
-# per-segment length at 0.55 m (matching the working scenarios) and stays clear
-# of the turtlebot3_world cylinder grid at x=-1.1,0,1.1 and y=-1.1,0,1.1.
+# (~1.3 cm mean residual) so scan-to-scan ICP has something to correct. The path
+# is an L-loop kept inside the spawn-side cylinder-free zone: turtlebot3_world has
+# cylinders at x=-1.1,0,1.1 and y=-1.1,0,1.1, and at spawn (-2.0, -0.5) the safe
+# corridor with DWA clearance is x_world < -1.45, so the relative path stays at
+# x <= 0.55. Two 90-degree turns and 1.6 m total give the scan-to-scan ICP about
+# 30 percent more sustained forward motion than long_two_legs without crossing
+# any cylinder column.
 SCENARIOS=(
   "short_default|0.4,0.0;0.1,0.4|150"
   "three_hops|0.45,0.0;0.35,0.45;0.05,0.5|200"
   "long_two_legs|0.55,0.0;0.2,0.55|200"
-  "rich_geometry_turns|0.55,0.0;1.10,0.0;1.10,0.55;0.55,0.55|240"
+  "rich_geometry_turns|0.55,0.0;0.55,0.5;0.0,0.5|240"
 )
 
 case "$PROFILE_SET" in
