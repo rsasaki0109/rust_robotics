@@ -43,8 +43,11 @@ const DEFAULT_ICP_FULL_WEIGHT_YAW_MOTION: f64 = 0.08;
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct IcpGatingParams {
     blend_alpha: f64,
+    blend_alpha_yaw: f64,
     full_weight_error: f64,
     reject_error: f64,
+    full_weight_error_yaw: f64,
+    reject_error_yaw: f64,
     full_weight_iterations: f64,
     reject_iterations: f64,
     full_weight_translation_correction: f64,
@@ -59,8 +62,11 @@ impl Default for IcpGatingParams {
     fn default() -> Self {
         Self {
             blend_alpha: DEFAULT_ICP_BLEND_ALPHA,
+            blend_alpha_yaw: DEFAULT_ICP_BLEND_ALPHA,
             full_weight_error: DEFAULT_ICP_FULL_WEIGHT_ERROR,
             reject_error: DEFAULT_ICP_REJECT_ERROR,
+            full_weight_error_yaw: DEFAULT_ICP_FULL_WEIGHT_ERROR,
+            reject_error_yaw: DEFAULT_ICP_REJECT_ERROR,
             full_weight_iterations: DEFAULT_ICP_FULL_WEIGHT_ITERATIONS,
             reject_iterations: DEFAULT_ICP_REJECT_ITERATIONS,
             full_weight_translation_correction: DEFAULT_ICP_FULL_WEIGHT_TRANSLATION_CORRECTION,
@@ -124,13 +130,33 @@ struct ScanDiagnostics {
     applied_delta: Option<MotionDelta>,
     blend_applied: bool,
     blend_alpha: f64,
+    blend_alpha_yaw: f64,
     gate_reason: &'static str,
+    gate_reason_yaw: &'static str,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct IcpBlendDecision {
+    /// XY-axis blend weight (0..1). Backward-compatible field name `alpha` keeps existing call sites
+    /// and tests working — the XY axis is the primary blend.
     alpha: f64,
+    /// Gate reason for the XY axis. Same string set as before.
     reason: &'static str,
+    /// Yaw-axis blend weight (0..1). When yaw env overrides are unset this equals `alpha`.
+    alpha_yaw: f64,
+    /// Gate reason for the yaw axis. When yaw env overrides are unset this equals `reason`.
+    reason_yaw: &'static str,
+}
+
+impl IcpBlendDecision {
+    fn all_rejected(reason: &'static str) -> Self {
+        Self {
+            alpha: 0.0,
+            reason,
+            alpha_yaw: 0.0,
+            reason_yaw: reason,
+        }
+    }
 }
 
 fn yaw_from_quaternion(x: f64, y: f64, z: f64, w: f64) -> f64 {
@@ -227,6 +253,9 @@ fn clamp_f64(v: f64, min: f64, max: f64) -> f64 {
 }
 
 /// Loads [`IcpGatingParams`] from `SLAM_ICP_*` env vars (unset → defaults from [`IcpGatingParams::default`]).
+///
+/// The yaw-axis error and blend-alpha settings default to the XY values when their
+/// `SLAM_ICP_*_YAW` overrides are unset, preserving prior single-gate behavior.
 fn icp_gating_params_from_env() -> IcpGatingParams {
     let mut p = IcpGatingParams::default();
     p.blend_alpha = clamp_f64(
@@ -234,8 +263,17 @@ fn icp_gating_params_from_env() -> IcpGatingParams {
         0.0,
         1.0,
     );
+    p.blend_alpha_yaw = clamp_f64(
+        f64_from_env("SLAM_ICP_BLEND_ALPHA_YAW", p.blend_alpha),
+        0.0,
+        1.0,
+    );
     p.full_weight_error = f64_from_env("SLAM_ICP_FULL_WEIGHT_ERROR", p.full_weight_error).max(1e-6);
     p.reject_error = f64_from_env("SLAM_ICP_REJECT_ERROR", p.reject_error).max(p.full_weight_error + 1e-6);
+    p.full_weight_error_yaw =
+        f64_from_env("SLAM_ICP_FULL_WEIGHT_ERROR_YAW", p.full_weight_error).max(1e-6);
+    p.reject_error_yaw = f64_from_env("SLAM_ICP_REJECT_ERROR_YAW", p.reject_error)
+        .max(p.full_weight_error_yaw + 1e-6);
     p.full_weight_iterations = f64_from_env("SLAM_ICP_FULL_WEIGHT_ITERATIONS", p.full_weight_iterations).max(0.0);
     p.reject_iterations = f64_from_env("SLAM_ICP_REJECT_ITERATIONS", p.reject_iterations).max(p.full_weight_iterations + 1e-6);
     p.full_weight_translation_correction = f64_from_env(
@@ -375,16 +413,10 @@ fn compute_icp_blend_decision(
     p: &IcpGatingParams,
 ) -> IcpBlendDecision {
     if !converged {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "not_converged",
-        };
+        return IcpBlendDecision::all_rejected("not_converged");
     }
     if !final_error.is_finite() {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "invalid_error",
-        };
+        return IcpBlendDecision::all_rejected("invalid_error");
     }
 
     let correction = MotionDelta {
@@ -394,114 +426,137 @@ fn compute_icp_blend_decision(
     };
     let correction_translation = translation_magnitude(correction);
     let correction_yaw = correction.yaw.abs();
-    if correction_translation >= p.max_translation_correction {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "translation_outlier",
-        };
-    }
-    if correction_yaw >= p.max_yaw_correction {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "yaw_outlier",
-        };
-    }
 
-    let error_weight = ramp_weight(final_error, p.full_weight_error, p.reject_error);
-    if error_weight <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "high_error",
-        };
-    }
-
+    // Iterations gate is shared (it reflects ICP solver health, not per-axis quality).
     let iteration_weight = ramp_weight(
         iterations as f64,
         p.full_weight_iterations,
         p.reject_iterations,
     );
-    if iteration_weight <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "slow_convergence",
-        };
-    }
+
+    // Motion gate is split: XY axis only allows blend when robot actually translates;
+    // yaw axis allows blend when either yaw or translation motion is present.
+    let translation_motion_weight = ramp_up_weight(
+        translation_magnitude(odom),
+        p.full_weight_translation_motion * 0.25,
+        p.full_weight_translation_motion,
+    );
+    let yaw_motion_weight = ramp_up_weight(
+        odom.yaw.abs(),
+        p.full_weight_yaw_motion * 0.25,
+        p.full_weight_yaw_motion,
+    );
+    let yaw_axis_motion_weight = translation_motion_weight.max(yaw_motion_weight);
 
     let correction_translation_weight = ramp_weight(
         correction_translation,
         p.full_weight_translation_correction,
         p.max_translation_correction,
     );
-    if correction_translation_weight <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "translation_outlier",
-        };
-    }
-
     let correction_yaw_weight = ramp_weight(
         correction_yaw,
         p.full_weight_yaw_correction,
         p.max_yaw_correction,
     );
-    if correction_yaw_weight <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "yaw_outlier",
-        };
-    }
 
-    let odom_motion = translation_magnitude(odom);
-    let odom_motion_weight = ramp_up_weight(
-        odom_motion,
-        p.full_weight_translation_motion * 0.25,
-        p.full_weight_translation_motion,
-    )
-    .max(ramp_up_weight(
-        odom.yaw.abs(),
-        p.full_weight_yaw_motion * 0.25,
-        p.full_weight_yaw_motion,
-    ));
-    if odom_motion_weight <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "low_motion",
-        };
-    }
+    let (alpha_xy, reason_xy) = compute_axis_decision(AxisInputs {
+        base_alpha: p.blend_alpha,
+        final_error,
+        full_weight_error: p.full_weight_error,
+        reject_error: p.reject_error,
+        iteration_weight,
+        correction_size: correction_translation,
+        max_correction: p.max_translation_correction,
+        correction_weight: correction_translation_weight,
+        motion_weight: translation_motion_weight,
+        outlier_reason: "translation_outlier",
+        attenuated_correction_reason: "attenuated_translation",
+    });
 
+    let (alpha_yaw, reason_yaw) = compute_axis_decision(AxisInputs {
+        base_alpha: p.blend_alpha_yaw,
+        final_error,
+        full_weight_error: p.full_weight_error_yaw,
+        reject_error: p.reject_error_yaw,
+        iteration_weight,
+        correction_size: correction_yaw,
+        max_correction: p.max_yaw_correction,
+        correction_weight: correction_yaw_weight,
+        motion_weight: yaw_axis_motion_weight,
+        outlier_reason: "yaw_outlier",
+        attenuated_correction_reason: "attenuated_yaw",
+    });
+
+    IcpBlendDecision {
+        alpha: alpha_xy,
+        reason: reason_xy,
+        alpha_yaw,
+        reason_yaw,
+    }
+}
+
+struct AxisInputs {
+    base_alpha: f64,
+    final_error: f64,
+    full_weight_error: f64,
+    reject_error: f64,
+    iteration_weight: f64,
+    correction_size: f64,
+    max_correction: f64,
+    correction_weight: f64,
+    motion_weight: f64,
+    outlier_reason: &'static str,
+    attenuated_correction_reason: &'static str,
+}
+
+fn compute_axis_decision(a: AxisInputs) -> (f64, &'static str) {
+    if a.correction_size >= a.max_correction {
+        return (0.0, a.outlier_reason);
+    }
+    let error_weight = ramp_weight(a.final_error, a.full_weight_error, a.reject_error);
+    if error_weight <= 0.0 {
+        return (0.0, "high_error");
+    }
+    if a.iteration_weight <= 0.0 {
+        return (0.0, "slow_convergence");
+    }
+    if a.correction_weight <= 0.0 {
+        return (0.0, a.outlier_reason);
+    }
+    if a.motion_weight <= 0.0 {
+        return (0.0, "low_motion");
+    }
     let scale = error_weight
-        .min(iteration_weight)
-        .min(correction_translation_weight)
-        .min(correction_yaw_weight)
-        .min(odom_motion_weight);
-    let alpha = p.blend_alpha * scale;
+        .min(a.iteration_weight)
+        .min(a.correction_weight)
+        .min(a.motion_weight);
+    let alpha = a.base_alpha * scale;
     if alpha <= 0.0 {
-        return IcpBlendDecision {
-            alpha: 0.0,
-            reason: "rejected",
-        };
+        return (0.0, "rejected");
     }
-
     let reason = if scale < 0.999 {
-        if scale == odom_motion_weight {
+        if scale == a.motion_weight {
             "attenuated_low_motion"
         } else if scale == error_weight {
             "attenuated_error"
-        } else if scale == iteration_weight {
+        } else if scale == a.iteration_weight {
             "attenuated_iterations"
-        } else if scale == correction_translation_weight {
-            "attenuated_translation"
         } else {
-            "attenuated_yaw"
+            a.attenuated_correction_reason
         }
     } else {
         "accepted"
     };
-
-    IcpBlendDecision { alpha, reason }
+    (alpha, reason)
 }
 
-fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta, alpha: f64, p: &IcpGatingParams) -> MotionDelta {
+fn blend_motion_delta(
+    odom: MotionDelta,
+    icp: MotionDelta,
+    alpha_xy: f64,
+    alpha_yaw: f64,
+    p: &IcpGatingParams,
+) -> MotionDelta {
     let correction_x = (icp.x - odom.x).clamp(
         -p.max_translation_correction,
         p.max_translation_correction,
@@ -514,9 +569,9 @@ fn blend_motion_delta(odom: MotionDelta, icp: MotionDelta, alpha: f64, p: &IcpGa
         normalize_angle(icp.yaw - odom.yaw).clamp(-p.max_yaw_correction, p.max_yaw_correction);
 
     MotionDelta {
-        x: odom.x + alpha * correction_x,
-        y: odom.y + alpha * correction_y,
-        yaw: normalize_angle(odom.yaw + alpha * correction_yaw),
+        x: odom.x + alpha_xy * correction_x,
+        y: odom.y + alpha_xy * correction_y,
+        yaw: normalize_angle(odom.yaw + alpha_yaw * correction_yaw),
     }
 }
 
@@ -547,7 +602,9 @@ fn diagnostics_status(diagnostics: ScanDiagnostics, base_blend_alpha: f64) -> &'
     if !diagnostics.had_previous_scan {
         "bootstrap"
     } else if diagnostics.blend_applied {
-        if diagnostics.blend_alpha + 1e-6 >= base_blend_alpha {
+        let xy_at_full = diagnostics.blend_alpha + 1e-6 >= base_blend_alpha;
+        let yaw_at_full = diagnostics.blend_alpha_yaw + 1e-6 >= base_blend_alpha;
+        if xy_at_full && yaw_at_full {
             "icp_ok"
         } else {
             "icp_attenuated"
@@ -589,7 +646,9 @@ fn format_slam_diagnostics(
         ),
         format!("blend_applied={}", diagnostics.blend_applied),
         format!("blend_alpha={:.3}", diagnostics.blend_alpha),
+        format!("blend_alpha_yaw={:.3}", diagnostics.blend_alpha_yaw),
         format!("gate_reason={}", diagnostics.gate_reason),
+        format!("gate_reason_yaw={}", diagnostics.gate_reason_yaw),
         format!("raw_x={:.3}", raw_pose.x),
         format!("raw_y={:.3}", raw_pose.y),
         format!("raw_yaw={:.3}", raw_pose.yaw),
@@ -865,11 +924,13 @@ fn main() -> Result<(), DynError> {
             let mut applied_delta = None;
             let mut blend_applied = false;
             let mut blend_alpha = 0.0;
+            let mut blend_alpha_yaw = 0.0;
             let mut gate_reason = if had_previous_scan {
                 "odom_only"
             } else {
                 "bootstrap"
             };
+            let mut gate_reason_yaw = gate_reason;
             let pose = if use_corrected_frame {
                 if !st.corrected_initialized {
                     st.corrected_pose = raw_pose;
@@ -886,20 +947,30 @@ fn main() -> Result<(), DynError> {
                         );
                         blend_alpha = decision.alpha;
                         gate_reason = decision.reason;
-                        if decision.alpha > 0.0 {
+                        blend_alpha_yaw = decision.alpha_yaw;
+                        gate_reason_yaw = decision.reason_yaw;
+                        if decision.alpha > 0.0 || decision.alpha_yaw > 0.0 {
                             blend_applied = true;
-                            blend_motion_delta(odom_delta, icp_delta, decision.alpha, &icp_params_scan)
+                            blend_motion_delta(
+                                odom_delta,
+                                icp_delta,
+                                decision.alpha,
+                                decision.alpha_yaw,
+                                &icp_params_scan,
+                            )
                         } else {
                             odom_delta
                         }
                     } else {
                         gate_reason = "missing_icp_delta";
+                        gate_reason_yaw = "missing_icp_delta";
                         odom_delta
                     };
                     applied_delta = Some(blended_delta);
                     st.corrected_pose = compose_pose_local(st.corrected_pose, blended_delta);
                 } else {
                     gate_reason = "syncing_to_odom";
+                    gate_reason_yaw = "syncing_to_odom";
                     st.corrected_pose = raw_pose;
                 }
                 st.corrected_pose
@@ -968,7 +1039,9 @@ fn main() -> Result<(), DynError> {
                     applied_delta,
                     blend_applied,
                     blend_alpha,
+                    blend_alpha_yaw,
                     gate_reason,
+                    gate_reason_yaw,
                 },
                 icp_params_scan.blend_alpha,
             );
@@ -1087,7 +1160,13 @@ mod tests {
             y: -1.0,
             yaw: 1.0,
         };
-        let blended = blend_motion_delta(odom, icp, DEFAULT_ICP_BLEND_ALPHA, &default_icp());
+        let blended = blend_motion_delta(
+            odom,
+            icp,
+            DEFAULT_ICP_BLEND_ALPHA,
+            DEFAULT_ICP_BLEND_ALPHA,
+            &default_icp(),
+        );
         assert!(blended.x > odom.x);
         assert!(blended.x < 0.2);
         assert!(blended.y.abs() < 0.1);
@@ -1211,7 +1290,9 @@ mod tests {
                 }),
                 blend_applied: true,
                 blend_alpha: DEFAULT_ICP_BLEND_ALPHA,
+                blend_alpha_yaw: DEFAULT_ICP_BLEND_ALPHA,
                 gate_reason: "accepted",
+                gate_reason_yaw: "accepted",
             },
             DEFAULT_ICP_BLEND_ALPHA,
         );
@@ -1224,6 +1305,59 @@ mod tests {
         assert!(text.contains("odom_dx=0.100"));
         assert!(text.contains("applied_dyaw=0.015"));
         assert!(text.contains("blend_alpha=0.350"));
+        assert!(text.contains("blend_alpha_yaw=0.350"));
         assert!(text.contains("gate_reason=accepted"));
+        assert!(text.contains("gate_reason_yaw=accepted"));
+    }
+
+    #[test]
+    fn compute_icp_blend_decision_yaw_only_during_in_place_rotation() {
+        // Robot is rotating in place: large yaw, near-zero translation.
+        // Both odom and ICP report this motion. With a looser yaw error threshold,
+        // alpha_yaw should be > 0 while alpha_xy stays 0 (low_motion on translation).
+        let mut params = default_icp();
+        params.full_weight_error_yaw = 0.020;
+        params.reject_error_yaw = 0.030;
+        // Translation motion is well below full_weight_translation_motion (0.05).
+        let odom = MotionDelta {
+            x: 0.001,
+            y: 0.0,
+            yaw: 0.12,
+        };
+        let icp = MotionDelta {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.12,
+        };
+        // ICP error 0.018 is above default reject (0.011) but below yaw reject (0.030).
+        let decision = compute_icp_blend_decision(odom, icp, true, 8, 0.018, &params);
+        assert_eq!(decision.alpha, 0.0, "XY must be rejected by high_error");
+        assert_eq!(decision.reason, "high_error");
+        assert!(
+            decision.alpha_yaw > 0.0,
+            "yaw must be admitted under looser reject_error_yaw"
+        );
+    }
+
+    #[test]
+    fn compute_icp_blend_decision_xy_low_motion_during_in_place_rotation() {
+        // Same in-place rotation regime but with default (equal) yaw thresholds.
+        // Even with default thresholds, the split motion gate should reject XY for
+        // low_motion (no translation) while yaw is still attenuated by motion ramp-up.
+        let params = default_icp();
+        let odom = MotionDelta {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.12,
+        };
+        let icp = MotionDelta {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.12,
+        };
+        let decision = compute_icp_blend_decision(odom, icp, true, 6, 0.006, &params);
+        assert_eq!(decision.alpha, 0.0);
+        assert_eq!(decision.reason, "low_motion");
+        assert!(decision.alpha_yaw > 0.0);
     }
 }
