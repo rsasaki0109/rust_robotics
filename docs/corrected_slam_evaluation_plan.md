@@ -602,28 +602,91 @@ scenarios. It is not a full win because yaw itself regresses; the
 practical question is whether downstream code cares more about XY or
 yaw.
 
+### yaw_loose_018_low_alpha under yaw_drift — noise hypothesis confirmed
+
+Actions run `26070749878` ran `yaw_loose_018_low_alpha`
+(`SLAM_ICP_REJECT_ERROR_YAW=0.018`, `SLAM_ICP_BLEND_ALPHA_YAW=0.10`)
+against `odom_yaw_drift_3deg_per_m`, indices 176-179 in the
+9-profile biased matrix.
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | -0.001         | False          | -0.004          | False           |
+| three_hops            | +0.001         | True           | -0.019          | False           |
+| long_two_legs         | +0.002         | True           | -0.021          | False           |
+| rich_geometry_turns   | +0.001         | True           | **+0.023**      | **True**        |
+| **average**           | **+0.0008**    | **3/4**        | **-0.005**      | **1/4**         |
+
+Head-to-head with `yaw_loose_018` (same yaw threshold, default
+alpha 0.35) on the same biased odom profile:
+
+| scenario              | hi α XY | low α XY | hi α YAW | low α YAW       |
+| --------------------- | -------:| --------:| --------:| ---------------:|
+| short_default         | +0.003  | -0.001   | -0.017   | -0.004          |
+| three_hops            |  0.000  | +0.001   | -0.017   | -0.019          |
+| long_two_legs         | +0.003  | +0.002   | -0.026   | -0.021          |
+| rich_geometry_turns   | +0.002  | +0.001   | -0.025   | **+0.023 flip** |
+| **average**           | +0.0020 | +0.0008  | **-0.021** | **-0.005**    |
+
+The noise-integration hypothesis is confirmed: dropping the yaw
+blend alpha from 0.35 to 0.10 reduces yaw error magnitude by ~4x on
+average (-21 mrad → -5 mrad) and flips `rich_geometry_turns` yaw
+from -25 mrad to +23 mrad (the first positive yaw improvement under
+biased odom). XY win shrinks roughly in half (+2.0 → +0.8 mm), still
+positive, still better on 3 of 4 scenarios.
+
+### Profile selection guidance
+
+The split-gate sprint produced two genuinely useful corrected-SLAM
+profiles, each suited to a different downstream priority:
+
+| profile                        | use case                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `default`                      | XY accuracy on clean odom; baseline safety. Reject everything that risks XY noise injection.     |
+| `yaw_loose_018`                | maximize XY benefit under yaw drift bias (+2 mm avg, 3/4 scenarios), accept yaw regression.      |
+| `yaw_loose_018_low_alpha`      | balance: smaller XY win (+0.8 mm) plus much smaller yaw damage (-5 mrad), one scenario wins yaw. |
+
+The `loose_error*` and `very_loose_error` profiles in the tuning
+matrix are now strictly worse on every comparison done in this
+sprint and should be removed when the matrix is next edited.
+
+### Sprint conclusion
+
+The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
+
+1. **Instrumentation fix** (mission-window diagnostics capture).
+2. **Three retracted structural hypotheses** (biased map, sign bug,
+   biased ICP init) along with the evidence that ruled each out.
+3. **rich_geometry_turns positive-control scenario** (validated
+   after several iterations on path shape).
+4. **Split-gate ICP** (`compute_icp_blend_decision` and
+   `blend_motion_delta` now act per-axis with independent error and
+   alpha thresholds for XY and yaw).
+5. **First biased-odom XY win in this sprint**:
+   `yaw_loose_018 × yaw_drift_3deg_per_m` produces 3/4 scenarios
+   with improvement_xy > 0.
+6. **Resolution of the yaw paradox**: lowering yaw blend alpha
+   reduces yaw error by 4x and flips one scenario into actual yaw
+   improvement.
+7. **Structural ceiling identified**: under `xy_scale_3pct`,
+   scan-to-scan ICP fundamentally cannot extract a correction
+   signal. Scan-to-map ICP is the next major change needed.
+
 ### Followups not addressed yet
 
-- Test `yaw_loose_018_low_alpha` (`SLAM_ICP_BLEND_ALPHA_YAW=0.10` or
-  lower) on `yaw_drift_3deg_per_m`. The hypothesis is that reducing
-  the yaw blend alpha will limit noise injection while still keeping
-  the directional correction; this should reduce or eliminate the
-  yaw regression while preserving the XY win.
-- Add an `yaw_drift_1deg_per_m` slice for completeness — at lower
-  drift the per-scan signal is even smaller relative to noise, so
-  the yaw regression may be smaller or larger depending on the
-  noise-to-signal ratio.
-- Try `yaw_loose_025` (looser still) under `yaw_drift_3deg_per_m`.
-  If admitting more attenuated samples picks up more real signal,
-  yaw could improve; if it admits more noise, yaw could get worse.
-- The `xy_scale` structural limit and the partial `yaw_drift` win
-  together motivate scan-to-map ICP as the next major change. Under
-  scan-to-map, the per-scan ICP residual is against an accumulated
-  unbiased reference, so even `xy_scale` bias becomes visible to the
-  solver.
-- Retire `loose_error*` and `very_loose_error` profiles from the
-  tuning matrix; the split-gate `yaw_loose_*` family is strictly
-  better on both baseline and biased data.
+- Run `yaw_loose_018` and `yaw_loose_018_low_alpha` on the lighter
+  `odom_yaw_drift_1deg_per_m` to see whether the XY win scales
+  linearly with drift and whether the yaw paradox shrinks
+  proportionally.
+- Try a `yaw_loose_025_low_alpha` to see if combining looser
+  threshold with low alpha picks up more directional signal without
+  noise penalty.
+- Implement scan-to-map ICP in `slam_node`. This is the only path
+  the current data supports for overcoming the `xy_scale` structural
+  limit. Likely a multi-week effort and a meaningful design change
+  (persistent local submap, ICP target swap, drift consolidation).
+- Retire `loose_error`, `loose_error_low_alpha`, and
+  `very_loose_error` from the tuning matrix.
 - The revaluation matrix script still does not flush the CSV row
   per-run; consider doing this so partial sweeps from step timeouts
   remain self-describing.
