@@ -650,8 +650,9 @@ profiles, each suited to a different downstream priority:
 | `yaw_loose_018_low_alpha`      | balance: smaller XY win (+0.8 mm) plus much smaller yaw damage (-5 mrad), one scenario wins yaw. |
 
 The `loose_error*` and `very_loose_error` profiles in the tuning
-matrix are now strictly worse on every comparison done in this
-sprint and should be removed when the matrix is next edited.
+matrix were strictly worse on every comparison done in this sprint
+and were retired from `run_navigation_revaluation_matrix.sh` after
+this sprint closed.
 
 ### Sprint conclusion
 
@@ -688,5 +689,3 @@ The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
   the current data supports for overcoming the `xy_scale` structural
   limit. Likely a multi-week effort and a meaningful design change
   (persistent local submap, ICP target swap, drift consolidation).
-- Retire `loose_error`, `loose_error_low_alpha`, and
-  `very_loose_error` from the tuning matrix.
