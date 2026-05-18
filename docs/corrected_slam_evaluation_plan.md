@@ -245,48 +245,72 @@ That is, letting more ICP through made corrected SLAM 3-4x worse on the same
 biased odom run. Lowering blend alpha helped (smaller correction per scan),
 but the direction of the correction was still wrong.
 
-### Why loose_error made things worse — open question, not "biased map"
+### Why loose_error made things worse — ICP is noise-dominated during in-place rotation
 
-An earlier draft of this section claimed the root cause was that the SLAM map
-is built from biased odom and ICP therefore reinforces the bias. **That
-hypothesis is incorrect for the current SLAM node.** The ICP step in
-`ros2_nodes/slam_node/src/main.rs` is scan-to-scan, not scan-to-map:
+Two earlier drafts of this section were wrong. The first claimed the SLAM
+map is built from biased odom and ICP therefore reinforces the bias; that is
+false because the SLAM node uses **scan-to-scan** ICP (`icp_matching` at
+`ros2_nodes/slam_node/src/main.rs:830` takes `previous_scan` and
+`current_scan`; the persistent `st.map` is for publishing / navigation only,
+not an ICP input). The second draft suggested a sign bug in
+`icp_motion_delta`; investigation rules that out as well.
 
-- Line 830: `let icp_result = icp_matching(previous, &current_scan);`
-- The persistent `st.map` (`OccupancyGridMap`) is updated with `pose` at line
-  911 and republished, but it is **not** an input to `icp_matching`. The map
-  affects RViz and navigation planning, not the ICP correction itself.
+The investigation:
 
-Because `icp_matching` only sees the previous and current LIDAR scan, the
-biased odom does not pre-deform the surface ICP fits to. ICP should in
-principle see the true per-scan relative motion and produce an `icp_delta`
-that cancels the biased odom integration.
+- `icp_matching` (`crates/rust_robotics_slam/src/icp_matching.rs:60`)
+  takes only point matrices; there is no pose-prior argument. There is no
+  biased initial guess. Hypothesis "biased ICP init" is rejected.
+- `svd_motion_estimation` returns `(R, t)` satisfying
+  `previous ≈ R * current + t`, i.e. the transform that maps `current_scan`
+  back into the `previous_scan` frame. Equivalently, this transform is the
+  robot motion expressed in the previous body frame:
+  `T_prev←curr = robot_motion_in_prev_body_frame`. So
+  `result.translation` directly **is** the robot motion delta, with the
+  intended sign. `icp_motion_delta` is correct.
+- The `icp_matching` library test (`icp_matching.rs:407`) checks
+  `(result.translation[0] + translation.x).abs() < 0.1`, which can be read
+  as a sign flip in isolation, but in that test `apply_2d_transformation`
+  shifts `previous_points` by `translation`, so `T_prev←curr = -translation`
+  exactly because the synthetic robot motion is `-translation`. The
+  assertion is consistent with the body-frame motion interpretation.
+- Mid-mission logs from the loose-profile run confirm `icp_dx`, `icp_dy`,
+  and `icp_dyaw` are in the same body frame and the same sign convention
+  as `odom_dx`, `odom_dy`, `odom_dyaw`. Example, from
+  `navigation_revaluation_20260518T003221Z_logs/55_odom_xy_scale_3pct_loose_error_three_hops.log`:
+  `odom_dx=0.013, odom_dy=-0.001, odom_dyaw=-0.126`,
+  `icp_dx=0.011,  icp_dy= 0.014,  icp_dyaw=-0.137`.
 
-Why loose_error nevertheless made corrected SLAM 3-4x worse on
-`odom_xy_scale_3pct` is therefore still open. Candidate explanations to
-investigate before doing more sweeps:
+So why did loose_error make corrected SLAM 3-4x worse? Looking at those
+same log lines, `raw_yaw` is sweeping from `-2.181` to `-3.137` over ~8 scans
+while `raw_x` / `raw_y` are nearly constant. The robot is doing an in-place
+or near-in-place rotation. In that regime:
 
-1. **Biased initial guess feeds the ICP solver.** If `icp_matching` is
-   initialized from the biased odom delta (or any pose prior derived from
-   `raw_odom`), it can converge to a local minimum near the biased pose
-   instead of the true relative motion.
-2. **Frame / sign error when composing `icp_delta` with `odom_delta`.** The
-   `blend_motion_delta(...) -> compose_pose_local(...)` chain assumes the
-   ICP delta is in the same body frame and the same sign convention as the
-   odom delta. A mismatch would point ICP in the wrong direction whenever
-   it actually gets weight.
-3. **Per-scan true motion is below the LIDAR noise floor.** On a slow
-   TurtleBot3 with short scenarios, one inter-scan motion can be smaller
-   than the residual noise, so `icp_delta` is dominated by noise. Loosening
-   the reject threshold then admits noise as a correction.
-4. **`gate_reason=attenuated_*` already implies the gate distrusted these
-   matches**, but the attenuated alpha is still nonzero. With a high
-   inter-scan rate, even small wrong corrections accumulate.
+- True forward motion per scan is roughly zero.
+- Biased odom (`SLAM_INPUT_ODOM_XY_SCALE=1.03`) and TurtleBot3 wheel-odom
+  noise both fabricate a small nonzero `odom_dx`.
+- ICP scan-to-scan also fabricates a nonzero translation because the LIDAR
+  noise floor (~1.3 cm mean residual) is comparable to the true per-scan
+  translation, so `icp_dx` / `icp_dy` are dominated by noise rather than
+  signal. The `icp_dy=0.014` vs `odom_dy=-0.001` mismatch in the example
+  above is exactly this noise: even the sign of the small ICP translation
+  is essentially random during in-place rotation.
 
-Any of (1)-(3) is a real bug in the node, not just a tuning question. Until
-they are ruled out, the loose-profile result should not be read as "ICP gating
-needs to be tighter"; it should be read as "we do not yet know what
-`icp_delta` is actually pointing at when the gate allows it through".
+The default reject threshold (`0.011`) was below the LIDAR noise floor and
+rejected almost every match — including the noise corrections — which is
+why default sat near `improvement_xy ≈ -0.005` (a small safety bias rather
+than a real correction). Loosening to `0.018` admitted those noise
+corrections through the `attenuated_error` path with `blend_alpha ≈ 0.08`
+to `0.15`. Even at that small alpha, integrating a stream of noisy
+corrections over a multi-hop mission pulled the corrected estimate further
+from ground truth than just trusting biased odom.
+
+So the loose-profile regression is **not** a bug in the node and **not**
+fixed by another threshold tweak. It is structural to scan-to-scan ICP on
+this robot+scenario combination:
+
+- short missions with significant in-place rotation,
+- low forward speed,
+- a LIDAR with residual noise comparable to per-scan true motion.
 
 ### Separate bug: strict_error == default
 
@@ -297,40 +321,44 @@ same as `DEFAULT_ICP_REJECT_ERROR` at line 33 of
 therefore functional duplicates of `default` and `low_alpha`. Fix the next
 time the tuning matrix is touched (e.g., drop to `0.008`).
 
-### Decision: pause tuning, investigate ICP delta path first
+### Decision: pause tuning, fix the scenario set before any more sweeps
 
-The tuning sweep is paused. The next active task is not another evaluation
-restructure but a code-level investigation of the ICP delta path in
-`slam_node`:
+Single-knob ICP gate tuning on the current scenarios cannot show ICP doing
+useful work — there is barely a forward-motion regime in which ICP signal
+exceeds noise. The next active task is scenario-side, not gate-side:
 
-- Confirm whether `icp_matching` receives any prior derived from the biased
-  odom.
-- Confirm the body-frame convention used by `icp_delta` matches
-  `relative_motion_local(...)` / `compose_pose_local(...)`.
-- Add per-scan ground-truth-vs-`icp_delta` logging in a short bench so the
-  direction of `icp_delta` can be checked independently of the gate.
+- Add a positive-control scenario with sustained forward motion and rich
+  geometry (`rich_geometry_turns` from the Scenario Roadmap is the obvious
+  candidate: 3-5 m, asymmetric obstacles, several discrete 90 degree
+  turns). Validate it on default and unbiased odom first; only then revisit
+  loose-profile sweeps.
+- Optionally add `long_loop_return` (6-10 m, returns near start) to expose
+  accumulated drift that ICP should be able to correct.
+- Until such a scenario exists, do not draw more conclusions from
+  short_default / three_hops / long_two_legs about ICP gate tuning. Use
+  them only as smoke/safety scenarios.
 
-Only after that does it make sense to revisit:
+Paths considered earlier:
 
-- Path A: restructure the evaluation (e.g., scan-to-map ICP with an honest
-  reference map, or a pre-pass map frozen from unbiased odom).
-- Path B: inject bias as a `/scan` or entity-pose offset instead of odom
-  scale.
-- Path C: treat ICP gating purely as a noise-robustness mechanism on clean
-  odom.
-
-Path D (this section) is done. Path A and Path B are deferred until the
-investigation above resolves where `icp_delta` is actually pointing.
+- Path A (restructure evaluation so the SLAM map is built from unbiased
+  odom): **not justified** for the current node; the map is not an ICP
+  input.
+- Path B (inject bias as `/scan` or entity-pose offset): still a fallback,
+  but not the next move.
+- Path C (treat ICP gating purely as noise-robustness on clean odom): in
+  effect this is what the current default already is. The matrix should
+  acknowledge that.
+- Path D (document findings, pause tuning): done in this section.
+- Path E (new, the actual next step): scenario-side fix described above.
 
 ### Followups not addressed yet
 
 - `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) matrix rows 60-62 were
   never executed; the workflow run hit a step timeout at 6/9 results. Do
-  not re-run loose sweeps until the ICP delta direction question above is
-  resolved; otherwise the result is just "more loose, more wrong, same
-  unknown cause".
+  not re-run loose sweeps until a positive-control scenario with sustained
+  forward motion is in place. Without one, looser thresholds just admit
+  more LIDAR noise.
 - The `strict_error` / `strict_low_alpha` duplicate-of-default bug above.
-- The biased-odom revaluation still has no positive-control scenario where
-  ICP is expected to clearly improve raw odom. `rich_geometry_turns` from
-  the Scenario Roadmap above is the obvious candidate to add once the ICP
-  delta direction is trusted.
+- The biased-odom revaluation still has no positive-control scenario. Add
+  `rich_geometry_turns` (and optionally `long_loop_return`) per the
+  Scenario Roadmap before the next tuning sprint.
