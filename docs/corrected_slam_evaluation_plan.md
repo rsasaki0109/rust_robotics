@@ -490,17 +490,71 @@ Conclusions:
   worse than `yaw_loose_018` on baseline odom. They could be retired
   or kept only as negative controls.
 
+### yaw_loose_018 under biased odom (`odom_xy_scale_3pct`)
+
+Actions run `26065679633` ran the same `yaw_loose_018` profile under
+the 3-percent XY scale biased odom, indices 92-95 in the biased
+matrix.
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | -0.003         | False          | -0.001          | False           |
+| three_hops            | -0.003         | False          | +0.003          | True            |
+| long_two_legs         | -0.002         | False          | +0.009          | True            |
+| rich_geometry_turns   | -0.007         | False          | -0.000          | False           |
+| **average**           | **-0.0037**    | **0/4**        | +0.003          | 2/4             |
+
+Side-by-side context (XY averages, baseline vs biased odom across
+profiles):
+
+| profile               | baseline avg XY | biased avg XY (3% scale) |
+| --------------------- | ---------------:| ------------------------:|
+| default               | ~0              | -0.005                   |
+| loose_error           | -0.025          | -0.022                   |
+| **yaw_loose_018**     | **+0.0008**     | **-0.0037**              |
+
+The split-gate result is consistent with the broader picture:
+
+- Under biased odom, `yaw_loose_018` is much less damaging than
+  `loose_error` on XY (-0.0037 vs -0.022) and roughly matches the
+  default safety bias (-0.005).
+- However, `yaw_loose_018` still cannot make corrected SLAM beat raw
+  odom on biased XY (`better_xy = 0/4`). YAW improves on 2/4
+  scenarios with small magnitudes (+3 to +9 mrad).
+- This is the expected structural ceiling for scan-to-scan ICP under
+  cumulative odom bias: each per-scan motion the solver fits is also
+  biased, so there is no out-of-frame reference to anchor the
+  accumulated error. The split gate avoids actively making things
+  worse; it does not provide cumulative bias correction.
+
+What this rules out and what is still open:
+
+- Single-knob ICP tuning on the current scan-to-scan node cannot
+  produce a profile that simultaneously beats raw odom XY under bias
+  and improves yaw. The split-gate is the right design but cannot
+  overcome the structural limit on its own.
+- To meaningfully correct cumulative bias, the SLAM node needs
+  scan-to-map (or scan-to-submap) ICP so each new scan is aligned
+  against an unbiased accumulated reference, not against the
+  previous scan. That is a substantially larger change than gate
+  tuning.
+
 ### Followups not addressed yet
 
-- Re-run on **biased odom** (`odom_xy_scale_3pct`,
-  `odom_yaw_drift_3deg_per_m`) with `yaw_loose_018` to see whether the
-  yaw improvement helps under odom drift. This is the original
-  motivation for tuning corrected SLAM.
-- Try a `yaw_loose_025` profile (looser still) and a
-  `yaw_loose_018_low_alpha` (`SLAM_ICP_BLEND_ALPHA_YAW=0.10`) to see if
-  the `rich_geometry_turns` yaw regression goes away.
+- Same `yaw_loose_018` slice under `odom_yaw_drift_3deg_per_m` (the
+  yaw-bias odom profile). If the split-gate yaw blend can correct
+  yaw drift cumulatively, this is where the improvement would
+  appear. Indices 156-159 in the biased matrix.
+- Try `yaw_loose_025` and `yaw_loose_018_low_alpha`
+  (`SLAM_ICP_BLEND_ALPHA_YAW=0.10`) on baseline odom to see whether
+  the `rich_geometry_turns` yaw regression at -8 mrad can be
+  recovered.
+- Implement scan-to-map ICP in `slam_node` so the corrected frame
+  has an unbiased reference. This is the only path the current data
+  supports for beating raw odom on biased XY.
+- Retire `loose_error*` and `very_loose_error` profiles from the
+  tuning matrix; the split-gate `yaw_loose_*` family is strictly
+  better on both baseline and biased data.
 - The revaluation matrix script still does not flush the CSV row
   per-run; consider doing this so partial sweeps from step timeouts
   remain self-describing.
-- Existing `loose_error*` and `very_loose_error` profiles can be
-  retired once split-gate equivalents are validated.
