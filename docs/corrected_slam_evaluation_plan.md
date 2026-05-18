@@ -68,7 +68,10 @@ python3 scripts/summarize_slam_revaluation.py reports/slam_revaluation/*.csv
 ```
 
 The matrix now writes CSV, JSONL, a Markdown summary, and per-run logs under
-`reports/slam_revaluation/`.
+`reports/slam_revaluation/`. If the script is killed mid-scenario (e.g. by a
+CI step timeout), an EXIT/INT/TERM trap emits a partial row tagged with
+`exit_code=killed` and `mission_completed=false` so partial sweeps stay
+self-describing.
 
 GitHub Actions route: run the `ROS2 Smoke` workflow manually with
 `run_revaluation=true`. The workflow keeps normal PR smoke behavior unchanged,
@@ -687,6 +690,3 @@ The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
   (persistent local submap, ICP target swap, drift consolidation).
 - Retire `loose_error`, `loose_error_low_alpha`, and
   `very_loose_error` from the tuning matrix.
-- The revaluation matrix script still does not flush the CSV row
-  per-run; consider doing this so partial sweeps from step timeouts
-  remain self-describing.
