@@ -676,12 +676,78 @@ The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
    scan-to-scan ICP fundamentally cannot extract a correction
    signal. Scan-to-map ICP is the next major change needed.
 
+### yaw_loose_018 series under yaw_drift_1deg_per_m — XY win does NOT scale with drift
+
+Actions run `26077863455` ran `yaw_loose_018` and
+`yaw_loose_018_low_alpha` against `odom_yaw_drift_1deg_per_m`,
+indices 88-95 in the 6-profile biased matrix (after retiring
+`loose_error*` and `very_loose_error`).
+
+`yaw_loose_018 × yaw_drift_1deg_per_m`:
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | +0.004         | True           | +0.026          | True            |
+| three_hops            | +0.001         | True           | -0.013          | False           |
+| long_two_legs         | +0.001         | True           | -0.010          | False           |
+| rich_geometry_turns   | +0.005         | True           | -0.006          | False           |
+| **average**           | **+0.0027**    | **4/4**        | **-0.001**      | **1/4**         |
+
+`yaw_loose_018_low_alpha × yaw_drift_1deg_per_m`:
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | +0.001         | True           | +0.012          | True            |
+| three_hops            | +0.001         | True           | -0.011          | False           |
+| long_two_legs         | +0.001         | True           | -0.004          | False           |
+| rich_geometry_turns   | +0.000         | True           | -0.008          | False           |
+| **average**           | **+0.0008**    | **4/4**        | **-0.003**      | **1/4**         |
+
+Cross-drift comparison for the high-alpha profile
+(`yaw_loose_018`):
+
+| drift level | avg imp_xy | better_xy | avg imp_yaw | better_yaw |
+| ----------- | ----------:| ---------:| -----------:| ----------:|
+| 1°/m        | +0.0027    | 4/4       | -0.001      | 1/4        |
+| 3°/m        | +0.0020    | 3/4       | -0.021      | 0/4        |
+
+Two unexpected findings:
+
+- **XY improvement does NOT scale linearly with drift, and is
+  slightly larger at 1°/m than 3°/m**. The expected story —
+  bigger drift, bigger ICP signal, bigger XY correction — does
+  not hold. The likely reason is that at 3°/m the per-scan yaw
+  bias starts pushing ICP into the noise-dominated regime where
+  more of the captured yaw correction is random per-scan jitter
+  (see the noise-integration hypothesis confirmed in the
+  3°/m × low_alpha section). At 1°/m the per-scan yaw bias is
+  smaller but more consistent in sign, so the small accepted
+  corrections accumulate cleanly.
+- **All 4 scenarios now beat raw on XY**, including
+  `short_default`. At 3°/m, `short_default` for the low_alpha
+  profile actually regressed (-0.001 m). At 1°/m the same
+  scenario shows +0.001 m. The win pattern is no longer scenario-
+  dependent at low drift.
+
+The yaw paradox also shrinks proportionally. At 3°/m the high-
+alpha profile loses -21 mrad on average; at 1°/m it loses only
+-1 mrad on average, and `short_default` actually wins yaw by
++26 mrad. For the low-alpha profile, the picture is similar:
+1°/m loses -3 mrad on average vs -5 mrad at 3°/m.
+
+Practical conclusion for the split-gate profiles:
+
+- `yaw_loose_018` is the better trade under 1°/m: bigger XY win
+  (+2.7 mm avg vs +0.8 mm) and yaw is essentially break-even.
+- `yaw_loose_018_low_alpha` is the better trade under 3°/m:
+  smaller XY win (+0.8 mm), much less yaw damage (-5 vs -21
+  mrad).
+- Under unknown drift, `yaw_loose_018_low_alpha` is the safer
+  default because it is never the worst on either axis. Under
+  known mild drift, `yaw_loose_018` extracts more XY signal.
+
 ### Followups not addressed yet
 
-- Run `yaw_loose_018` and `yaw_loose_018_low_alpha` on the lighter
-  `odom_yaw_drift_1deg_per_m` to see whether the XY win scales
-  linearly with drift and whether the yaw paradox shrinks
-  proportionally.
 - Try a `yaw_loose_025_low_alpha` to see if combining looser
   threshold with low alpha picks up more directional signal without
   noise penalty.
@@ -690,6 +756,7 @@ The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
   limit. Likely a multi-week effort and a meaningful design change
   (persistent local submap, ICP target swap, drift consolidation).
   Design draft for this change lives in
-  `docs/scan_to_map_icp_design.md`; the first follow-on PR should
-  be Phase 1 in that doc (pure helpers + unit tests, no behavior
-  change).
+  `docs/scan_to_map_icp_design.md`. Phase 1 (pure helpers +
+  unit tests, no behavior change) is merged on
+  `dev/corrected-slam-eval`; the next follow-on PR should be
+  Phase 2 (submap state plumbing + `SLAM_ICP_MODE` env switch).
