@@ -64,6 +64,8 @@ class ProfileSummary:
     completed: int = 0
     better_xy: int = 0
     improvements: list[float] = field(default_factory=list)
+    icp_error_p90_values: list[float] = field(default_factory=list)
+    icp_inlier_ratio_values: list[float] = field(default_factory=list)
     gate_counts: Counter = field(default_factory=Counter)
     status_counts: Counter = field(default_factory=Counter)
 
@@ -72,6 +74,12 @@ class ProfileSummary:
         self.completed += int(parse_bool(row.get("mission_completed", "")))
         self.better_xy += int(parse_bool(row.get("slam_better_xy", "")))
         self.improvements.append(parse_float(row.get("improvement_xy", "")))
+        if row.get("icp_error_p90"):
+            self.icp_error_p90_values.append(parse_float(row.get("icp_error_p90", "")))
+        if row.get("icp_inlier_ratio_5cm"):
+            self.icp_inlier_ratio_values.append(
+                parse_float(row.get("icp_inlier_ratio_5cm", ""))
+            )
         self.gate_counts.update(parse_counts(row.get("gate_reason_counts", "")))
         self.status_counts.update(parse_counts(row.get("diagnostics_status_counts", "")))
 
@@ -88,6 +96,18 @@ class ProfileSummary:
     @property
     def max_improvement(self) -> float:
         return max(self.improvements) if self.improvements else 0.0
+
+    @property
+    def avg_icp_error_p90(self) -> float:
+        if not self.icp_error_p90_values:
+            return 0.0
+        return sum(self.icp_error_p90_values) / len(self.icp_error_p90_values)
+
+    @property
+    def avg_icp_inlier_ratio(self) -> float:
+        if not self.icp_inlier_ratio_values:
+            return 0.0
+        return sum(self.icp_inlier_ratio_values) / len(self.icp_inlier_ratio_values)
 
 
 def load_rows(paths: list[Path]) -> list[dict[str, str]]:
@@ -143,9 +163,9 @@ def print_profile_summary(rows: list[dict[str, str]]) -> None:
     print("Profile summary")
     print(
         f"{'odom_profile':<24} {'profile':<18} {'completed':>11} {'better_xy':>10} "
-        f"{'avg_xy':>9} {'min_xy':>9} {'max_xy':>9} gate_counts"
+        f"{'avg_xy':>9} {'min_xy':>9} {'max_xy':>9} {'icp_p90':>9} {'inlier':>8} gate_counts"
     )
-    print("-" * 122)
+    print("-" * 141)
     for (odom_profile, profile), summary in sorted(
         summaries.items(), key=profile_sort_key
     ):
@@ -157,6 +177,8 @@ def print_profile_summary(rows: list[dict[str, str]]) -> None:
             f"{summary.avg_improvement:>9.4f} "
             f"{summary.min_improvement:>9.4f} "
             f"{summary.max_improvement:>9.4f} "
+            f"{summary.avg_icp_error_p90:>9.4f} "
+            f"{summary.avg_icp_inlier_ratio:>8.3f} "
             f"{format_counts(summary.gate_counts)}"
         )
 
