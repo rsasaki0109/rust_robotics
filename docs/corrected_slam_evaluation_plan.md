@@ -395,18 +395,69 @@ Reshaped path (current): `0.55,0.0;0.55,0.5;0.0,0.5` — three waypoints,
 two 90-degree turns, ~1.6 m total, all inside the working-scenario
 corridor at relative `x <= 0.55`. Pending fresh validation.
 
+### Baseline odom × loose_error on all four scenarios — XY worse, YAW better
+
+After `rich_geometry_turns` was reshaped to the all-diagonal three-hops
+pattern `(0.55,0.05); (0.20,0.55); (0,0)` and validated as completing
+(run `26017689809`: `mission_completed=true`, 134 mid-mission scans,
+49 high_error + 85 low_motion), a focused 8-run slice was triggered to
+compare `loose_error` and `loose_error_low_alpha` across all four
+scenarios on the unbiased baseline odom (Actions run `26018186549`,
+`navigation_revaluation_20260518T065743Z`). The step hit the 75-minute
+timeout after the loose_error half completed, so the four loose_error
+runs and the rich_geometry_turns log are usable; loose_error_low_alpha
+rows were not produced.
+
+Results for **baseline (unbiased) odom × loose_error**:
+
+| scenario              | improvement_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| ---------------:| ---------------:|
+| short_default         | -0.023         | +0.005          | True            |
+| three_hops            | -0.011         | +0.043          | True            |
+| long_two_legs         | -0.045         | -0.001          | False           |
+| rich_geometry_turns   | -0.022         | +0.027          | True            |
+
+(rich_geometry_turns row taken from the mid-mission log; the CSV row
+was not written because the step timed out during summary generation.)
+
+The pattern is consistent on clean odom: scan-to-scan ICP corrections
+**hurt XY by 1–4 cm but help or stay neutral on yaw**, often making
+`slam_better_yaw=True`. The earlier biased-odom regression
+(`loose_error` made XY 3-4x worse) is therefore not a biased-odom
+specific failure mode — it is the same XY noise injection that already
+happens on clean odom, amplified by the 3 percent scale bias.
+
+Practical reading:
+
+- The default `SLAM_ICP_REJECT_ERROR=0.011` is well tuned for XY
+  accuracy on this robot+world. Loosening it makes XY worse on every
+  scenario tested so far, including the new positive-control
+  `rich_geometry_turns`.
+- Scan-to-scan ICP on a TurtleBot3 burger is more reliable as a
+  **yaw** correction than as a **translation** correction. If the
+  goal is yaw accuracy, the gate can be loosened; if the goal is XY
+  accuracy, default is the right setting.
+- The simplest next improvement is to **split the gate into XY and
+  yaw branches** so the yaw blend can be admitted while XY is still
+  rejected. That avoids the current "all-or-nothing" XY/yaw coupling.
+
 ### Followups not addressed yet
 
-- `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) matrix rows 60-62
-  from the older biased sweep were never executed; do not re-run loose
-  sweeps on short_default / three_hops / long_two_legs (those are
-  rotation-dominated and the loose threshold just admits noise).
-  Re-evaluate only after rich_geometry_turns is reliably completing.
-- Once `rich_geometry_turns` passes the baseline+default validation, the
-  natural next sweep is **baseline odom × tuning ICP profiles × all four
-  scenarios** (28 runs). That isolates whether `loose_error` helps when
-  ICP actually has signal, without the biased odom confound. Only then
-  expand to biased odom.
-- The biased-odom revaluation still has no positive-control scenario for
-  drift correction. Consider `long_loop_return` (6-10 m, returns near
-  start) after rich_geometry_turns stabilizes.
+- Re-run the missed loose_error_low_alpha slice (matrix indices
+  20-23, 4 runs) to see if reducing blend alpha eliminates the XY
+  regression while keeping the yaw improvement. With ~19 min per run
+  including the rich_geometry_turns step, the next slice should fit
+  within the 75-minute step timeout.
+- `very_loose_error` (`SLAM_ICP_REJECT_ERROR=0.025`) rows are not a
+  priority; if loose_error already hurts XY at 0.018, very_loose will
+  hurt more.
+- Investigate the yaw-only blend split above. This is a code change
+  in `compute_icp_blend_decision()` and `blend_motion_delta()` in
+  `ros2_nodes/slam_node/src/main.rs`, not a tuning sweep.
+- Biased odom × tuning sweep is still pending. Run it only after the
+  yaw-only blend question is resolved, otherwise the result is
+  predictable from the unbiased data above.
+- The revaluation matrix script does not write the CSV row until the
+  whole step succeeds; on step timeout the last completed run's row
+  is lost even though the log is uploaded. Consider flushing the CSV
+  per-run so partial sweeps are self-describing.
