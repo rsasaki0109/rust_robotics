@@ -384,6 +384,120 @@ fn translation_magnitude(delta: MotionDelta) -> f64 {
     delta.x.hypot(delta.y)
 }
 
+/// Rotate-and-translate a 2×N point cloud from body frame at `pose` into the world frame.
+///
+/// Each column is a 2D point `(x, y)` in `pose`'s body frame. Returns a fresh
+/// `2×N` matrix of the same points expressed in the world frame.
+#[allow(dead_code)] // wired into the scan callback in scan-to-map Phase 2.
+fn transform_scan_to_world(scan_body: &DMatrix<f64>, pose: Pose2D) -> DMatrix<f64> {
+    if scan_body.nrows() < 2 || scan_body.ncols() == 0 {
+        return DMatrix::zeros(scan_body.nrows().max(2), scan_body.ncols());
+    }
+    let cos_yaw = pose.yaw.cos();
+    let sin_yaw = pose.yaw.sin();
+    let mut out = DMatrix::zeros(2, scan_body.ncols());
+    for c in 0..scan_body.ncols() {
+        let bx = scan_body[(0, c)];
+        let by = scan_body[(1, c)];
+        out[(0, c)] = cos_yaw * bx - sin_yaw * by + pose.x;
+        out[(1, c)] = sin_yaw * bx + cos_yaw * by + pose.y;
+    }
+    out
+}
+
+/// Apply a world-frame rigid residual (2D rotation + translation) on top of a predicted pose.
+///
+/// Interpreted as: rotate the predicted position about the world origin by
+/// `residual.yaw`, then translate by `(residual.x, residual.y)`, and add
+/// `residual.yaw` to the predicted yaw. This is the inverse mapping of how
+/// scan-to-map ICP returns its residual (it rotates *points* in world frame).
+#[allow(dead_code)] // consumed by the scan-to-map blending seam in Phase 2.
+fn apply_world_residual(predicted: Pose2D, residual_world: MotionDelta) -> Pose2D {
+    let cos_yaw = residual_world.yaw.cos();
+    let sin_yaw = residual_world.yaw.sin();
+    Pose2D {
+        x: cos_yaw * predicted.x - sin_yaw * predicted.y + residual_world.x,
+        y: sin_yaw * predicted.x + cos_yaw * predicted.y + residual_world.y,
+        yaw: normalize_angle(predicted.yaw + residual_world.yaw),
+    }
+}
+
+/// Bound on the local submap used by scan-to-map ICP.
+///
+/// `max_points` caps point count so ICP cost stays predictable; `max_radius_m`
+/// is the L2 radius around `anchor` outside of which points are pruned, so the
+/// submap stays a *local* reference as the robot drives.
+#[allow(dead_code)] // populated by Phase 2 submap state plumbing.
+#[derive(Clone, Copy, Debug)]
+struct SubmapBudget {
+    max_points: usize,
+    max_radius_m: f64,
+}
+
+/// Append a new world-frame scan into the submap and prune to the budget.
+///
+/// Returns the merged + pruned submap. Pruning rule: drop any point whose L2
+/// distance from `(anchor.x, anchor.y)` exceeds `budget.max_radius_m`; then,
+/// if the result still exceeds `budget.max_points`, keep only the most
+/// recently appended `budget.max_points` columns (newest-first).
+#[allow(dead_code)] // submap maintenance is hooked up in Phase 2.
+fn append_and_prune(
+    existing: Option<DMatrix<f64>>,
+    new_world: &DMatrix<f64>,
+    anchor: Pose2D,
+    budget: SubmapBudget,
+) -> DMatrix<f64> {
+    let new_cols = if new_world.nrows() >= 2 {
+        new_world.ncols()
+    } else {
+        0
+    };
+    let existing_cols = match existing.as_ref() {
+        Some(m) if m.nrows() >= 2 => m.ncols(),
+        _ => 0,
+    };
+    let total = existing_cols + new_cols;
+    if total == 0 {
+        return DMatrix::zeros(2, 0);
+    }
+
+    let mut combined = DMatrix::zeros(2, total);
+    if let Some(m) = existing.as_ref() {
+        for c in 0..existing_cols {
+            combined[(0, c)] = m[(0, c)];
+            combined[(1, c)] = m[(1, c)];
+        }
+    }
+    for c in 0..new_cols {
+        combined[(0, existing_cols + c)] = new_world[(0, c)];
+        combined[(1, existing_cols + c)] = new_world[(1, c)];
+    }
+
+    // Radius prune around anchor.
+    let r2 = budget.max_radius_m * budget.max_radius_m;
+    let mut keep_idx: Vec<usize> = Vec::with_capacity(combined.ncols());
+    for c in 0..combined.ncols() {
+        let dx = combined[(0, c)] - anchor.x;
+        let dy = combined[(1, c)] - anchor.y;
+        if dx * dx + dy * dy <= r2 {
+            keep_idx.push(c);
+        }
+    }
+
+    // Cap to max_points by keeping the newest tail of survivors.
+    if budget.max_points > 0 && keep_idx.len() > budget.max_points {
+        let drop = keep_idx.len() - budget.max_points;
+        keep_idx.drain(0..drop);
+    }
+
+    let mut out = DMatrix::zeros(2, keep_idx.len());
+    for (j, &i) in keep_idx.iter().enumerate() {
+        out[(0, j)] = combined[(0, i)];
+        out[(1, j)] = combined[(1, i)];
+    }
+    out
+}
+
 fn ramp_weight(value: f64, full_weight_limit: f64, reject_limit: f64) -> f64 {
     if value <= full_weight_limit {
         1.0
@@ -1062,10 +1176,11 @@ fn main() -> Result<(), DynError> {
 #[cfg(test)]
 mod tests {
     use super::{
-        blend_motion_delta, compose_pose_local, compute_icp_blend_decision,
-        format_slam_diagnostics, normalize_angle, odom_measurement_from_msg,
-        relative_motion_local, subsample_points_for_icp, IcpGatingParams, MotionDelta, Pose2D,
-        ScanDiagnostics, DEFAULT_BASE_FRAME_ID, DEFAULT_ICP_BLEND_ALPHA, DEFAULT_ODOM_FRAME_ID,
+        append_and_prune, apply_world_residual, blend_motion_delta, compose_pose_local,
+        compute_icp_blend_decision, format_slam_diagnostics, normalize_angle,
+        odom_measurement_from_msg, relative_motion_local, subsample_points_for_icp,
+        transform_scan_to_world, IcpGatingParams, MotionDelta, Pose2D, ScanDiagnostics,
+        SubmapBudget, DEFAULT_BASE_FRAME_ID, DEFAULT_ICP_BLEND_ALPHA, DEFAULT_ODOM_FRAME_ID,
     };
     use nalgebra::DMatrix;
     use safe_drive::msg::common_interfaces::nav_msgs;
@@ -1337,6 +1452,236 @@ mod tests {
             decision.alpha_yaw > 0.0,
             "yaw must be admitted under looser reject_error_yaw"
         );
+    }
+
+    #[test]
+    fn transform_scan_to_world_at_origin_is_identity() {
+        let scan = DMatrix::from_row_slice(2, 3, &[1.0, 0.0, -1.0, 0.0, 1.0, 0.0]);
+        let world = transform_scan_to_world(
+            &scan,
+            Pose2D {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+        );
+        assert_eq!(world.ncols(), 3);
+        for c in 0..3 {
+            assert!((world[(0, c)] - scan[(0, c)]).abs() < 1e-12);
+            assert!((world[(1, c)] - scan[(1, c)]).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn transform_scan_to_world_applies_translation_and_rotation() {
+        // Single body point at (+1, 0). Pose at (10, 20) facing +y (yaw=pi/2).
+        // After rotation, body +x becomes world +y; then translate to (10, 21).
+        let scan = DMatrix::from_row_slice(2, 1, &[1.0, 0.0]);
+        let world = transform_scan_to_world(
+            &scan,
+            Pose2D {
+                x: 10.0,
+                y: 20.0,
+                yaw: std::f64::consts::FRAC_PI_2,
+            },
+        );
+        assert!((world[(0, 0)] - 10.0).abs() < 1e-9);
+        assert!((world[(1, 0)] - 21.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn transform_scan_to_world_handles_empty_scan() {
+        let empty = DMatrix::zeros(2, 0);
+        let world = transform_scan_to_world(
+            &empty,
+            Pose2D {
+                x: 0.0,
+                y: 0.0,
+                yaw: 1.2,
+            },
+        );
+        assert_eq!(world.ncols(), 0);
+    }
+
+    #[test]
+    fn apply_world_residual_zero_is_identity() {
+        let predicted = Pose2D {
+            x: 1.0,
+            y: 2.0,
+            yaw: 0.3,
+        };
+        let out = apply_world_residual(
+            predicted,
+            MotionDelta {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+        );
+        assert!((out.x - 1.0).abs() < 1e-12);
+        assert!((out.y - 2.0).abs() < 1e-12);
+        assert!((out.yaw - 0.3).abs() < 1e-12);
+    }
+
+    #[test]
+    fn apply_world_residual_pure_translation_shifts_position_only() {
+        let predicted = Pose2D {
+            x: 1.0,
+            y: 2.0,
+            yaw: 0.3,
+        };
+        let out = apply_world_residual(
+            predicted,
+            MotionDelta {
+                x: 0.1,
+                y: -0.2,
+                yaw: 0.0,
+            },
+        );
+        assert!((out.x - 1.1).abs() < 1e-9);
+        assert!((out.y - 1.8).abs() < 1e-9);
+        assert!((out.yaw - 0.3).abs() < 1e-9);
+    }
+
+    #[test]
+    fn apply_world_residual_pure_rotation_rotates_position_about_origin() {
+        // Predicted pose at (1, 0). Residual is rotate by pi/2 about world origin.
+        // Expected new position: (0, 1). Yaw shifts from 0 to pi/2.
+        let predicted = Pose2D {
+            x: 1.0,
+            y: 0.0,
+            yaw: 0.0,
+        };
+        let out = apply_world_residual(
+            predicted,
+            MotionDelta {
+                x: 0.0,
+                y: 0.0,
+                yaw: std::f64::consts::FRAC_PI_2,
+            },
+        );
+        assert!(out.x.abs() < 1e-9);
+        assert!((out.y - 1.0).abs() < 1e-9);
+        assert!((out.yaw - std::f64::consts::FRAC_PI_2).abs() < 1e-9);
+    }
+
+    #[test]
+    fn append_and_prune_into_empty_keeps_points_within_radius() {
+        let new_world = DMatrix::from_row_slice(2, 3, &[
+            0.0, 0.5, 5.0, //
+            0.0, 0.0, 0.0,
+        ]);
+        let anchor = Pose2D {
+            x: 0.0,
+            y: 0.0,
+            yaw: 0.0,
+        };
+        let out = append_and_prune(
+            None,
+            &new_world,
+            anchor,
+            SubmapBudget {
+                max_points: 0,
+                max_radius_m: 1.0,
+            },
+        );
+        // (0,0) and (0.5,0) survive, (5,0) is pruned.
+        assert_eq!(out.ncols(), 2);
+        assert!((out[(0, 0)] - 0.0).abs() < 1e-12);
+        assert!((out[(0, 1)] - 0.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn append_and_prune_concatenates_existing_and_new() {
+        let existing = DMatrix::from_row_slice(2, 2, &[0.1, 0.2, 0.0, 0.0]);
+        let new_world = DMatrix::from_row_slice(2, 2, &[0.3, 0.4, 0.0, 0.0]);
+        let out = append_and_prune(
+            Some(existing),
+            &new_world,
+            Pose2D {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+            SubmapBudget {
+                max_points: 0,
+                max_radius_m: 10.0,
+            },
+        );
+        assert_eq!(out.ncols(), 4);
+        // Insertion order is preserved: existing first, then new.
+        assert!((out[(0, 0)] - 0.1).abs() < 1e-12);
+        assert!((out[(0, 1)] - 0.2).abs() < 1e-12);
+        assert!((out[(0, 2)] - 0.3).abs() < 1e-12);
+        assert!((out[(0, 3)] - 0.4).abs() < 1e-12);
+    }
+
+    #[test]
+    fn append_and_prune_caps_to_max_points_keeping_newest_tail() {
+        let existing = DMatrix::from_row_slice(2, 3, &[0.10, 0.11, 0.12, 0.0, 0.0, 0.0]);
+        let new_world = DMatrix::from_row_slice(2, 2, &[0.20, 0.21, 0.0, 0.0]);
+        let out = append_and_prune(
+            Some(existing),
+            &new_world,
+            Pose2D {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+            SubmapBudget {
+                max_points: 3,
+                max_radius_m: 10.0,
+            },
+        );
+        // 5 total points, all within radius, cap to 3 keeping the 3 newest:
+        // drop existing[0]=0.10 and existing[1]=0.11; keep 0.12, 0.20, 0.21.
+        assert_eq!(out.ncols(), 3);
+        assert!((out[(0, 0)] - 0.12).abs() < 1e-12);
+        assert!((out[(0, 1)] - 0.20).abs() < 1e-12);
+        assert!((out[(0, 2)] - 0.21).abs() < 1e-12);
+    }
+
+    #[test]
+    fn append_and_prune_uses_anchor_for_radius_check() {
+        let new_world = DMatrix::from_row_slice(2, 3, &[
+            9.0, 10.0, 11.0, //
+            10.0, 10.0, 10.0,
+        ]);
+        let anchor = Pose2D {
+            x: 10.0,
+            y: 10.0,
+            yaw: 0.0,
+        };
+        let out = append_and_prune(
+            None,
+            &new_world,
+            anchor,
+            SubmapBudget {
+                max_points: 0,
+                max_radius_m: 1.5,
+            },
+        );
+        // All three are within 1.5 m of anchor (10,10): (9,10), (10,10), (11,10).
+        assert_eq!(out.ncols(), 3);
+    }
+
+    #[test]
+    fn append_and_prune_empty_inputs_return_empty_matrix() {
+        let empty = DMatrix::zeros(2, 0);
+        let out = append_and_prune(
+            None,
+            &empty,
+            Pose2D {
+                x: 0.0,
+                y: 0.0,
+                yaw: 0.0,
+            },
+            SubmapBudget {
+                max_points: 10,
+                max_radius_m: 1.0,
+            },
+        );
+        assert_eq!(out.ncols(), 0);
     }
 
     #[test]
