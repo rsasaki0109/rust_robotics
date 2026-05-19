@@ -72,9 +72,6 @@ case "$PROFILE_SET" in
       "low_alpha|reduce accepted ICP correction weight|SLAM_ICP_BLEND_ALPHA=0.10"
       "strict_error|reject weaker ICP matches earlier|SLAM_ICP_REJECT_ERROR=0.008"
       "strict_low_alpha|lower blend weight and reject weaker ICP matches earlier|SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.008"
-      "loose_error|raise ICP reject error past LIDAR noise floor|SLAM_ICP_REJECT_ERROR=0.018"
-      "loose_error_low_alpha|raise ICP reject error and lower blend weight|SLAM_ICP_BLEND_ALPHA=0.10 SLAM_ICP_REJECT_ERROR=0.018"
-      "very_loose_error|raise ICP reject error to 2.3x default|SLAM_ICP_REJECT_ERROR=0.025"
       "yaw_loose_018|loosen yaw axis reject only; XY stays at default 0.011|SLAM_ICP_REJECT_ERROR_YAW=0.018"
       "yaw_loose_018_low_alpha|loosen yaw axis reject and lower yaw blend weight; XY default|SLAM_ICP_REJECT_ERROR_YAW=0.018 SLAM_ICP_BLEND_ALPHA_YAW=0.10"
     )
