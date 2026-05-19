@@ -25,6 +25,7 @@ use std::f64;
 // ICP parameters
 const EPS: f64 = 0.0001;
 const MAX_ITER: usize = 100;
+const INLIER_DISTANCE_THRESHOLD: f64 = 0.05;
 
 pub struct ICPResult {
     pub rotation: DMatrix<f64>,
@@ -34,6 +35,16 @@ pub struct ICPResult {
     pub final_error: f64,
     /// Mean nearest-neighbor distance \[m/point\]: `final_error / point_count`.
     pub final_error_mean: f64,
+    /// Mean nearest-neighbor distance before the first ICP update \[m/point\].
+    pub initial_error_mean: f64,
+    /// Median nearest-neighbor distance after applying the final transform.
+    pub final_error_median: f64,
+    /// 90th percentile nearest-neighbor distance after applying the final transform.
+    pub final_error_p90: f64,
+    /// Fraction of final associations below 5 cm. Useful as a simple ICP quality diagnostic.
+    pub inlier_ratio_5cm: f64,
+    /// Relative reduction from initial to final mean error. Negative values are clamped to 0.
+    pub relative_error_reduction: f64,
     pub point_count: usize,
     pub converged: bool,
 }
@@ -50,6 +61,7 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
     let mut h_matrix: Option<DMatrix<f64>> = None;
     let mut d_error = f64::INFINITY;
     let mut pre_error = f64::INFINITY;
+    let mut initial_error = f64::NAN;
     let mut count = 0;
     let mut current_pts = current_points.clone();
 
@@ -57,6 +69,9 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
         count += 1;
 
         let (indexes, error) = nearest_neighbor_association(previous_points, &current_pts);
+        if initial_error.is_nan() {
+            initial_error = error;
+        }
         let previous_indexed = select_columns(previous_points, &indexes);
         let (rt, tt) = svd_motion_estimation(&previous_indexed, &current_pts);
 
@@ -88,6 +103,24 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
 
     let point_count = current_points.ncols().max(1);
     let final_error_mean = pre_error / point_count as f64;
+    let initial_error_mean = initial_error / point_count as f64;
+    let final_distances = nearest_neighbor_distances(previous_points, &current_pts);
+    let final_error_median = percentile(final_distances.clone(), 0.50);
+    let final_error_p90 = percentile(final_distances.clone(), 0.90);
+    let inlier_count = final_distances
+        .iter()
+        .filter(|distance| **distance <= INLIER_DISTANCE_THRESHOLD)
+        .count();
+    let inlier_ratio_5cm = if final_distances.is_empty() {
+        0.0
+    } else {
+        inlier_count as f64 / final_distances.len() as f64
+    };
+    let relative_error_reduction = if initial_error_mean.is_finite() && initial_error_mean > 0.0 {
+        ((initial_error_mean - final_error_mean) / initial_error_mean).max(0.0)
+    } else {
+        0.0
+    };
 
     ICPResult {
         rotation,
@@ -95,6 +128,11 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
         iterations: count,
         final_error: pre_error,
         final_error_mean,
+        initial_error_mean,
+        final_error_median,
+        final_error_p90,
+        inlier_ratio_5cm,
+        relative_error_reduction,
         point_count,
         converged: d_error <= EPS && count < MAX_ITER,
     }
@@ -169,6 +207,56 @@ fn nearest_neighbor_association(
         }
         (indexes, error)
     }
+}
+
+fn nearest_neighbor_distances(
+    previous_points: &DMatrix<f64>,
+    current_points: &DMatrix<f64>,
+) -> Vec<f64> {
+    let dim = previous_points.nrows();
+
+    if dim == 2 {
+        let prev_svecs: Vec<SVector<f64, 2>> = (0..previous_points.ncols())
+            .map(|i| SVector::<f64, 2>::from([previous_points[(0, i)], previous_points[(1, i)]]))
+            .collect();
+        let tree = KdTree::new(&prev_svecs, 2);
+
+        (0..current_points.ncols())
+            .map(|j| {
+                let query =
+                    SVector::<f64, 2>::from([current_points[(0, j)], current_points[(1, j)]]);
+                let (_, sq_dist) = tree.search(&query);
+                sq_dist.sqrt()
+            })
+            .collect()
+    } else {
+        let mut distances = Vec::with_capacity(current_points.ncols());
+        for j in 0..current_points.ncols() {
+            let current_point = current_points.column(j);
+            let mut min_dist = f64::INFINITY;
+
+            for i in 0..previous_points.ncols() {
+                let prev_point = previous_points.column(i);
+                let dist = (current_point - prev_point).norm();
+                if dist < min_dist {
+                    min_dist = dist;
+                }
+            }
+            distances.push(min_dist);
+        }
+        distances
+    }
+}
+
+fn percentile(mut values: Vec<f64>, q: f64) -> f64 {
+    values.retain(|value| value.is_finite());
+    if values.is_empty() {
+        return f64::NAN;
+    }
+    values.sort_by(|a, b| a.total_cmp(b));
+    let clamped_q = q.clamp(0.0, 1.0);
+    let idx = ((values.len() - 1) as f64 * clamped_q).round() as usize;
+    values[idx]
 }
 
 /// Select columns from matrix based on indices
@@ -318,6 +406,11 @@ mod tests {
         assert!(result.converged);
         assert!((result.translation[0] + translation.x).abs() < 0.1);
         assert!((result.translation[1] + translation.y).abs() < 0.1);
+        assert!(result.initial_error_mean.is_finite());
+        assert!(result.final_error_median.is_finite());
+        assert!(result.final_error_p90.is_finite());
+        assert!((0.0..=1.0).contains(&result.inlier_ratio_5cm));
+        assert!((0.0..=1.0).contains(&result.relative_error_reduction));
     }
 
     #[test]

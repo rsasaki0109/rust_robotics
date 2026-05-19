@@ -5,6 +5,40 @@ on:
     branches: [ main, dev/*, feat/*, task/* ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      run_revaluation:
+        description: "Run corrected-frame revaluation matrix and upload reports"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      revaluation_profile_set:
+        description: "ICP profile set for revaluation"
+        required: false
+        default: "baseline"
+        type: choice
+        options:
+          - baseline
+          - tuning
+      revaluation_odom_profile_set:
+        description: "SLAM input odom profile set for revaluation"
+        required: false
+        default: "baseline"
+        type: choice
+        options:
+          - baseline
+          - biased
+      revaluation_start_index:
+        description: "Zero-based matrix row to start from"
+        required: false
+        default: "0"
+      revaluation_max_runs:
+        description: "Maximum rows to run; 0 runs all remaining rows"
+        required: false
+        default: "0"
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,7 +53,7 @@ env:
 jobs:
   navigation-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 120
     steps:
     - uses: actions/checkout@v4
 
@@ -89,3 +123,22 @@ jobs:
       run: |
         source /opt/ros/jazzy/setup.bash
         ROS_DOMAIN_ID=90 ENABLE_SLAM_CORRECTED_FRAME=true timeout 20m ./ros2_nodes/launch/run_navigation_smoke_test.sh
+
+    - name: Run corrected-frame revaluation matrix
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_revaluation == 'true' }}
+      run: |
+        source /opt/ros/jazzy/setup.bash
+        ROS_DOMAIN_ID_BASE=120 \
+        SLAM_REVALUATION_PROFILE_SET="${{ inputs.revaluation_profile_set }}" \
+        SLAM_REVALUATION_ODOM_PROFILE_SET="${{ inputs.revaluation_odom_profile_set }}" \
+        SLAM_REVALUATION_START_INDEX="${{ inputs.revaluation_start_index }}" \
+        SLAM_REVALUATION_MAX_RUNS="${{ inputs.revaluation_max_runs }}" \
+        timeout 75m ./ros2_nodes/launch/run_navigation_revaluation_matrix.sh
+
+    - name: Upload corrected-frame revaluation reports
+      if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_revaluation == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: corrected-slam-revaluation-${{ inputs.revaluation_profile_set }}-${{ inputs.revaluation_odom_profile_set }}
+        path: reports/slam_revaluation/
+        if-no-files-found: warn
