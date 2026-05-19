@@ -689,3 +689,7 @@ The 2026-05-17/18 corrected-SLAM tuning sprint achieved:
   the current data supports for overcoming the `xy_scale` structural
   limit. Likely a multi-week effort and a meaningful design change
   (persistent local submap, ICP target swap, drift consolidation).
+  Design draft for this change lives in
+  `docs/scan_to_map_icp_design.md`; the first follow-on PR should
+  be Phase 1 in that doc (pure helpers + unit tests, no behavior
+  change).
