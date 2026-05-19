@@ -539,19 +539,88 @@ What this rules out and what is still open:
   previous scan. That is a substantially larger change than gate
   tuning.
 
+### yaw_loose_018 under yaw_drift_3deg_per_m — first biased-odom win, with a yaw paradox
+
+Actions run `26069242809` ran the same `yaw_loose_018` profile under
+the 3-degree-per-meter yaw-drift biased odom, indices 156-159 in the
+biased matrix.
+
+| scenario              | improvement_xy | slam_better_xy | improvement_yaw | slam_better_yaw |
+| --------------------- | --------------:| --------------:| ---------------:| ---------------:|
+| short_default         | +0.003         | True           | -0.017          | False           |
+| three_hops            | -0.000         | False          | -0.017          | False           |
+| long_two_legs         | +0.003         | True           | -0.026          | False           |
+| rich_geometry_turns   | +0.002         | True           | -0.025          | False           |
+| **average**           | **+0.0020**    | **3/4**        | **-0.021**      | 0/4             |
+
+This is the first time in this sprint that corrected SLAM has **beaten
+raw odom on XY under any biased odom profile**. `better_xy=3/4` and
+avg XY improvement of +2 mm, against a profile that adds 3° per
+meter of yaw drift to the SLAM input odom.
+
+But yaw is dramatically worse: every scenario regresses by 17-26 mrad
+(about 1.0-1.5°). The XY win and the yaw loss happen at the same
+time, on the same scans.
+
+Why xy_scale and yaw_drift differ structurally:
+
+- `xy_scale_3pct`: every per-scan translation is scaled by 1.03. ICP
+  sees the same per-scan motion as raw odom (both translation and
+  yaw match). There is no scan-to-scan signal that the bias exists,
+  so no correction is possible. Result: corrected XY tracks raw XY.
+- `yaw_drift_3deg_per_m`: the bias is yaw rotation per meter
+  travelled. When the robot drives straight, raw odom reports a
+  small yaw rotation, but the LIDAR scans show no rotation. So
+  `odom_dyaw != icp_dyaw` with a consistent sign — the scan-to-scan
+  ICP **does** see this bias and the gate can act on it.
+
+That signal propagates through `compose_pose_local`: the corrected
+pose's yaw stays closer to true, so each subsequent translation is
+composed in roughly the right direction. The net effect is the +2 mm
+XY improvement. **The XY win is a side-effect of yaw correction**, not
+of XY-axis ICP blending.
+
+The yaw paradox (XY better, yaw worse) — likely explanation:
+
+- Per-scan yaw drift bias at the typical inter-scan motion is small
+  (~3 mrad / scan for 5 cm forward motion at 3°/m). That is the
+  same order as the ICP yaw noise floor.
+- ICP yaw_delta is dominated by noise at that magnitude, with random
+  per-scan sign.
+- Blending a noisy yaw correction at a low rate (alpha_yaw ~ 0.1
+  attenuated) over many scans does not match a single sustained
+  drift sign — it integrates random noise plus a small directional
+  component, and the noise dominates.
+- The XY win happens because even a small consistent yaw correction
+  (over the threshold) is enough to keep the body frame oriented
+  better, while the yaw error itself oscillates around a slightly
+  wrong mean.
+
+The corrected SLAM tuning track now has its first concrete biased-odom
+result: `yaw_loose_018` on `yaw_drift_3deg_per_m` wins on XY on 3/4
+scenarios. It is not a full win because yaw itself regresses; the
+practical question is whether downstream code cares more about XY or
+yaw.
+
 ### Followups not addressed yet
 
-- Same `yaw_loose_018` slice under `odom_yaw_drift_3deg_per_m` (the
-  yaw-bias odom profile). If the split-gate yaw blend can correct
-  yaw drift cumulatively, this is where the improvement would
-  appear. Indices 156-159 in the biased matrix.
-- Try `yaw_loose_025` and `yaw_loose_018_low_alpha`
-  (`SLAM_ICP_BLEND_ALPHA_YAW=0.10`) on baseline odom to see whether
-  the `rich_geometry_turns` yaw regression at -8 mrad can be
-  recovered.
-- Implement scan-to-map ICP in `slam_node` so the corrected frame
-  has an unbiased reference. This is the only path the current data
-  supports for beating raw odom on biased XY.
+- Test `yaw_loose_018_low_alpha` (`SLAM_ICP_BLEND_ALPHA_YAW=0.10` or
+  lower) on `yaw_drift_3deg_per_m`. The hypothesis is that reducing
+  the yaw blend alpha will limit noise injection while still keeping
+  the directional correction; this should reduce or eliminate the
+  yaw regression while preserving the XY win.
+- Add an `yaw_drift_1deg_per_m` slice for completeness — at lower
+  drift the per-scan signal is even smaller relative to noise, so
+  the yaw regression may be smaller or larger depending on the
+  noise-to-signal ratio.
+- Try `yaw_loose_025` (looser still) under `yaw_drift_3deg_per_m`.
+  If admitting more attenuated samples picks up more real signal,
+  yaw could improve; if it admits more noise, yaw could get worse.
+- The `xy_scale` structural limit and the partial `yaw_drift` win
+  together motivate scan-to-map ICP as the next major change. Under
+  scan-to-map, the per-scan ICP residual is against an accumulated
+  unbiased reference, so even `xy_scale` bias becomes visible to the
+  solver.
 - Retire `loose_error*` and `very_loose_error` profiles from the
   tuning matrix; the split-gate `yaw_loose_*` family is strictly
   better on both baseline and biased data.
