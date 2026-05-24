@@ -815,3 +815,14 @@ Behavior tree runtime for mission-level decision making with sequence, selector,
 Finite state machine for robot behavior management with states, transitions, guards, and actions
 
 - [src](./crates/rust_robotics_control/src/state_machine.rs)
+
+# Community
+
+Contributions are welcome, especially focused algorithm ports, deterministic
+benchmarks, reproducible ROS2/Gazebo issues, and visual examples that make the
+library easier to evaluate.
+
+- [Contributing guide](./CONTRIBUTING.md)
+- [Security policy](./SECURITY.md)
+- [Issue templates](./.github/ISSUE_TEMPLATE)
+- [Pull request template](./.github/PULL_REQUEST_TEMPLATE.md)
