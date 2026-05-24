@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible algorithm, example, ROS2, or documentation problem.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include the exact command, input data, feature flags, and environment variables.
+      placeholder: |
+        cargo run -p rust_robotics --example headless_grid_planners --features planning
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Rust version, OS, ROS2/Gazebo version if relevant, and target crate.
+      placeholder: |
+        rustc --version
+        cargo --version
+        lsb_release -a
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or output
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues and PRs.
+          required: true
+        - label: I included a minimal command or test case.
+          required: true
