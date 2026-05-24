@@ -22,7 +22,7 @@ pub type MCLMeasurement = Vec<(f64, f64, f64)>;
 
 const X_BIN_SIZE: f64 = 0.5;
 const Y_BIN_SIZE: f64 = 0.5;
-const YAW_BIN_SIZE: f64 = 15.0_f64.to_radians();
+const YAW_BIN_SIZE: f64 = 15.0 * PI / 180.0;
 
 /// Single particle.
 #[derive(Debug, Clone)]

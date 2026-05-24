@@ -1553,7 +1553,7 @@ fn sensor_bias_offset_for_step(
     }
 
     let magnitude = profile.observation_outlier_scale * scale;
-    let direction = if slot.is_multiple_of(2) { 1.0 } else { -1.0 };
+    let direction = if slot % 2 == 0 { 1.0 } else { -1.0 };
     Vector2::new(magnitude, direction * 0.6 * magnitude)
 }
 

@@ -2,11 +2,15 @@
 name = "rust_robotics_mapping"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
+documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics_mapping/"
 description = "Mapping algorithms (NDT, occupancy grid, etc.) for the RustRobotics workspace"
 
 [dependencies]

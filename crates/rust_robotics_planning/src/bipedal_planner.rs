@@ -219,7 +219,7 @@ impl BipedalPlanner {
 }
 
 fn alternating_sign(n: usize) -> f64 {
-    if n.is_multiple_of(2) {
+    if n % 2 == 0 {
         1.0
     } else {
         -1.0

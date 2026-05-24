@@ -229,8 +229,8 @@ impl LShapeFitting {
                         .any(|(a, b)| *a && *b);
                     if overlap {
                         let other = merged.remove(j);
-                        for k in 0..n {
-                            merged[i][k] = merged[i][k] || other[k];
+                        for (k, value) in other.iter().enumerate().take(n) {
+                            merged[i][k] = merged[i][k] || *value;
                         }
                         changed = true;
                     } else {

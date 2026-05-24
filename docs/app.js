@@ -385,6 +385,30 @@ const stats = {
   modules: 12
 };
 
+const docsByCategory = {
+  Localization: "api/rust_robotics_localization/",
+  Mapping: "api/rust_robotics_mapping/",
+  SLAM: "api/rust_robotics_slam/",
+  "Path Planning": "api/rust_robotics_planning/",
+  "Path Tracking": "api/rust_robotics_control/",
+  Control: "api/rust_robotics_control/",
+  "Arm Navigation": "api/rust_robotics_control/",
+  "Mission Planning": "api/rust_robotics_control/",
+  "Aerial Navigation": "api/rust_robotics_planning/"
+};
+
+const sourceByCategory = {
+  Localization: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_localization/src",
+  Mapping: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_mapping/src",
+  SLAM: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_slam/src",
+  "Path Planning": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_planning/src",
+  "Path Tracking": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
+  Control: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
+  "Arm Navigation": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
+  "Mission Planning": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
+  "Aerial Navigation": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_planning/src"
+};
+
 visualCount.textContent = stats.visuals.toString();
 moduleCount.textContent = stats.modules.toString();
 
@@ -396,6 +420,8 @@ function createCard(item, index) {
   const command = fragment.querySelector(".command-chip");
   const title = fragment.querySelector("h3");
   const description = fragment.querySelector(".card-description");
+  const sourceLink = fragment.querySelector(".source-link");
+  const docsLink = fragment.querySelector(".docs-link");
 
   card.dataset.category = item.category;
   card.style.animationDelay = `${Math.min(index * 45, 540)}ms`;
@@ -414,6 +440,8 @@ function createCard(item, index) {
   command.textContent = item.command.replace("cargo run --", "");
   title.textContent = item.title;
   description.textContent = item.description;
+  sourceLink.href = sourceByCategory[item.category] || "https://github.com/rsasaki0109/rust_robotics";
+  docsLink.href = docsByCategory[item.category] || "api/rust_robotics/";
 
   return fragment;
 }
