@@ -1417,16 +1417,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nearest_neighbor"
-version = "0.1.0"
-dependencies = [
- "log",
- "nalgebra",
- "num-traits",
- "rand",
-]
-
-[[package]]
 name = "nix"
 version = "0.23.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1890,6 +1880,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_robotics_nearest_neighbor"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "nalgebra",
+ "num-traits",
+ "rand",
+]
+
+[[package]]
 name = "rust_robotics_planning"
 version = "0.1.0"
 dependencies = [
@@ -1908,10 +1908,10 @@ version = "0.1.0"
 dependencies = [
  "gnuplot",
  "nalgebra",
- "nearest_neighbor",
  "rand",
  "rand_distr",
  "rust_robotics_core",
+ "rust_robotics_nearest_neighbor",
 ]
 
 [[package]]
