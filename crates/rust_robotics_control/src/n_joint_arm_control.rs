@@ -146,10 +146,10 @@ fn pseudo_inverse_2xn(j: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
     // J^T * (J J^T)^{-1}  => n x 2
     let mut result = vec![vec![0.0; 2]; n];
-    for i in 0..n {
-        for col in 0..2 {
+    for (i, result_row) in result.iter_mut().enumerate().take(n) {
+        for (col, result_cell) in result_row.iter_mut().enumerate().take(2) {
             for k in 0..2 {
-                result[i][col] += j[k][i] * inv[k][col];
+                *result_cell += j[k][i] * inv[k][col];
             }
         }
     }
