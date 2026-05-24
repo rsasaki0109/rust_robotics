@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: RustRobotics showcase
+    url: https://rsasaki0109.github.io/rust_robotics/
+    about: Browse demos, API docs, and source links before opening an issue.
+  - name: ROS2 integration docs
+    url: https://github.com/rsasaki0109/rust_robotics/blob/main/docs/ros2_integration.md
+    about: Check the ROS2/Gazebo setup notes and smoke-test commands.
