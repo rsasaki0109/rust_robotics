@@ -72,15 +72,66 @@ PATH_OUT="$TMP_DIR/planned_path.txt"
 launch_pid=""
 mission_diag_pid=""
 
+wait_for_process_exit() {
+  local pid="$1"
+  local timeout_seconds="$2"
+  local waited=0
+
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( waited >= timeout_seconds )); then
+      return 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+
+  wait "$pid" 2>/dev/null || true
+  return 0
+}
+
+terminate_pid() {
+  local pid="$1"
+  local grace_seconds="${2:-5}"
+
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+
+  kill "$pid" 2>/dev/null || true
+  if ! wait_for_process_exit "$pid" "$grace_seconds"; then
+    kill -TERM "$pid" 2>/dev/null || true
+    if ! wait_for_process_exit "$pid" "$grace_seconds"; then
+      kill -KILL "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+  fi
+}
+
+terminate_process_group() {
+  local pid="$1"
+  local grace_seconds="${2:-10}"
+
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+
+  kill -INT -- "-$pid" 2>/dev/null || kill -INT "$pid" 2>/dev/null || true
+  if ! wait_for_process_exit "$pid" "$grace_seconds"; then
+    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+    if ! wait_for_process_exit "$pid" "$grace_seconds"; then
+      kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+  fi
+}
+
 cleanup() {
   local exit_code=$?
   if [[ -n "$mission_diag_pid" ]] && kill -0 "$mission_diag_pid" 2>/dev/null; then
-    kill "$mission_diag_pid" 2>/dev/null || true
-    wait "$mission_diag_pid" 2>/dev/null || true
+    terminate_pid "$mission_diag_pid" 5
   fi
   if [[ -n "$launch_pid" ]] && kill -0 "$launch_pid" 2>/dev/null; then
-    kill -INT -- "-$launch_pid" 2>/dev/null || true
-    wait "$launch_pid" 2>/dev/null || true
+    terminate_process_group "$launch_pid" 10
   fi
 
   if [[ "$exit_code" -ne 0 ]]; then
@@ -377,8 +428,7 @@ wait_for_log_pattern "published stop command after path clear" "$SMOKE_MISSION_T
 capture_topic_stream_until "/mission_status" "std_msgs/msg/String" "$STATUS_OUT" "$SMOKE_TOPIC_CAPTURE_TIMEOUT" "data: status=completed"
 
 if [[ -n "$mission_diag_pid" ]] && kill -0 "$mission_diag_pid" 2>/dev/null; then
-  kill "$mission_diag_pid" 2>/dev/null || true
-  wait "$mission_diag_pid" 2>/dev/null || true
+  terminate_pid "$mission_diag_pid" 5
 fi
 mission_diag_pid=""
 

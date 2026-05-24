@@ -512,12 +512,10 @@ impl JPSPlanner {
                     cx += dx;
                     cy += dy;
                 }
+            } else if cx != x {
+                cx += dx;
             } else {
-                if cx != x {
-                    cx += dx;
-                } else {
-                    cy += dy;
-                }
+                cy += dy;
             }
 
             reconstructed_length += self.calc_distance(previous_x, previous_y, cx, cy);
