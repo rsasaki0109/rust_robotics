@@ -2,12 +2,16 @@
 name = "rust_robotics"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
-description = "Umbrella crate for the RustRobotics workspace — feature-gated re-exports of all domain crates"
+documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics/"
+description = "Umbrella crate for the RustRobotics workspace - feature-gated re-exports of all domain crates"
 
 [features]
 default = ["planning", "localization", "control", "mapping", "slam"]

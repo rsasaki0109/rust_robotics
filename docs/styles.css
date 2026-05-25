@@ -126,6 +126,7 @@ button {
 .panel-note,
 .section-note,
 .card-description,
+.card-link,
 .hero-text,
 .cta-card p {
   color: var(--muted);
@@ -457,6 +458,36 @@ button {
 .card-description {
   margin: 0;
   line-height: 1.65;
+}
+
+.card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.84rem;
+  font-weight: 600;
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.card-link:hover,
+.card-link:focus-visible {
+  border-color: rgba(53, 208, 186, 0.42);
+  color: var(--ink);
+  transform: translateY(-1px);
 }
 
 .cta-card {

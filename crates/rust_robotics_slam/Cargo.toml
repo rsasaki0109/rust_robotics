@@ -2,11 +2,15 @@
 name = "rust_robotics_slam"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
 authors.workspace = true
 keywords.workspace = true
 categories.workspace = true
+documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics_slam/"
 description = "SLAM algorithms (EKF-SLAM, FastSLAM, Graph SLAM, ICP) for the RustRobotics workspace"
 
 [features]
@@ -19,4 +23,4 @@ nalgebra = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 gnuplot = { workspace = true, optional = true }
-nearest_neighbor = { path = "../../vendor/nearest_neighbor" }
+nearest_neighbor = { package = "rust_robotics_nearest_neighbor", path = "../../vendor/nearest_neighbor", version = "0.1.0" }
