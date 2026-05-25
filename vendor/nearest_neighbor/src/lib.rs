@@ -144,7 +144,7 @@ fn children_near_far<T: Float>(query_element: T, boundary: T, node_index: usize)
 
 #[inline]
 fn the_other_side_index(node_index: usize) -> usize {
-    if node_index.is_multiple_of(2) {
+    if node_index % 2 == 0 {
         node_index + 1
     } else {
         node_index - 1

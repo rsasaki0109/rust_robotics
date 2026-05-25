@@ -1,7 +1,19 @@
 [package]
-name = "nearest_neighbor"
+name = "rust_robotics_nearest_neighbor"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.80"
+license = "Apache-2.0"
+repository = "https://github.com/rsasaki0109/rust_robotics"
+homepage = "https://rsasaki0109.github.io/rust_robotics/"
+description = "KD-tree nearest neighbor search used by RustRobotics SLAM algorithms"
+readme = "README.md"
+keywords = ["robotics", "nearest-neighbor", "kdtree", "slam", "icp"]
+categories = ["algorithms", "science::robotics"]
+
+[lib]
+name = "nearest_neighbor"
+path = "src/lib.rs"
 
 [dependencies]
 log = "0.4"

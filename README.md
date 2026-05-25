@@ -1,22 +1,62 @@
-RustRobotics
-====
+# RustRobotics
 
 [![CI](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/rsasaki0109/rust_robotics/branch/main/graph/badge.svg)](https://codecov.io/gh/rsasaki0109/rust_robotics)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://rsasaki0109.github.io/rust_robotics/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
-This package is a rust implementation of [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics), featuring 100+ unique robotics algorithms across localization, mapping, SLAM, planning, control, and mission-level behavior.
+RustRobotics is a library-first Rust workspace for robotics algorithms, inspired by
+[PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics) and extended with
+benchmarks, ROS2/Gazebo demos, and a visual showcase.
 
-## Build
+![Dijkstra motion planner demo](./media/dijkstra-motion-planner.gif)
+
+## Why This Repo Is Useful
+
+- **100+ robotics algorithms** across planning, localization, mapping, SLAM, control,
+  aerial navigation, arm motion, and mission behavior.
+- **Runnable Rust examples**, from headless CI-friendly demos to visualization examples
+  and a ROS2 TurtleBot3 Gazebo navigation stack.
+- **Measured comparisons**, including Rust vs Python speed checks and MovingAI planner
+  benchmarks with reproducible commands.
+
+Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
+
+## Quick Start
+
+Run a headless planner demo with no GUI dependencies:
 
 ```bash
-git clone https://github.com/rsasaki0109/RustRobotics.git
-cd RustRobotics
-cargo build --workspace
-cargo test --workspace
+git clone https://github.com/rsasaki0109/rust_robotics.git
+cd rust_robotics
+cargo run -p rust_robotics --example headless_grid_planners --features planning
 ```
 
-## Workspace Structure
+Build and test the complete workspace:
+
+```bash
+cargo build --workspace --lib --tests --examples
+cargo test --workspace --lib --tests
+```
+
+## Use As A Library
+
+Until the first crates.io release is published, depend on the Git repository:
+
+```toml
+[dependencies]
+rust_robotics = { git = "https://github.com/rsasaki0109/rust_robotics" }
+```
+
+Import the domain crate you need:
+
+```rust
+use rust_robotics::planning::{AStarConfig, AStarPlanner, DWAPlanner};
+use rust_robotics::localization::{EKFConfig, EKFLocalizer};
+use rust_robotics::control::{PurePursuitController, StanleyController};
+```
+
+## What Is Inside
 
 ```
 crates/
@@ -31,28 +71,7 @@ crates/
 └── rust_robotics/               — Umbrella crate (feature-gated re-exports)
 ```
 
-## Usage as Library
-
-```toml
-# Use the full library
-[dependencies]
-rust_robotics = "0.1"
-
-# Or use individual crates
-[dependencies]
-rust_robotics_planning = "0.1"
-rust_robotics_localization = "0.1"
-```
-
-Types are re-exported at the crate root for convenience:
-
-```rust
-use rust_robotics_planning::{AStarPlanner, AStarConfig, DWAPlanner};
-use rust_robotics_localization::{EKFConfig, EKFLocalizer};
-use rust_robotics_control::{PurePursuitController, StanleyController};
-```
-
-## Run (Example)
+## More Examples
 
 ```bash
 # Headless (no GUI dependencies)

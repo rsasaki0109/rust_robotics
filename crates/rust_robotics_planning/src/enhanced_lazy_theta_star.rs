@@ -323,7 +323,7 @@ impl EnhancedLazyThetaStarPlanner {
                 if self.line_of_sight(neighbor.x, neighbor.y, x, y) {
                     let dist = self.euclidean_distance(neighbor.x, neighbor.y, x, y);
                     let g_via = neighbor.cost + dist;
-                    if best.is_none_or(|(_, best_g)| g_via < best_g) {
+                    if best.map_or(true, |(_, best_g)| g_via < best_g) {
                         best = Some((neighbor_storage_index, g_via));
                     }
                 }
@@ -339,7 +339,7 @@ impl EnhancedLazyThetaStarPlanner {
                     if self.line_of_sight(ancestor.x, ancestor.y, x, y) {
                         let dist = self.euclidean_distance(ancestor.x, ancestor.y, x, y);
                         let g_via = ancestor.cost + dist;
-                        if best.is_none_or(|(_, best_g)| g_via < best_g) {
+                        if best.map_or(true, |(_, best_g)| g_via < best_g) {
                             best = Some((a_idx, g_via));
                         }
                     }

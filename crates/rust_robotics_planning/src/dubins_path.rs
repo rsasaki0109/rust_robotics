@@ -160,7 +160,7 @@ impl DubinsPlanner {
                 let world_lengths = [lengths[0] * scale, lengths[1] * scale, lengths[2] * scale];
                 let total = world_lengths[0] + world_lengths[1] + world_lengths[2];
 
-                if best.as_ref().is_none_or(|b| total < b.total_length) {
+                if best.as_ref().map_or(true, |b| total < b.total_length) {
                     best = Some(DubinsPath {
                         path_type: pt,
                         lengths: world_lengths,
