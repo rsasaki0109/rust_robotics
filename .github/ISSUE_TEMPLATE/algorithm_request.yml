@@ -1,0 +1,42 @@
+name: Algorithm or example request
+description: Suggest a robotics algorithm, benchmark, visualization, or ROS2 demo.
+title: "[Request]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should RustRobotics add, and who would use it?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Path planning
+        - Localization
+        - Control
+        - Mapping
+        - SLAM
+        - ROS2/Gazebo
+        - Visualization
+        - Benchmarking
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Papers, PythonRobotics links, datasets, or expected behavior.
+      placeholder: |
+        - Paper:
+        - Reference implementation:
+        - Expected inputs/outputs:
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What tests, examples, or docs would make this complete?
