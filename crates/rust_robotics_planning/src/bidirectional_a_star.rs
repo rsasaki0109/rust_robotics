@@ -223,7 +223,7 @@ impl BidirectionalAStarPlanner {
         let total_cost = forward_cost + backward_cost;
         if best_meeting
             .as_ref()
-            .is_none_or(|(_, _, best_cost)| total_cost < *best_cost)
+            .map_or(true, |(_, _, best_cost)| total_cost < *best_cost)
         {
             *best_meeting = Some((forward_index, backward_index, total_cost));
         }

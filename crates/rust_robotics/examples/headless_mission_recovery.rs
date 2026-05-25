@@ -103,7 +103,7 @@ fn perform_recovery_sequence(
     }
 
     println!("recovery attempt {attempt}: rotate");
-    let rotate_direction = if attempt.is_multiple_of(2) { -1.0 } else { 1.0 };
+    let rotate_direction = if attempt % 2 == 0 { -1.0 } else { 1.0 };
     for _ in 0..ROTATE_STEPS {
         let _ = apply_control_step(
             true_state,
@@ -242,7 +242,7 @@ fn main() -> RoboticsResult<()> {
             continue;
         }
 
-        if step.is_multiple_of(40) {
+        if step % 40 == 0 {
             println!(
                 "step={step:03} waypoint={}/{} true=({:.2}, {:.2}) est=({:.2}, {:.2}) dist={:.2}",
                 progress.current_idx + 1,

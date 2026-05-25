@@ -63,11 +63,8 @@ impl OccupancyGrid {
     /// # Panics
     /// Panics if `width` or `height` is odd, or if `data.len() != width * height`.
     pub fn new(width: usize, height: usize, data: Vec<bool>) -> Self {
-        assert!(width.is_multiple_of(2), "width must be even, got {width}");
-        assert!(
-            height.is_multiple_of(2),
-            "height must be even, got {height}"
-        );
+        assert!(width % 2 == 0, "width must be even, got {width}");
+        assert!(height % 2 == 0, "height must be even, got {height}");
         assert_eq!(data.len(), width * height);
         Self {
             width,
