@@ -253,14 +253,24 @@ Primary files:
 - `docs/assets/kinodynamic-stl-cbs.svg`
 - `docs/kinodynamic_stl_cbs.md`
 
+- Continuous-time conflicts are now promoted into high-level CBS branching
+  constraints: when integer-time CBS is clean but a between-tick near-miss
+  remains, the planner derives a vertex/edge constraint at the offending tick
+  for each involved agent and replans. `KinodynamicStlCbsPlan2D` reports
+  `continuous_conflicts_resolved`.
+
 Current validation:
 
 - `cargo test -p rust_robotics_planning kinodynamic_stl_cbs`
-- Headless example reports integer and continuous separation robustness.
+- `cbs_resolves_continuous_only_perpendicular_conflict` covers the
+  integer-clean-but-continuously-unsafe case.
+- Headless example reports integer and continuous separation robustness plus
+  `continuous_resolved`.
 
 Next useful extension:
 
-- Turn continuous-time conflicts into high-level CBS branching constraints.
+- Add randomized multi-agent crossings and assert continuous robustness stays
+  non-negative across a sweep.
 
 ### Hierarchical MAPF Replanning
 
@@ -381,10 +391,11 @@ cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --n
 
 ## Next Concrete Queue
 
-1. Continuous-conflict CBS branching.
-   - Convert continuous-time kinodynamic conflicts into CBS constraints.
-   - Add test cases where integer-time CBS is clean but continuous occupancy is
-     unsafe.
+1. ~~Continuous-conflict CBS branching.~~ **Done (2026-06-04).**
+   - Continuous-time kinodynamic conflicts are converted into CBS vertex/edge
+     constraints in `kinodynamic_stl_cbs.rs`.
+   - `cbs_resolves_continuous_only_perpendicular_conflict` covers the
+     integer-clean-but-continuously-unsafe case.
 
 2. Hierarchical MAPF benchmark sweeps.
    - Sweep region width and region height.

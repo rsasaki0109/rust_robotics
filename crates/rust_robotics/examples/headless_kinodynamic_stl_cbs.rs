@@ -51,11 +51,12 @@ fn main() -> RoboticsResult<()> {
     let plan = planner.plan(&agents)?;
 
     println!(
-        "kinodynamic-stl-cbs: independent_conflict={} final_conflict={} continuous_conflict={} resolved={} expanded={} total_cost={} separation={:.2} continuous_separation={:.2}",
+        "kinodynamic-stl-cbs: independent_conflict={} final_conflict={} continuous_conflict={} resolved={} continuous_resolved={} expanded={} total_cost={} separation={:.2} continuous_separation={:.2}",
         first_conflict(&independent_cells, planner.config().max_time).is_some(),
         first_conflict(&plan.cell_paths, planner.config().max_time).is_some(),
         plan.first_continuous_conflict.is_some(),
         plan.conflicts_resolved,
+        plan.continuous_conflicts_resolved,
         plan.high_level_nodes_expanded,
         plan.total_cost,
         plan.min_pairwise_separation_robustness,
