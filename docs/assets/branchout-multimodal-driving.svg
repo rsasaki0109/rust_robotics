@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="560" viewBox="0 0 1020 560" role="img" aria-labelledby="title desc">
+<title id="title">BranchOut-lite multimodal driving</title>
+<desc id="desc">A 2-D driving scene with multiple plausible decisions and mixture probabilities.</desc>
+<rect width="1020" height="560" fill="#f8fafc"/>
+<text x="58" y="42" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">BranchOut-lite multimodal driving</text>
+<text x="58" y="68" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">A compact GMM-style head keeps several plausible futures alive instead of collapsing to one route.</text>
+<rect x="58.0" y="92.0" width="690.0" height="330.0" rx="8" fill="#ffffff" stroke="#dbe3ee" stroke-width="1.5"/>
+<rect x="58.0" y="118.9" width="690.0" height="276.3" fill="#e5e7eb"/>
+<line x1="58.0" y1="349.1" x2="748.0" y2="349.1" stroke="#ffffff" stroke-width="2.4" stroke-dasharray="18 14" opacity="0.95"/>
+<line x1="58.0" y1="257.0" x2="748.0" y2="257.0" stroke="#ffffff" stroke-width="2.4" stroke-dasharray="18 14" opacity="0.95"/>
+<line x1="58.0" y1="164.9" x2="748.0" y2="164.9" stroke="#ffffff" stroke-width="2.4" stroke-dasharray="18 14" opacity="0.95"/>
+<polyline points="91.7,257.0 113.9,257.0 136.1,257.0 158.3,257.0 180.5,257.0 202.7,257.0 224.9,257.0 247.2,257.0 269.4,257.0 291.6,257.0 313.8,257.0 336.0,257.0 358.2,257.0 380.4,257.0 402.7,257.0 424.9,257.0 447.1,257.0 469.3,257.0 491.5,257.0 513.7,257.0 536.0,257.0 558.2,257.0 580.4,257.0 602.6,257.0 624.8,257.0 647.0,257.0 669.2,257.0 691.5,257.0 713.7,257.0" fill="none" stroke="#ffffff" stroke-width="8.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
+<polyline points="91.7,257.0 113.9,257.0 136.1,257.0 158.3,257.0 180.5,257.0 202.7,257.0 224.9,257.0 247.2,257.0 269.4,257.0 291.6,257.0 313.8,257.0 336.0,257.0 358.2,257.0 380.4,257.0 402.7,257.0 424.9,257.0 447.1,257.0 469.3,257.0 491.5,257.0 513.7,257.0 536.0,257.0 558.2,257.0 580.4,257.0 602.6,257.0 624.8,257.0 647.0,257.0 669.2,257.0 691.5,257.0 713.7,257.0" fill="none" stroke="#2563eb" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.50"/>
+<circle cx="713.7" cy="257.0" r="13.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" opacity="0.55"/>
+<polyline points="91.7,257.0 113.9,257.0 136.1,257.0 158.3,257.0 180.5,257.0 202.7,257.0 224.9,257.0 247.2,257.0 269.4,257.0 291.6,257.0 313.8,257.0 336.0,257.0 358.2,257.0 380.4,257.0 402.7,257.0 424.9,257.0 447.1,257.0 469.3,257.0 491.5,257.0 513.7,257.0 536.0,257.0 558.2,257.0 580.4,257.0 602.6,257.0 624.8,257.0 647.0,257.0 669.2,257.0 691.5,257.0 713.7,257.0" fill="none" stroke="#ffffff" stroke-width="10.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
+<polyline points="91.7,257.0 113.9,257.0 136.1,257.0 158.3,257.0 180.5,257.0 202.7,257.0 224.9,257.0 247.2,257.0 269.4,257.0 291.6,257.0 313.8,257.0 336.0,257.0 358.2,257.0 380.4,257.0 402.7,257.0 424.9,257.0 447.1,257.0 469.3,257.0 491.5,257.0 513.7,257.0 536.0,257.0 558.2,257.0 580.4,257.0 602.6,257.0 624.8,257.0 647.0,257.0 669.2,257.0 691.5,257.0 713.7,257.0" fill="none" stroke="#2563eb" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<circle cx="713.7" cy="257.0" r="5.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.6" opacity="0.96"/>
+<polyline points="91.7,257.0 111.9,257.0 130.9,257.0 149.1,257.0 166.8,257.0 184.1,257.0 201.2,257.0 217.7,257.0 233.3,257.0 247.5,257.0 260.3,257.0 271.6,257.0 281.4,257.0 290.0,257.0 297.2,257.0 303.4,257.0 308.6,257.0 312.9,257.0 316.5,257.0 319.5,257.0 321.9,257.0 323.9,257.0 325.5,257.0 326.8,257.0 327.8,257.0 328.7,257.0 329.3,257.0 329.8,257.0 330.2,257.0" fill="none" stroke="#ffffff" stroke-width="10.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
+<polyline points="91.7,257.0 111.9,257.0 130.9,257.0 149.1,257.0 166.8,257.0 184.1,257.0 201.2,257.0 217.7,257.0 233.3,257.0 247.5,257.0 260.3,257.0 271.6,257.0 281.4,257.0 290.0,257.0 297.2,257.0 303.4,257.0 308.6,257.0 312.9,257.0 316.5,257.0 319.5,257.0 321.9,257.0 323.9,257.0 325.5,257.0 326.8,257.0 327.8,257.0 328.7,257.0 329.3,257.0 329.8,257.0 330.2,257.0" fill="none" stroke="#f59e0b" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<circle cx="330.2" cy="257.0" r="9.3" fill="#f59e0b" stroke="#ffffff" stroke-width="1.6" opacity="0.96"/>
+<polyline points="91.7,257.0 113.9,256.7 136.1,255.7 158.3,254.1 180.5,251.9 202.7,249.2 224.9,246.1 247.2,242.6 269.4,238.7 291.6,234.6 313.8,230.2 336.0,225.5 358.2,220.8 380.4,215.9 402.7,211.0 424.9,206.0 447.1,201.2 469.3,196.4 491.5,191.8 513.7,187.3 536.0,183.2 558.2,179.3 580.4,175.8 602.6,172.7 624.8,170.0 647.0,167.9 669.2,166.2 691.5,165.3 713.7,164.9" fill="none" stroke="#ffffff" stroke-width="10.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
+<polyline points="91.7,257.0 113.9,256.7 136.1,255.7 158.3,254.1 180.5,251.9 202.7,249.2 224.9,246.1 247.2,242.6 269.4,238.7 291.6,234.6 313.8,230.2 336.0,225.5 358.2,220.8 380.4,215.9 402.7,211.0 424.9,206.0 447.1,201.2 469.3,196.4 491.5,191.8 513.7,187.3 536.0,183.2 558.2,179.3 580.4,175.8 602.6,172.7 624.8,170.0 647.0,167.9 669.2,166.2 691.5,165.3 713.7,164.9" fill="none" stroke="#059669" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<circle cx="713.7" cy="164.9" r="7.6" fill="#059669" stroke="#ffffff" stroke-width="1.6" opacity="0.96"/>
+<polyline points="91.7,257.0 113.9,257.3 136.1,258.3 158.3,259.9 180.5,262.1 202.7,264.8 224.9,267.9 247.2,271.4 269.4,275.3 291.6,279.4 313.8,283.8 336.0,288.5 358.2,293.2 380.4,298.1 402.7,303.0 424.9,308.0 447.1,312.8 469.3,317.6 491.5,322.2 513.7,326.7 536.0,330.8 558.2,334.7 580.4,338.2 602.6,341.3 624.8,344.0 647.0,346.1 669.2,347.8 691.5,348.7 713.7,349.1" fill="none" stroke="#ffffff" stroke-width="10.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.82"/>
+<polyline points="91.7,257.0 113.9,257.3 136.1,258.3 158.3,259.9 180.5,262.1 202.7,264.8 224.9,267.9 247.2,271.4 269.4,275.3 291.6,279.4 313.8,283.8 336.0,288.5 358.2,293.2 380.4,298.1 402.7,303.0 424.9,308.0 447.1,312.8 469.3,317.6 491.5,322.2 513.7,326.7 536.0,330.8 558.2,334.7 580.4,338.2 602.6,341.3 624.8,344.0 647.0,346.1 669.2,347.8 691.5,348.7 713.7,349.1" fill="none" stroke="#dc2626" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<circle cx="713.7" cy="349.1" r="7.6" fill="#dc2626" stroke="#ffffff" stroke-width="1.6" opacity="0.96"/>
+<ellipse cx="436.7" cy="257.0" rx="35.3" ry="32.2" fill="#111827" stroke="#ffffff" stroke-width="2"/>
+<ellipse cx="436.7" cy="257.0" rx="62.3" ry="56.8" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 5" opacity="0.70"/>
+<rect x="58.0" y="92.0" width="690.0" height="330.0" rx="8" fill="none" stroke="#dbe3ee" stroke-width="1.5"/>
+<line x1="784.0" y1="116.0" x2="818.0" y2="116.0" stroke="#2563eb" stroke-width="6" stroke-linecap="round"/>
+<text x="832.0" y="120.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">p=0.00 keep-lane</text>
+<line x1="784.0" y1="143.0" x2="818.0" y2="143.0" stroke="#f59e0b" stroke-width="6" stroke-linecap="round"/>
+<text x="832.0" y="147.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">p=0.47 yield</text>
+<line x1="784.0" y1="170.0" x2="818.0" y2="170.0" stroke="#059669" stroke-width="6" stroke-linecap="round"/>
+<text x="832.0" y="174.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">p=0.26 lane-change-left</text>
+<line x1="784.0" y1="197.0" x2="818.0" y2="197.0" stroke="#dc2626" stroke-width="6" stroke-linecap="round"/>
+<text x="832.0" y="201.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">p=0.26 lane-change-right</text>
+<text x="784.0" y="256.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">branchout-lite</text>
+<text x="784.0" y="283.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">pairwise final 3.13</text>
+<text x="784.0" y="305.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">min GT Frechet 0.00</text>
+<text x="784.0" y="327.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">NLL 2.40</text>
+<text x="784.0" y="372.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">unimodal baseline</text>
+<text x="784.0" y="399.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">pairwise final 0.00</text>
+<text x="784.0" y="421.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">min GT Frechet 2.32</text>
+<text x="784.0" y="443.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">NLL 8.27</text>
+<text x="58" y="490" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">Circle size at each trajectory endpoint represents mixture probability. The faded blue path is the single-mode keep-lane baseline.</text>
+</svg>

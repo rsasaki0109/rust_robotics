@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="470" viewBox="0 0 760 470" role="img" aria-labelledby="title desc">
+<title id="title">Traversal-risk weight sweep Pareto chart</title>
+<desc id="desc">Chart of path distance versus unweighted terrain risk for several risk-weight values.</desc>
+<rect width="760" height="470" fill="#f8fafc"/>
+<text x="54" y="44" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Risk-weight Pareto sweep</text>
+<text x="54" y="70" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Each point is one TRG plan on the same elevation-derived terrain.</text>
+<line x1="84" y1="335.0" x2="514" y2="335.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="72" y="339.0" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">0.0</text>
+<line x1="84" y1="276.2" x2="514" y2="276.2" stroke="#e2e8f0" stroke-width="1"/>
+<text x="72" y="280.2" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">6.8</text>
+<line x1="84" y1="217.5" x2="514" y2="217.5" stroke="#e2e8f0" stroke-width="1"/>
+<text x="72" y="221.5" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">13.6</text>
+<line x1="84" y1="158.8" x2="514" y2="158.8" stroke="#e2e8f0" stroke-width="1"/>
+<text x="72" y="162.8" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">20.5</text>
+<line x1="84" y1="100.0" x2="514" y2="100.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="72" y="104.0" text-anchor="end" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">27.3</text>
+<line x1="84.0" y1="100" x2="84.0" y2="335" stroke="#e2e8f0" stroke-width="1"/>
+<text x="84.0" y="355" text-anchor="middle" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">14.0</text>
+<line x1="191.5" y1="100" x2="191.5" y2="335" stroke="#e2e8f0" stroke-width="1"/>
+<text x="191.5" y="355" text-anchor="middle" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">15.0</text>
+<line x1="299.0" y1="100" x2="299.0" y2="335" stroke="#e2e8f0" stroke-width="1"/>
+<text x="299.0" y="355" text-anchor="middle" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">16.0</text>
+<line x1="406.5" y1="100" x2="406.5" y2="335" stroke="#e2e8f0" stroke-width="1"/>
+<text x="406.5" y="355" text-anchor="middle" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">17.0</text>
+<line x1="514.0" y1="100" x2="514.0" y2="335" stroke="#e2e8f0" stroke-width="1"/>
+<text x="514.0" y="355" text-anchor="middle" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11">18.0</text>
+<line x1="84" y1="335" x2="514" y2="335" stroke="#475569" stroke-width="1.5"/>
+<line x1="84" y1="100" x2="84" y2="335" stroke="#475569" stroke-width="1.5"/>
+<text x="299" y="391" text-anchor="middle" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700">distance cost</text>
+<text x="24" y="218" text-anchor="middle" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" transform="rotate(-90 24 218)">terrain risk</text>
+<polyline points="84.0,100.0 514.0,228.9" fill="none" stroke="#0f766e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="84.0" cy="100.0" r="7.0" fill="#0f766e" stroke="#ffffff" stroke-width="2"/>
+<text x="93.0" y="92.0" fill="#0f172a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">w=0.00</text>
+<circle cx="84.0" cy="100.0" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="84.0" cy="100.0" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="84.0" cy="100.0" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="514.0" cy="228.9" r="7.0" fill="#0f766e" stroke="#ffffff" stroke-width="2"/>
+<text x="523.0" y="220.9" fill="#0f172a" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="700">w=0.40</text>
+<circle cx="514.0" cy="228.9" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="514.0" cy="228.9" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="514.0" cy="228.9" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="514.0" cy="228.9" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<circle cx="514.0" cy="228.9" r="5.0" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/>
+<text x="560" y="112" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Sweep summary</text>
+<text x="560" y="139.0" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">samples: 10</text>
+<text x="560" y="163.0" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">unique paths: 2</text>
+<text x="560" y="187.0" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">Pareto points: 2</text>
+<text x="560" y="211.0" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">min risk: 12.32</text>
+<text x="560" y="235.0" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">max total: 57.42</text>
+<circle cx="566" cy="278" r="6" fill="#0f766e" stroke="#ffffff" stroke-width="2"/><text x="582" y="282" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">non-dominated</text>
+<circle cx="566" cy="306" r="5" fill="#94a3b8" stroke="#ffffff" stroke-width="2"/><text x="582" y="310" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">dominated / duplicate</text>
+</svg>

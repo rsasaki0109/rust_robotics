@@ -49,9 +49,159 @@ path = "examples/headless_grid_planners.rs"
 required-features = ["planning"]
 
 [[example]]
+name = "headless_conformal_sipp"
+path = "examples/headless_conformal_sipp.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_traversal_risk_graph"
+path = "examples/headless_traversal_risk_graph.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_elevation_risk_graph"
+path = "examples/headless_elevation_risk_graph.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_risk_map_smoothing"
+path = "examples/headless_risk_map_smoothing.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_clearance_risk_graph"
+path = "examples/headless_clearance_risk_graph.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_adaptive_costmap_namo"
+path = "examples/headless_adaptive_costmap_namo.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_traversal_risk_graph_svg"
+path = "examples/render_traversal_risk_graph_svg.rs"
+required-features = ["planning"]
+
+[[example]]
 name = "headless_localizers"
 path = "examples/headless_localizers.rs"
 required-features = ["localization"]
+
+[[example]]
+name = "headless_mppi_double_integrator"
+path = "examples/headless_mppi_double_integrator.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_constraint_discount"
+path = "examples/headless_mppi_constraint_discount.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_terminal_value"
+path = "examples/headless_mppi_terminal_value.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_value_learning"
+path = "examples/headless_mppi_value_learning.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_replay_value_learning"
+path = "examples/headless_mppi_replay_value_learning.rs"
+required-features = ["control"]
+
+[[example]]
+name = "render_mppi_value_grid_svg"
+path = "examples/render_mppi_value_grid_svg.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_adaptive_temperature"
+path = "examples/headless_mppi_adaptive_temperature.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_track_progress"
+path = "examples/headless_mppi_track_progress.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_mppi_racing_gate_progress"
+path = "examples/headless_mppi_racing_gate_progress.rs"
+required-features = ["control"]
+
+[[example]]
+name = "render_mppi_track_progress_svg"
+path = "examples/render_mppi_track_progress_svg.rs"
+required-features = ["control"]
+
+[[example]]
+name = "render_mppi_racing_gate_progress_svg"
+path = "examples/render_mppi_racing_gate_progress_svg.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_adap_rpf_mppi"
+path = "examples/headless_adap_rpf_mppi.rs"
+required-features = ["control"]
+
+[[example]]
+name = "render_adap_rpf_mppi_svg"
+path = "examples/render_adap_rpf_mppi_svg.rs"
+required-features = ["control"]
+
+[[example]]
+name = "headless_branchout_multimodal_driving"
+path = "examples/headless_branchout_multimodal_driving.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_branchout_multimodal_driving_svg"
+path = "examples/render_branchout_multimodal_driving_svg.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_stl_cbs_multi_robot"
+path = "examples/headless_stl_cbs_multi_robot.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_stl_cbs_multi_robot_svg"
+path = "examples/render_stl_cbs_multi_robot_svg.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_kinodynamic_stl_cbs"
+path = "examples/headless_kinodynamic_stl_cbs.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_kinodynamic_stl_cbs_svg"
+path = "examples/render_kinodynamic_stl_cbs_svg.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_rigid_body_mip_planning"
+path = "examples/headless_rigid_body_mip_planning.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_rigid_body_mip_planning_svg"
+path = "examples/render_rigid_body_mip_planning_svg.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "headless_hierarchical_mapf_replanning"
+path = "examples/headless_hierarchical_mapf_replanning.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "render_hierarchical_mapf_replanning_svg"
+path = "examples/render_hierarchical_mapf_replanning_svg.rs"
+required-features = ["planning"]
 
 [[example]]
 name = "headless_navigation_loop"
@@ -138,6 +288,21 @@ required-features = ["planning", "localization"]
 [[example]]
 name = "benchmark_grid_planners"
 path = "examples/benchmark_grid_planners.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_conformal_sipp"
+path = "examples/benchmark_conformal_sipp.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_traversal_risk_sweep"
+path = "examples/benchmark_traversal_risk_sweep.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_hierarchical_mapf_scale"
+path = "examples/benchmark_hierarchical_mapf_scale.rs"
 required-features = ["planning"]
 
 [[example]]

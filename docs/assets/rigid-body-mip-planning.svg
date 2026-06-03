@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="520" viewBox="0 0 980 520" role="img" aria-labelledby="title desc">
+<title id="title">Rigid-body MIP-style planning</title>
+<desc id="desc">A rectangular rigid body passes a narrow slot using half-space separation certificates.</desc>
+<rect width="980" height="520" fill="#f8fafc"/>
+<text x="58" y="42" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Rigid-body MIP-style planning</text>
+<text x="58" y="68" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">A discretized SE(2) search keeps MILP-like binary half-space certificates for every obstacle at every pose.</text>
+<rect x="58.0" y="88.0" width="620.0" height="372.0" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
+<line x1="58.0" y1="88.0" x2="58.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="120.0" y1="88.0" x2="120.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="182.0" y1="88.0" x2="182.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="244.0" y1="88.0" x2="244.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="306.0" y1="88.0" x2="306.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="368.0" y1="88.0" x2="368.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="430.0" y1="88.0" x2="430.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="492.0" y1="88.0" x2="492.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="554.0" y1="88.0" x2="554.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="616.0" y1="88.0" x2="616.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="678.0" y1="88.0" x2="678.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="460.0" x2="678.0" y2="460.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="398.0" x2="678.0" y2="398.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="336.0" x2="678.0" y2="336.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="274.0" x2="678.0" y2="274.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="212.0" x2="678.0" y2="212.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="150.0" x2="678.0" y2="150.0" stroke="#e2e8f0" stroke-width="1"/>
+<line x1="58.0" y1="88.0" x2="678.0" y2="88.0" stroke="#e2e8f0" stroke-width="1"/>
+<polygon points="244.0,460.0 492.0,460.0 492.0,298.8 268.8,298.8 244.0,323.6" fill="#334155" stroke="#0f172a" stroke-width="2" opacity="0.92"/>
+<polygon points="244.0,224.4 268.8,249.2 492.0,249.2 492.0,88.0 244.0,88.0" fill="#334155" stroke="#0f172a" stroke-width="2" opacity="0.92"/>
+<rect x="244.0" y="249.2" width="248.0" height="49.6" fill="#f8fafc" stroke="#f97316" stroke-width="2" stroke-dasharray="6 5" opacity="0.85"/>
+<polyline points="120.0,274.0 120.0,274.0 120.0,274.0 151.0,274.0 182.0,274.0 213.0,274.0 244.0,274.0 275.0,274.0 306.0,274.0 337.0,274.0 368.0,274.0 399.0,274.0 430.0,274.0 461.0,274.0 492.0,274.0 523.0,274.0 554.0,274.0 585.0,274.0 616.0,274.0" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+<polyline points="120.0,274.0 120.0,274.0 120.0,274.0 151.0,274.0 182.0,274.0 213.0,274.0 244.0,274.0 275.0,274.0 306.0,274.0 337.0,274.0 368.0,274.0 399.0,274.0 430.0,274.0 461.0,274.0 492.0,274.0 523.0,274.0 554.0,274.0 585.0,274.0 616.0,274.0" fill="none" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+<polygon points="104.5,239.9 135.5,239.9 135.5,308.1 104.5,308.1" fill="#22c55e" stroke="#ffffff" stroke-width="1.8" opacity="0.82"/>
+<line x1="120.0" y1="274.0" x2="120.0" y2="246.1" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.82"/>
+<text x="120.0" y="254.0" fill="#111827" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="800">start</text>
+<polygon points="185.1,258.5 185.1,289.5 116.9,289.5 116.9,258.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.8" opacity="0.26"/>
+<line x1="151.0" y1="274.0" x2="178.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.26"/>
+<polygon points="278.1,258.5 278.1,289.5 209.9,289.5 209.9,258.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.8" opacity="0.26"/>
+<line x1="244.0" y1="274.0" x2="271.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.26"/>
+<polygon points="371.1,258.5 371.1,289.5 302.9,289.5 302.9,258.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.8" opacity="0.26"/>
+<line x1="337.0" y1="274.0" x2="364.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.26"/>
+<polygon points="464.1,258.5 464.1,289.5 395.9,289.5 395.9,258.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.8" opacity="0.26"/>
+<line x1="430.0" y1="274.0" x2="457.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.26"/>
+<polygon points="557.1,258.5 557.1,289.5 488.9,289.5 488.9,258.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.8" opacity="0.26"/>
+<line x1="523.0" y1="274.0" x2="550.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.26"/>
+<polygon points="650.1,258.5 650.1,289.5 581.9,289.5 581.9,258.5" fill="#dc2626" stroke="#ffffff" stroke-width="1.8" opacity="0.82"/>
+<line x1="616.0" y1="274.0" x2="643.9" y2="274.0" stroke="#111827" stroke-width="2" stroke-linecap="round" opacity="0.82"/>
+<text x="616.0" y="254.0" fill="#111827" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="800">goal</text>
+<text x="710.0" y="126.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">MIP-style certificate plan</text>
+<text x="710.0" y="158.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">poses              19</text>
+<text x="710.0" y="181.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">total cost         166</text>
+<text x="710.0" y="204.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">expanded states    25</text>
+<text x="710.0" y="227.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">binary choices     38</text>
+<text x="710.0" y="250.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">segment binaries    36</text>
+<text x="710.0" y="273.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">min margin         0.540</text>
+<text x="710.0" y="296.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">segment margin     0.540</text>
+<text x="710.0" y="319.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">active disjunction  one half-space per obstacle</text>
+<text x="58" y="492" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">Dark blocks are convex obstacles; the orange slot is only feasible when the rectangle is aligned horizontally.</text>
+</svg>

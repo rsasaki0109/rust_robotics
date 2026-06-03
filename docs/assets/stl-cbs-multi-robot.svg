@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" role="img" aria-labelledby="title desc">
+<title id="title">STL-CBS multi-robot planning</title>
+<desc id="desc">Independent grid paths collide; CBS resolves conflicts and STL robustness remains positive.</desc>
+<rect width="900" height="470" fill="#f8fafc"/>
+<text x="58" y="42" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">STL-CBS multi-robot planning</text>
+<text x="58" y="68" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Dashed paths are independent shortest plans; solid paths are conflict-free CBS outputs checked with STL robustness.</text>
+<rect x="58.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="58.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="58.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="58.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="58.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="108.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="108.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="108.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="108.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="108.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="158.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="158.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="158.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="158.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="158.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="208.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="208.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="208.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="208.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="208.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="258.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="258.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="258.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="258.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="258.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="308.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="308.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="308.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="308.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="308.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="358.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="358.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="358.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="358.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="358.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="408.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="408.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="408.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="408.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="408.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="458.0" y="288.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="458.0" y="238.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="458.0" y="188.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="458.0" y="138.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<rect x="458.0" y="88.0" width="50.0" height="50.0" fill="#ffffff" stroke="#dbe3ee" stroke-width="1"/>
+<polyline points="83.0,213.0 133.0,213.0 183.0,213.0 233.0,213.0 283.0,213.0 333.0,213.0 383.0,213.0 433.0,213.0 483.0,213.0" fill="none" stroke="#ffffff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34"/>
+<polyline points="83.0,213.0 133.0,213.0 183.0,213.0 233.0,213.0 283.0,213.0 333.0,213.0 383.0,213.0 433.0,213.0 483.0,213.0" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34" stroke-dasharray="8 8"/>
+<circle cx="83.0" cy="213.0" r="3.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="233.0" cy="213.0" r="3.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="383.0" cy="213.0" r="3.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="483.0" cy="213.0" r="3.5" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<polyline points="483.0,213.0 433.0,213.0 383.0,213.0 333.0,213.0 283.0,213.0 233.0,213.0 183.0,213.0 133.0,213.0 83.0,213.0" fill="none" stroke="#ffffff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34"/>
+<polyline points="483.0,213.0 433.0,213.0 383.0,213.0 333.0,213.0 283.0,213.0 233.0,213.0 183.0,213.0 133.0,213.0 83.0,213.0" fill="none" stroke="#dc2626" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34" stroke-dasharray="8 8"/>
+<circle cx="483.0" cy="213.0" r="3.5" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="333.0" cy="213.0" r="3.5" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="183.0" cy="213.0" r="3.5" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="83.0" cy="213.0" r="3.5" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<polyline points="283.0,313.0 283.0,263.0 283.0,213.0 283.0,163.0 283.0,113.0" fill="none" stroke="#ffffff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34"/>
+<polyline points="283.0,313.0 283.0,263.0 283.0,213.0 283.0,163.0 283.0,113.0" fill="none" stroke="#059669" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.34" stroke-dasharray="8 8"/>
+<circle cx="283.0" cy="313.0" r="3.5" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="283.0" cy="163.0" r="3.5" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="283.0" cy="113.0" r="3.5" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.34"/>
+<circle cx="283.0" cy="213.0" r="17" fill="none" stroke="#f97316" stroke-width="4" stroke-dasharray="5 4"/>
+<text x="283.0" y="213.0" text-anchor="middle" dominant-baseline="central" fill="#f97316" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" font-weight="800">t4</text>
+<polyline points="83.0,213.0 133.0,213.0 183.0,213.0 233.0,213.0 233.0,263.0 283.0,263.0 333.0,263.0 383.0,263.0 433.0,263.0 483.0,263.0 483.0,213.0" fill="none" stroke="#ffffff" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<polyline points="83.0,213.0 133.0,213.0 183.0,213.0 233.0,213.0 233.0,263.0 283.0,263.0 333.0,263.0 383.0,263.0 433.0,263.0 483.0,263.0 483.0,213.0" fill="none" stroke="#2563eb" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96" stroke-dasharray="none"/>
+<circle cx="83.0" cy="213.0" r="5.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="233.0" cy="213.0" r="5.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="333.0" cy="263.0" r="5.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="483.0" cy="263.0" r="5.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="483.0" cy="213.0" r="5.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<polyline points="483.0,213.0 433.0,213.0 383.0,213.0 333.0,213.0 283.0,213.0 233.0,213.0 183.0,213.0 133.0,213.0 83.0,213.0" fill="none" stroke="#ffffff" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<polyline points="483.0,213.0 433.0,213.0 383.0,213.0 333.0,213.0 283.0,213.0 233.0,213.0 183.0,213.0 133.0,213.0 83.0,213.0" fill="none" stroke="#dc2626" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96" stroke-dasharray="none"/>
+<circle cx="483.0" cy="213.0" r="5.0" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="333.0" cy="213.0" r="5.0" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="183.0" cy="213.0" r="5.0" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="83.0" cy="213.0" r="5.0" fill="#dc2626" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<polyline points="283.0,313.0 283.0,263.0 283.0,213.0 283.0,163.0 283.0,113.0" fill="none" stroke="#ffffff" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96"/>
+<polyline points="283.0,313.0 283.0,263.0 283.0,213.0 283.0,163.0 283.0,113.0" fill="none" stroke="#059669" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.96" stroke-dasharray="none"/>
+<circle cx="283.0" cy="313.0" r="5.0" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="283.0" cy="163.0" r="5.0" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<circle cx="283.0" cy="113.0" r="5.0" fill="#059669" stroke="#ffffff" stroke-width="1.4" opacity="0.96"/>
+<rect x="74.0" y="204.0" width="18" height="18" rx="4" fill="#2563eb" stroke="#ffffff" stroke-width="2"/>
+<circle cx="483.0" cy="213.0" r="10" fill="none" stroke="#2563eb" stroke-width="3"/>
+<rect x="474.0" y="204.0" width="18" height="18" rx="4" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
+<circle cx="83.0" cy="213.0" r="10" fill="none" stroke="#dc2626" stroke-width="3"/>
+<rect x="274.0" y="304.0" width="18" height="18" rx="4" fill="#059669" stroke="#ffffff" stroke-width="2"/>
+<circle cx="283.0" cy="113.0" r="10" fill="none" stroke="#059669" stroke-width="3"/>
+<text x="560.0" y="120.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">STL-CBS plan</text>
+<text x="560.0" y="152.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">cost          22</text>
+<text x="560.0" y="176.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">resolved      2</text>
+<text x="560.0" y="200.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">expanded      4</text>
+<text x="560.0" y="224.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">separation    0.41</text>
+<text x="560.0" y="248.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">goal robust   0.25</text>
+<text x="58" y="398" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">Squares are starts, rings are goals, and the orange ring marks the first independent-path conflict.</text>
+</svg>

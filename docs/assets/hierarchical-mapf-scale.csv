@@ -1,0 +1,4 @@
+agents,pairs,width,height,elapsed_ms,independent_conflicts,final_conflicts,region_conflicts,replanned_groups,max_group_size,total_cost,fallback_full_replan
+50,25,5,100,15.693,25,0,325,25,2,250,false
+100,50,5,200,37.722,50,0,650,50,2,500,false
+200,100,5,400,105.403,100,0,1300,100,2,1000,false
