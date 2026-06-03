@@ -245,6 +245,7 @@ pub struct KinodynamicStlCbsPlan2D {
     pub cell_paths: Vec<StlCbsPath>,
     pub total_cost: u64,
     pub conflicts_resolved: usize,
+    pub continuous_conflicts_resolved: usize,
     pub high_level_nodes_expanded: usize,
     pub min_pairwise_separation_robustness: f64,
     pub min_continuous_pairwise_separation_robustness: f64,
@@ -293,6 +294,7 @@ struct CbsNode {
     paths: Vec<KinodynamicStlCbsPath2D>,
     total_cost: u64,
     conflicts_resolved: usize,
+    continuous_conflicts_resolved: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -393,6 +395,7 @@ impl KinodynamicStlCbsPlanner2D {
             constraints: Vec::new(),
             paths: root_paths,
             conflicts_resolved: 0,
+            continuous_conflicts_resolved: 0,
         };
 
         let mut nodes = vec![root];
@@ -436,6 +439,58 @@ impl KinodynamicStlCbsPlanner2D {
                         constraints,
                         paths,
                         conflicts_resolved: node.conflicts_resolved + 1,
+                        continuous_conflicts_resolved: node.continuous_conflicts_resolved,
+                    };
+                    let node_index = nodes.len();
+                    open.push(CbsOpenEntry {
+                        node_index,
+                        total_cost: child.total_cost,
+                        conflicts_resolved: child.conflicts_resolved,
+                    });
+                    nodes.push(child);
+                }
+            } else if let Some(continuous_conflict) =
+                first_kinodynamic_continuous_conflict(&node.paths, 1.0, self.config.max_time)?
+            {
+                // Integer-time CBS is clean, but the continuous-time occupancy
+                // check between ticks still found a violation. Convert it into
+                // a high-level CBS branch on each involved agent.
+                for constrained_agent in [continuous_conflict.agent_a, continuous_conflict.agent_b]
+                {
+                    let Some(new_constraint) = continuous_constraint_from_conflict(
+                        &continuous_conflict,
+                        &node.paths,
+                        constrained_agent,
+                    ) else {
+                        continue;
+                    };
+                    let mut constraints = node.constraints.clone();
+                    if node.constraints.contains(&new_constraint) {
+                        // The same continuous constraint is already active; adding
+                        // it again would not change the replan, so skip this branch.
+                        continue;
+                    }
+                    constraints.push(new_constraint);
+                    let agent = *agents
+                        .iter()
+                        .find(|agent| agent.id == constrained_agent)
+                        .expect("validated conflict references a known agent");
+                    let agent_constraints = constraints_for_agent(&constraints, constrained_agent);
+                    let Ok(replanned_path) = self.plan_agent(agent, &agent_constraints) else {
+                        continue;
+                    };
+                    let mut paths = node.paths.clone();
+                    let path_index = paths
+                        .iter()
+                        .position(|path| path.agent_id == constrained_agent)
+                        .expect("validated node contains all agent paths");
+                    paths[path_index] = replanned_path;
+                    let child = CbsNode {
+                        total_cost: total_path_cost(&paths),
+                        constraints,
+                        paths,
+                        conflicts_resolved: node.conflicts_resolved,
+                        continuous_conflicts_resolved: node.continuous_conflicts_resolved + 1,
                     };
                     let node_index = nodes.len();
                     open.push(CbsOpenEntry {
@@ -468,6 +523,7 @@ impl KinodynamicStlCbsPlanner2D {
                     cell_paths,
                     paths: node.paths,
                     conflicts_resolved: node.conflicts_resolved,
+                    continuous_conflicts_resolved: node.continuous_conflicts_resolved,
                     high_level_nodes_expanded: expanded,
                     min_continuous_pairwise_separation_robustness,
                     first_continuous_conflict,
@@ -824,6 +880,45 @@ fn constraint_from_conflict(
     }
 }
 
+/// Turn a continuous-time conflict into a discrete CBS constraint for one agent.
+///
+/// The conflict happens at continuous time `t`. Within the integer interval
+/// `[floor(t), floor(t) + 1]` the constrained agent either holds a cell or
+/// traverses an edge. We forbid exactly that behavior at the end tick so the
+/// replan must change its sub-tick timing (typically by waiting), which removes
+/// the between-tick near-miss instead of merely shifting it.
+fn continuous_constraint_from_conflict(
+    conflict: &KinodynamicContinuousConflict2D,
+    paths: &[KinodynamicStlCbsPath2D],
+    constrained_agent: usize,
+) -> Option<KinodynamicConstraint> {
+    let tick = conflict.t.floor() as u64;
+    let path = paths
+        .iter()
+        .find(|path| path.agent_id == constrained_agent)?;
+    let from = path.pose_at(tick);
+    let to = path.pose_at(tick + 1);
+    let kind = if (from.x, from.y) == (to.x, to.y) {
+        KinodynamicConstraintKind::Vertex {
+            x: from.x,
+            y: from.y,
+            t: tick + 1,
+        }
+    } else {
+        KinodynamicConstraintKind::Edge {
+            from_x: from.x,
+            from_y: from.y,
+            to_x: to.x,
+            to_y: to.y,
+            t: tick + 1,
+        }
+    };
+    Some(KinodynamicConstraint {
+        agent_id: constrained_agent,
+        kind,
+    })
+}
+
 fn constraints_for_agent(
     constraints: &[KinodynamicConstraint],
     agent_id: usize,
@@ -1143,6 +1238,49 @@ mod tests {
         assert!((conflict.t - 0.4).abs() < 0.11);
         assert_eq!(conflict.agent_a, 0);
         assert_eq!(conflict.agent_b, 1);
+    }
+
+    /// Two agents cross perpendicularly through a shared center cell. Integer-time
+    /// CBS can separate them at every integer tick, yet a between-tick near-miss
+    /// remains. This exercises the continuous-conflict CBS branch: the plan must
+    /// resolve at least one continuous conflict and end continuously safe.
+    #[test]
+    fn cbs_resolves_continuous_only_perpendicular_conflict() {
+        let planner = KinodynamicStlCbsPlanner2D::new(KinodynamicStlCbsConfig2D {
+            max_time: 48,
+            max_cbs_nodes: 8_192,
+            move_duration: 1,
+            turn_duration: 1,
+            wait_duration: 1,
+            allow_reverse: true,
+            ..KinodynamicStlCbsConfig2D::new(5, 5)
+        })
+        .unwrap();
+        let agents = [
+            KinodynamicStlCbsAgent2D::new(0, (0, 2), KinodynamicHeading2D::East, (4, 2)),
+            KinodynamicStlCbsAgent2D::new(1, (2, 0), KinodynamicHeading2D::North, (2, 4)),
+        ];
+
+        // Independent plans collide on the grid, so plain integer CBS is engaged.
+        let independent = planner.plan_independent(&agents).unwrap();
+        assert!(first_conflict(&cell_paths_from(&independent), 48).is_some());
+
+        let plan = planner.plan(&agents).unwrap();
+
+        // The between-tick crossing must have been handled by the continuous branch.
+        assert!(
+            plan.continuous_conflicts_resolved > 0,
+            "expected at least one continuous-conflict CBS branch"
+        );
+        // The final plan is clean at every integer tick and in continuous time.
+        assert!(first_conflict(&plan.cell_paths, 48).is_none());
+        assert!(plan.first_continuous_conflict.is_none());
+        assert!(plan.min_continuous_pairwise_separation_robustness >= 0.0);
+        // Both agents still reach their goals.
+        for (agent, path) in agents.iter().zip(plan.paths.iter()) {
+            let last = path.poses.last().unwrap();
+            assert_eq!((last.x, last.y), agent.goal);
+        }
     }
 
     #[test]
