@@ -76,9 +76,42 @@ crates/
 ```bash
 # Headless (no GUI dependencies)
 cargo run -p rust_robotics --example headless_grid_planners --features planning
+cargo run -p rust_robotics --example headless_conformal_sipp --no-default-features --features planning
+cargo run -p rust_robotics --example headless_traversal_risk_graph --no-default-features --features planning
+cargo run -p rust_robotics --example headless_elevation_risk_graph --no-default-features --features planning
+cargo run -p rust_robotics --example headless_risk_map_smoothing --no-default-features --features planning
+cargo run -p rust_robotics --example headless_clearance_risk_graph --no-default-features --features planning
+cargo run -p rust_robotics --example headless_adaptive_costmap_namo --no-default-features --features planning
+cargo run -p rust_robotics --example render_traversal_risk_graph_svg --no-default-features --features planning
 cargo run -p rust_robotics --example headless_localizers --features localization
+cargo run -p rust_robotics --example headless_mppi_double_integrator --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_constraint_discount --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_terminal_value --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_value_learning --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_replay_value_learning --no-default-features --features control
+cargo run -p rust_robotics --example render_mppi_value_grid_svg --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_adaptive_temperature --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_track_progress --no-default-features --features control
+cargo run -p rust_robotics --example render_mppi_track_progress_svg --no-default-features --features control
+cargo run -p rust_robotics --example headless_mppi_racing_gate_progress --no-default-features --features control
+cargo run -p rust_robotics --example render_mppi_racing_gate_progress_svg --no-default-features --features control
+cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-features --features control
+cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
+cargo run -p rust_robotics --example headless_branchout_multimodal_driving --no-default-features --features planning
+cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --no-default-features --features planning
+cargo run -p rust_robotics --example headless_stl_cbs_multi_robot --no-default-features --features planning
+cargo run -p rust_robotics --example render_stl_cbs_multi_robot_svg --no-default-features --features planning
+cargo run -p rust_robotics --example headless_kinodynamic_stl_cbs --no-default-features --features planning
+cargo run -p rust_robotics --example render_kinodynamic_stl_cbs_svg --no-default-features --features planning
+cargo run -p rust_robotics --example headless_rigid_body_mip_planning --no-default-features --features planning
+cargo run -p rust_robotics --example render_rigid_body_mip_planning_svg --no-default-features --features planning
+cargo run -p rust_robotics --example headless_hierarchical_mapf_replanning --no-default-features --features planning
+cargo run -p rust_robotics --example render_hierarchical_mapf_replanning_svg --no-default-features --features planning
+cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-default-features --features planning
 cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
 cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
+cargo run -p rust_robotics --example benchmark_conformal_sipp --no-default-features --features planning
+cargo run -p rust_robotics --example benchmark_traversal_risk_sweep --no-default-features --features planning
 
 # Visualization (requires gnuplot)
 cargo run -p rust_robotics --example a_star --features "planning,viz"
