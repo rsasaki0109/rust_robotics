@@ -158,7 +158,9 @@ pub use quintic_polynomials::{QuinticPolynomial, QuinticPolynomialsPlanner};
 pub use reeds_shepp_path::ReedsSheppPlanner;
 pub use rigid_body_mip::{
     RigidBodyConvexObstacle2D, RigidBodyHalfspace2D, RigidBodyMipConfig2D, RigidBodyMipPlan2D,
-    RigidBodyMipPlanner2D, RigidBodyMipSeparationCertificate2D, RigidBodyPoint2D, RigidBodyPose2D,
+    RigidBodyMipPlanner2D, RigidBodyMipSeparationCertificate2D, RigidBodyPlanOutcome2D,
+    RigidBodyPlanningBackend, RigidBodyPoint2D, RigidBodyPose2D, RigidBodyRrtBackend2D,
+    RigidBodyRrtConfig2D,
 };
 pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_path_smoothing::{RRTPathSmoothingConfig, RRTPathSmoothingPlanner};
