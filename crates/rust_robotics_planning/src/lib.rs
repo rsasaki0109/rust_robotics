@@ -114,9 +114,9 @@ pub use bidirectional_a_star::{BidirectionalAStarConfig, BidirectionalAStarPlann
 pub use bidirectional_bfs::{BidirectionalBFSConfig, BidirectionalBFSPlanner};
 pub use bit_star::{BITStar, BITStarConfig};
 pub use branchout_multimodal::{
-    BranchOutDecisionMode2D, BranchOutDrivingScene2D, BranchOutMultimodalMetrics2D,
-    BranchOutObstacle2D, BranchOutPlan2D, BranchOutPlanner2D, BranchOutPlannerConfig2D,
-    BranchOutPose2D, BranchOutTrajectory2D,
+    BranchOutClosedLoopConfig2D, BranchOutClosedLoopMetrics2D, BranchOutDecisionMode2D,
+    BranchOutDrivingScene2D, BranchOutMultimodalMetrics2D, BranchOutObstacle2D, BranchOutPlan2D,
+    BranchOutPlanner2D, BranchOutPlannerConfig2D, BranchOutPose2D, BranchOutTrajectory2D,
 };
 pub use breadth_first_search::{BFSConfig, BFSPlanner};
 pub use clothoid_path::{ClothoidConfig, ClothoidPath, ClothoidPlanner};
