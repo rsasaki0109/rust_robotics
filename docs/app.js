@@ -426,6 +426,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Quadrotor Racing MPPI",
+    category: "Control",
+    image: "assets/racing-quadrotor.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control",
+    description: "Reference-free MPPI on a full quadrotor attitude model (collective thrust + body rates): the gate-progress objective drives orientation, so the drone pitches and rolls to aim its thrust at each gate. Reports lap progress plus tilt and body-rate metrics across slalom, climbing, closed-lap, and heavy-drone courses.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

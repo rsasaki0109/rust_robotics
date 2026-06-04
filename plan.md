@@ -145,22 +145,32 @@ Implemented:
 - Point-mass drone dynamics with drag, gravity, and actuation limits.
 - Open courses and closed laps with lap-progress metrics.
 - CSV/SVG benchmark across planar, undulating, climbing, and high-drag courses.
+- Full quadrotor attitude model (`racing_mppi_quadrotor`): collective thrust +
+  body-rate inputs with quaternion attitude kinematics; the gate-progress
+  objective drives orientation, so the drone tilts to aim its thrust at the next
+  gate. Reports tilt and body-rate metrics; closes a full lap on attitude alone.
+- CSV/SVG quadrotor benchmark across slalom, climbing, closed-lap, and heavy
+  high-gravity courses.
 
 Primary files:
 
 - `crates/rust_robotics_control/src/mppi.rs`
 - `crates/rust_robotics_control/src/racing_mppi_3d.rs`
+- `crates/rust_robotics_control/src/racing_mppi_quadrotor.rs`
 - `crates/rust_robotics/examples/headless_mppi_racing_gate_progress.rs`
 - `crates/rust_robotics/examples/render_mppi_racing_gate_progress_svg.rs`
 - `crates/rust_robotics/examples/benchmark_racing_mppi_3d.rs`
+- `crates/rust_robotics/examples/benchmark_racing_quadrotor.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
+- `docs/assets/racing-quadrotor.svg`
+- `docs/assets/racing-quadrotor.csv`
 
 Next useful extension:
 
-- Replace the point-mass drone with a full quadrotor attitude model (thrust and
-  body-rate inputs) so the gate-progress objective drives orientation too.
+- Add a motor-level thrust-and-torque model with a rotor mixing matrix so motor
+  saturation and body-rate tracking limits enter the racing trade-off.
 
 ### Adap-RPF-lite MPPI
 
@@ -403,6 +413,8 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/mppi-replay-value-grid.svg`
 - `docs/assets/mppi-track-progress.svg`
 - `docs/assets/mppi-racing-gate-progress.svg`
+- `docs/assets/racing-mppi-3d.svg`
+- `docs/assets/racing-quadrotor.svg`
 - `docs/assets/adap-rpf-lite-mppi.svg`
 - `docs/assets/adap-rpf-metrics-sweep.svg`
 - `docs/assets/branchout-multimodal-driving.svg`
