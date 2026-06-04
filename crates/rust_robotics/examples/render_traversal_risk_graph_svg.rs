@@ -21,6 +21,7 @@ const OUTPUT: &str = "docs/assets/traversal-risk-graph-demo.svg";
 fn terrain() -> Vec<Vec<TerrainRiskCell>> {
     let mut cells = vec![vec![TerrainRiskCell::free(); HEIGHT as usize]; WIDTH as usize];
 
+    #[allow(clippy::needless_range_loop)]
     for x in 3..=5 {
         cells[x][2] = TerrainRiskCell::with_risk(5.0, 0.5, 0.0);
     }

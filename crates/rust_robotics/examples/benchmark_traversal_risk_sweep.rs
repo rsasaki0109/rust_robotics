@@ -23,6 +23,7 @@ const SVG_OUTPUT: &str = "docs/assets/traversal-risk-weight-sweep.svg";
 fn elevation_map() -> Vec<Vec<f64>> {
     let mut elevation = vec![vec![0.0; HEIGHT]; WIDTH];
 
+    #[allow(clippy::needless_range_loop)]
     for x in 5..=9 {
         elevation[x][4] = 0.55;
     }

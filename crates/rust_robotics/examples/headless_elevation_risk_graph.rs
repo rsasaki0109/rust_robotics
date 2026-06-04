@@ -16,6 +16,7 @@ const CELL_SIZE: f64 = 0.5;
 fn elevation_map() -> Vec<Vec<f64>> {
     let mut elevation = vec![vec![0.0; HEIGHT]; WIDTH];
 
+    #[allow(clippy::needless_range_loop)]
     for x in 5..=9 {
         elevation[x][4] = 0.55;
     }
@@ -65,6 +66,7 @@ fn terrain_stats(cells: &[Vec<TerrainRiskCell>]) -> RoboticsResult<(usize, f64)>
 
     let mut blocked = 0;
     let mut max_risk: f64 = 0.0;
+    #[allow(clippy::needless_range_loop)]
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
             if cells[x][y].blocked {

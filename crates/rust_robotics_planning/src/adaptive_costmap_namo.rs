@@ -194,6 +194,9 @@ impl AdaptiveCostmapNamo {
             vec![TerrainRiskCell::free(); self.config.height as usize];
             self.config.width as usize
         ];
+        // x and y index both `self.cells` and `terrain`, so an enumerate-based
+        // rewrite would be less clear than the explicit grid sweep.
+        #[allow(clippy::needless_range_loop)]
         for x in 0..self.config.width as usize {
             for y in 0..self.config.height as usize {
                 let cell = self.cells[x][y];

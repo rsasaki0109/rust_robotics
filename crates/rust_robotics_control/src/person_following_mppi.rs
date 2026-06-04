@@ -173,6 +173,7 @@ impl MppiPersonFollowingSampler2D {
             .collect()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn score_candidate(
         &self,
         robot: MppiState2D,
