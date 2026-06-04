@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1020" height="560" viewBox="0 0 1020 560" role="img" aria-labelledby="title desc">
+<title id="title">Adap-RPF-lite MPPI</title>
+<desc id="desc">Adaptive person-following candidate sampling and MPPI tracking around a moving pedestrian occluder.</desc>
+<rect width="1020" height="560" fill="#f8fafc"/>
+<text x="58" y="42" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Adap-RPF-lite person following</text>
+<text x="58" y="68" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Target-centric candidate sampling selects visible, socially safer following points before prediction-aware MPPI tracking.</text>
+<rect x="58.0" y="86.0" width="690.0" height="360.0" rx="8" fill="#ffffff" stroke="#dbe3ee" stroke-width="1.5"/>
+<circle cx="255.1" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="274.9" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="294.6" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="314.3" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="334.0" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="353.7" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="373.4" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="393.1" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="412.9" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="432.6" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="452.3" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="472.0" cy="224.0" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.45"/>
+<circle cx="431.7" cy="410.4" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="451.4" cy="410.4" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="471.1" cy="410.4" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="606.7" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="626.4" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="646.1" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="665.8" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="685.5" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="705.2" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="724.9" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="744.7" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<circle cx="764.4" cy="407.9" r="3.5" fill="#f59e0b" stroke="#ffffff" stroke-width="1.0" opacity="0.80"/>
+<polyline points="463.2,224.0 469.8,224.0 476.4,224.0 483.0,224.0 489.5,224.0 496.1,224.0 502.7,224.0 509.2,224.0 515.8,224.0 522.4,224.0 529.0,224.0 535.5,224.0 542.1,224.0 548.7,224.0 555.2,224.0 561.8,224.0 568.4,224.0 575.0,224.0 581.5,224.0 588.1,224.0 594.7,224.0 601.2,224.0 607.8,224.0 614.4,224.0 621.0,224.0 627.5,224.0 634.1,224.0 640.7,224.0 647.2,224.0 653.8,224.0 660.4,224.0 667.0,224.0 673.5,224.0 680.1,224.0 686.7,224.0" fill="none" stroke="#111827" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="8 7"/>
+<polyline points="261.7,224.0 268.3,224.0 274.9,224.0 281.4,224.0 288.0,224.0 294.6,224.0 301.1,224.0 307.7,224.0 314.3,224.0 320.9,224.0 327.4,224.0 334.0,224.0 340.6,224.0 347.1,224.0 353.7,224.0 360.3,224.0 366.9,224.0 373.4,224.0 380.0,224.0 386.6,224.0 393.1,224.0 399.7,224.0 406.3,224.0 412.9,224.0 419.4,224.0 426.0,224.0 432.6,224.0 439.1,224.0 445.7,224.0 452.3,224.0 458.9,224.0 465.4,224.0 472.0,224.0 478.6,224.0 485.1,224.0" fill="none" stroke="#ef4444" stroke-width="3.0" stroke-linecap="round" stroke-dasharray="6 6"/>
+<ellipse cx="463.2" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="515.8" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="568.4" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="621.0" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="673.5" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="686.7" cy="224.0" rx="65.7" ry="45.0" fill="#111827" opacity="0.88"/>
+<ellipse cx="261.7" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<ellipse cx="314.3" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<ellipse cx="366.9" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<ellipse cx="419.4" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<ellipse cx="472.0" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<ellipse cx="485.1" cy="224.0" rx="74.5" ry="51.0" fill="#ef4444" opacity="0.50" stroke="#991b1b" stroke-width="1.2"/>
+<polyline points="101.8,236.0 102.5,236.0 105.3,236.0 110.5,235.8 117.9,235.3 127.7,234.5 139.2,233.5 151.7,232.2 164.7,230.9 177.9,229.8 190.5,228.5 201.5,227.3 211.7,226.2 221.6,225.5 231.1,225.3 239.1,225.3 245.5,225.6 251.3,226.2 257.3,226.8 263.7,227.2 271.1,227.3 278.6,227.2 285.8,227.1 293.2,226.7 300.2,226.3 306.4,225.9 312.3,225.4 318.0,225.3 324.0,225.2 330.9,224.7 337.2,224.0 342.4,223.1 347.8,222.3 354.2,221.4 361.8,220.7" fill="none" stroke="#ffffff" stroke-width="9.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.90"/>
+<polyline points="101.8,236.0 102.5,236.0 105.3,236.0 110.5,235.8 117.9,235.3 127.7,234.5 139.2,233.5 151.7,232.2 164.7,230.9 177.9,229.8 190.5,228.5 201.5,227.3 211.7,226.2 221.6,225.5 231.1,225.3 239.1,225.3 245.5,225.6 251.3,226.2 257.3,226.8 263.7,227.2 271.1,227.3 278.6,227.2 285.8,227.1 293.2,226.7 300.2,226.3 306.4,225.9 312.3,225.4 318.0,225.3 324.0,225.2 330.9,224.7 337.2,224.0 342.4,223.1 347.8,222.3 354.2,221.4 361.8,220.7" fill="none" stroke="#2563eb" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="101.8" cy="236.0" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="151.7" cy="232.2" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="231.1" cy="225.3" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="278.6" cy="227.2" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="324.0" cy="225.2" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="361.8" cy="220.7" r="4.0" fill="#2563eb" stroke="#ffffff" stroke-width="1.3"/>
+<polyline points="101.8,236.0 102.6,236.5 105.2,237.9 110.4,240.5 119.1,245.3 132.0,252.9 148.9,262.7 169.4,274.3 193.1,287.1 218.5,300.5 245.5,314.4 275.0,328.1 306.6,340.9 339.2,352.7 371.3,363.1 402.0,372.0 430.7,379.9 457.5,386.5 482.3,391.7 504.9,395.8 525.3,399.2 543.9,401.8 560.6,403.7 574.9,405.1 587.5,406.4 599.0,407.5 608.8,408.0 617.2,408.1 624.9,408.0 632.5,407.8 639.8,407.9 646.4,408.2 652.8,408.5 659.4,408.9 666.6,409.0" fill="none" stroke="#ffffff" stroke-width="10.0" stroke-linecap="round" stroke-linejoin="round" opacity="0.90"/>
+<polyline points="101.8,236.0 102.6,236.5 105.2,237.9 110.4,240.5 119.1,245.3 132.0,252.9 148.9,262.7 169.4,274.3 193.1,287.1 218.5,300.5 245.5,314.4 275.0,328.1 306.6,340.9 339.2,352.7 371.3,363.1 402.0,372.0 430.7,379.9 457.5,386.5 482.3,391.7 504.9,395.8 525.3,399.2 543.9,401.8 560.6,403.7 574.9,405.1 587.5,406.4 599.0,407.5 608.8,408.0 617.2,408.1 624.9,408.0 632.5,407.8 639.8,407.9 646.4,408.2 652.8,408.5 659.4,408.9 666.6,409.0" fill="none" stroke="#059669" stroke-width="5.0" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="101.8" cy="236.0" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="169.4" cy="274.3" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="371.3" cy="363.1" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="543.9" cy="401.8" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="624.9" cy="408.0" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<circle cx="666.6" cy="409.0" r="4.0" fill="#059669" stroke="#ffffff" stroke-width="1.3"/>
+<rect x="58.0" y="86.0" width="690.0" height="360.0" rx="8" fill="none" stroke="#dbe3ee" stroke-width="1.5"/>
+<line x1="784.0" y1="114.0" x2="830.0" y2="114.0" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+<text x="842.0" y="118.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">fixed back point</text>
+<text x="784.0" y="148.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">target dist 1.48</text>
+<text x="784.0" y="171.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">clearance   0.17</text>
+<text x="784.0" y="194.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">visibility  0.00</text>
+<text x="784.0" y="217.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">proximity   0.00</text>
+<text x="784.0" y="240.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">ESS ratio   0.24</text>
+<line x1="784.0" y1="282.0" x2="830.0" y2="282.0" stroke="#059669" stroke-width="7" stroke-linecap="round"/>
+<text x="842.0" y="286.0" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">adaptive rpf</text>
+<text x="784.0" y="316.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">target dist 1.24</text>
+<text x="784.0" y="339.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">clearance   0.33</text>
+<text x="784.0" y="362.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">visibility  0.00</text>
+<text x="784.0" y="385.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">proximity   1.61</text>
+<text x="784.0" y="408.0" fill="#334155" font-family="Consolas, Menlo, monospace" font-size="13">ESS ratio   0.24</text>
+<text x="58" y="494" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12">Black is the target, red is the predicted occluding pedestrian, amber dots are sampled/selected following points. Blue tracks a fixed back point; green tracks adaptive Adap-RPF-lite goals.</text>
+</svg>

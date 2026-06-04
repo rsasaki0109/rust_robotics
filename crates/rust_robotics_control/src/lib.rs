@@ -16,8 +16,10 @@ pub mod model_predictive_trajectory_generator;
 pub mod move_to_pose;
 pub mod mpc;
 pub mod mpc_control;
+pub mod mppi;
 pub mod n_joint_arm_3d;
 pub mod n_joint_arm_control;
+pub mod person_following_mppi;
 pub mod pure_pursuit;
 pub mod rear_wheel_feedback;
 pub mod rocket_landing;
@@ -37,6 +39,17 @@ pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
 pub use lqr_control::InvertedPendulumLQR;
 pub use lqr_steer_control::{LQRSteerConfig, LQRSteerController};
 pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController};
+pub use mppi::{
+    MppiCircularObstacle2D, MppiConfig, MppiControl2D, MppiController2D, MppiGateRace2D,
+    MppiGateRaceReport2D, MppiMovingObstacle2D, MppiPlan2D, MppiRacingGate2D,
+    MppiSamplingDiagnostics2D, MppiState2D, MppiTerminalValueGrid2D,
+    MppiTerminalValueReplayBuffer2D, MppiTerminalValueReplayUpdateReport2D,
+    MppiTerminalValueUpdateConfig2D, MppiTerminalValueUpdateReport2D, MppiTerminalValueUpdater2D,
+    MppiTrackProjection2D, MppiWaypointTrack2D,
+};
+pub use person_following_mppi::{
+    MppiPersonFollowingCandidate2D, MppiPersonFollowingConfig2D, MppiPersonFollowingSampler2D,
+};
 pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
 pub use rear_wheel_feedback::{RearWheelFeedbackConfig, RearWheelFeedbackController};
 pub use stanley_controller::{StanleyConfig, StanleyController};

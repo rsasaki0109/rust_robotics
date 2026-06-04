@@ -114,6 +114,70 @@ const galleryItems = [
     description: "A clean shortest-path shot that reads instantly in a social feed."
   },
   {
+    title: "Traversal-Risk Graph",
+    category: "Path Planning",
+    image: "assets/traversal-risk-graph-demo.svg",
+    command: "cargo run -p rust_robotics --example render_traversal_risk_graph_svg --no-default-features --features planning",
+    description: "Terrain-risk heatmap comparing the short risky route against a longer safer detour.",
+    size: "wide"
+  },
+  {
+    title: "Traversal-Risk Pareto Sweep",
+    category: "Path Planning",
+    image: "assets/traversal-risk-weight-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_traversal_risk_sweep --no-default-features --features planning",
+    description: "Risk-weight sweep chart for distance versus terrain exposure on elevation-derived terrain.",
+    size: "wide"
+  },
+  {
+    title: "BranchOut Multimodal Driving",
+    category: "Path Planning",
+    image: "assets/branchout-multimodal-driving.svg",
+    command: "cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --no-default-features --features planning",
+    description: "Multimodal driving decisions with yield and lane-change branches, mixture weights, and distribution metrics.",
+    size: "wide"
+  },
+  {
+    title: "STL-CBS Multi-Robot",
+    category: "Path Planning",
+    image: "assets/stl-cbs-multi-robot.svg",
+    command: "cargo run -p rust_robotics --example render_stl_cbs_multi_robot_svg --no-default-features --features planning",
+    description: "Conflict-based multi-robot plans with STL goal and separation robustness checks.",
+    size: "wide"
+  },
+  {
+    title: "Kinodynamic STL-CBS",
+    category: "Path Planning",
+    image: "assets/kinodynamic-stl-cbs.svg",
+    command: "cargo run -p rust_robotics --example render_kinodynamic_stl_cbs_svg --no-default-features --features planning",
+    description: "Heading-aware CBS with time-consuming primitives and continuous-time pairwise occupancy checks.",
+    size: "wide"
+  },
+  {
+    title: "Rigid-Body MIP Planning",
+    category: "Path Planning",
+    image: "assets/rigid-body-mip-planning.svg",
+    command: "cargo run -p rust_robotics --example render_rigid_body_mip_planning_svg --no-default-features --features planning",
+    description: "Rectangular rigid-body planning through a convex-polygon slot with pose and segment half-space certificates.",
+    size: "wide"
+  },
+  {
+    title: "Hierarchical MAPF Replanning",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-replanning.svg",
+    command: "cargo run -p rust_robotics --example render_hierarchical_mapf_replanning_svg --no-default-features --features planning",
+    description: "Region-triggered CBS group replanning that repairs multi-robot conflicts without a full global replan.",
+    size: "wide"
+  },
+  {
+    title: "Hierarchical MAPF Scale",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-scale.svg",
+    command: "cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-default-features --features planning",
+    description: "50/100/200-agent corridor-swap benchmark showing local CBS repair groups stay size two.",
+    size: "wide"
+  },
+  {
     title: "Theta*",
     category: "Path Planning",
     image: "img/path_planning/theta_star_result.svg",
@@ -296,6 +360,38 @@ const galleryItems = [
     image: "img/path_tracking/cgmres_nmpc.svg",
     command: "cargo run --example cgmres_nmpc",
     description: "Nonlinear predictive control with a denser optimization feel."
+  },
+  {
+    title: "MPPI Replay Value Grid",
+    category: "Control",
+    image: "assets/mppi-replay-value-grid.svg",
+    command: "cargo run -p rust_robotics --example render_mppi_value_grid_svg --no-default-features --features control",
+    description: "Replay-learned terminal value heatmap with obstacle margin and the final MPPI rollout.",
+    size: "wide"
+  },
+  {
+    title: "MPPI Track Progress",
+    category: "Control",
+    image: "assets/mppi-track-progress.svg",
+    command: "cargo run -p rust_robotics --example render_mppi_track_progress_svg --no-default-features --features control",
+    description: "Slalom-course MPPI comparison with track terminal values, obstacles, and two rollouts.",
+    size: "wide"
+  },
+  {
+    title: "Racing Gate MPPI",
+    category: "Control",
+    image: "assets/mppi-racing-gate-progress.svg",
+    command: "cargo run -p rust_robotics --example render_mppi_racing_gate_progress_svg --no-default-features --features control",
+    description: "Reference-free gate-progress MPPI racing through oriented gates beside the waypoint-reference baseline.",
+    size: "wide"
+  },
+  {
+    title: "Adap-RPF-lite MPPI",
+    category: "Control",
+    image: "assets/adap-rpf-lite-mppi.svg",
+    command: "cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control",
+    description: "Adaptive person-following point sampling with prediction-aware MPPI around a moving pedestrian occluder.",
+    size: "wide"
   },
   {
     title: "Inverted Pendulum LQR",
