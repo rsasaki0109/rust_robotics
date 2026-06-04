@@ -162,6 +162,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Rigid-Body Backend Benchmark",
+    category: "Path Planning",
+    image: "assets/rigid-body-backend-benchmark.svg",
+    command: "cargo run -p rust_robotics --example benchmark_rigid_body_backends --no-default-features --features planning",
+    description: "Deterministic lattice A* fallback vs sampling RRT-SE(2) backend behind one trait, compared on identical scenes for path length, search effort, and clearance.",
+    size: "wide"
+  },
+  {
     title: "Hierarchical MAPF Replanning",
     category: "Path Planning",
     image: "assets/hierarchical-mapf-replanning.svg",
