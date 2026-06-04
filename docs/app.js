@@ -138,6 +138,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "BranchOut Closed-Loop Metrics",
+    category: "Path Planning",
+    image: "assets/branchout-closed-loop.svg",
+    command: "cargo run -p rust_robotics --example benchmark_branchout_closed_loop --no-default-features --features planning",
+    description: "Receding-horizon closed-loop driving across overtake, yield, lead-follow, and oncoming scenes: route completion, no-collision rate, comfort, and time-to-collision.",
+    size: "wide"
+  },
+  {
     title: "STL-CBS Multi-Robot",
     category: "Path Planning",
     image: "assets/stl-cbs-multi-robot.svg",
