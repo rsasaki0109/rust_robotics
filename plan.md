@@ -141,17 +141,26 @@ Implemented:
 - Reference-free MPPI objective.
 - Waypoint-reference baseline comparison.
 - Headless and SVG examples.
+- 3-D rectangular gate planes with plane-crossing aperture passage logic.
+- Point-mass drone dynamics with drag, gravity, and actuation limits.
+- Open courses and closed laps with lap-progress metrics.
+- CSV/SVG benchmark across planar, undulating, climbing, and high-drag courses.
 
 Primary files:
 
 - `crates/rust_robotics_control/src/mppi.rs`
+- `crates/rust_robotics_control/src/racing_mppi_3d.rs`
 - `crates/rust_robotics/examples/headless_mppi_racing_gate_progress.rs`
 - `crates/rust_robotics/examples/render_mppi_racing_gate_progress_svg.rs`
+- `crates/rust_robotics/examples/benchmark_racing_mppi_3d.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
+- `docs/assets/racing-mppi-3d.svg`
+- `docs/assets/racing-mppi-3d.csv`
 
 Next useful extension:
 
-- Extend from 2-D oriented gates to 3-D gate planes and richer dynamics.
+- Replace the point-mass drone with a full quadrotor attitude model (thrust and
+  body-rate inputs) so the gate-progress objective drives orientation too.
 
 ### Adap-RPF-lite MPPI
 
@@ -476,9 +485,19 @@ cargo run -p rust_robotics --example benchmark_branchout_closed_loop --no-defaul
    - `benchmark_branchout_closed_loop` sweeps overtake/yield/lead/oncoming
      scenes with CSV/SVG output.
 
-6. Racing MPPI 3-D gates.
-   - Add 3-D gate planes.
-   - Add lap-progress metrics and richer drone dynamics.
+6. ~~Racing MPPI 3-D gates.~~ **Done (2026-06-05).**
+   - `RacingGatePlane3D` is a rectangular 3-D gate aperture (center, race-
+     direction normal, orthonormalized up/right axes) with plane-crossing
+     aperture-containment passage logic.
+   - `RacingDroneDynamics3D` is a point-mass drone with linear drag, optional
+     gravity, speed cap, and acceleration-magnitude cap — richer than the 2-D
+     double integrator.
+   - `RacingGateLap3D` supports open courses and closed laps (active gate wraps
+     modulo gate count); `simulate_lap_race` runs a seeded deterministic MPPI
+     and reports `RacingLapReport3D` lap-progress metrics (laps completed, lap
+     fraction, first-lap time, mean/peak speed, aperture margin).
+   - `benchmark_racing_mppi_3d` sweeps planar/undulating closed squares, an
+     ascending helix, and a high-drag slalom with CSV/SVG output.
 
 ## Push Checklist
 

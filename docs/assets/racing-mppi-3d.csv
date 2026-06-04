@@ -1,0 +1,5 @@
+scenario,gates,gates_passed,laps_completed,lap_fraction,first_lap_time,mean_speed,max_speed,min_aperture_margin,path_length,mean_control_effort
+planar-square,4,8,2,0.000,4.90,3.195,4.714,-0.025,32.588,6.940
+wavy-square,4,8,2,0.000,5.40,3.223,4.491,0.008,33.524,7.033
+ascending-helix,5,5,1,0.000,3.10,2.102,3.353,0.322,6.516,7.141
+drafty-slalom,4,4,1,0.000,6.30,1.764,3.854,0.101,11.114,6.652
