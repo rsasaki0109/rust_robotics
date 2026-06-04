@@ -418,6 +418,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Racing MPPI 3-D Gates",
+    category: "Control",
+    image: "assets/racing-mppi-3d.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control",
+    description: "Reference-free MPPI flying a drag-limited drone through 3-D gate planes, with laps-completed, first-lap-time, speed, and aperture-margin metrics across planar, undulating, climbing, and high-drag courses.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

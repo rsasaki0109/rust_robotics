@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="380" viewBox="0 0 780 380">
+<rect width="780" height="380" fill="#fbfbfd"/>
+<text x="70" y="34" font-family="sans-serif" font-size="20" fill="#1d1d1f">Racing MPPI through 3-D gates: lap progress by course</text>
+<text x="70" y="56" font-family="sans-serif" font-size="13" fill="#6e6e73">reference-free gate progress; bar = laps completed + lap fraction; labels show mean speed and first-lap time</text>
+<line x1="70" y1="296.0" x2="710.0" y2="296.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="300.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.0</text>
+<line x1="70" y1="196.0" x2="710.0" y2="196.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="200.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">1.0</text>
+<line x1="70" y1="96.0" x2="710.0" y2="96.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="100.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">2.0</text>
+<rect x="116.4" y="96.0" width="67.2" height="200.0" fill="#0a84ff" rx="3"/>
+<text x="150.0" y="88.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">2.00</text>
+<text x="150.0" y="318.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">planar-square</text>
+<text x="150.0" y="334.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">8/4 gates · 3.2 m/s</text>
+<text x="150.0" y="350.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">lap 4.9s · margin -0.03</text>
+<rect x="276.4" y="96.0" width="67.2" height="200.0" fill="#0a84ff" rx="3"/>
+<text x="310.0" y="88.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">2.00</text>
+<text x="310.0" y="318.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">wavy-square</text>
+<text x="310.0" y="334.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">8/4 gates · 3.2 m/s</text>
+<text x="310.0" y="350.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">lap 5.4s · margin 0.01</text>
+<rect x="436.4" y="196.0" width="67.2" height="100.0" fill="#0a84ff" rx="3"/>
+<text x="470.0" y="188.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">1.00</text>
+<text x="470.0" y="318.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">ascending-helix</text>
+<text x="470.0" y="334.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">5/5 gates · 2.1 m/s</text>
+<text x="470.0" y="350.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">lap 3.1s · margin 0.32</text>
+<rect x="596.4" y="196.0" width="67.2" height="100.0" fill="#0a84ff" rx="3"/>
+<text x="630.0" y="188.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">1.00</text>
+<text x="630.0" y="318.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">drafty-slalom</text>
+<text x="630.0" y="334.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">4/4 gates · 1.8 m/s</text>
+<text x="630.0" y="350.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">lap 6.3s · margin 0.10</text>
+<rect x="530" y="70" width="14" height="14" fill="#0a84ff" rx="3"/>
+<text x="550" y="82" font-family="sans-serif" font-size="12" fill="#1d1d1f">completed a lap / course</text>
+<rect x="530" y="90" width="14" height="14" fill="#ff9f0a" rx="3"/>
+<text x="550" y="102" font-family="sans-serif" font-size="12" fill="#1d1d1f">partial progress</text>
+</svg>
