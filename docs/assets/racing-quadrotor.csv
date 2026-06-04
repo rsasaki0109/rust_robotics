@@ -1,0 +1,5 @@
+scenario,gates,gates_passed,laps_completed,lap_fraction,first_lap_time,mean_speed,max_speed,min_aperture_margin,mean_tilt_deg,max_tilt_deg,mean_body_rate,path_length
+planar-slalom,4,4,1,0.000,2.95,2.427,3.974,0.113,21.92,41.27,5.662,7.159
+ascending-gates,3,3,1,0.000,2.10,2.658,4.008,0.394,23.08,44.62,5.293,5.582
+square-lap,4,4,1,0.000,3.40,4.629,5.975,0.045,42.04,68.81,5.142,15.738
+heavy-slalom,4,4,1,0.000,1.95,3.574,5.000,0.068,31.20,57.61,5.366,6.968

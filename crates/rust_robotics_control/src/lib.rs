@@ -22,6 +22,7 @@ pub mod n_joint_arm_control;
 pub mod person_following_mppi;
 pub mod pure_pursuit;
 pub mod racing_mppi_3d;
+pub mod racing_mppi_quadrotor;
 pub mod rear_wheel_feedback;
 pub mod rocket_landing;
 pub mod rrt_star_seven_joint_arm;
@@ -58,6 +59,10 @@ pub use racing_mppi_3d::{
     simulate_lap_race, RacingDroneControl3D, RacingDroneDynamics3D, RacingDroneState3D,
     RacingGateLap3D, RacingGatePlane3D, RacingLapReport3D, RacingMppi3DConfig,
     RacingMppi3DController, RacingMppi3DPlan,
+};
+pub use racing_mppi_quadrotor::{
+    simulate_quadrotor_race, QuadrotorControl, QuadrotorLapReport, QuadrotorMppiConfig,
+    QuadrotorMppiController, QuadrotorMppiPlan, QuadrotorParams, QuadrotorState,
 };
 pub use rear_wheel_feedback::{RearWheelFeedbackConfig, RearWheelFeedbackController};
 pub use stanley_controller::{StanleyConfig, StanleyController};

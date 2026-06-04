@@ -26,6 +26,9 @@ Implemented slice:
     limits, open/closed laps, and lap-progress metrics.
 18. CSV/SVG benchmark sweeping planar, undulating, climbing, and high-drag 3-D
     racing courses.
+19. Full quadrotor attitude model (collective thrust + body-rate inputs) whose
+    orientation is driven by the gate-progress objective, with tilt and
+    body-rate metrics.
 
 Run:
 
@@ -44,6 +47,7 @@ cargo run -p rust_robotics --example render_mppi_racing_gate_progress_svg --no-d
 cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-features --features control
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -125,5 +129,41 @@ square courses, climbs the full helix, and threads the slalom, with the draggier
 slalom drone reaching a lower mean speed — the lap-progress, speed, and aperture
 trade-offs the 3-D counters expose.
 
-Next useful extension is a full quadrotor attitude model (thrust and body-rate
-inputs) so the gate-progress objective drives orientation as well as position.
+## Quadrotor Attitude Model
+
+`racing_mppi_quadrotor` replaces the point-mass drone with a full quadrotor
+whose orientation matters. The control input is the standard agile-racing
+low-level abstraction used by differential-flatness controllers: a mass-
+normalized collective thrust along the body z-axis plus three body rates.
+
+- `QuadrotorState` carries position, velocity, and a unit-quaternion attitude.
+- `QuadrotorParams` integrates the translational dynamics
+  (`a = thrust * body_z - gravity - drag * v`, with a speed cap) together with
+  quaternion attitude kinematics driven by the commanded body rates, then
+  renormalizes the quaternion each step.
+- `QuadrotorMppiController` samples thrust/body-rate perturbations around a hover
+  nominal and scores the resulting positions with the same reference-free
+  gate-progress objective from `racing_mppi_3d`. Because horizontal motion can
+  only come from tilting the thrust vector, the position objective drives the
+  attitude: the drone learns to pitch and roll toward the next gate. A small
+  level regularizer keeps it from flipping under noise.
+- `simulate_quadrotor_race` returns `QuadrotorLapReport`, adding tilt angle and
+  body-rate effort to the lap-progress metrics.
+
+The benchmark flies a planar slalom, an ascending course, a closed square lap,
+and a heavier high-gravity drone, writing `docs/assets/racing-quadrotor.csv` and
+`.svg`:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
+```
+
+All four courses finish, including a full closed lap flown purely through
+attitude control (peak tilt around 69 degrees on the square corners). The heavy,
+high-gravity drone has to reach a noticeably larger peak tilt to thread the same
+slalom gates — the attitude-coupling the quadrotor model exposes that the
+point-mass model cannot.
+
+Next useful extension is a thrust-and-torque (motor-level) model with a rotor
+mixing matrix, so motor saturation and body-rate tracking limits become part of
+the racing trade-off.
