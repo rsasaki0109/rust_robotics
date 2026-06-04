@@ -293,9 +293,14 @@ Primary files:
 - `crates/rust_robotics/examples/headless_hierarchical_mapf_replanning.rs`
 - `crates/rust_robotics/examples/render_hierarchical_mapf_replanning_svg.rs`
 - `crates/rust_robotics/examples/benchmark_hierarchical_mapf_scale.rs`
+- `crates/rust_robotics/examples/benchmark_hierarchical_mapf_sweeps.rs`
 - `docs/assets/hierarchical-mapf-replanning.svg`
 - `docs/assets/hierarchical-mapf-scale.csv`
 - `docs/assets/hierarchical-mapf-scale.svg`
+- `docs/assets/hierarchical-mapf-region-sweep.csv`
+- `docs/assets/hierarchical-mapf-region-sweep.svg`
+- `docs/assets/hierarchical-mapf-density-sweep.csv`
+- `docs/assets/hierarchical-mapf-density-sweep.svg`
 - `docs/hierarchical_mapf_replanning.md`
 
 Current benchmark snapshot:
@@ -304,10 +309,15 @@ Current benchmark snapshot:
 - 100 agents: 50 repair groups, max group size 2, final conflicts 0.
 - 200 agents: 100 repair groups, max group size 2, final conflicts 0.
 - Full-plan fallback remains false in the scale scenario.
+- Region sweep (6 swaps): region 4/8/12/24 -> max group size 2/4/6/12 and
+  runtime climbs steeply as decomposition is lost; fallback stays false.
+- Density sweep (4-18 agents): repair groups stay size 2 against a bounded
+  4-agent flat-CBS baseline; deterministic seeded scenes.
 
 Next useful extension:
 
-- Add region-size sweeps and randomized dense-agent scenarios.
+- Sweep `region_width` and `region_height` independently (anisotropic regions)
+  and add a fallback-regime row that stays solvable for the fallback-rate chart.
 
 ### Rigid-Body MIP-Style Planning
 
@@ -397,11 +407,12 @@ cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --n
    - `cbs_resolves_continuous_only_perpendicular_conflict` covers the
      integer-clean-but-continuously-unsafe case.
 
-2. Hierarchical MAPF benchmark sweeps.
-   - Sweep region width and region height.
-   - Add randomized dense-agent scenarios with bounded full-CBS comparison on
-     small subsets.
-   - Emit CSV/SVG charts for group size, fallback rate, and runtime.
+2. ~~Hierarchical MAPF benchmark sweeps.~~ **Done (2026-06-04).**
+   - `benchmark_hierarchical_mapf_sweeps` sweeps region size and agent density,
+     with a bounded flat-CBS subset baseline and seeded deterministic scenes.
+   - Emits CSV/SVG charts for repair-group size, fallback, and runtime.
+   - Remaining: anisotropic `region_width != region_height` sweep and a
+     solvable fallback-regime data point for an explicit fallback-rate chart.
 
 3. Rigid-body MIP backend abstraction.
    - Add a solver trait that can host an exact MILP backend later.

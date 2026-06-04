@@ -178,6 +178,22 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Hierarchical MAPF Region Sweep",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-region-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_hierarchical_mapf_sweeps --no-default-features --features planning",
+    description: "Coarser regions merge neighboring swaps into larger CBS groups; runtime climbs steeply as decomposition is lost.",
+    size: "wide"
+  },
+  {
+    title: "Hierarchical MAPF Density Sweep",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-density-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_hierarchical_mapf_sweeps --no-default-features --features planning",
+    description: "Adding swap clusters keeps repair groups at size two against a bounded flat-CBS subset baseline.",
+    size: "wide"
+  },
+  {
     title: "Theta*",
     category: "Path Planning",
     image: "img/path_planning/theta_star_result.svg",
