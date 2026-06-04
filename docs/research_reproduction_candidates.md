@@ -194,24 +194,33 @@ These are interesting but higher dependency risk for this repo.
 
 ## Next Concrete Build Queue
 
-1. Extend hierarchical MAPF benchmarking.
-   - Add region-size sweeps, randomized dense-agent scenarios, and local repair
-     versus bounded full-CBS timing counters on small subsets.
+The first build queue is fully landed (2026-06-04/05):
 
-2. Extend rigid-body MIP planning.
-   - Add continuous swept-volume certificates, solver backend trait, and
-     benchmarks against sampling planners.
+1. ~~Extend hierarchical MAPF benchmarking.~~ Done — region-size and density
+   sweeps with a bounded flat-CBS baseline.
+2. ~~Extend rigid-body MIP planning.~~ Done — backend trait plus an RRT backend
+   and comparison benchmark (exact MILP backend still pending; see v2).
+3. ~~Extend STL-CBS continuous conflict handling.~~ Done — continuous conflicts
+   promoted into CBS branching constraints.
+4. ~~Extend racing MPPI to 3-D gates.~~ Done — 3-D gate planes, drag-limited
+   dynamics, lap-progress metrics, and a full quadrotor attitude model.
+5. ~~Extend Adap-RPF-lite metrics.~~ Done — visibility and spacing ratio sweep.
+6. ~~Extend BranchOut-lite closed-loop metrics.~~ Done — receding-horizon route
+   completion, no-collision, comfort, and TTC counters.
 
-3. Extend STL-CBS continuous conflict handling.
-   - Turn continuous-time conflicts into high-level CBS branching constraints
-     and add a richer STL task API over oriented paths.
+### Queue v2 (2026-06-05): breadth-first new papers + depth extensions
 
-4. Extend racing MPPI to 3-D gates.
-   - Add 3-D gate planes after the 2-D objective has stronger demos.
-
-5. Extend Adap-RPF-lite metrics.
-   - Add target visibility ratio and target spacing ratio benchmark counters.
-
-6. Extend BranchOut-lite closed-loop metrics.
-   - Add route completion, no-collision, comfort, and TTC counters over a toy
-     receding-horizon driving loop.
+1. SafeDec-lite: STL-shielded discrete navigation decoding (constrained beam
+   search over a grid/local-planner policy), reusing `stl_cbs.rs` STL
+   robustness.
+2. CBF safety filter (PolyMerge-lite): convex-polytope obstacle covers plus a
+   control-barrier-function filter over nominal controls, reusing
+   `rigid_body_mip.rs` half-space geometry.
+3. Long Range Navigator-lite: affordance-scored frontier graph with
+   occlusion-aware selection and a local-planner handoff.
+4. Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)
+   plus a solvable fallback-regime data point.
+5. Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked
+   for path optimality against the lattice/RRT backends.
+6. Racing motor-level model: thrust-and-torque quadrotor with a rotor mixing
+   matrix so motor saturation enters the trade-off.
