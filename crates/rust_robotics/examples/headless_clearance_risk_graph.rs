@@ -16,6 +16,7 @@ const CELL_SIZE: f64 = 1.0;
 
 fn corridor_terrain() -> Vec<Vec<TerrainRiskCell>> {
     let mut cells = vec![vec![TerrainRiskCell::free(); HEIGHT]; WIDTH];
+    #[allow(clippy::needless_range_loop)]
     for x in 2..=6 {
         cells[x][2] = TerrainRiskCell::blocked();
         cells[x][4] = TerrainRiskCell::blocked();

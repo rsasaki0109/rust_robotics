@@ -13,6 +13,7 @@ fn terrain() -> Vec<Vec<TerrainRiskCell>> {
     let height = 5;
     let mut cells = vec![vec![TerrainRiskCell::free(); height]; width];
 
+    #[allow(clippy::needless_range_loop)]
     for x in 3..=5 {
         cells[x][2] = TerrainRiskCell::with_risk(5.0, 0.5, 0.0);
     }

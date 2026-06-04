@@ -601,6 +601,7 @@ impl MppiWaypointTrack2D {
         Ok((self.total_length() - self.project(x, y)?.progress).max(0.0))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn terminal_value_grid(
         &self,
         width: usize,

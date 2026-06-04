@@ -154,6 +154,9 @@ pub fn terrain_risk_from_elevation_map(
     validate_elevation_config(config)?;
 
     let mut cells = vec![vec![TerrainRiskCell::free(); height]; width];
+    // x and y feed the gradient/roughness helpers and index `cells`; an
+    // enumerate rewrite would not read more clearly than the grid sweep.
+    #[allow(clippy::needless_range_loop)]
     for x in 0..width {
         for y in 0..height {
             let dzdx = elevation_gradient(elevation, x, y, 0, config.cell_size);
@@ -164,7 +167,7 @@ pub fn terrain_risk_from_elevation_map(
             let stability_risk = (roughness * config.roughness_risk_scale).min(config.max_risk);
             let blocked = config
                 .blocking_step_height
-                .map_or(false, |threshold| roughness >= threshold);
+                .is_some_and(|threshold| roughness >= threshold);
 
             cells[x][y] = TerrainRiskCell {
                 blocked,
@@ -267,6 +270,8 @@ pub fn clearance_map(
         return Ok(clearances);
     }
 
+    // x and y are distance-field coordinates indexing `clearances`.
+    #[allow(clippy::needless_range_loop)]
     for x in 0..width {
         for y in 0..height {
             let min_distance = blocked
@@ -336,6 +341,8 @@ pub fn inflate_blocked_cells(
 
     let mut inflated = cells.to_vec();
     let radius_sq = radius_cells * radius_cells;
+    // x and y read `cells` and seed the inflation offsets into `inflated`.
+    #[allow(clippy::needless_range_loop)]
     for x in 0..width {
         for y in 0..height {
             if !cells[x][y].blocked {
@@ -768,7 +775,7 @@ impl TraversalRiskGraphPlanner {
 
                 let step_cost = self.edge_cost(current.key, next, distance);
                 let next_g = current_g + step_cost;
-                if g_cost.get(&next).map_or(false, |old| next_g >= *old) {
+                if g_cost.get(&next).is_some_and(|old| next_g >= *old) {
                     continue;
                 }
 
@@ -1230,6 +1237,7 @@ mod tests {
     #[test]
     fn clearance_risk_moves_path_away_from_narrow_corridor() {
         let mut cells = free_cells(9, 7);
+        #[allow(clippy::needless_range_loop)]
         for x in 2..=6 {
             cells[x][2] = TerrainRiskCell::blocked();
             cells[x][4] = TerrainRiskCell::blocked();
@@ -1308,6 +1316,7 @@ mod tests {
     #[test]
     fn sweep_risk_weights_captures_distance_risk_tradeoff() {
         let mut cells = free_cells(7, 3);
+        #[allow(clippy::needless_range_loop)]
         for x in 2..=4 {
             cells[x][1] = TerrainRiskCell::with_risk(5.0, 0.0, 0.0);
         }
