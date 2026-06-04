@@ -1,0 +1,9 @@
+scenario,strategy,visibility_ratio,spacing_ratio,mean_spacing,mean_spacing_error,min_clearance,collision_steps
+open,fixed,1.000,0.750,1.117,0.180,inf,0
+open,adaptive,1.000,0.750,1.166,0.216,inf,0
+trailing-occluder,fixed,0.000,0.000,1.501,0.551,0.186,0
+trailing-occluder,adaptive,0.725,0.325,1.350,0.400,0.215,0
+crossing-peds,fixed,0.400,0.525,1.289,0.339,0.066,0
+crossing-peds,adaptive,0.900,0.800,1.143,0.274,0.026,0
+dense-occlusion,fixed,0.000,0.450,1.365,0.415,0.183,0
+dense-occlusion,adaptive,0.525,0.350,1.200,0.482,0.113,0

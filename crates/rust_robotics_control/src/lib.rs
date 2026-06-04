@@ -49,6 +49,8 @@ pub use mppi::{
 };
 pub use person_following_mppi::{
     MppiPersonFollowingCandidate2D, MppiPersonFollowingConfig2D, MppiPersonFollowingSampler2D,
+    PersonFollowingMetricsAccumulator2D, PersonFollowingMetricsConfig2D,
+    PersonFollowingRolloutMetrics2D,
 };
 pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
 pub use rear_wheel_feedback::{RearWheelFeedbackConfig, RearWheelFeedbackController};

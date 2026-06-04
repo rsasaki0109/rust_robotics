@@ -418,6 +418,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Adap-RPF Metric Sweep",
+    category: "Control",
+    image: "assets/adap-rpf-metrics-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_adap_rpf_metrics --no-default-features --features control",
+    description: "Closed-loop target visibility and spacing metrics across occlusion and moving-pedestrian scenarios: fixed back-point vs adaptive following.",
+    size: "wide"
+  },
+  {
     title: "Inverted Pendulum LQR",
     category: "Control",
     image: "img/inverted_pendulum/inverted_pendulum_lqr.png",
