@@ -1,6 +1,6 @@
 # RustRobotics Research Reproduction Plan
 
-Updated: 2026-06-04
+Updated: 2026-06-05
 
 This plan tracks the current pure-Rust reproduction effort for robotics papers
 whose official code is unavailable, delayed, or too heavy to integrate directly.
@@ -510,6 +510,49 @@ cargo run -p rust_robotics --example benchmark_branchout_closed_loop --no-defaul
      fraction, first-lap time, mean/peak speed, aperture margin).
    - `benchmark_racing_mppi_3d` sweeps planar/undulating closed squares, an
      ascending helix, and a high-drag slalom with CSV/SVG output.
+   - **Follow-up (2026-06-05):** `racing_mppi_quadrotor` adds a full quadrotor
+     attitude model (collective thrust + body rates, quaternion kinematics); the
+     gate-progress objective drives orientation. `benchmark_racing_quadrotor`
+     flies slalom/climb/closed-lap/heavy courses with tilt and body-rate metrics.
+
+## Next Concrete Queue (v2 — 2026-06-05)
+
+The first queue (#1–#6 above) is fully landed. This second queue leans into
+breadth: three brand-new reproduction papers with pure-Rust algorithmic cores
+and strong reuse of existing modules, plus three recorded depth extensions kept
+as low-risk wins. Each item is one slice: library code + tests + a deterministic
+benchmark/headless example + SVG/CSV artifact + docs.
+
+1. **SafeDec-lite: STL-shielded navigation decoding.** A discrete action decoder
+   over a grid/local-planner policy, shielded by STL geofence / always-avoid /
+   eventually-visit constraints via constrained beam search. Reuses the STL
+   robustness primitives in `stl_cbs.rs`. New `safe_decode_nav.rs` (planning),
+   headless + SVG (shielded vs greedy path, blocked actions highlighted).
+   Source: SafeDec (constrained decoding for safe robot navigation).
+
+2. **CBF safety filter (PolyMerge-lite).** Convex-polytope obstacle covers plus a
+   control-barrier-function filter that minimally corrects a nominal control to
+   stay safe. Reuses the half-space geometry from `rigid_body_mip.rs`. New
+   `cbf_safety_filter.rs` (control), benchmark of nominal vs filtered control
+   (min clearance, intervention rate) with SVG. Source: PolyMerge / CBF safety.
+
+3. **Long Range Navigator-lite.** A synthetic frontier graph beyond the local
+   map: affordance-scored frontiers, occlusion-aware frontier selection, and a
+   local-planner handoff. New `frontier_navigator.rs` (planning), SVG comparing
+   frontier choices under occlusion. Source: Long Range Navigator.
+
+4. **Hierarchical MAPF anisotropic region sweep (extension).** Sweep
+   `region_width` and `region_height` independently and add a solvable
+   fallback-regime data point for an explicit fallback-rate chart. Extends
+   `benchmark_hierarchical_mapf_sweeps`.
+
+5. **Rigid-body exact MILP backend (extension).** A branch-and-bound disjunctive
+   separating-axis backend behind `RigidBodyPlanningBackend`, benchmarked for
+   path optimality against the lattice/RRT backends.
+
+6. **Racing motor-level model (extension).** A thrust-and-torque quadrotor with a
+   rotor mixing matrix on top of `racing_mppi_quadrotor`, so motor saturation and
+   body-rate tracking limits enter the racing trade-off.
 
 ## Push Checklist
 
