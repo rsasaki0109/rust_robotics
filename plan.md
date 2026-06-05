@@ -201,17 +201,24 @@ Implemented:
   log likelihood, speed JSD, and expected route completion.
 - Headless and SVG examples.
 
+- Receding-horizon closed-loop rollout (`simulate_closed_loop`) that selects a
+  mode each step and tracks its lane with a bounded rate, with closed-loop
+  counters: route completion, no-collision rate, comfort, and time-to-collision.
+
 Primary files:
 
 - `crates/rust_robotics_planning/src/branchout_multimodal.rs`
 - `crates/rust_robotics/examples/headless_branchout_multimodal_driving.rs`
 - `crates/rust_robotics/examples/render_branchout_multimodal_driving_svg.rs`
+- `crates/rust_robotics/examples/benchmark_branchout_closed_loop.rs`
 - `docs/assets/branchout-multimodal-driving.svg`
+- `docs/assets/branchout-closed-loop.{csv,svg}`
 - `docs/branchout_multimodal_reproduction.md`
 
 Next useful extension:
 
-- Add closed-loop receding-horizon route completion and no-collision counters.
+- Add multi-vehicle interactive traffic (reactive obstacles) and a comfort vs
+  completion Pareto sweep over the planner weights.
 
 ### STL-CBS
 
@@ -390,6 +397,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/adap-rpf-lite-mppi.svg`
 - `docs/assets/adap-rpf-metrics-sweep.svg`
 - `docs/assets/branchout-multimodal-driving.svg`
+- `docs/assets/branchout-closed-loop.svg`
 - `docs/assets/stl-cbs-multi-robot.svg`
 - `docs/assets/kinodynamic-stl-cbs.svg`
 - `docs/assets/hierarchical-mapf-replanning.svg`
@@ -426,6 +434,7 @@ cargo run -p rust_robotics --example benchmark_rigid_body_backends --no-default-
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_adap_rpf_metrics --no-default-features --features control
 cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --no-default-features --features planning
+cargo run -p rust_robotics --example benchmark_branchout_closed_loop --no-default-features --features planning
 ```
 
 ## Next Concrete Queue
@@ -459,10 +468,13 @@ cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --n
      scenarios (fixed back-point vs adaptive following), seeded and
      deterministic, emitting CSV/SVG.
 
-5. BranchOut closed-loop metrics.
-   - Add receding-horizon rollout.
-   - Report route completion, no-collision rate, comfort, and time-to-collision
-     counters.
+5. ~~BranchOut closed-loop metrics.~~ **Done (2026-06-05).**
+   - `BranchOutPlanner2D::simulate_closed_loop` runs a receding-horizon rollout
+     that re-plans each step and tracks the selected mode's lane.
+   - `BranchOutClosedLoopMetrics2D` reports route completion, no-collision rate,
+     comfort, and time-to-collision (min + risky-step count).
+   - `benchmark_branchout_closed_loop` sweeps overtake/yield/lead/oncoming
+     scenes with CSV/SVG output.
 
 6. Racing MPPI 3-D gates.
    - Add 3-D gate planes.

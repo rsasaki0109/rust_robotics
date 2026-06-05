@@ -1,0 +1,5 @@
+scenario,route_completion,reached_goal,no_collision_rate,collision_steps,min_clearance,mean_comfort_cost,min_time_to_collision,risky_ttc_steps
+wide-overtake,1.000,true,1.000,0,0.815,0.0145,inf,0
+forced-yield,0.317,false,1.000,0,0.510,0.0051,1.07,13
+moving-lead,0.532,false,1.000,0,1.310,0.0028,1.75,0
+oncoming,1.000,true,1.000,0,0.868,0.0145,inf,0

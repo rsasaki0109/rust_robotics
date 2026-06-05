@@ -80,6 +80,32 @@ impl BranchOutDrivingScene2D {
         }
     }
 
+    /// Overtake scene with enough lateral room that a lane change clears the
+    /// stalled obstacle (the closed-loop planner prefers to overtake here).
+    pub fn wide_overtake() -> Self {
+        Self {
+            start: BranchOutPose2D::new(0.0, 0.0, 2.2),
+            lane_width: 1.6,
+            lane_count_each_side: 1,
+            route_length: 9.0,
+            desired_speed: 2.2,
+            obstacles: vec![BranchOutObstacle2D::new(4.1, 0.0, 0.42)],
+        }
+    }
+
+    /// Single-lane blocked scene with no room to pass, so the closed-loop
+    /// planner must yield behind the obstacle rather than overtake.
+    pub fn forced_yield() -> Self {
+        Self {
+            start: BranchOutPose2D::new(0.0, 0.0, 2.2),
+            lane_width: 1.2,
+            lane_count_each_side: 0,
+            route_length: 9.0,
+            desired_speed: 2.2,
+            obstacles: vec![BranchOutObstacle2D::new(4.1, 0.0, 0.42)],
+        }
+    }
+
     pub fn lane_center(&self, lane_index: i32) -> f64 {
         lane_index as f64 * self.lane_width
     }
@@ -183,6 +209,48 @@ pub struct BranchOutMultimodalMetrics2D {
     pub expected_route_completion: f64,
 }
 
+/// Configuration for a receding-horizon closed-loop BranchOut rollout.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BranchOutClosedLoopConfig2D {
+    /// Number of closed-loop control steps to execute.
+    pub steps: usize,
+    /// Time-to-collision threshold; steps below it count as risky.
+    pub ttc_threshold: f64,
+    /// Route fraction at or above which the goal counts as reached.
+    pub goal_completion: f64,
+    /// Maximum lateral speed used when tracking the selected mode's lane.
+    pub max_lateral_speed: f64,
+}
+
+impl Default for BranchOutClosedLoopConfig2D {
+    fn default() -> Self {
+        Self {
+            steps: 40,
+            ttc_threshold: 1.5,
+            goal_completion: 0.95,
+            max_lateral_speed: 0.9,
+        }
+    }
+}
+
+/// Closed-loop driving metrics from a receding-horizon BranchOut rollout.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BranchOutClosedLoopMetrics2D {
+    pub steps: usize,
+    pub route_completion: f64,
+    pub reached_goal: bool,
+    pub collision_steps: usize,
+    pub no_collision_rate: f64,
+    pub min_clearance: f64,
+    pub mean_comfort_cost: f64,
+    pub min_time_to_collision: f64,
+    pub risky_ttc_steps: usize,
+    /// Realized closed-loop ego path (start pose plus one pose per step).
+    pub executed_path: Vec<BranchOutPose2D>,
+    /// Decision mode selected at each control step.
+    pub mode_sequence: Vec<BranchOutDecisionMode2D>,
+}
+
 /// Deterministic multimodal planner over coarse driving modes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchOutPlanner2D {
@@ -257,21 +325,154 @@ impl BranchOutPlanner2D {
         })
     }
 
+    /// Run a receding-horizon closed-loop rollout: at every control step
+    /// re-plan from the current ego pose, commit the first step of the
+    /// highest-probability mode, advance the (optionally moving) obstacles, and
+    /// accumulate closed-loop driving metrics.
+    ///
+    /// `obstacle_velocities` must match `scene.obstacles` in length; pass zeros
+    /// for static traffic.
+    pub fn simulate_closed_loop(
+        &self,
+        scene: &BranchOutDrivingScene2D,
+        obstacle_velocities: &[(f64, f64)],
+        config: BranchOutClosedLoopConfig2D,
+    ) -> RoboticsResult<BranchOutClosedLoopMetrics2D> {
+        validate_scene(scene)?;
+        if obstacle_velocities.len() != scene.obstacles.len() {
+            return Err(RoboticsError::InvalidParameter(
+                "BranchOut obstacle_velocities length must match scene.obstacles".to_string(),
+            ));
+        }
+        for &(vx, vy) in obstacle_velocities {
+            if !vx.is_finite() || !vy.is_finite() {
+                return Err(RoboticsError::InvalidParameter(
+                    "BranchOut obstacle velocity must be finite".to_string(),
+                ));
+            }
+        }
+        if config.steps == 0
+            || !config.ttc_threshold.is_finite()
+            || config.ttc_threshold <= 0.0
+            || !config.goal_completion.is_finite()
+            || !(0.0..=1.0).contains(&config.goal_completion)
+            || !config.max_lateral_speed.is_finite()
+            || config.max_lateral_speed <= 0.0
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "BranchOut closed-loop config steps/ttc_threshold/goal_completion/max_lateral_speed are invalid"
+                    .to_string(),
+            ));
+        }
+
+        let dt = self.config.dt;
+        let mut ego = scene.start;
+        let mut obstacles = scene.obstacles.clone();
+        let mut executed_path = vec![ego];
+        let mut mode_sequence = Vec::with_capacity(config.steps);
+
+        let mut collision_steps = 0;
+        let mut min_clearance = f64::INFINITY;
+        let mut min_time_to_collision = f64::INFINITY;
+        let mut risky_ttc_steps = 0;
+
+        for _ in 0..config.steps {
+            let current_scene = BranchOutDrivingScene2D {
+                start: ego,
+                obstacles: obstacles.clone(),
+                ..scene.clone()
+            };
+            let plan = self.plan(&current_scene)?;
+            let mode = plan
+                .best()
+                .expect("validated plan always has at least one trajectory")
+                .mode;
+
+            // Receding-horizon commit: BranchOut selects the mode; the closed
+            // loop tracks that mode's target lane with a bounded lateral rate
+            // and a first-order speed law (the per-mode rollout's lateral curve
+            // is back-loaded, so replaying only its first step would barely
+            // steer). This keeps lane changes physically realizable.
+            let start_lane = current_scene.nearest_lane_index(ego.y);
+            let target_y =
+                current_scene.lane_center(mode_target_lane(&current_scene, start_lane, mode));
+            let desired_speed = match mode {
+                BranchOutDecisionMode2D::Yield => yield_speed(&current_scene, ego.x),
+                _ => current_scene.desired_speed,
+            };
+            let max_lateral_step = config.max_lateral_speed * dt;
+            let mut next = ego;
+            next.speed += 0.35 * (desired_speed - ego.speed);
+            next.x += next.speed * dt;
+            next.y += (target_y - ego.y).clamp(-max_lateral_step, max_lateral_step);
+            let ego_velocity = ((next.x - ego.x) / dt, (next.y - ego.y) / dt);
+
+            // Advance obstacles, then evaluate clearance/TTC at the committed
+            // state against the obstacles' new positions.
+            for (obstacle, &(vx, vy)) in obstacles.iter_mut().zip(obstacle_velocities) {
+                obstacle.x += vx * dt;
+                obstacle.y += vy * dt;
+            }
+
+            let mut step_min_ttc = f64::INFINITY;
+            let mut step_min_clearance = f64::INFINITY;
+            for (obstacle, &velocity) in obstacles.iter().zip(obstacle_velocities) {
+                let radius_sum = obstacle.radius + self.config.ego_radius;
+                let clearance =
+                    point_distance((next.x, next.y), (obstacle.x, obstacle.y)) - radius_sum;
+                step_min_clearance = step_min_clearance.min(clearance);
+                let ttc = time_to_collision(
+                    (next.x, next.y),
+                    ego_velocity,
+                    (obstacle.x, obstacle.y),
+                    velocity,
+                    radius_sum,
+                );
+                step_min_ttc = step_min_ttc.min(ttc);
+            }
+            min_clearance = min_clearance.min(step_min_clearance);
+            if step_min_clearance < 0.0 {
+                collision_steps += 1;
+            }
+            min_time_to_collision = min_time_to_collision.min(step_min_ttc);
+            if step_min_ttc < config.ttc_threshold {
+                risky_ttc_steps += 1;
+            }
+
+            ego = next;
+            executed_path.push(ego);
+            mode_sequence.push(mode);
+        }
+
+        if obstacles.is_empty() {
+            min_clearance = f64::INFINITY;
+        }
+        let steps = config.steps;
+        let route_completion = (ego.x / scene.route_length).clamp(0.0, 1.0);
+        let mean_comfort_cost = closed_loop_comfort(&executed_path, dt);
+
+        Ok(BranchOutClosedLoopMetrics2D {
+            steps,
+            route_completion,
+            reached_goal: route_completion >= config.goal_completion && collision_steps == 0,
+            collision_steps,
+            no_collision_rate: (steps - collision_steps) as f64 / steps as f64,
+            min_clearance,
+            mean_comfort_cost,
+            min_time_to_collision,
+            risky_ttc_steps,
+            executed_path,
+            mode_sequence,
+        })
+    }
+
     fn rollout_mode(
         &self,
         scene: &BranchOutDrivingScene2D,
         mode: BranchOutDecisionMode2D,
     ) -> RoboticsResult<BranchOutTrajectory2D> {
         let start_lane = scene.nearest_lane_index(scene.start.y);
-        let target_lane = match mode {
-            BranchOutDecisionMode2D::KeepLane | BranchOutDecisionMode2D::Yield => start_lane,
-            BranchOutDecisionMode2D::LaneChangeLeft => {
-                (start_lane + 1).min(scene.lane_count_each_side)
-            }
-            BranchOutDecisionMode2D::LaneChangeRight => {
-                (start_lane - 1).max(-scene.lane_count_each_side)
-            }
-        };
+        let target_lane = mode_target_lane(scene, start_lane, mode);
         let target_y = scene.lane_center(target_lane);
         let mut poses = Vec::with_capacity(self.config.horizon_steps + 1);
         let mut pose = scene.start;
@@ -379,6 +580,20 @@ fn assign_mixture_probabilities(
         trajectory.probability /= weight_sum;
     }
     Ok(())
+}
+
+fn mode_target_lane(
+    scene: &BranchOutDrivingScene2D,
+    start_lane: i32,
+    mode: BranchOutDecisionMode2D,
+) -> i32 {
+    match mode {
+        BranchOutDecisionMode2D::KeepLane | BranchOutDecisionMode2D::Yield => start_lane,
+        BranchOutDecisionMode2D::LaneChangeLeft => (start_lane + 1).min(scene.lane_count_each_side),
+        BranchOutDecisionMode2D::LaneChangeRight => {
+            (start_lane - 1).max(-scene.lane_count_each_side)
+        }
+    }
 }
 
 fn nearest_obstacle_x(scene: &BranchOutDrivingScene2D) -> Option<f64> {
@@ -537,6 +752,59 @@ fn discrete_frechet(a: &[BranchOutPose2D], b: &[BranchOutPose2D]) -> f64 {
         }
     }
     ca[a.len() - 1][b.len() - 1]
+}
+
+/// Time until the ego and obstacle disks (combined radius `radius_sum`) first
+/// touch, given current positions and constant velocities. Returns `INFINITY`
+/// when they are separating or never intersect; `0.0` when already overlapping.
+fn time_to_collision(
+    ego: (f64, f64),
+    ego_velocity: (f64, f64),
+    obstacle: (f64, f64),
+    obstacle_velocity: (f64, f64),
+    radius_sum: f64,
+) -> f64 {
+    let px = obstacle.0 - ego.0;
+    let py = obstacle.1 - ego.1;
+    let vx = obstacle_velocity.0 - ego_velocity.0;
+    let vy = obstacle_velocity.1 - ego_velocity.1;
+    let distance_sq = px * px + py * py;
+    let radius_sq = radius_sum * radius_sum;
+    if distance_sq <= radius_sq {
+        return 0.0;
+    }
+    let a = vx * vx + vy * vy;
+    if a <= EPS {
+        return f64::INFINITY;
+    }
+    let b = 2.0 * (px * vx + py * vy);
+    let c = distance_sq - radius_sq;
+    let discriminant = b * b - 4.0 * a * c;
+    if discriminant < 0.0 {
+        return f64::INFINITY;
+    }
+    let root = (-b - discriminant.sqrt()) / (2.0 * a);
+    if root >= 0.0 {
+        root
+    } else {
+        f64::INFINITY
+    }
+}
+
+/// Mean closed-loop comfort cost: lateral jerk plus longitudinal acceleration
+/// over the realized path, matching the per-mode comfort term.
+fn closed_loop_comfort(path: &[BranchOutPose2D], dt: f64) -> f64 {
+    if path.len() < 3 {
+        return 0.0;
+    }
+    let mut comfort = 0.0;
+    for window in path.windows(3) {
+        let ay0 = window[1].y - window[0].y;
+        let ay1 = window[2].y - window[1].y;
+        comfort += (ay1 - ay0).powi(2) / (dt * dt);
+        comfort += (window[2].speed - window[1].speed).powi(2);
+    }
+    comfort / (path.len() - 2) as f64
 }
 
 fn smoothstep(t: f64) -> f64 {
@@ -716,5 +984,115 @@ mod tests {
         assert!(metrics.min_ground_truth_frechet < 0.1);
         assert!(metrics.negative_log_likelihood.is_finite());
         assert!(metrics.speed_jsd >= 0.0);
+    }
+
+    #[test]
+    fn closed_loop_overtake_completes_route_without_collision() {
+        let planner = BranchOutPlanner2D::new(BranchOutPlannerConfig2D::default()).unwrap();
+        let scene = BranchOutDrivingScene2D::wide_overtake();
+        let velocities = vec![(0.0, 0.0); scene.obstacles.len()];
+        let metrics = planner
+            .simulate_closed_loop(&scene, &velocities, BranchOutClosedLoopConfig2D::default())
+            .unwrap();
+
+        assert_eq!(metrics.executed_path.len(), metrics.steps + 1);
+        assert_eq!(metrics.mode_sequence.len(), metrics.steps);
+        assert_eq!(metrics.collision_steps, 0);
+        assert_eq!(metrics.no_collision_rate, 1.0);
+        assert!(metrics.min_clearance > 0.0);
+        assert!(metrics.reached_goal);
+        assert!(metrics.route_completion >= 0.95);
+        assert!(metrics.min_time_to_collision > 0.0);
+        assert!(metrics.mean_comfort_cost.is_finite());
+    }
+
+    #[test]
+    fn closed_loop_yields_safely_when_blocked() {
+        let planner = BranchOutPlanner2D::new(BranchOutPlannerConfig2D::default()).unwrap();
+        let scene = BranchOutDrivingScene2D::forced_yield();
+        let metrics = planner
+            .simulate_closed_loop(
+                &scene,
+                &[(0.0, 0.0)],
+                BranchOutClosedLoopConfig2D::default(),
+            )
+            .unwrap();
+
+        // No room to pass: the ego stops behind the obstacle, so it never
+        // reaches the goal but stays collision-free with positive clearance.
+        assert_eq!(metrics.collision_steps, 0);
+        assert!(!metrics.reached_goal);
+        assert!(metrics.route_completion < 0.6);
+        assert!(metrics.min_clearance > 0.0);
+        assert!(metrics
+            .mode_sequence
+            .iter()
+            .all(|&mode| mode == BranchOutDecisionMode2D::Yield));
+    }
+
+    #[test]
+    fn closed_loop_is_deterministic() {
+        let planner = BranchOutPlanner2D::new(BranchOutPlannerConfig2D::default()).unwrap();
+        let scene = BranchOutDrivingScene2D::simple_overtake();
+        let velocities = vec![(0.0, 0.0); scene.obstacles.len()];
+        let config = BranchOutClosedLoopConfig2D::default();
+        let first = planner
+            .simulate_closed_loop(&scene, &velocities, config)
+            .unwrap();
+        let second = planner
+            .simulate_closed_loop(&scene, &velocities, config)
+            .unwrap();
+
+        assert_eq!(first.executed_path, second.executed_path);
+        assert_eq!(first.mode_sequence, second.mode_sequence);
+        assert_eq!(first.collision_steps, second.collision_steps);
+    }
+
+    #[test]
+    fn oncoming_obstacle_lowers_time_to_collision() {
+        let planner = BranchOutPlanner2D::new(BranchOutPlannerConfig2D::default()).unwrap();
+        // A blocker sits far ahead in the ego lane and drives toward the ego.
+        let mut scene = BranchOutDrivingScene2D::simple_overtake();
+        scene.obstacles = vec![BranchOutObstacle2D::new(8.5, 0.0, 0.42)];
+        let static_metrics = planner
+            .simulate_closed_loop(
+                &scene,
+                &[(0.0, 0.0)],
+                BranchOutClosedLoopConfig2D::default(),
+            )
+            .unwrap();
+        let oncoming_metrics = planner
+            .simulate_closed_loop(
+                &scene,
+                &[(-1.6, 0.0)],
+                BranchOutClosedLoopConfig2D::default(),
+            )
+            .unwrap();
+
+        // An approaching obstacle must not raise the minimum time-to-collision.
+        assert!(oncoming_metrics.min_time_to_collision <= static_metrics.min_time_to_collision);
+        assert!(oncoming_metrics.min_time_to_collision.is_finite());
+    }
+
+    #[test]
+    fn closed_loop_rejects_mismatched_velocities() {
+        let planner = BranchOutPlanner2D::new(BranchOutPlannerConfig2D::default()).unwrap();
+        let scene = BranchOutDrivingScene2D::simple_overtake();
+        assert!(planner
+            .simulate_closed_loop(&scene, &[], BranchOutClosedLoopConfig2D::default())
+            .is_err());
+    }
+
+    #[test]
+    fn time_to_collision_detects_closing_and_separating() {
+        // Closing head-on along x: surface gap 4, closing speed 2 -> 2.0 s.
+        let closing = time_to_collision((0.0, 0.0), (1.0, 0.0), (5.0, 0.0), (-1.0, 0.0), 1.0);
+        assert!((closing - 2.0).abs() < 1e-9);
+        // Separating: never collide.
+        let separating = time_to_collision((0.0, 0.0), (-1.0, 0.0), (5.0, 0.0), (1.0, 0.0), 1.0);
+        assert!(separating.is_infinite());
+        // Already overlapping -> 0.
+        let overlapping = time_to_collision((0.0, 0.0), (0.0, 0.0), (0.5, 0.0), (0.0, 0.0), 1.0);
+        assert_eq!(overlapping, 0.0);
     }
 }
