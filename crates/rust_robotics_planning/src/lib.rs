@@ -26,6 +26,7 @@ pub mod dijkstra;
 pub mod enhanced_lazy_theta_star;
 pub mod flow_field;
 pub mod fringe_search;
+pub mod frontier_navigator;
 pub mod greedy_best_first_search;
 pub mod hierarchical_mapf;
 pub mod hybrid_a_star;
@@ -133,6 +134,10 @@ pub use dwa::{DWAConfig, DWAPlanner};
 pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner};
 pub use flow_field::{FlowFieldConfig, FlowFieldPlanner};
 pub use fringe_search::{FringeSearchConfig, FringeSearchPlanner};
+pub use frontier_navigator::{
+    simulate_frontier_navigation, FrontierChoice, FrontierNavConfig, FrontierNavReport,
+    FrontierNavWorld, Knowledge,
+};
 pub use greedy_best_first_search::{GreedyBestFirstConfig, GreedyBestFirstPlanner};
 pub use grid::GridMap;
 pub use grid_a_star_3d::{GridAStar3DConfig, GridAStar3DPlanner, Path3D};
