@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360">
+<rect width="720" height="360" fill="#fbfbfd"/>
+<text x="70" y="34" font-family="sans-serif" font-size="20" fill="#1d1d1f">Rigid-body backends: mean path length</text>
+<text x="70" y="56" font-family="sans-serif" font-size="13" fill="#6e6e73">lattice A* (deterministic fallback) vs RRT-SE(2) over 8 seeds</text>
+<line x1="70" y1="300" x2="670" y2="300" stroke="#c7c7cc" stroke-width="1"/>
+<rect x="121.0" y="80.0" width="90.0" height="220.0" fill="#0a84ff" rx="3"/>
+<text x="166.0" y="75.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">10.0</text>
+<rect x="229.0" y="90.6" width="90.0" height="209.4" fill="#ff9f0a" rx="3"/>
+<text x="274.0" y="85.6" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">9.5</text>
+<text x="220.0" y="322.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">open-detour</text>
+<text x="220.0" y="338.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">RRT 8/8 solved</text>
+<rect x="421.0" y="124.0" width="90.0" height="176.0" fill="#0a84ff" rx="3"/>
+<text x="466.0" y="119.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">8.0</text>
+<rect x="529.0" y="81.3" width="90.0" height="218.7" fill="#ff9f0a" rx="3"/>
+<text x="574.0" y="76.3" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">9.9</text>
+<text x="520.0" y="322.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">twin-pillars</text>
+<text x="520.0" y="338.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">RRT 8/8 solved</text>
+<rect x="520" y="70" width="14" height="14" fill="#0a84ff" rx="3"/>
+<text x="540" y="82" font-family="sans-serif" font-size="12" fill="#1d1d1f">lattice A*</text>
+<rect x="520" y="90" width="14" height="14" fill="#ff9f0a" rx="3"/>
+<text x="540" y="102" font-family="sans-serif" font-size="12" fill="#1d1d1f">RRT-SE(2)</text>
+</svg>

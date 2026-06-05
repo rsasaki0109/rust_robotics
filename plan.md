@@ -335,23 +335,39 @@ Implemented:
   collides.
 - Narrow convex-polygon slot demo and SVG.
 
+- `RigidBodyPlanningBackend` trait with a backend-agnostic
+  `RigidBodyPlanOutcome2D`, so an exact MILP backend can later sit behind the
+  same call site. The lattice planner is the deterministic fallback backend.
+- `RigidBodyRrtBackend2D`: a sampling RRT over SE(2) reusing the lattice
+  planner's pose/segment separation-certificate geometry, with seeded
+  SplitMix64 sampling for reproducibility.
+- Backend comparison benchmark (lattice A* vs RRT) over seeded scenes, emitting
+  CSV/SVG.
+
 Primary files:
 
 - `crates/rust_robotics_planning/src/rigid_body_mip.rs`
 - `crates/rust_robotics/examples/headless_rigid_body_mip_planning.rs`
 - `crates/rust_robotics/examples/render_rigid_body_mip_planning_svg.rs`
+- `crates/rust_robotics/examples/benchmark_rigid_body_backends.rs`
 - `docs/assets/rigid-body-mip-planning.svg`
+- `docs/assets/rigid-body-backend-benchmark.{csv,svg}`
 - `docs/rigid_body_mip_planning.md`
 
 Current validation:
 
 - `cargo test -p rust_robotics_planning rigid_body_mip`
+- `cargo test -p rust_robotics --example benchmark_rigid_body_backends --no-default-features --features planning`
 - Headless example reports pose certificates, segment certificates, and minimum
   segment margin.
+- Benchmark reports per-backend success rate, mean path length, heading change,
+  sample effort, and min separation margin.
 
 Next useful extension:
 
-- Add exact MILP backend traits and benchmark against sampling planners.
+- Implement the exact MILP backend behind `RigidBodyPlanningBackend` (e.g. via a
+  branch-and-bound disjunctive-constraint solver) and benchmark optimality vs
+  the lattice/RRT backends.
 
 ## Gallery Assets
 
@@ -369,6 +385,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/hierarchical-mapf-replanning.svg`
 - `docs/assets/hierarchical-mapf-scale.svg`
 - `docs/assets/rigid-body-mip-planning.svg`
+- `docs/assets/rigid-body-backend-benchmark.svg`
 
 The gallery index is `docs/app.js`.
 
@@ -395,6 +412,7 @@ Representative examples:
 cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-default-features --features planning
 cargo run -p rust_robotics --example render_kinodynamic_stl_cbs_svg --no-default-features --features planning
 cargo run -p rust_robotics --example render_rigid_body_mip_planning_svg --no-default-features --features planning
+cargo run -p rust_robotics --example benchmark_rigid_body_backends --no-default-features --features planning
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --no-default-features --features planning
 ```
@@ -414,10 +432,14 @@ cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --n
    - Remaining: anisotropic `region_width != region_height` sweep and a
      solvable fallback-regime data point for an explicit fallback-rate chart.
 
-3. Rigid-body MIP backend abstraction.
-   - Add a solver trait that can host an exact MILP backend later.
-   - Keep current lattice planner as a deterministic fallback backend.
-   - Add benchmark comparison against RRT-style rigid-body planning.
+3. ~~Rigid-body MIP backend abstraction.~~ **Done (2026-06-05).**
+   - `RigidBodyPlanningBackend` trait hosts pluggable backends behind a
+     backend-agnostic `RigidBodyPlanOutcome2D`; an exact MILP backend can be
+     added later without touching call sites.
+   - The lattice A* planner is the deterministic fallback backend.
+   - `RigidBodyRrtBackend2D` (seeded RRT over SE(2)) shares the lattice
+     planner's separation-certificate geometry; `benchmark_rigid_body_backends`
+     compares the two on identical scenes with CSV/SVG output.
 
 4. Adap-RPF metrics.
    - Add target visibility ratio.

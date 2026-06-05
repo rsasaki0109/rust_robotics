@@ -206,6 +206,42 @@ pub struct RigidBodyMipPlan2D {
     pub min_segment_separation_margin: f64,
 }
 
+/// Backend-agnostic planning outcome.
+///
+/// Both the deterministic lattice backend and the sampling RRT backend report
+/// the same comparable metrics so a benchmark can place them side by side: the
+/// realized SE(2) path, its Euclidean position length, accumulated absolute
+/// heading change, the search effort (lattice expansions or RRT samples), and
+/// the tightest obstacle-separation margin along the path.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RigidBodyPlanOutcome2D {
+    pub backend: &'static str,
+    pub poses: Vec<RigidBodyPose2D>,
+    pub path_length: f64,
+    pub heading_change: f64,
+    pub iterations: usize,
+    pub min_separation_margin: f64,
+}
+
+/// Common interface for rigid-body planning backends.
+///
+/// The lattice planner is the deterministic fallback backend. The trait exists
+/// so an exact mixed-integer (MILP) backend can later be dropped in behind the
+/// same call site, and so sampling planners can be benchmarked against the
+/// lattice search on identical scenes.
+pub trait RigidBodyPlanningBackend {
+    /// Human-readable backend name used in benchmark reports.
+    fn name(&self) -> &'static str;
+
+    /// Plan a feasible rigid-body path from `start` to `goal`.
+    fn plan_path(
+        &self,
+        start: RigidBodyPose2D,
+        goal: RigidBodyPose2D,
+        require_goal_heading: bool,
+    ) -> RoboticsResult<RigidBodyPlanOutcome2D>;
+}
+
 /// Discretized rigid-body planner with MIP-style separation certificates.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RigidBodyMipPlanner2D {
@@ -587,6 +623,338 @@ impl RigidBodyMipPlanner2D {
     }
 }
 
+impl RigidBodyPlanningBackend for RigidBodyMipPlanner2D {
+    fn name(&self) -> &'static str {
+        "lattice-astar"
+    }
+
+    fn plan_path(
+        &self,
+        start: RigidBodyPose2D,
+        goal: RigidBodyPose2D,
+        require_goal_heading: bool,
+    ) -> RoboticsResult<RigidBodyPlanOutcome2D> {
+        let plan = self.plan(start, goal, require_goal_heading)?;
+        let (path_length, heading_change) = path_extent(&plan.poses);
+        Ok(RigidBodyPlanOutcome2D {
+            backend: self.name(),
+            path_length,
+            heading_change,
+            iterations: plan.expanded_states,
+            min_separation_margin: plan.min_separation_margin,
+            poses: plan.poses,
+        })
+    }
+}
+
+/// Configuration for the sampling RRT rigid-body backend.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RigidBodyRrtConfig2D {
+    /// Deterministic PRNG seed (no `thread_rng`: runs must be reproducible).
+    pub seed: u64,
+    /// Maximum number of sampling iterations before giving up.
+    pub max_samples: usize,
+    /// Maximum position extension distance per tree growth step.
+    pub step_size: f64,
+    /// Maximum absolute heading change per extension step.
+    pub heading_step: f64,
+    /// Probability in `[0, 1]` of sampling the goal pose directly.
+    pub goal_bias: f64,
+    /// Heading weight in the nearest-neighbor SE(2) distance metric.
+    pub heading_weight: f64,
+    /// Position tolerance for reaching the goal.
+    pub goal_position_tol: f64,
+    /// Heading tolerance for reaching the goal when a goal heading is required.
+    pub goal_heading_tol: f64,
+}
+
+impl RigidBodyRrtConfig2D {
+    pub fn new(seed: u64) -> Self {
+        Self {
+            seed,
+            max_samples: 20_000,
+            step_size: 0.5,
+            heading_step: TAU / 8.0,
+            goal_bias: 0.1,
+            heading_weight: 0.5,
+            goal_position_tol: 0.5,
+            goal_heading_tol: TAU / 8.0,
+        }
+    }
+}
+
+/// Sampling rigid-body backend (RRT over SE(2)).
+///
+/// Reuses the lattice planner's geometric feasibility machinery (pose and
+/// swept-segment separation certificates) so both backends share an identical
+/// notion of collision, while exploring the workspace by random extension
+/// instead of an exhaustive lattice search.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RigidBodyRrtBackend2D {
+    geometry: RigidBodyMipPlanner2D,
+    rrt: RigidBodyRrtConfig2D,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct RrtNode {
+    pose: RigidBodyPose2D,
+    parent: Option<usize>,
+}
+
+impl RigidBodyRrtBackend2D {
+    pub fn new(config: RigidBodyMipConfig2D, rrt: RigidBodyRrtConfig2D) -> RoboticsResult<Self> {
+        validate_rrt_config(&rrt)?;
+        Ok(Self {
+            geometry: RigidBodyMipPlanner2D::new(config)?,
+            rrt,
+        })
+    }
+
+    pub fn config(&self) -> &RigidBodyMipConfig2D {
+        self.geometry.config()
+    }
+
+    pub fn rrt_config(&self) -> &RigidBodyRrtConfig2D {
+        &self.rrt
+    }
+
+    fn se2_distance(&self, a: RigidBodyPose2D, b: RigidBodyPose2D) -> f64 {
+        let position = ((a.x - b.x).powi(2) + (a.y - b.y).powi(2)).sqrt();
+        let heading = shortest_angle_delta(a.theta, b.theta).abs();
+        position + self.rrt.heading_weight * heading
+    }
+
+    fn sample(&self, rng: &mut SplitMix64, goal: RigidBodyPose2D) -> RigidBodyPose2D {
+        if rng.next_f64() < self.rrt.goal_bias {
+            return goal;
+        }
+        let config = self.config();
+        let x = config.min_x + rng.next_f64() * (config.max_x - config.min_x);
+        let y = config.min_y + rng.next_f64() * (config.max_y - config.min_y);
+        let theta = rng.next_f64() * TAU;
+        RigidBodyPose2D::new(x, y, theta)
+    }
+
+    fn steer(&self, from: RigidBodyPose2D, toward: RigidBodyPose2D) -> RigidBodyPose2D {
+        let dx = toward.x - from.x;
+        let dy = toward.y - from.y;
+        let dist = (dx * dx + dy * dy).sqrt();
+        let (nx, ny) = if dist <= self.rrt.step_size || dist <= EPS {
+            (toward.x, toward.y)
+        } else {
+            let scale = self.rrt.step_size / dist;
+            (from.x + dx * scale, from.y + dy * scale)
+        };
+        let dtheta = shortest_angle_delta(from.theta, toward.theta)
+            .clamp(-self.rrt.heading_step, self.rrt.heading_step);
+        RigidBodyPose2D::new(nx, ny, (from.theta + dtheta).rem_euclid(TAU))
+    }
+
+    fn reaches_goal(
+        &self,
+        pose: RigidBodyPose2D,
+        goal: RigidBodyPose2D,
+        require_goal_heading: bool,
+    ) -> bool {
+        let position = ((pose.x - goal.x).powi(2) + (pose.y - goal.y).powi(2)).sqrt();
+        if position > self.rrt.goal_position_tol {
+            return false;
+        }
+        if require_goal_heading
+            && shortest_angle_delta(pose.theta, goal.theta).abs() > self.rrt.goal_heading_tol
+        {
+            return false;
+        }
+        true
+    }
+
+    fn nearest(&self, nodes: &[RrtNode], target: RigidBodyPose2D) -> usize {
+        let mut best_index = 0;
+        let mut best_distance = f64::INFINITY;
+        for (index, node) in nodes.iter().enumerate() {
+            let distance = self.se2_distance(node.pose, target);
+            if distance < best_distance {
+                best_distance = distance;
+                best_index = index;
+            }
+        }
+        best_index
+    }
+
+    fn reconstruct(&self, nodes: &[RrtNode], mut index: usize) -> Vec<RigidBodyPose2D> {
+        let mut poses = Vec::new();
+        loop {
+            poses.push(nodes[index].pose);
+            match nodes[index].parent {
+                Some(parent) => index = parent,
+                None => break,
+            }
+        }
+        poses.reverse();
+        poses
+    }
+}
+
+impl RigidBodyPlanningBackend for RigidBodyRrtBackend2D {
+    fn name(&self) -> &'static str {
+        "rrt-se2"
+    }
+
+    fn plan_path(
+        &self,
+        start: RigidBodyPose2D,
+        goal: RigidBodyPose2D,
+        require_goal_heading: bool,
+    ) -> RoboticsResult<RigidBodyPlanOutcome2D> {
+        if !self.geometry.is_pose_feasible(start) || !self.geometry.is_pose_feasible(goal) {
+            return Err(RoboticsError::InvalidParameter(
+                "rigid-body RRT start and goal poses must be feasible".to_string(),
+            ));
+        }
+
+        let mut rng = SplitMix64::new(self.rrt.seed);
+        let mut nodes = vec![RrtNode {
+            pose: start,
+            parent: None,
+        }];
+
+        for iteration in 1..=self.rrt.max_samples {
+            let target = self.sample(&mut rng, goal);
+            let nearest_index = self.nearest(&nodes, target);
+            let nearest_pose = nodes[nearest_index].pose;
+            let candidate = self.steer(nearest_pose, target);
+            if !self.geometry.is_pose_feasible(candidate)
+                || !self.geometry.is_segment_feasible(nearest_pose, candidate)
+            {
+                continue;
+            }
+            nodes.push(RrtNode {
+                pose: candidate,
+                parent: Some(nearest_index),
+            });
+            let new_index = nodes.len() - 1;
+
+            if self.reaches_goal(candidate, goal, require_goal_heading) {
+                let connect_goal = require_goal_heading
+                    && (candidate.x != goal.x
+                        || candidate.y != goal.y
+                        || candidate.theta != goal.theta);
+                let goal_index = if connect_goal {
+                    if !self.geometry.is_segment_feasible(candidate, goal) {
+                        continue;
+                    }
+                    nodes.push(RrtNode {
+                        pose: goal,
+                        parent: Some(new_index),
+                    });
+                    nodes.len() - 1
+                } else {
+                    new_index
+                };
+                let poses = self.reconstruct(&nodes, goal_index);
+                let (path_length, heading_change) = path_extent(&poses);
+                let min_separation_margin = path_min_margin(&self.geometry, &poses);
+                return Ok(RigidBodyPlanOutcome2D {
+                    backend: self.name(),
+                    path_length,
+                    heading_change,
+                    iterations: iteration,
+                    min_separation_margin,
+                    poses,
+                });
+            }
+        }
+
+        Err(RoboticsError::PlanningError(
+            "rigid-body RRT could not find a feasible path within the sample budget".to_string(),
+        ))
+    }
+}
+
+/// Deterministic SplitMix64 PRNG (reproducible RRT sampling, no `thread_rng`).
+#[derive(Debug, Clone, PartialEq)]
+struct SplitMix64 {
+    state: u64,
+}
+
+impl SplitMix64 {
+    fn new(seed: u64) -> Self {
+        Self { state: seed }
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        self.state = self.state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
+    }
+
+    fn next_f64(&mut self) -> f64 {
+        // 53-bit mantissa mapped to [0, 1).
+        (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
+    }
+}
+
+fn path_extent(poses: &[RigidBodyPose2D]) -> (f64, f64) {
+    let mut length = 0.0;
+    let mut heading = 0.0;
+    for window in poses.windows(2) {
+        length +=
+            ((window[1].x - window[0].x).powi(2) + (window[1].y - window[0].y).powi(2)).sqrt();
+        heading += shortest_angle_delta(window[0].theta, window[1].theta).abs();
+    }
+    (length, heading)
+}
+
+fn path_min_margin(planner: &RigidBodyMipPlanner2D, poses: &[RigidBodyPose2D]) -> f64 {
+    let mut min_margin = f64::INFINITY;
+    for &pose in poses {
+        if let Some(certificates) = planner.separation_certificates(pose) {
+            for certificate in certificates {
+                min_margin = min_margin.min(certificate.margin);
+            }
+        }
+    }
+    for window in poses.windows(2) {
+        if let Some(certificates) = planner.segment_separation_certificates(window[0], window[1]) {
+            for certificate in certificates {
+                min_margin = min_margin.min(certificate.margin);
+            }
+        }
+    }
+    min_margin
+}
+
+fn validate_rrt_config(config: &RigidBodyRrtConfig2D) -> RoboticsResult<()> {
+    if config.max_samples == 0 {
+        return Err(RoboticsError::InvalidParameter(
+            "rigid-body RRT max_samples must be positive".to_string(),
+        ));
+    }
+    if !config.step_size.is_finite()
+        || !config.heading_step.is_finite()
+        || !config.heading_weight.is_finite()
+        || !config.goal_position_tol.is_finite()
+        || !config.goal_heading_tol.is_finite()
+        || config.step_size <= 0.0
+        || config.heading_step <= 0.0
+        || config.heading_weight < 0.0
+        || config.goal_position_tol <= 0.0
+        || config.goal_heading_tol <= 0.0
+    {
+        return Err(RoboticsError::InvalidParameter(
+            "rigid-body RRT step, heading, and tolerance parameters must be valid".to_string(),
+        ));
+    }
+    if !config.goal_bias.is_finite() || !(0.0..=1.0).contains(&config.goal_bias) {
+        return Err(RoboticsError::InvalidParameter(
+            "rigid-body RRT goal_bias must be within [0, 1]".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn circular_heading_distance(a: usize, b: usize, count: usize) -> usize {
     let raw = a.abs_diff(b);
     raw.min(count - raw)
@@ -783,5 +1151,103 @@ mod tests {
             .iter()
             .filter(|pose| pose.x >= 3.0 && pose.x <= 7.0)
             .all(|pose| pose.theta.abs() < 1.0e-9 || (pose.theta - TAU / 2.0).abs() < 1.0e-9));
+    }
+
+    fn open_field_config() -> RigidBodyMipConfig2D {
+        RigidBodyMipConfig2D {
+            obstacles: vec![RigidBodyConvexObstacle2D::aabb(3.0, 5.0, 0.0, 3.0).unwrap()],
+            robot_half_length: 0.4,
+            robot_half_width: 0.2,
+            max_expansions: 50_000,
+            ..RigidBodyMipConfig2D::new(0.0, 8.0, 0.0, 6.0)
+        }
+    }
+
+    #[test]
+    fn lattice_backend_reports_comparable_outcome() {
+        let planner = RigidBodyMipPlanner2D::new(open_field_config()).unwrap();
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+        let outcome = planner.plan_path(start, goal, false).unwrap();
+
+        assert_eq!(outcome.backend, "lattice-astar");
+        assert!(outcome.poses.len() > 2);
+        assert!(outcome.path_length > 0.0);
+        assert!(outcome.iterations > 0);
+        assert!(outcome.min_separation_margin > planner.config().clearance);
+    }
+
+    #[test]
+    fn rrt_backend_is_deterministic_for_fixed_seed() {
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+        let backend = || {
+            RigidBodyRrtBackend2D::new(open_field_config(), RigidBodyRrtConfig2D::new(7)).unwrap()
+        };
+        let first = backend().plan_path(start, goal, false).unwrap();
+        let second = backend().plan_path(start, goal, false).unwrap();
+
+        assert_eq!(first.poses, second.poses);
+        assert_eq!(first.iterations, second.iterations);
+    }
+
+    #[test]
+    fn both_backends_avoid_obstacle_and_reach_goal() {
+        let config = open_field_config();
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+
+        let lattice = RigidBodyMipPlanner2D::new(config.clone()).unwrap();
+        let rrt =
+            RigidBodyRrtBackend2D::new(config.clone(), RigidBodyRrtConfig2D::new(11)).unwrap();
+
+        for outcome in [
+            lattice.plan_path(start, goal, false).unwrap(),
+            rrt.plan_path(start, goal, false).unwrap(),
+        ] {
+            assert!(outcome.min_separation_margin > config.clearance);
+            let last = outcome.poses.last().unwrap();
+            let position_error = ((last.x - goal.x).powi(2) + (last.y - goal.y).powi(2)).sqrt();
+            assert!(
+                position_error <= 0.5,
+                "{} ended {position_error} from the goal",
+                outcome.backend
+            );
+        }
+    }
+
+    #[test]
+    fn lattice_backend_is_deterministic_and_bounds_rrt() {
+        let config = open_field_config();
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+
+        // The exhaustive lattice search is the deterministic fallback baseline:
+        // identical inputs always yield an identical path and search effort.
+        let first = RigidBodyMipPlanner2D::new(config.clone())
+            .unwrap()
+            .plan_path(start, goal, false)
+            .unwrap();
+        let second = RigidBodyMipPlanner2D::new(config.clone())
+            .unwrap()
+            .plan_path(start, goal, false)
+            .unwrap();
+        assert_eq!(first.poses, second.poses);
+        assert_eq!(first.iterations, second.iterations);
+
+        // The unsmoothed RRT path may detour, but should stay within a small
+        // factor of the lattice path length on this open scene.
+        let rrt = RigidBodyRrtBackend2D::new(config, RigidBodyRrtConfig2D::new(3))
+            .unwrap()
+            .plan_path(start, goal, false)
+            .unwrap();
+        assert!(rrt.path_length <= first.path_length * 3.0);
+    }
+
+    #[test]
+    fn rrt_rejects_invalid_config() {
+        let mut rrt = RigidBodyRrtConfig2D::new(1);
+        rrt.goal_bias = 1.5;
+        assert!(RigidBodyRrtBackend2D::new(open_field_config(), rrt).is_err());
     }
 }
