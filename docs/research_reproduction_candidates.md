@@ -22,7 +22,7 @@ reproduction slices in this workspace.
 | TRG-planner: Traversal Risk Graph-Based Path Planning in Unstructured Environments | Terrain risk graph planner, elevation risk, smoothing, clearance exposure, SVG/CSV sweep | `traversal_risk_graph.rs`, demos, docs assets |
 | Adaptive Costmap-based Path Planning in Partially Known Environments with Movable Obstacles | Pure-Rust adaptive movable-obstacle costmap and replanning demo | `adaptive_costmap_namo.rs`, headless demo, docs |
 | TD-CD-MPPI | MPPI baseline, constraint discounting, terminal value grid, online/replay value learning, adaptive lambda, track-progress terminal values, SVGs | `mppi.rs`, multiple demos, `docs/assets/mppi-*.svg` |
-| Rethinking Reference Trajectories in Agile Drone Racing | Reference-free gate-progress objective, oriented gate crossing logic, waypoint-reference comparison, SVG; 3-D gate planes, drag-limited drone dynamics, open/closed laps, lap-progress metrics, CSV/SVG | `MppiGateRace2D`, `racing_mppi_3d.rs`, `headless_mppi_racing_gate_progress.rs`, `benchmark_racing_mppi_3d.rs`, `docs/assets/mppi-racing-gate-progress.svg`, `docs/assets/racing-mppi-3d.svg` |
+| Rethinking Reference Trajectories in Agile Drone Racing | Reference-free gate-progress objective, oriented gate crossing logic, waypoint-reference comparison, SVG; 3-D gate planes, drag-limited drone dynamics, open/closed laps, lap-progress metrics, CSV/SVG; full quadrotor attitude model (collective thrust + body rates) with tilt/body-rate metrics | `MppiGateRace2D`, `racing_mppi_3d.rs`, `racing_mppi_quadrotor.rs`, `headless_mppi_racing_gate_progress.rs`, `benchmark_racing_mppi_3d.rs`, `benchmark_racing_quadrotor.rs`, `docs/assets/mppi-racing-gate-progress.svg`, `docs/assets/racing-mppi-3d.svg`, `docs/assets/racing-quadrotor.svg` |
 | Adap-RPF | Target-centric following-point sampling, visibility/proximity/distance/travel/stickiness scoring, prediction-aware MPPI with moving pedestrians, SVG | `person_following_mppi.rs`, `headless_adap_rpf_mppi.rs`, `docs/assets/adap-rpf-lite-mppi.svg` |
 | BranchOut | Lane-level multimodal driving scene, compact mode/GMM-style trajectory head, distributional metrics, SVG | `branchout_multimodal.rs`, `headless_branchout_multimodal_driving.rs`, `docs/assets/branchout-multimodal-driving.svg` |
 | Multi-Robot Trajectory Planning via cBOT and STL-KCBS | Grid CBS, vertex/edge constraints, STL robustness, heading/time kinodynamic search, continuous-time pairwise occupancy checks, SVGs | `stl_cbs.rs`, `kinodynamic_stl_cbs.rs`, `docs/assets/stl-cbs-multi-robot.svg`, `docs/assets/kinodynamic-stl-cbs.svg` |
@@ -38,9 +38,12 @@ reuse of the MPPI/planning modules already added.
    - Source: https://zhaofangguo.github.io/racing_mppi/
    - Status observed: `Code (coming soon)`; initial pure-Rust slice implemented.
    - Implemented slice: 2-D gate course, oriented gate-crossing reward,
-     reference-free MPPI objective, waypoint-reference comparison, SVG visual.
-   - Remaining extensions: nonlinear drone dynamics, lap-level progress,
-     richer gate geometry, and 3-D gate planes.
+     reference-free MPPI objective, waypoint-reference comparison, SVG visual;
+     3-D gate planes, drag-limited point-mass dynamics, open/closed laps and
+     lap-progress metrics; full quadrotor attitude model (collective thrust +
+     body rates) whose orientation is driven by the gate-progress objective.
+   - Remaining extensions: a motor-level thrust/torque model with a rotor mixing
+     matrix so motor saturation enters the racing trade-off.
 
 2. Adap-RPF: Adaptive Trajectory Sampling for Robot Person Following
    - Source: https://adap-rpf.github.io/
