@@ -35,6 +35,7 @@ pub mod kinodynamic_stl_cbs;
 pub mod lazy_theta_star;
 pub mod lpa_star;
 pub mod rigid_body_mip;
+pub mod safe_decode_nav;
 pub mod sipp;
 pub mod stl_cbs;
 pub mod tangent_bug;
@@ -166,6 +167,7 @@ pub use rrt::{AreaBounds, CircleObstacle, RRTConfig, RRTPlanner};
 pub use rrt_path_smoothing::{RRTPathSmoothingConfig, RRTPathSmoothingPlanner};
 pub use rrt_sobol::RRTSobolPlanner;
 pub use rrt_star::RRTStar;
+pub use safe_decode_nav::{SafeDecodePlan, SafeDecoder, SafeNavConfig, TimedRegion};
 pub use sipp::{SippConfig, SippPlanner};
 pub use state_lattice::{ObstacleAwarePlanResult, StateLattice, StateLatticeConfig};
 pub use stl_cbs::{
