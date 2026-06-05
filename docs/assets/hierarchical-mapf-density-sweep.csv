@@ -1,6 +1,6 @@
 agents,hier_ms,region_conflicts,replanned_groups,max_group_size,final_conflicts,fallback_full_replan,hier_total_cost,flat_subset,flat_ms,flat_subset_cost,flat_subset_conflict_free
-4,1.743,66,2,2,0,false,12,4,2.394,12,true
-8,2.946,68,4,2,0,false,24,4,2.075,12,true
-12,4.592,134,6,2,0,false,36,4,1.948,12,true
-16,8.437,328,8,2,0,false,48,4,2.068,12,true
-18,9.864,457,9,2,0,false,54,4,2.428,12,true
+4,1.586,66,2,2,0,false,12,4,1.933,12,true
+8,2.401,68,4,2,0,false,24,4,1.957,12,true
+12,4.317,134,6,2,0,false,36,4,1.943,12,true
+16,6.685,328,8,2,0,false,48,4,1.910,12,true
+18,8.586,457,9,2,0,false,54,4,1.929,12,true

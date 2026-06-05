@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="430" viewBox="0 0 760 430">
+<rect width="760" height="430" fill="#fbfbfd"/>
+<text x="70" y="40" font-family="sans-serif" font-size="20" fill="#1d1d1f">Hierarchical MAPF fallback-rate vs region size</text>
+<text x="70" y="62" font-family="sans-serif" font-size="13" fill="#6e6e73">adjacent edge-swaps straddle a region boundary with probability ~1/region, forcing a full-CBS fallback (every scene still resolves)</text>
+<line x1="70" y1="330.0" x2="690.0" y2="330.0" stroke="#e5e5ea"/>
+<text x="62.0" y="334.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.0</text>
+<line x1="70" y1="210.0" x2="690.0" y2="210.0" stroke="#e5e5ea"/>
+<text x="62.0" y="214.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.5</text>
+<line x1="70" y1="90.0" x2="690.0" y2="90.0" stroke="#e5e5ea"/>
+<text x="62.0" y="94.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">1.0</text>
+<rect x="101.0" y="90.0" width="62.0" height="240.0" fill="#ff9f0a" rx="3"/>
+<text x="132.0" y="82.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">100%</text>
+<text x="132.0" y="354.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">region 1</text>
+<rect x="225.0" y="195.0" width="62.0" height="135.0" fill="#ff9f0a" rx="3"/>
+<text x="256.0" y="187.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">56%</text>
+<text x="256.0" y="354.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">region 2</text>
+<rect x="349.0" y="247.5" width="62.0" height="82.5" fill="#ff9f0a" rx="3"/>
+<text x="380.0" y="239.5" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">34%</text>
+<text x="380.0" y="354.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">region 3</text>
+<rect x="473.0" y="277.5" width="62.0" height="52.5" fill="#ff9f0a" rx="3"/>
+<text x="504.0" y="269.5" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">22%</text>
+<text x="504.0" y="354.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">region 4</text>
+<rect x="597.0" y="285.0" width="62.0" height="45.0" fill="#ff9f0a" rx="3"/>
+<text x="628.0" y="277.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">19%</text>
+<text x="628.0" y="354.0" font-family="sans-serif" font-size="13" fill="#1d1d1f" text-anchor="middle">region 6</text>
+</svg>

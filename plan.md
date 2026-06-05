@@ -336,6 +336,10 @@ Primary files:
 - `docs/assets/hierarchical-mapf-region-sweep.svg`
 - `docs/assets/hierarchical-mapf-density-sweep.csv`
 - `docs/assets/hierarchical-mapf-density-sweep.svg`
+- `docs/assets/hierarchical-mapf-anisotropic-sweep.csv`
+- `docs/assets/hierarchical-mapf-anisotropic-sweep.svg`
+- `docs/assets/hierarchical-mapf-fallback-sweep.csv`
+- `docs/assets/hierarchical-mapf-fallback-sweep.svg`
 - `docs/hierarchical_mapf_replanning.md`
 
 Current benchmark snapshot:
@@ -348,11 +352,17 @@ Current benchmark snapshot:
   runtime climbs steeply as decomposition is lost; fallback stays false.
 - Density sweep (4-18 agents): repair groups stay size 2 against a bounded
   4-agent flat-CBS baseline; deterministic seeded scenes.
+- Anisotropic sweep `(region_width, region_height)`: on a horizontal swap row,
+  max repair-group size tracks width (2/4/8 for width 4/8/16) and is invariant
+  to height — `(8, 4)` and `(8, 16)` both give group 4.
+- Fallback-rate sweep: an adjacent edge-swap straddles a region boundary with
+  probability ~1/region, so the fallback rate falls 1.00 -> 0.56 -> 0.34 ->
+  0.22 -> 0.19 across regions 1/2/3/4/6, and every scene still resolves.
 
 Next useful extension:
 
-- Sweep `region_width` and `region_height` independently (anisotropic regions)
-  and add a fallback-regime row that stays solvable for the fallback-rate chart.
+- Add dynamic task insertions (re-plan with new start/goal pairs arriving over
+  time) and trajectory-duration costs to the region routes.
 
 ### Rigid-Body MIP-Style Planning
 
@@ -502,6 +512,8 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/safe-decode-nav.svg`
 - `docs/assets/hierarchical-mapf-replanning.svg`
 - `docs/assets/hierarchical-mapf-scale.svg`
+- `docs/assets/hierarchical-mapf-anisotropic-sweep.svg`
+- `docs/assets/hierarchical-mapf-fallback-sweep.svg`
 - `docs/assets/rigid-body-mip-planning.svg`
 - `docs/assets/rigid-body-backend-benchmark.svg`
 - `docs/assets/cbf-safety-filter.svg`
@@ -623,10 +635,12 @@ benchmark/headless example + SVG/CSV artifact + docs.
    `render_frontier_navigator_svg` routes a robot around two walls it cannot see
    past to the goal.
 
-4. **Hierarchical MAPF anisotropic region sweep (extension).** Sweep
-   `region_width` and `region_height` independently and add a solvable
-   fallback-regime data point for an explicit fallback-rate chart. Extends
-   `benchmark_hierarchical_mapf_sweeps`.
+4. ~~Hierarchical MAPF anisotropic region sweep (extension).~~ **Done
+   (2026-06-06).** `benchmark_hierarchical_mapf_sweeps` adds an anisotropic
+   `(region_width, region_height)` sweep (group size tracks width, invariant to
+   height) and a fallback-rate sweep (adjacent edge-swaps straddle a region
+   boundary with probability ~1/region; rate 1.00 -> 0.19 over regions 1..6,
+   every scene still resolved).
 
 5. **Rigid-body exact MILP backend (extension).** A branch-and-bound disjunctive
    separating-axis backend behind `RigidBodyPlanningBackend`, benchmarked for

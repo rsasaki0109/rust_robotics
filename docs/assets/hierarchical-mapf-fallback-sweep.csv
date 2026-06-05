@@ -1,0 +1,6 @@
+region_size,trials,fallbacks,fallback_rate,all_resolved
+1,32,32,1.000,true
+2,32,18,0.562,true
+3,32,11,0.344,true
+4,32,7,0.219,true
+6,32,6,0.188,true

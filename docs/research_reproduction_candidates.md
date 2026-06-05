@@ -221,8 +221,9 @@ The first build queue is fully landed (2026-06-04/05):
 3. ~~Long Range Navigator-lite: affordance-scored frontier graph with
    occlusion-aware selection and a local-planner handoff~~ — Done
    (`frontier_navigator.rs`, `render_frontier_navigator_svg.rs`).
-4. Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)
-   plus a solvable fallback-regime data point.
+4. ~~Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)
+   plus a solvable fallback-regime data point~~ — Done (anisotropic +
+   fallback-rate sweeps in `benchmark_hierarchical_mapf_sweeps.rs`).
 5. Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked
    for path optimality against the lattice/RRT backends.
 6. Racing motor-level model: thrust-and-torque quadrotor with a rotor mixing
