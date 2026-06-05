@@ -28,6 +28,8 @@ reproduction slices in this workspace.
 | Multi-Robot Trajectory Planning via cBOT and STL-KCBS | Grid CBS, vertex/edge constraints, STL robustness, heading/time kinodynamic search, continuous-time pairwise occupancy checks, SVGs | `stl_cbs.rs`, `kinodynamic_stl_cbs.rs`, `docs/assets/stl-cbs-multi-robot.svg`, `docs/assets/kinodynamic-stl-cbs.svg` |
 | Hierarchical Large-Scale Multi-Robot Path / Trajectory Replanning | Region hierarchy over grid MAPF, affected-agent CBS group repair, 50/100/200-agent scale benchmark, CSV/SVG | `hierarchical_mapf.rs`, `benchmark_hierarchical_mapf_scale.rs`, `docs/assets/hierarchical-mapf-scale.svg` |
 | Rigid Body Path Planning using Mixed-Integer Linear Programming | Rectangular rigid body over discretized SE(2), convex polygon half-space obstacles, pose/segment binary-style separation certificates, narrow-slot SVG | `rigid_body_mip.rs`, `headless_rigid_body_mip_planning.rs`, `docs/assets/rigid-body-mip-planning.svg` |
+| SafeDec: Constrained Decoding for Safe Robot Navigation Policies | STL-shielded constrained beam search over a greedy grid policy (always-avoid geofence + eventually-reach), greedy-vs-shielded comparison, SVG | `safe_decode_nav.rs`, `render_safe_decode_nav_svg.rs`, `docs/assets/safe-decode-nav.svg` |
+| PolyMerge: polytope-covering safety / CBF filtering | Convex-polygon obstacle cover, true point-to-polygon CBF barrier, exact 2-D active-set CBF-QP velocity filter, raw-vs-filtered benchmark, CSV/SVG | `cbf_safety_filter.rs`, `benchmark_cbf_safety_filter.rs`, `docs/assets/cbf-safety-filter.svg` |
 
 ## Recommended Implementation Order
 
@@ -210,12 +212,11 @@ The first build queue is fully landed (2026-06-04/05):
 
 ### Queue v2 (2026-06-05): breadth-first new papers + depth extensions
 
-1. SafeDec-lite: STL-shielded discrete navigation decoding (constrained beam
-   search over a grid/local-planner policy), reusing `stl_cbs.rs` STL
-   robustness.
-2. CBF safety filter (PolyMerge-lite): convex-polytope obstacle covers plus a
-   control-barrier-function filter over nominal controls, reusing
-   `rigid_body_mip.rs` half-space geometry.
+1. ~~SafeDec-lite: STL-shielded discrete navigation decoding~~ — Done
+   (`safe_decode_nav.rs`, `render_safe_decode_nav_svg.rs`).
+2. ~~CBF safety filter (PolyMerge-lite): convex-polytope obstacle covers plus a
+   control-barrier-function filter over nominal controls~~ — Done
+   (`cbf_safety_filter.rs`, `benchmark_cbf_safety_filter.rs`).
 3. Long Range Navigator-lite: affordance-scored frontier graph with
    occlusion-aware selection and a local-planner handoff.
 4. Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)

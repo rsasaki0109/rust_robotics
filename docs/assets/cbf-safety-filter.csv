@@ -1,0 +1,5 @@
+scenario,nominal_collided,nominal_min_clearance,filtered_collided,filtered_min_clearance,filtered_reached,interventions,mean_correction,filtered_path_length
+graze-box,true,-0.150,false,0.086,true,48,0.448,5.951
+slalom,true,-0.150,false,0.081,true,139,0.894,6.204
+ridge,true,-0.150,false,0.119,true,68,0.483,6.004
+wide-box,true,-0.150,false,0.081,true,60,0.384,5.954
