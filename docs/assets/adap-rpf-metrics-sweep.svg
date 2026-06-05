@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="360" viewBox="0 0 760 360">
+<rect width="760" height="360" fill="#fbfbfd"/>
+<text x="70" y="34" font-family="sans-serif" font-size="20" fill="#1d1d1f">Adap-RPF: target visibility ratio by scenario</text>
+<text x="70" y="56" font-family="sans-serif" font-size="13" fill="#6e6e73">fixed back-point vs adaptive following (40-step closed loop, seed 421)</text>
+<line x1="70" y1="290.0" x2="690.0" y2="290.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="294.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.0</text>
+<line x1="70" y1="190.0" x2="690.0" y2="190.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="194.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.5</text>
+<line x1="70" y1="90.0" x2="690.0" y2="90.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="94.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">1.0</text>
+<rect x="99.8" y="90.0" width="43.4" height="200.0" fill="#8e8e93" rx="3"/>
+<text x="121.5" y="85.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">100%</text>
+<rect x="151.8" y="90.0" width="43.4" height="200.0" fill="#34c759" rx="3"/>
+<text x="173.5" y="85.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">100%</text>
+<text x="147.5" y="312.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">open</text>
+<rect x="254.8" y="290.0" width="43.4" height="0.0" fill="#8e8e93" rx="3"/>
+<text x="276.5" y="285.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">0%</text>
+<rect x="306.8" y="145.0" width="43.4" height="145.0" fill="#34c759" rx="3"/>
+<text x="328.5" y="140.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">72%</text>
+<text x="302.5" y="312.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">trailing-occluder</text>
+<rect x="409.8" y="210.0" width="43.4" height="80.0" fill="#8e8e93" rx="3"/>
+<text x="431.5" y="205.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">40%</text>
+<rect x="461.8" y="110.0" width="43.4" height="180.0" fill="#34c759" rx="3"/>
+<text x="483.5" y="105.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">90%</text>
+<text x="457.5" y="312.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">crossing-peds</text>
+<rect x="564.8" y="290.0" width="43.4" height="0.0" fill="#8e8e93" rx="3"/>
+<text x="586.5" y="285.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">0%</text>
+<rect x="616.8" y="185.0" width="43.4" height="105.0" fill="#34c759" rx="3"/>
+<text x="638.5" y="180.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">52%</text>
+<text x="612.5" y="312.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">dense-occlusion</text>
+<rect x="560" y="70" width="14" height="14" fill="#8e8e93" rx="3"/>
+<text x="580" y="82" font-family="sans-serif" font-size="12" fill="#1d1d1f">fixed</text>
+<rect x="560" y="90" width="14" height="14" fill="#34c759" rx="3"/>
+<text x="580" y="102" font-family="sans-serif" font-size="12" fill="#1d1d1f">adaptive</text>
+</svg>

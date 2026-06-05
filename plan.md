@@ -166,18 +166,27 @@ Implemented:
 - Prediction-aware MPPI with moving obstacle cost.
 - Headless and SVG examples.
 
+- `PersonFollowingMetricsAccumulator2D` rollout counters: target visibility
+  ratio, target spacing ratio (plus mean spacing/error), min pedestrian
+  clearance, and collision steps.
+- Occlusion and moving-pedestrian benchmark sweep comparing fixed back-point vs
+  adaptive following, with seeded deterministic scenes and CSV/SVG output.
+
 Primary files:
 
 - `crates/rust_robotics_control/src/person_following_mppi.rs`
 - `crates/rust_robotics_control/src/mppi.rs`
 - `crates/rust_robotics/examples/headless_adap_rpf_mppi.rs`
 - `crates/rust_robotics/examples/render_adap_rpf_mppi_svg.rs`
+- `crates/rust_robotics/examples/benchmark_adap_rpf_metrics.rs`
 - `docs/assets/adap-rpf-lite-mppi.svg`
+- `docs/assets/adap-rpf-metrics-sweep.{csv,svg}`
 - `docs/adap_rpf_mppi_reproduction.md`
 
 Next useful extension:
 
-- Add target visibility ratio and target spacing ratio benchmark counters.
+- Sweep follower weights (visibility vs proximity vs stickiness) and report the
+  Pareto front of visibility ratio against spacing ratio.
 
 ### BranchOut-lite
 
@@ -379,6 +388,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/mppi-track-progress.svg`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/adap-rpf-lite-mppi.svg`
+- `docs/assets/adap-rpf-metrics-sweep.svg`
 - `docs/assets/branchout-multimodal-driving.svg`
 - `docs/assets/stl-cbs-multi-robot.svg`
 - `docs/assets/kinodynamic-stl-cbs.svg`
@@ -414,6 +424,7 @@ cargo run -p rust_robotics --example render_kinodynamic_stl_cbs_svg --no-default
 cargo run -p rust_robotics --example render_rigid_body_mip_planning_svg --no-default-features --features planning
 cargo run -p rust_robotics --example benchmark_rigid_body_backends --no-default-features --features planning
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_adap_rpf_metrics --no-default-features --features control
 cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --no-default-features --features planning
 ```
 
@@ -441,10 +452,12 @@ cargo run -p rust_robotics --example render_branchout_multimodal_driving_svg --n
      planner's separation-certificate geometry; `benchmark_rigid_body_backends`
      compares the two on identical scenes with CSV/SVG output.
 
-4. Adap-RPF metrics.
-   - Add target visibility ratio.
-   - Add target spacing ratio.
-   - Add occlusion and moving pedestrian benchmark sweeps.
+4. ~~Adap-RPF metrics.~~ **Done (2026-06-05).**
+   - `PersonFollowingMetricsAccumulator2D` reports target visibility ratio and
+     target spacing ratio (plus mean spacing/error, min clearance, collisions).
+   - `benchmark_adap_rpf_metrics` sweeps occlusion and moving-pedestrian
+     scenarios (fixed back-point vs adaptive following), seeded and
+     deterministic, emitting CSV/SVG.
 
 5. BranchOut closed-loop metrics.
    - Add receding-horizon rollout.

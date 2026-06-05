@@ -253,6 +253,193 @@ impl MppiPersonFollowingSampler2D {
     }
 }
 
+/// Configuration for person-following rollout metrics.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PersonFollowingMetricsConfig2D {
+    /// Desired robot-to-target spacing.
+    pub desired_distance: f64,
+    /// Half-width of the acceptable spacing band around `desired_distance`.
+    pub spacing_tolerance: f64,
+    /// Extra clearance a line of sight needs before the target counts as
+    /// visible: the target is visible only when every pedestrian disk stays at
+    /// least `radius + visibility_margin` away from the robot-target segment.
+    pub visibility_margin: f64,
+}
+
+impl PersonFollowingMetricsConfig2D {
+    pub fn new(desired_distance: f64, spacing_tolerance: f64, visibility_margin: f64) -> Self {
+        Self {
+            desired_distance,
+            spacing_tolerance,
+            visibility_margin,
+        }
+    }
+}
+
+impl Default for PersonFollowingMetricsConfig2D {
+    fn default() -> Self {
+        let follower = MppiPersonFollowingConfig2D::default();
+        Self {
+            desired_distance: follower.desired_distance,
+            spacing_tolerance: 0.35,
+            visibility_margin: follower.occlusion_margin,
+        }
+    }
+}
+
+/// Aggregated geometric metrics over a person-following rollout.
+///
+/// These are the Adap-RPF reporting counters: how often the target stayed
+/// visible (line of sight unobstructed by pedestrians), how often the robot
+/// held the desired spacing band, and the tightest pedestrian clearance seen.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PersonFollowingRolloutMetrics2D {
+    pub steps: usize,
+    pub visible_steps: usize,
+    pub in_band_steps: usize,
+    pub collision_steps: usize,
+    pub min_clearance: f64,
+    sum_spacing: f64,
+    sum_spacing_error: f64,
+}
+
+impl PersonFollowingRolloutMetrics2D {
+    /// Fraction of steps the target line of sight stayed clear of pedestrians.
+    pub fn target_visibility_ratio(&self) -> f64 {
+        if self.steps == 0 {
+            0.0
+        } else {
+            self.visible_steps as f64 / self.steps as f64
+        }
+    }
+
+    /// Fraction of steps the robot held the desired spacing band.
+    pub fn target_spacing_ratio(&self) -> f64 {
+        if self.steps == 0 {
+            0.0
+        } else {
+            self.in_band_steps as f64 / self.steps as f64
+        }
+    }
+
+    /// Mean robot-to-target distance across the rollout.
+    pub fn mean_spacing(&self) -> f64 {
+        if self.steps == 0 {
+            0.0
+        } else {
+            self.sum_spacing / self.steps as f64
+        }
+    }
+
+    /// Mean absolute deviation from the desired spacing.
+    pub fn mean_spacing_error(&self) -> f64 {
+        if self.steps == 0 {
+            0.0
+        } else {
+            self.sum_spacing_error / self.steps as f64
+        }
+    }
+}
+
+/// Incremental accumulator for [`PersonFollowingRolloutMetrics2D`].
+///
+/// Feed it one robot/target/pedestrian snapshot per closed-loop step, then call
+/// [`PersonFollowingMetricsAccumulator2D::finish`] to read the rollout metrics.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PersonFollowingMetricsAccumulator2D {
+    config: PersonFollowingMetricsConfig2D,
+    metrics: PersonFollowingRolloutMetrics2D,
+}
+
+impl PersonFollowingMetricsAccumulator2D {
+    pub fn new(config: PersonFollowingMetricsConfig2D) -> RoboticsResult<Self> {
+        if !config.desired_distance.is_finite()
+            || !config.spacing_tolerance.is_finite()
+            || !config.visibility_margin.is_finite()
+            || config.desired_distance <= 0.0
+            || config.spacing_tolerance < 0.0
+            || config.visibility_margin < 0.0
+        {
+            return Err(RoboticsError::InvalidParameter(
+                "person-following metrics config must be finite and non-negative".to_string(),
+            ));
+        }
+        Ok(Self {
+            config,
+            metrics: PersonFollowingRolloutMetrics2D {
+                steps: 0,
+                visible_steps: 0,
+                in_band_steps: 0,
+                collision_steps: 0,
+                min_clearance: f64::INFINITY,
+                sum_spacing: 0.0,
+                sum_spacing_error: 0.0,
+            },
+        })
+    }
+
+    /// Whether the target is visible from the robot at this snapshot.
+    pub fn target_visible(
+        robot: MppiState2D,
+        target: MppiMovingObstacle2D,
+        pedestrians: &[MppiMovingObstacle2D],
+        visibility_margin: f64,
+    ) -> bool {
+        pedestrians.iter().all(|pedestrian| {
+            point_segment_distance(
+                (pedestrian.x, pedestrian.y),
+                (robot.x, robot.y),
+                (target.x, target.y),
+            ) >= pedestrian.radius + visibility_margin
+        })
+    }
+
+    pub fn record_step(
+        &mut self,
+        robot: MppiState2D,
+        target: MppiMovingObstacle2D,
+        pedestrians: &[MppiMovingObstacle2D],
+    ) -> RoboticsResult<()> {
+        validate_state(robot)?;
+        validate_moving_obstacle(target)?;
+        validate_moving_obstacles(pedestrians)?;
+
+        let spacing = point_distance((robot.x, robot.y), (target.x, target.y));
+        let spacing_error = (spacing - self.config.desired_distance).abs();
+        self.metrics.sum_spacing += spacing;
+        self.metrics.sum_spacing_error += spacing_error;
+        if spacing_error <= self.config.spacing_tolerance {
+            self.metrics.in_band_steps += 1;
+        }
+
+        if Self::target_visible(robot, target, pedestrians, self.config.visibility_margin) {
+            self.metrics.visible_steps += 1;
+        }
+
+        let clearance = pedestrians
+            .iter()
+            .map(|pedestrian| {
+                point_distance((robot.x, robot.y), (pedestrian.x, pedestrian.y)) - pedestrian.radius
+            })
+            .fold(f64::INFINITY, f64::min);
+        self.metrics.min_clearance = self.metrics.min_clearance.min(clearance);
+        if clearance < 0.0 {
+            self.metrics.collision_steps += 1;
+        }
+
+        self.metrics.steps += 1;
+        Ok(())
+    }
+
+    pub fn finish(self) -> PersonFollowingRolloutMetrics2D {
+        let mut metrics = self.metrics;
+        if metrics.steps == 0 {
+            metrics.min_clearance = 0.0;
+        }
+        metrics
+    }
+}
+
 fn validate_person_following_config(config: &MppiPersonFollowingConfig2D) -> RoboticsResult<()> {
     if config.candidate_count == 0 || config.horizon == 0 {
         return Err(RoboticsError::InvalidParameter(
@@ -427,5 +614,79 @@ mod tests {
         assert_eq!(goals.len(), sampler.config().horizon + 1);
         assert!((goals[0].0 - selected.offset_x).abs() < 1e-9);
         assert!(goals.last().unwrap().0 > goals[0].0);
+    }
+
+    #[test]
+    fn visibility_metric_detects_blocking_pedestrian() {
+        // Robot trails the target along x; a pedestrian sits on the line of
+        // sight between them, then steps aside.
+        let robot = MppiState2D::new(-1.0, 0.0, 0.0, 0.0);
+        let target = MppiMovingObstacle2D::new(0.0, 0.0, 0.0, 0.0, 0.3);
+        let blocking = MppiMovingObstacle2D::new(-0.5, 0.0, 0.0, 0.0, 0.3);
+        let aside = MppiMovingObstacle2D::new(-0.5, 1.5, 0.0, 0.0, 0.3);
+
+        assert!(!PersonFollowingMetricsAccumulator2D::target_visible(
+            robot,
+            target,
+            &[blocking],
+            0.05
+        ));
+        assert!(PersonFollowingMetricsAccumulator2D::target_visible(
+            robot,
+            target,
+            &[aside],
+            0.05
+        ));
+    }
+
+    #[test]
+    fn spacing_ratio_counts_in_band_steps() {
+        let config = PersonFollowingMetricsConfig2D::new(1.0, 0.2, 0.05);
+        let mut accumulator = PersonFollowingMetricsAccumulator2D::new(config).unwrap();
+        let target = MppiMovingObstacle2D::new(0.0, 0.0, 0.0, 0.0, 0.3);
+
+        // Two in-band snapshots (distance 1.0 and 0.9) and one out-of-band (2.0).
+        accumulator
+            .record_step(MppiState2D::new(-1.0, 0.0, 0.0, 0.0), target, &[])
+            .unwrap();
+        accumulator
+            .record_step(MppiState2D::new(-0.9, 0.0, 0.0, 0.0), target, &[])
+            .unwrap();
+        accumulator
+            .record_step(MppiState2D::new(-2.0, 0.0, 0.0, 0.0), target, &[])
+            .unwrap();
+        let metrics = accumulator.finish();
+
+        assert_eq!(metrics.steps, 3);
+        assert_eq!(metrics.in_band_steps, 2);
+        assert!((metrics.target_spacing_ratio() - 2.0 / 3.0).abs() < 1e-9);
+        assert!((metrics.mean_spacing() - (1.0 + 0.9 + 2.0) / 3.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn metrics_flag_pedestrian_collision_and_clearance() {
+        let config = PersonFollowingMetricsConfig2D::new(1.0, 0.5, 0.05);
+        let mut accumulator = PersonFollowingMetricsAccumulator2D::new(config).unwrap();
+        let target = MppiMovingObstacle2D::new(0.0, 0.0, 0.0, 0.0, 0.3);
+        // Pedestrian radius 0.4 centered 0.2 from the robot -> clearance -0.2.
+        let pedestrian = MppiMovingObstacle2D::new(-0.8, 0.0, 0.0, 0.0, 0.4);
+        accumulator
+            .record_step(MppiState2D::new(-1.0, 0.0, 0.0, 0.0), target, &[pedestrian])
+            .unwrap();
+        let metrics = accumulator.finish();
+
+        assert_eq!(metrics.collision_steps, 1);
+        assert!((metrics.min_clearance - (-0.2)).abs() < 1e-9);
+        assert_eq!(metrics.target_visibility_ratio(), 0.0);
+    }
+
+    #[test]
+    fn metrics_reject_invalid_config() {
+        assert!(
+            PersonFollowingMetricsAccumulator2D::new(PersonFollowingMetricsConfig2D::new(
+                -1.0, 0.2, 0.05
+            ))
+            .is_err()
+        );
     }
 }
