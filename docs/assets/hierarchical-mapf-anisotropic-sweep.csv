@@ -1,0 +1,6 @@
+region_width,region_height,replanned_groups,max_group_size,final_conflicts,fallback_full_replan
+4,4,4,2,0,false
+8,4,2,4,0,false
+16,4,1,8,0,false
+8,16,2,4,0,false
+4,16,4,2,0,false

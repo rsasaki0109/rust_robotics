@@ -226,6 +226,22 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Hierarchical MAPF Anisotropic Sweep",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-anisotropic-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_hierarchical_mapf_sweeps --no-default-features --features planning",
+    description: "On a horizontal swap row the repair-group size tracks region width and is invariant to region height: width 8 merges the same swaps at height 4 or 16.",
+    size: "wide"
+  },
+  {
+    title: "Hierarchical MAPF Fallback Rate",
+    category: "Path Planning",
+    image: "assets/hierarchical-mapf-fallback-sweep.svg",
+    command: "cargo run -p rust_robotics --example benchmark_hierarchical_mapf_sweeps --no-default-features --features planning",
+    description: "An adjacent edge-swap straddles a region boundary with probability about 1/region, so the region abstraction misses it and falls back to full CBS; the fallback rate decays as regions grow while every scene still resolves.",
+    size: "wide"
+  },
+  {
     title: "Theta*",
     category: "Path Planning",
     image: "img/path_planning/theta_star_result.svg",
