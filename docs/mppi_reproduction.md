@@ -22,6 +22,10 @@ Implemented slice:
 15. Static SVG export comparing waypoint-reference MPPI against gate-progress MPPI.
 16. Moving circular obstacles and horizon-aligned goal trajectories for
     prediction-aware MPPI.
+17. 3-D rectangular gate planes, a point-mass drone with drag and actuation
+    limits, open/closed laps, and lap-progress metrics.
+18. CSV/SVG benchmark sweeping planar, undulating, climbing, and high-drag 3-D
+    racing courses.
 
 Run:
 
@@ -39,6 +43,7 @@ cargo run -p rust_robotics --example headless_mppi_racing_gate_progress --no-def
 cargo run -p rust_robotics --example render_mppi_racing_gate_progress_svg --no-default-features --features control
 cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-features --features control
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -82,5 +87,43 @@ The Adap-RPF-lite example uses MPPI's moving-obstacle and goal-trajectory
 extensions to track predicted person-following goals while proactively avoiding
 predicted pedestrian motion. See `docs/adap_rpf_mppi_reproduction.md`.
 
-Next useful extensions are richer nonlinear vehicle dynamics and lap-level
-progress rewards.
+## 3-D Gate Racing with Lap Progress
+
+The racing objective extends from 2-D oriented gates to full 3-D in
+`racing_mppi_3d`:
+
+- `RacingGatePlane3D` is a rectangular gate aperture in 3-D, built from a center,
+  a race-direction normal, and an in-plane up hint that is orthonormalized into
+  `right`/`up` axes. A rollout passes the gate when a segment crosses the plane
+  from behind to in front and the crossing point lies inside the rectangle, so
+  gates can be tilted and stacked at any height.
+- `RacingDroneDynamics3D` is a point-mass drone with linear aerodynamic drag, an
+  optional gravity term, a speed cap, and an acceleration-magnitude cap — richer
+  than the pure double integrator, so a draggier, lower-top-speed drone is
+  honestly slower around the same course.
+- `RacingGateLap3D` arranges gates into an open course or a closed lap; closed
+  laps wrap the active gate modulo the gate count so the drone can fly repeated
+  laps.
+- `simulate_lap_race` drives a seeded, deterministic MPPI controller around the
+  lap and returns `RacingLapReport3D`: laps completed, the fraction of the
+  current lap, first-lap time, mean and peak speed, executed path length, mean
+  control effort, and the minimum aperture margin at any gate crossing (1 at the
+  gate center, 0 at the aperture edge, slightly negative when the drone clips a
+  frame within the crossing tolerance).
+
+The benchmark sweeps a planar closed square (two laps), an undulating closed
+square where the drone climbs and descends each lap, an open five-gate ascending
+helix, and a high-drag agile slalom, writing `docs/assets/racing-mppi-3d.csv`
+and `.svg`:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control
+```
+
+On the bundled courses the reference-free controller completes two laps of both
+square courses, climbs the full helix, and threads the slalom, with the draggier
+slalom drone reaching a lower mean speed — the lap-progress, speed, and aperture
+trade-offs the 3-D counters expose.
+
+Next useful extension is a full quadrotor attitude model (thrust and body-rate
+inputs) so the gate-progress objective drives orientation as well as position.
