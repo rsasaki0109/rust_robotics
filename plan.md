@@ -457,6 +457,31 @@ Next useful extension:
 - Filter a global path's reference velocity (removing the reactive head-on
   deadlock) and cover non-convex regions with a multi-polytope decomposition.
 
+### Long Range Navigator-lite Frontier Navigation
+
+Source theme: long-range navigation past the local map.
+
+Implemented:
+
+- Occlusion-aware sensing accumulating a persistent known map.
+- Frontier extraction and 8-connected clustering with openness counts.
+- Affordance scoring (goal progress, known-free travel cost, line of sight,
+  openness) to select the next frontier.
+- Dijkstra local-planner handoff over the known-free map, with a final plan to
+  the goal once it is revealed.
+
+Primary files:
+
+- `crates/rust_robotics_planning/src/frontier_navigator.rs`
+- `crates/rust_robotics/examples/render_frontier_navigator_svg.rs`
+- `docs/assets/frontier-navigator.svg`
+- `docs/frontier_navigator_reproduction.md`
+
+Next useful extension:
+
+- Replace the hand-tuned affordance weights with a learned frontier value and
+  add multi-goal / patrol frontier scheduling.
+
 ## Gallery Assets
 
 The docs gallery is extended with research reproduction assets:
@@ -480,6 +505,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/rigid-body-mip-planning.svg`
 - `docs/assets/rigid-body-backend-benchmark.svg`
 - `docs/assets/cbf-safety-filter.svg`
+- `docs/assets/frontier-navigator.svg`
 
 The gallery index is `docs/app.js`.
 
@@ -590,10 +616,12 @@ benchmark/headless example + SVG/CSV artifact + docs.
    barrier); `benchmark_cbf_safety_filter` contrasts colliding raw control vs the
    filtered safe control (clearance -0.15 -> +0.08..0.12) across four scenarios.
 
-3. **Long Range Navigator-lite.** A synthetic frontier graph beyond the local
-   map: affordance-scored frontiers, occlusion-aware frontier selection, and a
-   local-planner handoff. New `frontier_navigator.rs` (planning), SVG comparing
-   frontier choices under occlusion. Source: Long Range Navigator.
+3. ~~Long Range Navigator-lite.~~ **Done (2026-06-06).**
+   `frontier_navigator.rs` does occlusion-aware sensing, affordance-scored
+   frontier selection (goal progress / known-free cost / line of sight /
+   openness), and a Dijkstra local-planner handoff;
+   `render_frontier_navigator_svg` routes a robot around two walls it cannot see
+   past to the goal.
 
 4. **Hierarchical MAPF anisotropic region sweep (extension).** Sweep
    `region_width` and `region_height` independently and add a solvable
