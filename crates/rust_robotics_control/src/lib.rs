@@ -5,6 +5,7 @@ pub mod experiments;
 
 pub mod arm_obstacle_navigation;
 pub mod behavior_tree;
+pub mod cbf_safety_filter;
 pub mod cgmres_nmpc;
 pub mod ddp;
 pub mod drone_3d_trajectory;
@@ -38,6 +39,10 @@ pub mod sliding_mode_control;
 
 // Re-exports
 pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
+pub use cbf_safety_filter::{
+    simulate_cbf_navigation, CbfConvexObstacle2D, CbfFilterResult, CbfHalfspace2D, CbfNavConfig,
+    CbfNavReport, CbfSafetyFilter,
+};
 pub use lqr_control::InvertedPendulumLQR;
 pub use lqr_steer_control::{LQRSteerConfig, LQRSteerController};
 pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController};
