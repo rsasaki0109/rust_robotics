@@ -105,6 +105,7 @@ cargo run -p rust_robotics --example headless_stl_cbs_multi_robot --no-default-f
 cargo run -p rust_robotics --example render_stl_cbs_multi_robot_svg --no-default-features --features planning
 cargo run -p rust_robotics --example headless_kinodynamic_stl_cbs --no-default-features --features planning
 cargo run -p rust_robotics --example render_kinodynamic_stl_cbs_svg --no-default-features --features planning
+cargo run -p rust_robotics --example render_safe_decode_nav_svg --no-default-features --features planning
 cargo run -p rust_robotics --example headless_rigid_body_mip_planning --no-default-features --features planning
 cargo run -p rust_robotics --example render_rigid_body_mip_planning_svg --no-default-features --features planning
 cargo run -p rust_robotics --example headless_hierarchical_mapf_replanning --no-default-features --features planning
