@@ -162,6 +162,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "SafeDec-lite STL Shield",
+    category: "Path Planning",
+    image: "assets/safe-decode-nav.svg",
+    command: "cargo run -p rust_robotics --example render_safe_decode_nav_svg --no-default-features --features planning",
+    description: "Constrained decoding for safe navigation: a greedy policy cuts through hazards while an STL always-avoid/eventually-reach shield reroutes it via deterministic beam search, with measurable robustness gain.",
+    size: "wide"
+  },
+  {
     title: "Rigid-Body MIP Planning",
     category: "Path Planning",
     image: "assets/rigid-body-mip-planning.svg",

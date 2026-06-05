@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="610" height="534" viewBox="0 0 610 534">
+<rect width="610" height="534" fill="#fbfbfd"/>
+<text x="50" y="36" font-family="sans-serif" font-size="20" fill="#1d1d1f">SafeDec-lite: STL-shielded navigation decoding</text>
+<text x="50" y="58" font-family="sans-serif" font-size="13" fill="#6e6e73">greedy policy cuts through the geofences (orange); the STL shield reroutes via constrained beam search (blue)</text>
+<line x1="50.0" y1="90.0" x2="50.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="84.0" y1="90.0" x2="84.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="118.0" y1="90.0" x2="118.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="152.0" y1="90.0" x2="152.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="186.0" y1="90.0" x2="186.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="220.0" y1="90.0" x2="220.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="254.0" y1="90.0" x2="254.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="288.0" y1="90.0" x2="288.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="322.0" y1="90.0" x2="322.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="356.0" y1="90.0" x2="356.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="390.0" y1="90.0" x2="390.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="424.0" y1="90.0" x2="424.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="458.0" y1="90.0" x2="458.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="492.0" y1="90.0" x2="492.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="526.0" y1="90.0" x2="526.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="560.0" y1="90.0" x2="560.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="90.0" x2="560.0" y2="90.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="124.0" x2="560.0" y2="124.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="158.0" x2="560.0" y2="158.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="192.0" x2="560.0" y2="192.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="226.0" x2="560.0" y2="226.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="260.0" x2="560.0" y2="260.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="294.0" x2="560.0" y2="294.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="328.0" x2="560.0" y2="328.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="362.0" x2="560.0" y2="362.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="396.0" x2="560.0" y2="396.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="430.0" x2="560.0" y2="430.0" stroke="#e5e5ea" stroke-width="1"/>
+<line x1="50.0" y1="464.0" x2="560.0" y2="464.0" stroke="#e5e5ea" stroke-width="1"/>
+<rect x="203.0" y="209.0" width="68.0" height="170.0" fill="#ff3b30" fill-opacity="0.16" stroke="#ff3b30" stroke-dasharray="5 4"/>
+<rect x="339.0" y="175.0" width="68.0" height="170.0" fill="#ff3b30" fill-opacity="0.16" stroke="#ff3b30" stroke-dasharray="5 4"/>
+<polyline points="67.0,277.0 101.0,277.0 135.0,277.0 169.0,277.0 203.0,277.0 237.0,277.0 271.0,277.0 305.0,277.0 339.0,277.0 373.0,277.0 407.0,277.0 441.0,277.0 475.0,277.0 509.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0" fill="none" stroke="#ff9f0a" stroke-width="3" stroke-dasharray="6 5" stroke-linejoin="round"/>
+<polyline points="67.0,277.0 101.0,277.0 135.0,243.0 169.0,209.0 203.0,175.0 237.0,175.0 271.0,175.0 305.0,175.0 339.0,141.0 373.0,141.0 407.0,141.0 441.0,175.0 475.0,209.0 509.0,243.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0 543.0,277.0" fill="none" stroke="#0a84ff" stroke-width="3"  stroke-linejoin="round"/>
+<circle cx="67.0" cy="277.0" r="7" fill="#1d1d1f"/>
+<circle cx="543.0" cy="277.0" r="7" fill="#34c759"/>
+<text x="50" y="494.0" font-family="sans-serif" font-size="13" fill="#1d1d1f">shielded: avoid robustness 1.00 (safe), reach 1.00, 12 interventions vs greedy</text>
+<text x="50" y="514.0" font-family="sans-serif" font-size="13" fill="#6e6e73">greedy: avoid robustness -1.00 (violates geofence)</text>
+</svg>

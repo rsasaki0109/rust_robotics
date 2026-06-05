@@ -404,6 +404,32 @@ Next useful extension:
   branch-and-bound disjunctive-constraint solver) and benchmark optimality vs
   the lattice/RRT backends.
 
+### SafeDec-lite STL-Shielded Navigation
+
+Source theme: constrained decoding for safe robot navigation policies.
+
+Implemented:
+
+- Deterministic greedy goal-seeking base policy over a discrete action set.
+- STL shield reusing `stl_cbs` primitives: a hard `always-avoid` geofence (with
+  an optional safety margin) and a soft `eventually-reach` goal region.
+- Deterministic constrained beam search (`SafeDecoder::decode`) returning both
+  the greedy and shielded paths, with robustness values and an intervention
+  count.
+- SVG comparing the greedy hazard-cutting path against the shielded detour.
+
+Primary files:
+
+- `crates/rust_robotics_planning/src/safe_decode_nav.rs`
+- `crates/rust_robotics/examples/render_safe_decode_nav_svg.rs`
+- `docs/assets/safe-decode-nav.svg`
+- `docs/safe_decode_nav_reproduction.md`
+
+Next useful extension:
+
+- Replace the greedy policy with a sampled/learned action distribution and add
+  `eventually`/`until` task chains (visit A then B while avoiding C).
+
 ## Gallery Assets
 
 The docs gallery is extended with research reproduction assets:
@@ -421,6 +447,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/branchout-closed-loop.svg`
 - `docs/assets/stl-cbs-multi-robot.svg`
 - `docs/assets/kinodynamic-stl-cbs.svg`
+- `docs/assets/safe-decode-nav.svg`
 - `docs/assets/hierarchical-mapf-replanning.svg`
 - `docs/assets/hierarchical-mapf-scale.svg`
 - `docs/assets/rigid-body-mip-planning.svg`
@@ -523,12 +550,11 @@ and strong reuse of existing modules, plus three recorded depth extensions kept
 as low-risk wins. Each item is one slice: library code + tests + a deterministic
 benchmark/headless example + SVG/CSV artifact + docs.
 
-1. **SafeDec-lite: STL-shielded navigation decoding.** A discrete action decoder
-   over a grid/local-planner policy, shielded by STL geofence / always-avoid /
-   eventually-visit constraints via constrained beam search. Reuses the STL
-   robustness primitives in `stl_cbs.rs`. New `safe_decode_nav.rs` (planning),
-   headless + SVG (shielded vs greedy path, blocked actions highlighted).
-   Source: SafeDec (constrained decoding for safe robot navigation).
+1. ~~SafeDec-lite: STL-shielded navigation decoding.~~ **Done (2026-06-06).**
+   `safe_decode_nav.rs` runs a deterministic constrained beam search shielding a
+   greedy grid policy with `stl_cbs` always-avoid / eventually-reach robustness;
+   `render_safe_decode_nav_svg` contrasts the greedy hazard-cutting path with the
+   shielded detour (avoid robustness -1.0 -> +1.0).
 
 2. **CBF safety filter (PolyMerge-lite).** Convex-polytope obstacle covers plus a
    control-barrier-function filter that minimally corrects a nominal control to
