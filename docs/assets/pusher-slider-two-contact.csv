@@ -1,0 +1,4 @@
+scenario,steps,final_x,final_y,final_theta_deg,total_rotation_deg
+single (curves),40,0.0219,-0.1101,-127.32,-127.32
+two-point (straight),40,0.2000,-0.0000,-0.00,-0.00
+couple (spins in place),34,-0.0000,-0.0000,-278.29,-278.29

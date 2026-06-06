@@ -780,8 +780,17 @@ benchmark/headless example + SVG/CSV artifact + docs.
     cost) so the active slider routes around blocks in its path.
     `benchmark_pusher_slider_multi` has object 0 detour around object 1 sitting in
     its straight-line path; all three settle within ~1 cm. Reproduces the
-    multi-object setting of "Push Anything". Next: simultaneous two-pusher
-    multi-contact pushing (a contact-implicit complementarity problem).
+    multi-object setting of "Push Anything".
+
+15. ~~Two-contact (two-pusher) pushing (extension).~~ **Done (2026-06-07).**
+    `two_contact_twist`/`two_contact_step` solve two simultaneous point contacts
+    contact-implicitly: per-contact stick/slide modes are enumerated, the 4x4
+    contact-force system solved (`solve4`), and the first valid combination kept.
+    `benchmark_pusher_slider_two_contact` (scripted) shows a single off-center
+    push curving, a symmetric two-point push tracking straight, and an antipodal
+    couple spinning the slider ~278 deg in place with zero net translation. Next:
+    a contact-implicit controller that chooses the contacts, plus least-norm
+    squeeze resolution.
 
 ## Push Checklist
 
