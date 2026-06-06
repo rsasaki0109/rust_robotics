@@ -36,6 +36,9 @@
 //! - [`ChargeBudget`] adds an explicit energy term to the aware controller,
 //!   penalizing below-reserve current draw so it can trade lap progress for
 //!   charge held back; [`simulate_powertrain_race_budgeted`] runs it.
+//! - [`PowertrainParams::with_recovery`] adds a relaxation overpotential so the
+//!   terminal voltage (and thus the thrust ceiling) recovers when the load eases,
+//!   even as the state of charge only ever falls.
 
 use crate::racing_mppi_3d::{RacingGateLap3D, RacingGatePlane3D};
 use crate::racing_mppi_motor::{
@@ -55,6 +58,11 @@ pub struct PowertrainState {
     pub rotor_thrust: [f64; 4],
     /// Battery state of charge in `[0, 1]`.
     pub battery_soc: f64,
+    /// Battery relaxation overpotential in `[0, 1]`: a recoverable voltage
+    /// depression that builds under sustained load and decays (the terminal
+    /// voltage recovers) when the load eases. Distinct from `battery_soc`, which
+    /// is the irreversible charge consumed.
+    pub relaxation: f64,
 }
 
 impl PowertrainState {
@@ -69,6 +77,7 @@ impl PowertrainState {
             motor: MotorQuadState::at(x, y, z),
             rotor_thrust: [gravity / 4.0; 4],
             battery_soc: soc.clamp(0.0, 1.0),
+            relaxation: 0.0,
         }
     }
 
@@ -94,6 +103,12 @@ pub struct PowertrainParams {
     pub sag_coeff: f64,
     /// Open-circuit voltage scale at an empty pack, in `(0, 1]`.
     pub min_voltage_scale: f64,
+    /// Rate \[1/s\] at which the relaxation overpotential builds toward the load.
+    pub relax_build: f64,
+    /// Rate \[1/s\] at which the relaxation overpotential decays (recovers).
+    pub relax_recover: f64,
+    /// Voltage-scale depression per unit relaxation overpotential, in `[0, 1)`.
+    pub relax_coeff: f64,
 }
 
 impl PowertrainParams {
@@ -134,7 +149,29 @@ impl PowertrainParams {
             discharge_rate,
             sag_coeff,
             min_voltage_scale,
+            relax_build: 0.0,
+            relax_recover: 0.0,
+            relax_coeff: 0.0,
         })
+    }
+
+    /// Add a battery-recovery (relaxation-overpotential) model: the relaxation
+    /// state builds toward the load at `build` \[1/s\] and decays at `recover`
+    /// \[1/s\], depressing the terminal voltage by `coeff` per unit. Easing off
+    /// therefore lets the terminal voltage — and thus the thrust ceiling —
+    /// recover even though the state of charge keeps falling. All arguments are
+    /// sanitized (`build`/`recover >= 0` and finite, `coeff` in `[0, 1)`); the
+    /// defaults of zero leave the pack with no recovery dynamics.
+    pub fn with_recovery(mut self, build: f64, recover: f64, coeff: f64) -> Self {
+        let nonneg = |v: f64| if v.is_finite() && v > 0.0 { v } else { 0.0 };
+        self.relax_build = nonneg(build);
+        self.relax_recover = nonneg(recover);
+        self.relax_coeff = if coeff.is_finite() && (0.0..1.0).contains(&coeff) {
+            coeff
+        } else {
+            0.0
+        };
+        self
     }
 
     /// Idealized powertrain: no lag, no discharge, no sag. Reduces exactly to
@@ -146,6 +183,9 @@ impl PowertrainParams {
             discharge_rate: 0.0,
             sag_coeff: 0.0,
             min_voltage_scale: 1.0,
+            relax_build: 0.0,
+            relax_recover: 0.0,
+            relax_coeff: 0.0,
         }
     }
 
@@ -166,10 +206,20 @@ impl PowertrainParams {
         (ocv - self.sag_coeff * load).clamp(0.0, 1.0)
     }
 
-    /// Battery-limited per-rotor thrust ceiling for the current state.
+    /// Terminal-voltage scale including the relaxation overpotential: the
+    /// open-circuit-minus-sag [`Self::voltage_scale`] less `relax_coeff *
+    /// relaxation`. This is the voltage actually available at the rotors.
+    pub fn terminal_voltage_scale(self, soc: f64, load: f64, relaxation: f64) -> f64 {
+        (self.voltage_scale(soc, load) - self.relax_coeff * relaxation.clamp(0.0, 1.0))
+            .clamp(0.0, 1.0)
+    }
+
+    /// Battery-limited per-rotor thrust ceiling for the current state, including
+    /// the relaxation overpotential.
     pub fn effective_max_rotor(self, state: PowertrainState) -> f64 {
         let load = self.load(state.rotor_thrust);
-        self.base.max_rotor_thrust * self.voltage_scale(state.battery_soc, load)
+        self.base.max_rotor_thrust
+            * self.terminal_voltage_scale(state.battery_soc, load, state.relaxation)
     }
 
     /// Per-step lag blend factor `alpha = 1 - exp(-dt / tau)`, or `1` if instant.
@@ -183,9 +233,11 @@ impl PowertrainParams {
 
     /// Advance the powertrain one step under the commanded rotor thrusts.
     pub fn step(self, state: PowertrainState, command: MotorCommand, dt: f64) -> PowertrainState {
-        // Battery-limited ceiling from the current (causal) load.
+        // Battery-limited ceiling from the current (causal) load, including the
+        // relaxation overpotential.
         let load = self.load(state.rotor_thrust);
-        let eff_max = self.base.max_rotor_thrust * self.voltage_scale(state.battery_soc, load);
+        let eff_max = self.base.max_rotor_thrust
+            * self.terminal_voltage_scale(state.battery_soc, load, state.relaxation);
 
         // First-order motor lag toward the ceiling-clamped command.
         let alpha = self.lag_alpha(dt);
@@ -205,10 +257,16 @@ impl PowertrainParams {
         let new_load = self.load(rotor_thrust);
         let battery_soc = (state.battery_soc - self.discharge_rate * new_load * dt).clamp(0.0, 1.0);
 
+        // Relaxation overpotential builds toward the load and decays when idle,
+        // so easing off lets the terminal voltage recover.
+        let relax_dot = self.relax_build * new_load - self.relax_recover * state.relaxation;
+        let relaxation = (state.relaxation + relax_dot * dt).clamp(0.0, 1.0);
+
         PowertrainState {
             motor,
             rotor_thrust,
             battery_soc,
+            relaxation,
         }
     }
 }
@@ -513,7 +571,8 @@ where
         // Diagnose whether this command will hit the battery ceiling.
         let eff_max = params.effective_max_rotor(state);
         let load = params.load(state.rotor_thrust);
-        sum_voltage_scale += params.voltage_scale(state.battery_soc, load);
+        sum_voltage_scale +=
+            params.terminal_voltage_scale(state.battery_soc, load, state.relaxation);
         if command.rotors.iter().any(|&r| r > eff_max + 1e-9) {
             ceiling_saturated += 1;
         }
@@ -799,6 +858,75 @@ mod tests {
         let high = pt.voltage_scale(1.0, 1.0);
         let low = pt.voltage_scale(1.0, 0.2);
         assert!(low > high, "more load should sag more: {low} vs {high}");
+    }
+
+    fn recovery_params() -> PowertrainParams {
+        racing_params().with_recovery(0.8, 0.5, 0.25)
+    }
+
+    #[test]
+    fn recovery_is_off_by_default() {
+        // Without with_recovery, the relaxation state never leaves zero.
+        let pt = racing_params();
+        let mut state = PowertrainState::at(0.0, 0.0, 1.0, pt.base.gravity);
+        for _ in 0..40 {
+            state = pt.step(
+                state,
+                MotorCommand::new([pt.base.max_rotor_thrust; 4]),
+                0.05,
+            );
+        }
+        assert_eq!(state.relaxation, 0.0);
+    }
+
+    #[test]
+    fn relaxation_depresses_terminal_voltage() {
+        let pt = recovery_params();
+        // Same charge and load, but a relaxed pack delivers less terminal voltage.
+        let fresh = pt.terminal_voltage_scale(0.8, 0.5, 0.0);
+        let relaxed = pt.terminal_voltage_scale(0.8, 0.5, 0.6);
+        assert!(
+            relaxed < fresh,
+            "relaxed {relaxed} should be below fresh {fresh}"
+        );
+        // With recovery off, relaxation has no effect.
+        let no_recovery = racing_params();
+        assert_eq!(
+            no_recovery.terminal_voltage_scale(0.8, 0.5, 0.6),
+            no_recovery.voltage_scale(0.8, 0.5)
+        );
+    }
+
+    #[test]
+    fn terminal_voltage_recovers_when_load_eases() {
+        let pt = recovery_params();
+        let mut state = PowertrainState::at(0.0, 0.0, 1.0, pt.base.gravity);
+        // Drive hard: the relaxation overpotential builds up.
+        for _ in 0..40 {
+            state = pt.step(
+                state,
+                MotorCommand::new([pt.base.max_rotor_thrust; 4]),
+                0.05,
+            );
+        }
+        let relax_hot = state.relaxation;
+        let soc_hot = state.battery_soc;
+        assert!(relax_hot > 0.1, "relaxation should build: {relax_hot}");
+        // Ease off to hover: the overpotential decays and voltage recovers.
+        for _ in 0..80 {
+            state = pt.step(state, MotorCommand::hover(pt.base.gravity), 0.05);
+        }
+        assert!(
+            state.relaxation < relax_hot,
+            "relaxation should recover: {} vs {relax_hot}",
+            state.relaxation
+        );
+        // ...but the state of charge keeps falling — recovery is not free energy.
+        assert!(
+            state.battery_soc < soc_hot,
+            "soc should keep dropping: {} vs {soc_hot}",
+            state.battery_soc
+        );
     }
 
     #[test]
