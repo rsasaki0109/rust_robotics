@@ -760,13 +760,19 @@ benchmark/headless example + SVG/CSV artifact + docs.
 
 12. ~~Quasi-static planar pushing (new domain: manipulation).~~ **Done
     (2026-06-07).** `pusher_slider.rs` reproduces the classic pusher-slider in the
-    spirit of "Push Anything": ellipsoidal limit surface, single back-face point
-    contact with stick/slide contact modes, and a seeded MPPI pusher that
-    modulates contact offset, slip, and push speed (so it brakes on the goal).
-    `benchmark_pusher_slider` drives the slider to four goal poses (forward, veer,
-    reorient, park) within ~1 cm. First manipulation target in the repo. Next:
-    face-switching / second contact for rotation-without-lateral goals. See
-    `docs/pusher_slider_reproduction.md`.
+    spirit of "Push Anything": ellipsoidal limit surface, single-point contact
+    with stick/slide contact modes, and a seeded MPPI pusher that modulates
+    contact offset, slip, and push speed (so it brakes on the goal). First
+    manipulation target in the repo. See `docs/pusher_slider_reproduction.md`.
+
+13. ~~Multi-face pushing (extension).~~ **Done (2026-06-07).** Generalized the
+    contact model to any of the four faces (per-face contact frame; the
+    limit-surface solve is shared, the friction cone is evaluated along each
+    face's normal/tangent). `PusherSliderMppiController` is now face-aware: it
+    runs MPPI per face and executes the lowest-cost face. This resolves the
+    single-face limitation — `benchmark_pusher_slider` now includes a `spin`
+    scenario (pure rotation, no net translation) reachable only by switching
+    faces. Next: simultaneous two-pusher multi-contact pushing.
 
 ## Push Checklist
 

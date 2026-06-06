@@ -526,7 +526,7 @@ const galleryItems = [
     category: "Control",
     image: "assets/pusher-slider.svg",
     command: "cargo run -p rust_robotics --example benchmark_pusher_slider --no-default-features --features control",
-    description: "Contact-rich manipulation in the spirit of Push Anything: a single point pusher shoves a square slider to goal poses under the quasi-static ellipsoidal limit-surface model with stick/slide contact modes. A seeded MPPI pusher modulates contact offset, slip, and push speed to translate, steer, and reorient the slider to within a centimetre.",
+    description: "Contact-rich manipulation in the spirit of Push Anything: a point pusher that may switch among the slider's four faces drives a square slider to goal poses under the quasi-static ellipsoidal limit-surface model with stick/slide contact modes. A face-aware MPPI pusher translates, steers, and even spins the slider in place (pure rotation, reachable only by switching faces) to within a centimetre.",
     size: "wide"
   },
   {
