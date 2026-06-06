@@ -143,10 +143,16 @@ reuse of the MPPI/planning modules already added.
 10. Push Anything: Single- and Multi-Object Pushing with Contact-Implicit MPC
     - Source: https://dairlab.github.io/push-anything/
     - Status observed: project page links an implementation in DAIRLab/dairlib
-      on the `push_anything_dev` branch.
+      on the `push_anything_dev` branch; initial pure-Rust slice implemented.
     - Why next: high-payoff manipulation/control target, but heavier than MPPI.
-    - Minimum slice: 2D SE(2) object pushing, contact-mode candidates, MPC score,
-      multi-object toy benchmark.
+    - Implemented slice: quasi-static pusher-slider with the ellipsoidal limit
+      surface, single back-face point contact with stick/slide contact modes, and
+      a seeded MPPI pusher that translates/steers/reorients a square slider to
+      goal poses within ~1 cm (`pusher_slider.rs`, `benchmark_pusher_slider.rs`,
+      `docs/pusher_slider_reproduction.md`). First manipulation target in the repo.
+    - Remaining extensions: face-switching / second contact for
+      rotation-without-lateral goals, multi-object pushing, and contact-implicit
+      MPC over discrete contact modes.
 
 ## Expanded Candidate Pool
 

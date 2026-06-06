@@ -22,6 +22,7 @@ pub mod n_joint_arm_3d;
 pub mod n_joint_arm_control;
 pub mod person_following_mppi;
 pub mod pure_pursuit;
+pub mod pusher_slider;
 pub mod racing_mppi_3d;
 pub mod racing_mppi_motor;
 pub mod racing_mppi_powertrain;
@@ -62,6 +63,10 @@ pub use person_following_mppi::{
     PersonFollowingRolloutMetrics2D,
 };
 pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
+pub use pusher_slider::{
+    simulate_push, ContactMode, PushReport, PusherCommand, PusherMppiConfig, PusherMppiPlan,
+    PusherSliderMppiController, PusherSliderParams, SliderState,
+};
 pub use racing_mppi_3d::{
     simulate_lap_race, RacingDroneControl3D, RacingDroneDynamics3D, RacingDroneState3D,
     RacingGateLap3D, RacingGatePlane3D, RacingLapReport3D, RacingMppi3DConfig,

@@ -758,6 +758,16 @@ benchmark/headless example + SVG/CSV artifact + docs.
     (2.0 vs 1.75 m/s) with more reserve. A strict more-laps flip needs low hover
     overhead or true idle rests, recorded as the next extension.
 
+12. ~~Quasi-static planar pushing (new domain: manipulation).~~ **Done
+    (2026-06-07).** `pusher_slider.rs` reproduces the classic pusher-slider in the
+    spirit of "Push Anything": ellipsoidal limit surface, single back-face point
+    contact with stick/slide contact modes, and a seeded MPPI pusher that
+    modulates contact offset, slip, and push speed (so it brakes on the goal).
+    `benchmark_pusher_slider` drives the slider to four goal poses (forward, veer,
+    reorient, park) within ~1 cm. First manipulation target in the repo. Next:
+    face-switching / second contact for rotation-without-lateral goals. See
+    `docs/pusher_slider_reproduction.md`.
+
 ## Push Checklist
 
 Before pushing a batch:

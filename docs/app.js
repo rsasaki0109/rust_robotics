@@ -522,6 +522,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Quasi-Static Planar Pushing",
+    category: "Control",
+    image: "assets/pusher-slider.svg",
+    command: "cargo run -p rust_robotics --example benchmark_pusher_slider --no-default-features --features control",
+    description: "Contact-rich manipulation in the spirit of Push Anything: a single point pusher shoves a square slider to goal poses under the quasi-static ellipsoidal limit-surface model with stick/slide contact modes. A seeded MPPI pusher modulates contact offset, slip, and push speed to translate, steer, and reorient the slider to within a centimetre.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
