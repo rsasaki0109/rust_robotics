@@ -792,6 +792,18 @@ benchmark/headless example + SVG/CSV artifact + docs.
     a contact-implicit controller that chooses the contacts, plus least-norm
     squeeze resolution.
 
+16. ~~Distributed formation consensus via ADMM (new domain: distributed control).~~
+    **Done (2026-06-07).** `admm_consensus.rs` reproduces the coordination layer
+    of distributed MPC (ACLM-style): consensus ADMM agrees on a formation center
+    with per-agent box constraints (`x_i = clamp((w a + rho(z+offset-u))/(w+rho))`,
+    z = consensus average, dual update). Recovers the closed-form center
+    `mean(a_i - offset_i)` when unconstrained (unit-tested).
+    `benchmark_admm_formation` forms a hexagon where two corridor-confined agents
+    pull the center left to (-1.20, -0.03); residuals fall below 1e-7 in ~91
+    iters. First distributed/optimization-control target. See
+    `docs/admm_consensus_reproduction.md`. Next: receding-horizon and graph-wise
+    (edge) consensus.
+
 ## Push Checklist
 
 Before pushing a batch:

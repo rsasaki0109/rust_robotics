@@ -3,6 +3,7 @@
 
 pub mod experiments;
 
+pub mod admm_consensus;
 pub mod arm_obstacle_navigation;
 pub mod behavior_tree;
 pub mod cbf_safety_filter;
@@ -41,6 +42,7 @@ pub mod pid_controller;
 pub mod sliding_mode_control;
 
 // Re-exports
+pub use admm_consensus::{solve_formation_consensus, AdmmConfig, AdmmReport, AgentSpec};
 pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
 pub use cbf_safety_filter::{
     simulate_cbf_navigation, CbfConvexObstacle2D, CbfFilterResult, CbfHalfspace2D, CbfNavConfig,
