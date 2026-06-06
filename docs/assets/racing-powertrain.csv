@@ -1,0 +1,5 @@
+scenario,gates,gates_passed,lap_fraction,mean_speed,ceiling_saturation,min_battery_soc,final_battery_soc,mean_voltage_scale,max_tilt_deg,steps
+ideal,4,4,0.000,2.807,0.000,1.000,1.000,1.000,88.11,64
+motor-lag,4,4,0.000,3.706,0.000,1.000,1.000,1.000,80.80,38
+lag+battery,4,4,0.000,2.733,0.737,0.911,0.911,0.887,74.89,57
+drained-pack,4,1,0.250,2.730,0.976,0.038,0.038,0.541,51.14,170
