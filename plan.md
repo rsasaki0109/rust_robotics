@@ -772,7 +772,16 @@ benchmark/headless example + SVG/CSV artifact + docs.
     runs MPPI per face and executes the lowest-cost face. This resolves the
     single-face limitation — `benchmark_pusher_slider` now includes a `spin`
     scenario (pure rotation, no net translation) reachable only by switching
-    faces. Next: simultaneous two-pusher multi-contact pushing.
+    faces.
+
+14. ~~Multi-object pushing (extension).~~ **Done (2026-06-07).** `simulate_multi_push`
+    pushes several sliders to goal slots one at a time, treating the other objects
+    as soft keep-out discs (`obstacle_weight`/`obstacle_radius` in the controller
+    cost) so the active slider routes around blocks in its path.
+    `benchmark_pusher_slider_multi` has object 0 detour around object 1 sitting in
+    its straight-line path; all three settle within ~1 cm. Reproduces the
+    multi-object setting of "Push Anything". Next: simultaneous two-pusher
+    multi-contact pushing (a contact-implicit complementarity problem).
 
 ## Push Checklist
 

@@ -530,6 +530,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Multi-Object Pushing",
+    category: "Control",
+    image: "assets/pusher-slider-multi.svg",
+    command: "cargo run -p rust_robotics --example benchmark_pusher_slider_multi --no-default-features --features control",
+    description: "The multi-object setting of Push Anything: three sliders are pushed into goal slots one at a time, with the other objects treated as keep-out discs so the active slider routes around blocks in its path. Object 0 detours around object 1 sitting in its straight-line path; all three settle within a centimetre.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

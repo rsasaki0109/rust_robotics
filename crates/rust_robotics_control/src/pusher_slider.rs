@@ -19,6 +19,9 @@
 //!   from the lowest-cost face, so it can switch faces to reach goals (such as a
 //!   pure rotation) that a single face cannot; [`simulate_push`] runs the closed
 //!   loop and returns a [`PushReport`].
+//! - [`simulate_multi_push`] arranges several sliders into goal slots one at a
+//!   time, treating the other objects as keep-out discs so the active slider
+//!   routes around them.
 //!
 //! The model is exact for the sticking and sliding regimes of a single point
 //! contact on each face; simultaneous multi-contact pushing is left as an
@@ -273,6 +276,10 @@ pub struct PusherMppiConfig {
     pub max_push_speed: f64,
     pub position_weight: f64,
     pub heading_weight: f64,
+    /// Penalty weight for the slider center entering an obstacle keep-out disc.
+    pub obstacle_weight: f64,
+    /// Keep-out radius around each obstacle center \[m\] (`0` disables it).
+    pub obstacle_radius: f64,
     pub lambda: f64,
     pub seed: u64,
 }
@@ -293,6 +300,8 @@ impl Default for PusherMppiConfig {
             // order 1-100 to discriminate rollouts (and let the pusher brake).
             position_weight: 250.0,
             heading_weight: 6.0,
+            obstacle_weight: 0.0,
+            obstacle_radius: 0.0,
             lambda: 1.0,
             seed: 7,
         }
@@ -331,9 +340,14 @@ fn validate_config(config: &PusherMppiConfig) -> RoboticsResult<()> {
             "pusher MPPI lambda must be finite and positive".to_string(),
         ));
     }
-    if config.position_weight < 0.0 || config.heading_weight < 0.0 || config.push_speed < 0.0 {
+    if config.position_weight < 0.0
+        || config.heading_weight < 0.0
+        || config.push_speed < 0.0
+        || config.obstacle_weight < 0.0
+        || config.obstacle_radius < 0.0
+    {
         return Err(RoboticsError::InvalidParameter(
-            "pusher MPPI weights and push_speed must be non-negative".to_string(),
+            "pusher MPPI weights, push_speed, and obstacle terms must be non-negative".to_string(),
         ));
     }
     Ok(())
@@ -366,6 +380,8 @@ pub struct PusherSliderMppiController {
     params: PusherSliderParams,
     /// One warm-started nominal sequence per face (`0..4`).
     nominals: Vec<Vec<PusherCommand>>,
+    /// Obstacle centers (e.g. other objects) the slider should keep clear of.
+    obstacles: Vec<[f64; 2]>,
     rng: StdRng,
 }
 
@@ -382,8 +398,16 @@ impl PusherSliderMppiController {
             config,
             params,
             nominals,
+            obstacles: Vec::new(),
             rng,
         })
+    }
+
+    /// Attach obstacle centers (keep-out discs of `config.obstacle_radius`) that
+    /// the slider should avoid — used for multi-object pushing.
+    pub fn with_obstacles(mut self, obstacles: Vec<[f64; 2]>) -> Self {
+        self.obstacles = obstacles;
+        self
     }
 
     pub fn config(&self) -> &PusherMppiConfig {
@@ -412,8 +436,22 @@ impl PusherSliderMppiController {
         let dx = state.x() - goal.x();
         let dy = state.y() - goal.y();
         let dtheta = wrap_angle(state.theta() - goal.theta());
-        self.config.position_weight * (dx * dx + dy * dy)
-            + self.config.heading_weight * dtheta * dtheta
+        let mut cost = self.config.position_weight * (dx * dx + dy * dy)
+            + self.config.heading_weight * dtheta * dtheta;
+        // Keep-out penalty for overlapping other objects (multi-object pushing).
+        let r = self.config.obstacle_radius;
+        if r > 0.0 && self.config.obstacle_weight > 0.0 {
+            for o in &self.obstacles {
+                let ox = state.x() - o[0];
+                let oy = state.y() - o[1];
+                let d = (ox * ox + oy * oy).sqrt();
+                if d < r {
+                    let overlap = r - d;
+                    cost += self.config.obstacle_weight * overlap * overlap;
+                }
+            }
+        }
+        cost
     }
 
     /// Run MPPI for a single face, returning its warm-start-shifted nominal and
@@ -548,8 +586,22 @@ pub fn simulate_push(
     goal: SliderState,
     max_steps: usize,
 ) -> RoboticsResult<PushReport> {
+    simulate_push_with_obstacles(config, params, start, goal, &[], max_steps)
+}
+
+/// Like [`simulate_push`] but the controller keeps the slider clear of the given
+/// obstacle centers (keep-out discs of `config.obstacle_radius`).
+pub fn simulate_push_with_obstacles(
+    config: PusherMppiConfig,
+    params: PusherSliderParams,
+    start: SliderState,
+    goal: SliderState,
+    obstacles: &[[f64; 2]],
+    max_steps: usize,
+) -> RoboticsResult<PushReport> {
     let dt = config.dt;
-    let mut controller = PusherSliderMppiController::new(config, params)?;
+    let mut controller =
+        PusherSliderMppiController::new(config, params)?.with_obstacles(obstacles.to_vec());
     let mut state = start;
     let mut path = vec![state.pose];
     let mut modes = Vec::new();
@@ -591,6 +643,71 @@ pub fn simulate_push(
         slide_fraction: slide as f64 / denom,
         path,
         modes,
+    })
+}
+
+/// Metrics for a multi-object push.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MultiPushReport {
+    /// Per-object push reports, in the order the objects were pushed.
+    pub objects: Vec<PushReport>,
+    /// Final pose of every object (same indexing as the inputs).
+    pub final_poses: Vec<[f64; 3]>,
+    pub max_position_error: f64,
+    pub max_heading_error: f64,
+}
+
+/// Push several sliders to their goals one at a time, treating the *other*
+/// objects (at their current poses) as keep-out obstacles for the active one.
+///
+/// Objects are pushed in index order; each object's resting pose then becomes an
+/// obstacle for the objects pushed after it. This reproduces the multi-object
+/// arrangement setting of "Push Anything" without a simultaneous multi-contact
+/// solve.
+pub fn simulate_multi_push(
+    config: PusherMppiConfig,
+    params: PusherSliderParams,
+    starts: &[SliderState],
+    goals: &[SliderState],
+    max_steps: usize,
+) -> RoboticsResult<MultiPushReport> {
+    if starts.len() != goals.len() {
+        return Err(RoboticsError::InvalidParameter(
+            "multi-push starts and goals must have equal length".to_string(),
+        ));
+    }
+    let n = starts.len();
+    let mut poses: Vec<SliderState> = starts.to_vec();
+    let mut objects = Vec::with_capacity(n);
+    let mut max_position_error = 0.0_f64;
+    let mut max_heading_error = 0.0_f64;
+
+    for i in 0..n {
+        let obstacles: Vec<[f64; 2]> = (0..n)
+            .filter(|&j| j != i)
+            .map(|j| [poses[j].x(), poses[j].y()])
+            .collect();
+        let report = simulate_push_with_obstacles(
+            config.clone(),
+            params,
+            poses[i],
+            goals[i],
+            &obstacles,
+            max_steps,
+        )?;
+        poses[i] = SliderState {
+            pose: report.final_pose,
+        };
+        max_position_error = max_position_error.max(report.position_error);
+        max_heading_error = max_heading_error.max(report.heading_error);
+        objects.push(report);
+    }
+
+    Ok(MultiPushReport {
+        final_poses: poses.iter().map(|p| p.pose).collect(),
+        objects,
+        max_position_error,
+        max_heading_error,
     })
 }
 
@@ -703,6 +820,46 @@ mod tests {
         let (front, _) = params.step(state, PusherCommand::on_face(2, 0.0, 0.05, 0.0), 0.1);
         assert!(back.x() > 0.0, "back face pushes +x: {}", back.x());
         assert!(front.x() < 0.0, "front face pushes -x: {}", front.x());
+    }
+
+    #[test]
+    fn multi_push_places_every_object() {
+        let params = PusherSliderParams::default();
+        let config = PusherMppiConfig {
+            obstacle_weight: 400.0,
+            obstacle_radius: 2.4 * params.half_extent,
+            ..PusherMppiConfig::default()
+        };
+        let starts = [
+            SliderState::new(0.0, 0.10, 0.0),
+            SliderState::new(0.0, 0.0, 0.0),
+            SliderState::new(0.0, -0.10, 0.0),
+        ];
+        let goals = [
+            SliderState::new(0.28, 0.10, 0.0),
+            SliderState::new(0.28, 0.0, 0.0),
+            SliderState::new(0.28, -0.10, 0.0),
+        ];
+        let report = simulate_multi_push(config, params, &starts, &goals, 200).unwrap();
+        assert_eq!(report.objects.len(), 3);
+        assert!(
+            report.max_position_error < 3.0 * params.half_extent,
+            "all objects should reach: max err {}",
+            report.max_position_error
+        );
+    }
+
+    #[test]
+    fn multi_push_rejects_mismatched_lengths() {
+        let params = PusherSliderParams::default();
+        let starts = [SliderState::new(0.0, 0.0, 0.0)];
+        let goals = [
+            SliderState::new(0.2, 0.0, 0.0),
+            SliderState::new(0.2, 0.1, 0.0),
+        ];
+        assert!(
+            simulate_multi_push(PusherMppiConfig::default(), params, &starts, &goals, 50).is_err()
+        );
     }
 
     #[test]
