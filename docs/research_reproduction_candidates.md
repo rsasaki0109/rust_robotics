@@ -30,6 +30,7 @@ reproduction slices in this workspace.
 | Rigid Body Path Planning using Mixed-Integer Linear Programming | Rectangular rigid body over discretized SE(2), convex polygon half-space obstacles, pose/segment binary-style separation certificates, narrow-slot SVG | `rigid_body_mip.rs`, `headless_rigid_body_mip_planning.rs`, `docs/assets/rigid-body-mip-planning.svg` |
 | SafeDec: Constrained Decoding for Safe Robot Navigation Policies | STL-shielded constrained beam search over a greedy grid policy (always-avoid geofence + eventually-reach), greedy-vs-shielded comparison, SVG | `safe_decode_nav.rs`, `render_safe_decode_nav_svg.rs`, `docs/assets/safe-decode-nav.svg` |
 | PolyMerge: polytope-covering safety / CBF filtering | Convex-polygon obstacle cover, true point-to-polygon CBF barrier, exact 2-D active-set CBF-QP velocity filter, raw-vs-filtered benchmark, CSV/SVG | `cbf_safety_filter.rs`, `benchmark_cbf_safety_filter.rs`, `docs/assets/cbf-safety-filter.svg` |
+| Long Range Navigator | Occlusion-aware sensing, frontier extraction/clustering, affordance scoring (goal/cost/line-of-sight/openness), Dijkstra local-planner handoff, SVG | `frontier_navigator.rs`, `render_frontier_navigator_svg.rs`, `docs/assets/frontier-navigator.svg` |
 
 ## Recommended Implementation Order
 
@@ -217,8 +218,9 @@ The first build queue is fully landed (2026-06-04/05):
 2. ~~CBF safety filter (PolyMerge-lite): convex-polytope obstacle covers plus a
    control-barrier-function filter over nominal controls~~ — Done
    (`cbf_safety_filter.rs`, `benchmark_cbf_safety_filter.rs`).
-3. Long Range Navigator-lite: affordance-scored frontier graph with
-   occlusion-aware selection and a local-planner handoff.
+3. ~~Long Range Navigator-lite: affordance-scored frontier graph with
+   occlusion-aware selection and a local-planner handoff~~ — Done
+   (`frontier_navigator.rs`, `render_frontier_navigator_svg.rs`).
 4. Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)
    plus a solvable fallback-regime data point.
 5. Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked

@@ -170,6 +170,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Frontier Navigator (LRN-lite)",
+    category: "Path Planning",
+    image: "assets/frontier-navigator.svg",
+    command: "cargo run -p rust_robotics --example render_frontier_navigator_svg --no-default-features --features planning",
+    description: "Long Range Navigator-lite: occlusion-aware sensing, affordance-scored frontier selection (goal progress, travel cost, line of sight, openness), and a Dijkstra local-planner handoff that routes a robot around walls it cannot see past.",
+    size: "wide"
+  },
+  {
     title: "Rigid-Body MIP Planning",
     category: "Path Planning",
     image: "assets/rigid-body-mip-planning.svg",
