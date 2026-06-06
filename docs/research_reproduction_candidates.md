@@ -151,9 +151,13 @@ reuse of the MPPI/planning modules already added.
       spinning a square slider to goal poses within ~1 cm — including pure
       rotation reachable only by switching faces (`pusher_slider.rs`,
       `benchmark_pusher_slider.rs`, `docs/pusher_slider_reproduction.md`). First
-      manipulation target in the repo.
-    - Remaining extensions: simultaneous two-pusher multi-contact pushing,
-      multi-object pushing, and contact-implicit MPC over discrete contact modes.
+      manipulation target in the repo. Multi-object arrangement is also
+      implemented: `simulate_multi_push` / `benchmark_pusher_slider_multi.rs`
+      pushes several sliders to slots one at a time with soft keep-out discs for
+      the other objects (object 0 detours around object 1 in its path).
+    - Remaining extensions: simultaneous two-pusher multi-contact pushing (a
+      contact-implicit complementarity problem) and contact-implicit MPC over
+      discrete contact modes.
 
 ## Expanded Candidate Pool
 
