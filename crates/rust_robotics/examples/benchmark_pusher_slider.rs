@@ -1,10 +1,12 @@
 //! Quasi-static planar pushing: drive a square slider to goal poses with MPPI.
 //!
 //! Each scenario pushes a square slider from the origin to a goal pose using a
-//! single point pusher on the slider's back face, under the quasi-static
-//! ellipsoidal limit-surface model with stick/slide contact modes. The benchmark
-//! reports the final pose error and the stick/slide split, and renders the start,
-//! goal, and final slider boxes with the CoM path to CSV/SVG.
+//! point pusher that may switch among the slider's four faces, under the
+//! quasi-static ellipsoidal limit-surface model with stick/slide contact modes.
+//! Face switching is what makes the `spin` goal (pure rotation, no net
+//! translation) reachable. The benchmark reports the final pose error and the
+//! stick/slide split, and renders the start, goal, and final slider boxes with
+//! the CoM path to CSV/SVG.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -40,12 +42,12 @@ fn scenarios() -> Vec<Scenario> {
             max_steps: 200,
         },
         Scenario {
-            name: "reorient",
+            name: "spin",
             start: SliderState::new(0.0, 0.0, 0.0),
-            // Rotation paired with the lateral drift it naturally induces, so a
-            // single back-face pusher can realize it.
-            goal: SliderState::new(0.24, 0.07, 0.4),
-            max_steps: 220,
+            // Pure rotation with no net translation: unreachable by a single
+            // back-face pusher, reachable once the controller may switch faces.
+            goal: SliderState::new(0.0, 0.0, 0.6),
+            max_steps: 320,
         },
         Scenario {
             name: "park",
@@ -253,7 +255,7 @@ fn render_svg(rows: &[Row]) -> String {
 }
 
 fn print_summary(rows: &[Row]) {
-    println!("quasi-static planar pushing (single back-face MPPI pusher)");
+    println!("quasi-static planar pushing (face-switching MPPI pusher)");
     for row in rows {
         let r = &row.report;
         println!(
@@ -296,17 +298,21 @@ mod tests {
     }
 
     #[test]
-    fn every_scenario_makes_clear_progress() {
+    fn every_scenario_reaches_its_goal() {
+        let b = PusherSliderParams::default().half_extent;
         for row in collect_rows().unwrap() {
-            let start_err = ((row.start.x() - row.goal.x()).powi(2)
-                + (row.start.y() - row.goal.y()).powi(2))
-            .sqrt();
             assert!(
-                row.report.position_error < 0.5 * start_err,
-                "{}: error {} vs start {}",
+                row.report.position_error < 3.0 * b,
+                "{}: position error {} (b={})",
                 row.name,
                 row.report.position_error,
-                start_err
+                b
+            );
+            assert!(
+                row.report.heading_error < 0.15,
+                "{}: heading error {}",
+                row.name,
+                row.report.heading_error
             );
         }
     }

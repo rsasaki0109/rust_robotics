@@ -146,13 +146,14 @@ reuse of the MPPI/planning modules already added.
       on the `push_anything_dev` branch; initial pure-Rust slice implemented.
     - Why next: high-payoff manipulation/control target, but heavier than MPPI.
     - Implemented slice: quasi-static pusher-slider with the ellipsoidal limit
-      surface, single back-face point contact with stick/slide contact modes, and
-      a seeded MPPI pusher that translates/steers/reorients a square slider to
-      goal poses within ~1 cm (`pusher_slider.rs`, `benchmark_pusher_slider.rs`,
-      `docs/pusher_slider_reproduction.md`). First manipulation target in the repo.
-    - Remaining extensions: face-switching / second contact for
-      rotation-without-lateral goals, multi-object pushing, and contact-implicit
-      MPC over discrete contact modes.
+      surface and stick/slide contact modes; a face-aware MPPI pusher that runs
+      MPPI per face and executes the lowest-cost face, translating/steering/
+      spinning a square slider to goal poses within ~1 cm — including pure
+      rotation reachable only by switching faces (`pusher_slider.rs`,
+      `benchmark_pusher_slider.rs`, `docs/pusher_slider_reproduction.md`). First
+      manipulation target in the repo.
+    - Remaining extensions: simultaneous two-pusher multi-contact pushing,
+      multi-object pushing, and contact-implicit MPC over discrete contact modes.
 
 ## Expanded Candidate Pool
 
