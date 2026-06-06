@@ -171,6 +171,11 @@ Implemented:
   pits aware vs unaware: on a 25%-drained pack the unaware controller stalls at
   1/4 gates draining to ~2%, while the aware one threads 4/4 and finishes with
   ~18% charge in reserve.
+- Charge-budget term (`ChargeBudget`): penalizes below-reserve current draw so
+  the aware controller eases off when the pack runs low. `benchmark_racing_powertrain_budget`
+  sweeps the weight over a draining multi-lap square and traces one Pareto
+  frontier (heavier budget -> slower, fewer laps, more reserve). Honest finding:
+  on a hover-dominated quad with no regen, pacing buys reserve, not extra laps.
 
 Primary files:
 
@@ -186,6 +191,7 @@ Primary files:
 - `crates/rust_robotics/examples/benchmark_racing_motor.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_aware.rs`
+- `crates/rust_robotics/examples/benchmark_racing_powertrain_budget.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
@@ -197,12 +203,15 @@ Primary files:
 - `docs/assets/racing-powertrain.csv`
 - `docs/assets/racing-powertrain-aware.svg`
 - `docs/assets/racing-powertrain-aware.csv`
+- `docs/assets/racing-powertrain-budget.svg`
+- `docs/assets/racing-powertrain-budget.csv`
 
 Next useful extension:
 
-- Add a per-rotor torque/current map so yaw authority sags too, and give the
-  aware controller a charge-budget term so it explicitly trades remaining energy
-  against gate progress over a multi-lap race.
+- Add a per-rotor torque/current map so yaw authority sags separately from
+  thrust (reaction torque draws extra current), and model battery recovery so a
+  pack that eases off can partly recover terminal voltage — which would let the
+  charge budget buy laps, not just reserve.
 
 ### Adap-RPF-lite MPPI
 
@@ -707,6 +716,13 @@ benchmark/headless example + SVG/CSV artifact + docs.
    an ideal powertrain, unit-tested). `benchmark_racing_powertrain_aware` shows
    that on a 25%-drained pack the unaware controller stalls at 1/4 gates while the
    aware one threads 4/4 and finishes with ~18% charge in reserve.
+
+9. ~~Charge-budget term (extension).~~ **Done (2026-06-07).**
+   `ChargeBudget` penalizes below-reserve current draw in the aware rollout;
+   `benchmark_racing_powertrain_budget` sweeps its weight over a draining
+   multi-lap square and traces a Pareto frontier (heavier budget -> slower,
+   fewer laps, more reserve). Honest finding documented: on a hover-dominated
+   quad with no regen, pacing buys reserve, not extra laps.
 
 ## Push Checklist
 

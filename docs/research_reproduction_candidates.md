@@ -50,9 +50,12 @@ reuse of the MPPI/planning modules already added.
      `benchmark_racing_powertrain.rs`) that degrades an idealized plan; and a
      powertrain-aware controller (`PowertrainMppiController`,
      `benchmark_racing_powertrain_aware.rs`) that rolls out through the lag/
-     battery model and finishes a drained-pack course the unaware one stalls on.
+     battery model and finishes a drained-pack course the unaware one stalls on;
+     and a charge-budget term (`ChargeBudget`, `benchmark_racing_powertrain_budget.rs`)
+     tracing the endurance/progress Pareto frontier.
    - Remaining extensions: a per-rotor torque/current map so yaw authority sags
-     too, and a charge-budget term for multi-lap energy/progress trade-offs.
+     separately from thrust, and a battery-recovery model so easing off can
+     partly restore terminal voltage.
 
 2. Adap-RPF: Adaptive Trajectory Sampling for Robot Person Following
    - Source: https://adap-rpf.github.io/
@@ -248,3 +251,8 @@ All six v2 queue items are landed.
 2. ~~Powertrain-aware controller that rolls candidates out through the lag/battery
    model and conserves authority for later gates~~ — Done (2026-06-07;
    `PowertrainMppiController`, `benchmark_racing_powertrain_aware.rs`).
+3. ~~Charge-budget term for the aware controller (multi-lap energy/progress
+   trade-off)~~ — Done (2026-06-07; `ChargeBudget`,
+   `benchmark_racing_powertrain_budget.rs`; traces the endurance/progress
+   frontier — honest finding: pacing buys reserve, not extra laps, on a
+   hover-dominated quad without regeneration).

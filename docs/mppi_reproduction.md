@@ -38,6 +38,9 @@ Implemented slice:
 22. Powertrain-aware MPPI controller that rolls candidates out through the lag and
     battery model, so it plans within the authority the pack can deliver and
     conserves charge for later gates.
+23. Charge-budget term on the aware controller that penalizes below-reserve
+    current draw, exposing a tunable endurance/progress trade-off over a draining
+    multi-lap race.
 
 Run:
 
@@ -60,6 +63,7 @@ cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-fea
 cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain_budget --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -275,3 +279,30 @@ drains the pack to about 2%; the aware controller budgets within the lowered
 ceiling, threads all four gates, and still finishes with roughly 18% charge in
 reserve. Modelling the powertrain in the rollout turns a one-gate failure into a
 completed lap with energy to spare.
+
+### Charge Budget
+
+A [`ChargeBudget`] adds an explicit energy term to the aware controller: once a
+rollout step's state of charge falls below a protected `reserve`, the cost gains
+`weight * (reserve - soc) * load`. Because the penalty scales with the electrical
+load (current draw), it gives the rollout an actionable gradient — throttle back
+when the pack runs low — that a slow-moving state-of-charge penalty cannot.
+`simulate_powertrain_race_budgeted` runs it; a zero-weight budget recovers the
+plain aware controller (unit-tested).
+
+`benchmark_racing_powertrain_budget` sweeps the budget weight over a draining
+multi-lap square through the same powertrain:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_powertrain_budget --no-default-features --features control
+```
+
+The sweep traces one Pareto frontier: with no budget the controller flies hard
+(mean speed about 2.9 m/s), completes the most lap progress (about 3.5 laps), and
+drains the pack to roughly 1%; as the weight rises it eases off below the
+reserve, slows (down to about 2.3 m/s), completes fewer laps, and ends with
+progressively more charge in reserve (up to about 7%). The honest takeaway is
+that on a hover-dominated quad with no regeneration, pacing buys reserve rather
+than extra laps — covering distance faster is the more energy-efficient way to
+spend a fixed pack, so the budget is a knob for *where on that trade-off to sit*
+rather than a free win.

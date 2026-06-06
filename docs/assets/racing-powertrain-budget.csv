@@ -1,0 +1,5 @@
+charge_weight,gates,gates_passed,laps_completed,lap_fraction,mean_speed,ceiling_saturation,min_battery_soc,final_battery_soc,steps
+0,4,14,3,0.500,2.935,0.954,0.010,0.010,240
+50,4,13,3,0.250,2.603,0.946,0.026,0.026,240
+150,4,9,2,0.250,2.284,0.912,0.050,0.050,240
+400,4,7,1,0.750,2.331,0.929,0.071,0.071,240
