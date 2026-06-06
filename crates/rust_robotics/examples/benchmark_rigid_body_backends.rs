@@ -1,22 +1,27 @@
 //! Rigid-body planning backend benchmark.
 //!
-//! Compares the deterministic lattice A* backend (the MIP-style fallback) with
-//! the sampling RRT backend on identical SE(2) scenes. Both backends share the
-//! same geometric feasibility machinery (pose and swept-segment separation
-//! certificates), so the only thing that differs is the search strategy.
+//! Compares three backends behind `RigidBodyPlanningBackend` on identical SE(2)
+//! scenes: the deterministic lattice A* fallback, the sampling RRT backend, and
+//! the exact branch-and-bound backend that minimizes true Euclidean path length
+//! over a 16-connected motion grid. All three share the same geometric
+//! feasibility machinery (the disjunctive separating-half-space certificates),
+//! so the only thing that differs is the search strategy and objective.
 //!
-//! The lattice backend runs once per scene (it is deterministic). The RRT
-//! backend runs over a fixed sweep of seeds so we can report a success rate and
-//! the spread of path length / sample effort without any `thread_rng`
-//! nondeterminism. Results are written to CSV and a small SVG bar chart.
+//! The lattice and exact backends run once per scene (both deterministic); the
+//! RRT backend runs over a fixed sweep of seeds so we can report a success rate
+//! and the spread of path length / sample effort without any `thread_rng`
+//! nondeterminism. The exact backend is length-optimal, so its bar is never
+//! taller than the lattice's. Results are written to CSV and a small SVG bar
+//! chart.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
 use rust_robotics::planning::{
-    RigidBodyConvexObstacle2D, RigidBodyMipConfig2D, RigidBodyMipPlanner2D,
-    RigidBodyPlanningBackend, RigidBodyPose2D, RigidBodyRrtBackend2D, RigidBodyRrtConfig2D,
+    RigidBodyConvexObstacle2D, RigidBodyExactBackend2D, RigidBodyMipConfig2D,
+    RigidBodyMipPlanner2D, RigidBodyPlanningBackend, RigidBodyPose2D, RigidBodyRrtBackend2D,
+    RigidBodyRrtConfig2D,
 };
 use rust_robotics::prelude::*;
 
@@ -149,12 +154,39 @@ fn rrt_stats(scene: &Scene) -> BackendStats {
     }
 }
 
+fn exact_stats(scene: &Scene) -> BackendStats {
+    let backend = RigidBodyExactBackend2D::new(scene.config.clone()).expect("valid exact config");
+    match backend.plan_path(scene.start, scene.goal, scene.require_goal_heading) {
+        Ok(outcome) => BackendStats {
+            scene: scene.name,
+            backend: outcome.backend,
+            runs: 1,
+            successes: 1,
+            mean_path_length: outcome.path_length,
+            mean_heading_change: outcome.heading_change,
+            mean_iterations: outcome.iterations as f64,
+            min_separation_margin: outcome.min_separation_margin,
+        },
+        Err(_) => BackendStats {
+            scene: scene.name,
+            backend: "exact-bnb",
+            runs: 1,
+            successes: 0,
+            mean_path_length: 0.0,
+            mean_heading_change: 0.0,
+            mean_iterations: 0.0,
+            min_separation_margin: 0.0,
+        },
+    }
+}
+
 fn collect_stats() -> RoboticsResult<Vec<BackendStats>> {
     let scenes = [open_detour_scene()?, twin_pillars_scene()?];
     let mut stats = Vec::new();
     for scene in &scenes {
         stats.push(lattice_stats(scene));
         stats.push(rrt_stats(scene));
+        stats.push(exact_stats(scene));
     }
     Ok(stats)
 }
@@ -207,7 +239,7 @@ fn render_svg(stats: &[BackendStats]) -> String {
     );
     let _ = writeln!(
         svg,
-        "<text x=\"{left}\" y=\"56\" font-family=\"sans-serif\" font-size=\"13\" fill=\"#6e6e73\">lattice A* (deterministic fallback) vs RRT-SE(2) over {} seeds</text>",
+        "<text x=\"{left}\" y=\"56\" font-family=\"sans-serif\" font-size=\"13\" fill=\"#6e6e73\">lattice A* (fallback) vs RRT-SE(2) over {} seeds vs exact branch-and-bound (length-optimal)</text>",
         RRT_SEEDS.len()
     );
 
@@ -218,18 +250,20 @@ fn render_svg(stats: &[BackendStats]) -> String {
         left + plot_width
     );
 
-    let group_count = stats.len() / 2;
+    let group_count = stats.len() / 3;
     let group_width = plot_width / group_count as f64;
-    let bar_width = group_width * 0.3;
+    let bar_width = group_width * 0.22;
     for group in 0..group_count {
-        let lattice = &stats[group * 2];
-        let rrt = &stats[group * 2 + 1];
+        let lattice = &stats[group * 3];
+        let rrt = &stats[group * 3 + 1];
+        let exact = &stats[group * 3 + 2];
         let group_x = left + group as f64 * group_width;
         let center = group_x + group_width / 2.0;
 
         for (offset, row, color) in [
-            (-bar_width * 0.6, lattice, "#0a84ff"),
-            (bar_width * 0.6, rrt, "#ff9f0a"),
+            (-bar_width * 1.15, lattice, "#0a84ff"),
+            (0.0, rrt, "#ff9f0a"),
+            (bar_width * 1.15, exact, "#34c759"),
         ] {
             let bar_height = row.mean_path_length / max_length * (bottom - 80.0);
             let bar_x = center + offset - bar_width / 2.0;
@@ -282,6 +316,16 @@ fn render_svg(stats: &[BackendStats]) -> String {
         "<text x=\"{}\" y=\"102\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#1d1d1f\">RRT-SE(2)</text>",
         left + plot_width - 130.0
     );
+    let _ = writeln!(
+        svg,
+        "<rect x=\"{}\" y=\"110\" width=\"14\" height=\"14\" fill=\"#34c759\" rx=\"3\"/>",
+        left + plot_width - 150.0
+    );
+    let _ = writeln!(
+        svg,
+        "<text x=\"{}\" y=\"122\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#1d1d1f\">exact B&amp;B</text>",
+        left + plot_width - 130.0
+    );
 
     svg.push_str("</svg>\n");
     svg
@@ -330,6 +374,31 @@ mod tests {
                 assert_eq!(row.successes, 1, "lattice failed scene {}", row.scene);
                 assert!(row.mean_path_length > 0.0);
             }
+        }
+    }
+
+    #[test]
+    fn exact_backend_solves_and_is_shortest() {
+        let stats = collect_stats().unwrap();
+        for scene in ["open-detour", "twin-pillars"] {
+            let lattice = stats
+                .iter()
+                .find(|r| r.scene == scene && r.backend == "lattice-astar")
+                .unwrap();
+            let exact = stats
+                .iter()
+                .find(|r| r.scene == scene && r.backend == "exact-bnb")
+                .unwrap();
+            assert_eq!(exact.successes, 1, "exact failed scene {scene}");
+            // The exact branch-and-bound is length-optimal, so it never produces
+            // a path longer than the coarse lattice on the same scene.
+            assert!(
+                exact.mean_path_length <= lattice.mean_path_length + 1e-6,
+                "exact {} should not exceed lattice {} on {scene}",
+                exact.mean_path_length,
+                lattice.mean_path_length
+            );
+            assert!(exact.min_separation_margin > 0.0);
         }
     }
 

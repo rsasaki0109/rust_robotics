@@ -27,7 +27,7 @@ reproduction slices in this workspace.
 | BranchOut | Lane-level multimodal driving scene, compact mode/GMM-style trajectory head, distributional metrics, SVG | `branchout_multimodal.rs`, `headless_branchout_multimodal_driving.rs`, `docs/assets/branchout-multimodal-driving.svg` |
 | Multi-Robot Trajectory Planning via cBOT and STL-KCBS | Grid CBS, vertex/edge constraints, STL robustness, heading/time kinodynamic search, continuous-time pairwise occupancy checks, SVGs | `stl_cbs.rs`, `kinodynamic_stl_cbs.rs`, `docs/assets/stl-cbs-multi-robot.svg`, `docs/assets/kinodynamic-stl-cbs.svg` |
 | Hierarchical Large-Scale Multi-Robot Path / Trajectory Replanning | Region hierarchy over grid MAPF, affected-agent CBS group repair, 50/100/200-agent scale benchmark, CSV/SVG | `hierarchical_mapf.rs`, `benchmark_hierarchical_mapf_scale.rs`, `docs/assets/hierarchical-mapf-scale.svg` |
-| Rigid Body Path Planning using Mixed-Integer Linear Programming | Rectangular rigid body over discretized SE(2), convex polygon half-space obstacles, pose/segment binary-style separation certificates, narrow-slot SVG | `rigid_body_mip.rs`, `headless_rigid_body_mip_planning.rs`, `docs/assets/rigid-body-mip-planning.svg` |
+| Rigid Body Path Planning using Mixed-Integer Linear Programming | Rectangular rigid body over discretized SE(2), convex polygon half-space obstacles, pose/segment binary-style separation certificates, narrow-slot SVG; backend trait with lattice A*, sampling RRT, and an exact length-optimal branch-and-bound backend; backend-comparison benchmark | `rigid_body_mip.rs`, `headless_rigid_body_mip_planning.rs`, `benchmark_rigid_body_backends.rs`, `docs/assets/rigid-body-mip-planning.svg`, `docs/assets/rigid-body-backend-benchmark.svg` |
 | SafeDec: Constrained Decoding for Safe Robot Navigation Policies | STL-shielded constrained beam search over a greedy grid policy (always-avoid geofence + eventually-reach), greedy-vs-shielded comparison, SVG | `safe_decode_nav.rs`, `render_safe_decode_nav_svg.rs`, `docs/assets/safe-decode-nav.svg` |
 | PolyMerge: polytope-covering safety / CBF filtering | Convex-polygon obstacle cover, true point-to-polygon CBF barrier, exact 2-D active-set CBF-QP velocity filter, raw-vs-filtered benchmark, CSV/SVG | `cbf_safety_filter.rs`, `benchmark_cbf_safety_filter.rs`, `docs/assets/cbf-safety-filter.svg` |
 | Long Range Navigator | Occlusion-aware sensing, frontier extraction/clustering, affordance scoring (goal/cost/line-of-sight/openness), Dijkstra local-planner handoff, SVG | `frontier_navigator.rs`, `render_frontier_navigator_svg.rs`, `docs/assets/frontier-navigator.svg` |
@@ -100,9 +100,10 @@ reuse of the MPPI/planning modules already added.
      obstacles as half-spaces, SE(2) lattice search, one active
      obstacle-separating half-space certificate per obstacle and pose,
      sampled segment-level certificates, narrow-slot demo and SVG.
-   - Remaining extensions: backend trait for exact MILP solvers, continuous
-     swept-volume certificates, and benchmark comparisons against sampling
-     planners.
+   - Remaining extensions: continuous swept-volume certificates and a
+     heading-constrained variant of the exact backend (the backend trait, an
+     exact length-optimal branch-and-bound backend, and the sampling-planner
+     comparison benchmark are implemented).
 
 7. Long Range Navigator
    - Source: https://personalrobotics.github.io/lrn/
@@ -224,7 +225,8 @@ The first build queue is fully landed (2026-06-04/05):
 4. ~~Hierarchical MAPF anisotropic region sweep (`region_width != region_height`)
    plus a solvable fallback-regime data point~~ — Done (anisotropic +
    fallback-rate sweeps in `benchmark_hierarchical_mapf_sweeps.rs`).
-5. Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked
-   for path optimality against the lattice/RRT backends.
+5. ~~Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked
+   for path optimality against the lattice/RRT backends~~ — Done
+   (`RigidBodyExactBackend2D`, length-optimal branch-and-bound).
 6. Racing motor-level model: thrust-and-torque quadrotor with a rotor mixing
    matrix so motor saturation enters the trade-off.
