@@ -45,11 +45,14 @@ reuse of the MPPI/planning modules already added.
      3-D gate planes, drag-limited point-mass dynamics, open/closed laps and
      lap-progress metrics; full quadrotor attitude model (collective thrust +
      body rates) whose orientation is driven by the gate-progress objective;
-     motor-level four-rotor rotor-mixing model with rotor saturation; and a
+     motor-level four-rotor rotor-mixing model with rotor saturation; a
      motor-lag + battery-sag powertrain layer (`racing_mppi_powertrain.rs`,
-     `benchmark_racing_powertrain.rs`) that degrades an idealized plan.
-   - Remaining extensions: make the controller powertrain-aware (roll out
-     through the lag/battery model so it conserves authority for late gates).
+     `benchmark_racing_powertrain.rs`) that degrades an idealized plan; and a
+     powertrain-aware controller (`PowertrainMppiController`,
+     `benchmark_racing_powertrain_aware.rs`) that rolls out through the lag/
+     battery model and finishes a drained-pack course the unaware one stalls on.
+   - Remaining extensions: a per-rotor torque/current map so yaw authority sags
+     too, and a charge-budget term for multi-lap energy/progress trade-offs.
 
 2. Adap-RPF: Adaptive Trajectory Sampling for Robot Person Following
    - Source: https://adap-rpf.github.io/
@@ -242,3 +245,6 @@ All six v2 queue items are landed.
 1. ~~Motor-lag + battery-sag powertrain layered on the rotor model so an
    idealized plan degrades when it meets a laggy, draining powertrain~~ — Done
    (2026-06-07; `racing_mppi_powertrain.rs`, `benchmark_racing_powertrain.rs`).
+2. ~~Powertrain-aware controller that rolls candidates out through the lag/battery
+   model and conserves authority for later gates~~ — Done (2026-06-07;
+   `PowertrainMppiController`, `benchmark_racing_powertrain_aware.rs`).

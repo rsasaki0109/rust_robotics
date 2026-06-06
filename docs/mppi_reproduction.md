@@ -35,6 +35,9 @@ Implemented slice:
 21. Motor-lag and battery-sag powertrain layered on the rotor model (first-order
     spin-up lag plus a thrust ceiling that droops with load and state of charge),
     so an idealized plan degrades when it meets a laggy, draining powertrain.
+22. Powertrain-aware MPPI controller that rolls candidates out through the lag and
+    battery model, so it plans within the authority the pack can deliver and
+    conserves charge for later gates.
 
 Run:
 
@@ -56,6 +59,7 @@ cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-featu
 cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -242,3 +246,32 @@ terminal voltage, saturates that lowered ceiling on nearly every step, drains to
 empty, and stalls after a single gate — the same plan the fresh drone flew
 cleanly. That gap is the lag/sag cost a planner that assumes ideal actuators
 silently pays.
+
+### Powertrain-Aware Controller
+
+`PowertrainMppiController` closes that gap: instead of rolling candidate commands
+out through the ideal motor model, it rolls them out through the full
+`PowertrainParams::step`, so its samples already feel the motor lag and the
+battery-limited thrust ceiling. Commands above the (causal) ceiling are clamped
+away inside the rollout, so over-commanding earns no gate progress while still
+paying the rotor-effort penalty — the controller is pushed to plan within the
+authority the pack can actually deliver, and it sees the charge drain over the
+horizon rather than assuming an infinite pack. On an ideal powertrain it reduces
+to the motor controller (a unit test checks the two plan the same command).
+
+`simulate_powertrain_race_aware` runs it through the same closed loop, and
+`benchmark_racing_powertrain_aware` pits aware against unaware on one slalom flown
+through the same lagging, sagging powertrain at two states of charge:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control
+```
+
+On a fresh full pack both controllers thread all four gates (the aware one a
+little faster, since planning through the lag lets it commit to a cleaner line).
+On a pack drained to 25% the difference is decisive: the unaware controller keeps
+commanding thrust the battery cannot supply, stalls after a single gate, and
+drains the pack to about 2%; the aware controller budgets within the lowered
+ceiling, threads all four gates, and still finishes with roughly 18% charge in
+reserve. Modelling the powertrain in the rollout turns a one-gate failure into a
+completed lap with energy to spare.
