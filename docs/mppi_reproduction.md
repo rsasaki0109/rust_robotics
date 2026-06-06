@@ -32,6 +32,9 @@ Implemented slice:
 20. Motor-level rotor-mixing quadrotor (four rotor thrusts -> collective thrust
     and body torques, body rates as states) with rotor saturation, so the
     thrust/torque trade-off enters racing.
+21. Motor-lag and battery-sag powertrain layered on the rotor model (first-order
+    spin-up lag plus a thrust ceiling that droops with load and state of charge),
+    so an idealized plan degrades when it meets a laggy, draining powertrain.
 
 Run:
 
@@ -52,6 +55,7 @@ cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-featu
 cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -198,5 +202,43 @@ topping out near 1.6 g) saturates far more often (around 57% of steps versus
 44%), flies slower, and falls short of the last gate — the thrust/torque
 trade-off that the body-rate model, which commands rates for free, cannot show.
 
-Next useful extension is per-rotor first-order motor lag (spin-up dynamics) and a
-battery-sag thrust limit that drops with sustained current.
+## Motor-Lag and Battery-Sag Powertrain
+
+`racing_mppi_powertrain` inserts a *powertrain* between the commanded rotor
+thrusts and the rigid-body physics, modelling two effects every real racing quad
+has and that the planner does not know about:
+
+- **First-order motor lag.** A rotor cannot change thrust instantly; the actual
+  thrust tracks the command through a spin-up lag with time constant `motor_tau`
+  (`actual += (target - actual) * (1 - exp(-dt / tau))`). Aggressive attitude
+  flicks are smeared in time.
+- **Battery sag.** The per-rotor thrust ceiling is not constant. Open-circuit
+  voltage falls linearly with state of charge from full to `min_voltage_scale`,
+  instantaneous sag subtracts `sag_coeff * load` on top of that, and the pack
+  discharges in proportion to load. A drone that flies hard early has less
+  authority later.
+
+The layer is built by *composition*: it reuses `MotorQuadParams::step` verbatim
+for the translational and rotational physics and only adds the actuator
+front-end (the lagged rotor thrusts plus the battery state). With
+`PowertrainParams::ideal` — zero lag, no discharge, no sag — it reduces exactly
+to the motor-level model, which is the benchmark's baseline.
+
+`simulate_powertrain_race` drives the *powertrain-unaware* `MotorMppiController`
+(which still plans assuming ideal actuators) through the real powertrain, so the
+benchmark measures how much an idealized plan costs against a laggy, draining
+one. The benchmark flies the same seeded controller down the same slalom under
+four powertrains, writing `docs/assets/racing-powertrain.csv` and `.svg`:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
+```
+
+On the bundled slalom the `ideal` and `motor-lag` powertrains both thread all
+four gates (lag alone barely changes a short course). A fresh `lag+battery` pack
+also finishes, but its commands clip the battery ceiling on roughly three out of
+four steps. A `drained-pack` starting at 25% state of charge runs at a far lower
+terminal voltage, saturates that lowered ceiling on nearly every step, drains to
+empty, and stalls after a single gate — the same plan the fresh drone flew
+cleanly. That gap is the lag/sag cost a planner that assumes ideal actuators
+silently pays.

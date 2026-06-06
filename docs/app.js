@@ -482,6 +482,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Motor-Lag and Battery-Sag Powertrain",
+    category: "Control",
+    image: "assets/racing-powertrain.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control",
+    description: "The same MPPI plan flown down one slalom through four powertrains: ideal, first-order motor lag, a fresh battery that sags under load, and a pack drained to 25 percent. The drained pack saturates its lowered thrust ceiling on nearly every step and stalls after one gate, while the fresh drone finishes.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

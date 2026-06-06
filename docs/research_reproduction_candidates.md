@@ -44,9 +44,12 @@ reuse of the MPPI/planning modules already added.
      reference-free MPPI objective, waypoint-reference comparison, SVG visual;
      3-D gate planes, drag-limited point-mass dynamics, open/closed laps and
      lap-progress metrics; full quadrotor attitude model (collective thrust +
-     body rates) whose orientation is driven by the gate-progress objective.
-   - Remaining extensions: a motor-level thrust/torque model with a rotor mixing
-     matrix so motor saturation enters the racing trade-off.
+     body rates) whose orientation is driven by the gate-progress objective;
+     motor-level four-rotor rotor-mixing model with rotor saturation; and a
+     motor-lag + battery-sag powertrain layer (`racing_mppi_powertrain.rs`,
+     `benchmark_racing_powertrain.rs`) that degrades an idealized plan.
+   - Remaining extensions: make the controller powertrain-aware (roll out
+     through the lag/battery model so it conserves authority for late gates).
 
 2. Adap-RPF: Adaptive Trajectory Sampling for Robot Person Following
    - Source: https://adap-rpf.github.io/
@@ -233,3 +236,9 @@ The first build queue is fully landed (2026-06-04/05):
    (`racing_mppi_motor.rs`, `benchmark_racing_motor.rs`).
 
 All six v2 queue items are landed.
+
+### Follow-on depth extensions (post-v2)
+
+1. ~~Motor-lag + battery-sag powertrain layered on the rotor model so an
+   idealized plan degrades when it meets a laggy, draining powertrain~~ — Done
+   (2026-06-07; `racing_mppi_powertrain.rs`, `benchmark_racing_powertrain.rs`).
