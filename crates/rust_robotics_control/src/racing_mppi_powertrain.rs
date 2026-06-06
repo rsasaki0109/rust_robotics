@@ -33,6 +33,9 @@
 //!   candidates out through [`PowertrainParams::step`], so it plans within the
 //!   deliverable authority and conserves charge for later gates.
 //!   [`simulate_powertrain_race_aware`] runs it through the same closed loop.
+//! - [`ChargeBudget`] adds an explicit energy term to the aware controller,
+//!   penalizing below-reserve current draw so it can trade lap progress for
+//!   charge held back; [`simulate_powertrain_race_budgeted`] runs it.
 
 use crate::racing_mppi_3d::{RacingGateLap3D, RacingGatePlane3D};
 use crate::racing_mppi_motor::{
@@ -278,12 +281,51 @@ fn validate_config(config: &MotorMppiConfig) -> RoboticsResult<()> {
 /// still paying the rotor-effort penalty; the controller is therefore pushed to
 /// plan within the authority the battery can actually deliver, and it sees the
 /// pack drain over the horizon rather than assuming infinite charge.
+/// A charge-budget term for the powertrain-aware controller.
+///
+/// Once a rollout step's state of charge falls below `reserve`, the rollout cost
+/// gains `weight * (reserve - soc) * load`, where `load` is the electrical draw.
+/// Because the penalty scales with `load` it gives the rollout an actionable
+/// gradient — throttle back when low — that a slow-moving state-of-charge term
+/// cannot. `weight = 0` recovers the plain aware controller.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChargeBudget {
+    /// Penalty scale on below-reserve current draw; clamped to `>= 0`.
+    pub weight: f64,
+    /// State-of-charge floor to protect, in `[0, 1]`.
+    pub reserve: f64,
+}
+
+impl ChargeBudget {
+    /// A charge budget with the given weight and reserve, sanitized to sane
+    /// ranges (`weight >= 0` and finite, `reserve` in `[0, 1]`).
+    pub fn new(weight: f64, reserve: f64) -> Self {
+        Self {
+            weight: if weight.is_finite() && weight > 0.0 {
+                weight
+            } else {
+                0.0
+            },
+            reserve: reserve.clamp(0.0, 1.0),
+        }
+    }
+
+    /// The no-op budget (`weight = 0`): the plain aware controller.
+    pub fn none() -> Self {
+        Self {
+            weight: 0.0,
+            reserve: 0.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct PowertrainMppiController {
     config: MotorMppiConfig,
     params: PowertrainParams,
     nominal: Vec<MotorCommand>,
     rng: StdRng,
+    budget: ChargeBudget,
 }
 
 impl PowertrainMppiController {
@@ -296,7 +338,15 @@ impl PowertrainMppiController {
             params,
             nominal,
             rng,
+            budget: ChargeBudget::none(),
         })
+    }
+
+    /// Attach a [`ChargeBudget`] so the controller eases off below the reserve
+    /// and trades raw gate progress for charge held back for later laps.
+    pub fn with_charge_budget(mut self, budget: ChargeBudget) -> Self {
+        self.budget = ChargeBudget::new(budget.weight, budget.reserve);
+        self
     }
 
     pub fn config(&self) -> &MotorMppiConfig {
@@ -317,9 +367,17 @@ impl PowertrainMppiController {
             // past the battery ceiling (which the rollout clamps away) costs
             // effort for no benefit.
             let rotor_effort: f64 = command.rotors.iter().map(|&r| (r - hover).powi(2)).sum();
+            // Charge-budget term: once below the protected reserve, penalize the
+            // electrical load (current draw) itself, scaled by how deep below the
+            // reserve the pack is. Because load couples directly to thrust each
+            // step, this gives the rollout an actionable gradient — throttle back
+            // when low — that a slow-moving state-of-charge penalty cannot.
+            let below_reserve = (self.budget.reserve - state.battery_soc).max(0.0);
+            let load = self.params.load(state.rotor_thrust);
             regularizer += self.config.velocity_weight * speed * speed
                 + self.config.rotor_weight * rotor_effort
-                + self.config.level_weight * tilt_cost;
+                + self.config.level_weight * tilt_cost
+                + self.budget.weight * below_reserve * load;
             positions.push(state.motor.position);
         }
         (positions, regularizer)
@@ -582,6 +640,35 @@ pub fn simulate_powertrain_race_aware(
     )
 }
 
+/// Drive a *charge-budgeted* powertrain-aware controller through the powertrain.
+///
+/// Like [`simulate_powertrain_race_aware`] but the controller carries a
+/// [`ChargeBudget`] that penalizes below-reserve current draw. Over a multi-lap
+/// race the budgeted controller eases off as it nears the reserve, trading raw
+/// lap progress for charge held back in the pack. A zero-weight budget recovers
+/// the plain aware controller.
+pub fn simulate_powertrain_race_budgeted(
+    config: MotorMppiConfig,
+    params: PowertrainParams,
+    budget: ChargeBudget,
+    lap: &RacingGateLap3D,
+    start: PowertrainState,
+    max_steps: usize,
+    target_laps: usize,
+) -> RoboticsResult<PowertrainLapReport> {
+    let dt = config.dt;
+    let mut controller = PowertrainMppiController::new(config, params)?.with_charge_budget(budget);
+    run_powertrain_race(
+        dt,
+        params,
+        lap,
+        start,
+        max_steps,
+        target_laps,
+        |state, passed| controller.plan(*state, lap, passed).map(|p| p.command),
+    )
+}
+
 fn aperture_crossing_margin(gate: &RacingGatePlane3D, from: [f64; 3], to: [f64; 3]) -> f64 {
     let from_signed = gate.signed_distance(from);
     let to_signed = gate.signed_distance(to);
@@ -814,6 +901,71 @@ mod tests {
             report.gates_passed
         );
         assert_eq!(report.battery_trace.len(), report.steps);
+    }
+
+    #[test]
+    fn budget_zero_weight_matches_aware() {
+        // A zero-weight charge budget must recover the plain aware controller.
+        let lap = straight_lap();
+        let pt = racing_params();
+        let start = PowertrainState::at_soc(0.0, 0.0, 0.0, pt.base.gravity, 0.6);
+        let aware =
+            simulate_powertrain_race_aware(MotorMppiConfig::default(), pt, &lap, start, 120, 1)
+                .unwrap();
+        let budgeted = simulate_powertrain_race_budgeted(
+            MotorMppiConfig::default(),
+            pt,
+            ChargeBudget::new(0.0, 0.4),
+            &lap,
+            start,
+            120,
+            1,
+        )
+        .unwrap();
+        assert_eq!(aware.path, budgeted.path);
+        assert_eq!(aware.battery_trace, budgeted.battery_trace);
+    }
+
+    #[test]
+    fn budget_protects_the_reserve() {
+        // On a draining closed lap, a charge budget ends with more charge than
+        // the greedy aware controller flying the same course.
+        let s = 2.0;
+        let gates = vec![
+            gate([s, 0.0, 0.0], [0.0, 1.0, 0.0]),
+            gate([0.0, s, 0.0], [-1.0, 0.0, 0.0]),
+            gate([-s, 0.0, 0.0], [0.0, -1.0, 0.0]),
+            gate([0.0, -s, 0.0], [1.0, 0.0, 0.0]),
+        ];
+        let lap = RacingGateLap3D::closed_loop(gates).unwrap();
+        let pt = PowertrainParams::new(MotorQuadParams::default(), 0.08, 0.12, 0.18, 0.55).unwrap();
+        let start = PowertrainState::at_soc(s, -1.5, 0.0, pt.base.gravity, 0.7);
+        let greedy = simulate_powertrain_race_budgeted(
+            MotorMppiConfig::default(),
+            pt,
+            ChargeBudget::none(),
+            &lap,
+            start,
+            220,
+            6,
+        )
+        .unwrap();
+        let budgeted = simulate_powertrain_race_budgeted(
+            MotorMppiConfig::default(),
+            pt,
+            ChargeBudget::new(40.0, 0.4),
+            &lap,
+            start,
+            220,
+            6,
+        )
+        .unwrap();
+        assert!(
+            budgeted.final_battery_soc > greedy.final_battery_soc,
+            "budgeted soc {} should exceed greedy {}",
+            budgeted.final_battery_soc,
+            greedy.final_battery_soc
+        );
     }
 
     #[test]
