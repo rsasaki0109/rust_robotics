@@ -22,10 +22,14 @@
 //! - [`simulate_multi_push`] arranges several sliders into goal slots one at a
 //!   time, treating the other objects as keep-out discs so the active slider
 //!   routes around them.
+//! - [`PusherSliderParams::two_contact_twist`] / `two_contact_step` solve two
+//!   simultaneous contacts contact-implicitly (per-contact stick/slide mode
+//!   enumeration with a 4x4 force solve), so a couple can spin the slider in
+//!   place — motion a single contact cannot produce.
 //!
-//! The model is exact for the sticking and sliding regimes of a single point
-//! contact on each face; simultaneous multi-contact pushing is left as an
-//! extension.
+//! The model is exact for the single-contact stick/slide regimes; the two-contact
+//! solver resolves the rigid-redundant (both-stick) case onto a cone edge, and a
+//! contact-implicit controller over the contacts is left as an extension.
 
 use rand::{rngs::StdRng, SeedableRng};
 use rand_distr::{Distribution, Normal};
@@ -256,6 +260,214 @@ impl PusherSliderParams {
         let (s, co) = state.theta().sin_cos();
         [state.x() + co * px - s * py, state.y() + s * px + co * py]
     }
+
+    /// Body-frame slider twist `[vx, vy, omega]` and per-contact modes for *two*
+    /// simultaneous point contacts, solved contact-implicitly.
+    ///
+    /// Each contact maintains its commanded normal speed; its tangential degree
+    /// of freedom is either sticking (tangential contact-point velocity matches
+    /// the pusher) or sliding (the tangential force saturates the friction cone).
+    /// The realized regime is found by enumerating the per-contact stick/slide
+    /// modes, solving the resulting 4x4 contact-force system, and keeping the
+    /// first combination whose forces are pushing (`fn >= 0`), respect the
+    /// friction cone (stick) or sit on the correct cone edge with a consistent
+    /// slip direction (slide).
+    pub fn two_contact_twist(
+        self,
+        c1: PusherCommand,
+        c2: PusherCommand,
+    ) -> ([f64; 3], [ContactMode; 2]) {
+        let c2c = self.char_len * self.char_len;
+        let (p1, d1, t1) = self.contact_frame(c1.face, c1.contact);
+        let (p2, d2, t2) = self.contact_frame(c2.face, c2.contact);
+        let mu = self.pusher_friction;
+
+        // omega = g . f, with f = [f1x, f1y, f2x, f2y].
+        let g = [-p1[1] / c2c, p1[0] / c2c, -p2[1] / c2c, p2[0] / c2c];
+        let wx_row = [1.0, 0.0, 1.0, 0.0];
+        let wy_row = [0.0, 1.0, 0.0, 1.0];
+        let add = |a: [f64; 4], b: [f64; 4], k: f64| {
+            [
+                a[0] + k * b[0],
+                a[1] + k * b[1],
+                a[2] + k * b[2],
+                a[3] + k * b[3],
+            ]
+        };
+        // Contact-point velocity rows (as linear forms in f).
+        let vc1x = add(wx_row, g, -p1[1]);
+        let vc1y = add(wy_row, g, p1[0]);
+        let vc2x = add(wx_row, g, -p2[1]);
+        let vc2y = add(wy_row, g, p2[0]);
+        let dot = |a: [f64; 4], b: [f64; 4]| a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+
+        // Normal equations (always): contact velocity along the normal = vn.
+        let row_normal = |vcx: [f64; 4], vcy: [f64; 4], d: [f64; 2]| {
+            [
+                d[0] * vcx[0] + d[1] * vcy[0],
+                d[0] * vcx[1] + d[1] * vcy[1],
+                d[0] * vcx[2] + d[1] * vcy[2],
+                d[0] * vcx[3] + d[1] * vcy[3],
+            ]
+        };
+        let n1 = row_normal(vc1x, vc1y, d1);
+        let n2 = row_normal(vc2x, vc2y, d2);
+
+        // Candidate tangential modes: stick, slide+ (ft = +mu fn), slide- .
+        let modes = [0i32, 1, -1];
+        let mut chosen: Option<([f64; 3], [ContactMode; 2])> = None;
+        for &m1 in &modes {
+            for &m2 in &modes {
+                let (tang1, rhs1) =
+                    tangential_row(vc1x, vc1y, t1, d1, mu, m1, c1.tangent_speed, true);
+                let (tang2, rhs2) =
+                    tangential_row(vc2x, vc2y, t2, d2, mu, m2, c2.tangent_speed, false);
+                let a = [n1, tang1, n2, tang2];
+                let b = [c1.push_speed.max(0.0), rhs1, c2.push_speed.max(0.0), rhs2];
+                let Some(f) = solve4(a, b) else { continue };
+
+                let f1 = [f[0], f[1]];
+                let f2 = [f[2], f[3]];
+                let fn1 = f1[0] * d1[0] + f1[1] * d1[1];
+                let fn2 = f2[0] * d2[0] + f2[1] * d2[1];
+                let ft1 = f1[0] * t1[0] + f1[1] * t1[1];
+                let ft2 = f2[0] * t2[0] + f2[1] * t2[1];
+                if fn1 < -1e-9 || fn2 < -1e-9 {
+                    continue;
+                }
+                let slip1 = dot(vc1x, f) * t1[0] + dot(vc1y, f) * t1[1] - c1.tangent_speed;
+                let slip2 = dot(vc2x, f) * t2[0] + dot(vc2y, f) * t2[1] - c2.tangent_speed;
+                if !mode_valid(m1, fn1, ft1, slip1, mu) || !mode_valid(m2, fn2, ft2, slip2, mu) {
+                    continue;
+                }
+
+                let wx = dot(wx_row, f);
+                let wy = dot(wy_row, f);
+                let omega = dot(g, f);
+                chosen = Some(([wx, wy, omega], [mode_tag(m1), mode_tag(m2)]));
+                break;
+            }
+            if chosen.is_some() {
+                break;
+            }
+        }
+
+        chosen.unwrap_or(([0.0; 3], [ContactMode::Separated, ContactMode::Separated]))
+    }
+
+    /// Advance the slider one quasi-static step under two simultaneous contacts.
+    pub fn two_contact_step(
+        self,
+        state: SliderState,
+        c1: PusherCommand,
+        c2: PusherCommand,
+        dt: f64,
+    ) -> (SliderState, [ContactMode; 2]) {
+        let ([vx_b, vy_b, omega], modes) = self.two_contact_twist(c1, c2);
+        let theta = state.theta();
+        let (s, co) = theta.sin_cos();
+        let vx_w = co * vx_b - s * vy_b;
+        let vy_w = s * vx_b + co * vy_b;
+        let next = SliderState::new(
+            state.x() + vx_w * dt,
+            state.y() + vy_w * dt,
+            theta + omega * dt,
+        );
+        (next, modes)
+    }
+}
+
+/// Build a tangential equation row and rhs for contact mode `m`
+/// (`0` = stick, `+1`/`-1` = slide on the upper/lower cone edge).
+#[allow(clippy::too_many_arguments)]
+fn tangential_row(
+    vcx: [f64; 4],
+    vcy: [f64; 4],
+    t: [f64; 2],
+    d: [f64; 2],
+    mu: f64,
+    m: i32,
+    vt: f64,
+    first_contact: bool,
+) -> ([f64; 4], f64) {
+    if m == 0 {
+        // Stick: contact velocity along the tangent equals the pusher tangent.
+        let row = [
+            t[0] * vcx[0] + t[1] * vcy[0],
+            t[0] * vcx[1] + t[1] * vcy[1],
+            t[0] * vcx[2] + t[1] * vcy[2],
+            t[0] * vcx[3] + t[1] * vcy[3],
+        ];
+        (row, vt)
+    } else {
+        // Slide: f . t = m * mu * (f . d), a pure force constraint on this
+        // contact's own two force components (slots 0,1 for contact 1, 2,3 for
+        // contact 2).
+        let sgn = m as f64;
+        let cx = t[0] - sgn * mu * d[0];
+        let cy = t[1] - sgn * mu * d[1];
+        let row = if first_contact {
+            [cx, cy, 0.0, 0.0]
+        } else {
+            [0.0, 0.0, cx, cy]
+        };
+        (row, 0.0)
+    }
+}
+
+/// Validate a contact mode against the solved forces and slip.
+fn mode_valid(m: i32, fn_: f64, ft: f64, slip: f64, mu: f64) -> bool {
+    match m {
+        0 => ft.abs() <= mu * fn_ + 1e-9,
+        1 => fn_ >= -1e-9 && slip <= 1e-9,
+        _ => fn_ >= -1e-9 && slip >= -1e-9,
+    }
+}
+
+fn mode_tag(m: i32) -> ContactMode {
+    match m {
+        0 => ContactMode::Stick,
+        1 => ContactMode::SlideUp,
+        _ => ContactMode::SlideDown,
+    }
+}
+
+/// Solve a 4x4 linear system by Gaussian elimination with partial pivoting.
+#[allow(clippy::needless_range_loop)]
+fn solve4(mut a: [[f64; 4]; 4], mut b: [f64; 4]) -> Option<[f64; 4]> {
+    for col in 0..4 {
+        // Partial pivot.
+        let mut piv = col;
+        let mut best = a[col][col].abs();
+        for (r, row) in a.iter().enumerate().skip(col + 1) {
+            if row[col].abs() > best {
+                best = row[col].abs();
+                piv = r;
+            }
+        }
+        if best < 1e-12 {
+            return None;
+        }
+        a.swap(col, piv);
+        b.swap(col, piv);
+        let pivot = a[col][col];
+        for r in (col + 1)..4 {
+            let factor = a[r][col] / pivot;
+            for k in col..4 {
+                a[r][k] -= factor * a[col][k];
+            }
+            b[r] -= factor * b[col];
+        }
+    }
+    let mut x = [0.0; 4];
+    for i in (0..4).rev() {
+        let mut sum = b[i];
+        for k in (i + 1)..4 {
+            sum -= a[i][k] * x[k];
+        }
+        x[i] = sum / a[i][i];
+    }
+    Some(x)
 }
 
 /// Configuration for the sampling-based pushing controller.
@@ -846,6 +1058,44 @@ mod tests {
             report.max_position_error < 3.0 * params.half_extent,
             "all objects should reach: max err {}",
             report.max_position_error
+        );
+    }
+
+    #[test]
+    fn two_contact_symmetric_push_is_pure_translation() {
+        // Two contacts on the back face at +/-h, both pushing forward, cancel the
+        // off-center rotation a single contact would cause.
+        let params = PusherSliderParams::default();
+        let h = 0.6 * params.half_extent;
+        let c1 = PusherCommand::on_face(0, h, 0.05, 0.0);
+        let c2 = PusherCommand::on_face(0, -h, 0.05, 0.0);
+        let ([vx, vy, omega], _modes) = params.two_contact_twist(c1, c2);
+        assert!(vx > 0.0, "should translate +x: {vx}");
+        assert!(omega.abs() < 1e-9, "no net rotation: {omega}");
+        assert!(vy.abs() < 1e-9, "no lateral: {vy}");
+        // A single off-center contact at +h does rotate.
+        let ([_, _, omega_single], _) = params.twist(PusherCommand::on_face(0, h, 0.05, 0.0));
+        assert!(
+            omega_single.abs() > 1e-6,
+            "single contact rotates: {omega_single}"
+        );
+    }
+
+    #[test]
+    fn two_contact_antipodal_couple_rotates_in_place() {
+        // Back-face contact high pushing +x and front-face contact low pushing -x
+        // form a couple: rotation with little net translation.
+        let params = PusherSliderParams::default();
+        let h = 0.7 * params.half_extent;
+        let c1 = PusherCommand::on_face(0, h, 0.05, 0.0);
+        let c2 = PusherCommand::on_face(2, -h, 0.05, 0.0);
+        let ([vx, vy, omega], _) = params.two_contact_twist(c1, c2);
+        let speed = (vx * vx + vy * vy).sqrt();
+        assert!(omega.abs() > 1e-3, "should rotate: {omega}");
+        // The rotation dominates the (couple-cancelled) translation.
+        assert!(
+            speed < 0.5 * omega.abs() * params.half_extent + 1e-6,
+            "translation {speed} should be small vs rotation {omega}"
         );
     }
 

@@ -154,10 +154,14 @@ reuse of the MPPI/planning modules already added.
       manipulation target in the repo. Multi-object arrangement is also
       implemented: `simulate_multi_push` / `benchmark_pusher_slider_multi.rs`
       pushes several sliders to slots one at a time with soft keep-out discs for
-      the other objects (object 0 detours around object 1 in its path).
-    - Remaining extensions: simultaneous two-pusher multi-contact pushing (a
-      contact-implicit complementarity problem) and contact-implicit MPC over
-      discrete contact modes.
+      the other objects (object 0 detours around object 1 in its path). Two-pusher
+      multi-contact pushing is also implemented contact-implicitly
+      (`two_contact_twist`, `benchmark_pusher_slider_two_contact.rs`): per-contact
+      stick/slide modes enumerated, 4x4 force solve, demoing two-point straight
+      tracking and an antipodal couple spinning the slider in place.
+    - Remaining extensions: a contact-implicit MPC/MPPI controller that chooses
+      the contacts and motions, plus least-norm squeeze resolution for the
+      rigid-redundant two-contact case.
 
 ## Expanded Candidate Pool
 

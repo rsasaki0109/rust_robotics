@@ -538,6 +538,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Two-Contact Pushing",
+    category: "Control",
+    image: "assets/pusher-slider-two-contact.svg",
+    command: "cargo run -p rust_robotics --example benchmark_pusher_slider_two_contact --no-default-features --features control",
+    description: "Two simultaneous pushers solved contact-implicitly: per-contact stick/slide modes are enumerated and the 4x4 contact-force system solved. A single off-center push curves; a symmetric two-point push tracks dead straight; an antipodal couple spins the slider ~278 degrees in place with zero net translation — motion a single contact cannot produce.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
