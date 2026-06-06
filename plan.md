@@ -430,6 +430,33 @@ Next useful extension:
 - Replace the greedy policy with a sampled/learned action distribution and add
   `eventually`/`until` task chains (visit A then B while avoiding C).
 
+### CBF Safety Filter (PolyMerge-lite)
+
+Source theme: polytope-covering safety and control-barrier-function filtering.
+
+Implemented:
+
+- `CbfConvexObstacle2D` convex-polygon obstacles with a true point-to-polygon
+  signed-distance barrier and outward gradient (vertex regions handled honestly).
+- `CbfSafetyFilter` CBF quadratic-program filter solved by an exact 2-D
+  active-set enumeration, with a configurable clearance margin.
+- `simulate_cbf_navigation` comparing a raw go-to-goal controller against the
+  filtered one (clearance, collisions, interventions).
+- Four-scenario CSV/SVG benchmark (grazing box, slalom, ridge, wide box).
+
+Primary files:
+
+- `crates/rust_robotics_control/src/cbf_safety_filter.rs`
+- `crates/rust_robotics/examples/benchmark_cbf_safety_filter.rs`
+- `docs/assets/cbf-safety-filter.svg`
+- `docs/assets/cbf-safety-filter.csv`
+- `docs/cbf_safety_filter_reproduction.md`
+
+Next useful extension:
+
+- Filter a global path's reference velocity (removing the reactive head-on
+  deadlock) and cover non-convex regions with a multi-polytope decomposition.
+
 ## Gallery Assets
 
 The docs gallery is extended with research reproduction assets:
@@ -452,6 +479,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/hierarchical-mapf-scale.svg`
 - `docs/assets/rigid-body-mip-planning.svg`
 - `docs/assets/rigid-body-backend-benchmark.svg`
+- `docs/assets/cbf-safety-filter.svg`
 
 The gallery index is `docs/app.js`.
 
@@ -556,11 +584,11 @@ benchmark/headless example + SVG/CSV artifact + docs.
    `render_safe_decode_nav_svg` contrasts the greedy hazard-cutting path with the
    shielded detour (avoid robustness -1.0 -> +1.0).
 
-2. **CBF safety filter (PolyMerge-lite).** Convex-polytope obstacle covers plus a
-   control-barrier-function filter that minimally corrects a nominal control to
-   stay safe. Reuses the half-space geometry from `rigid_body_mip.rs`. New
-   `cbf_safety_filter.rs` (control), benchmark of nominal vs filtered control
-   (min clearance, intervention rate) with SVG. Source: PolyMerge / CBF safety.
+2. ~~CBF safety filter (PolyMerge-lite).~~ **Done (2026-06-06).**
+   `cbf_safety_filter.rs` filters a go-to-goal command with an exact 2-D
+   active-set CBF-QP over convex-polygon obstacles (true point-to-polygon
+   barrier); `benchmark_cbf_safety_filter` contrasts colliding raw control vs the
+   filtered safe control (clearance -0.15 -> +0.08..0.12) across four scenarios.
 
 3. **Long Range Navigator-lite.** A synthetic frontier graph beyond the local
    map: affordance-scored frontiers, occlusion-aware frontier selection, and a

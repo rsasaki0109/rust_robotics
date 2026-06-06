@@ -442,6 +442,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "CBF Safety Filter",
+    category: "Control",
+    image: "assets/cbf-safety-filter.svg",
+    command: "cargo run -p rust_robotics --example benchmark_cbf_safety_filter --no-default-features --features control",
+    description: "PolyMerge-lite control-barrier-function filter over convex polytope obstacles: an exact 2-D active-set QP minimally corrects a go-to-goal velocity so the robot stays clear, compared against the colliding raw policy across four scenarios.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
