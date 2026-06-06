@@ -156,6 +156,14 @@ Implemented:
   damping, and rotors saturate. Reports a rotor saturation fraction; a
   thrust-limited drone saturates ~57% vs ~44% and falls short on the slalom.
 - CSV/SVG motor benchmark contrasting an agile vs a thrust-limited drone.
+- Motor-lag and battery-sag powertrain (`racing_mppi_powertrain`): a composition
+  layer over the rotor model adding first-order spin-up lag and a thrust ceiling
+  that droops with load and state of charge. `PowertrainParams::ideal` reduces
+  exactly to the motor model. A powertrain-unaware controller plans against the
+  ideal model; a pack drained to 25% saturates its lowered ceiling on nearly
+  every step and stalls after one gate where the fresh drone finishes.
+- CSV/SVG powertrain benchmark: one slalom, four powertrains, with a
+  battery-state-of-charge trace panel.
 
 Primary files:
 
@@ -163,11 +171,13 @@ Primary files:
 - `crates/rust_robotics_control/src/racing_mppi_3d.rs`
 - `crates/rust_robotics_control/src/racing_mppi_quadrotor.rs`
 - `crates/rust_robotics_control/src/racing_mppi_motor.rs`
+- `crates/rust_robotics_control/src/racing_mppi_powertrain.rs`
 - `crates/rust_robotics/examples/headless_mppi_racing_gate_progress.rs`
 - `crates/rust_robotics/examples/render_mppi_racing_gate_progress_svg.rs`
 - `crates/rust_robotics/examples/benchmark_racing_mppi_3d.rs`
 - `crates/rust_robotics/examples/benchmark_racing_quadrotor.rs`
 - `crates/rust_robotics/examples/benchmark_racing_motor.rs`
+- `crates/rust_robotics/examples/benchmark_racing_powertrain.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
@@ -175,11 +185,14 @@ Primary files:
 - `docs/assets/racing-quadrotor.csv`
 - `docs/assets/racing-motor.svg`
 - `docs/assets/racing-motor.csv`
+- `docs/assets/racing-powertrain.svg`
+- `docs/assets/racing-powertrain.csv`
 
 Next useful extension:
 
-- Add per-rotor first-order motor lag (spin-up dynamics) and a battery-sag
-  thrust limit that drops with sustained current.
+- Make the controller *powertrain-aware* (roll out through the lag/battery model
+  so it conserves authority for late-race gates), and add a per-rotor torque/
+  current map so yaw authority sags too.
 
 ### Adap-RPF-lite MPPI
 
@@ -669,6 +682,14 @@ benchmark/headless example + SVG/CSV artifact + docs.
    states, rotors saturate); `benchmark_racing_motor` shows a thrust-limited
    drone saturating ~57% vs ~44% and falling short on the slalom — the
    thrust/torque trade-off the body-rate model cannot express.
+
+7. ~~Motor-lag and battery-sag powertrain (extension).~~ **Done (2026-06-07).**
+   `racing_mppi_powertrain` composes a first-order motor-lag and battery-sag
+   layer over the rotor model (`PowertrainParams::ideal` reduces exactly to the
+   motor model). `benchmark_racing_powertrain` flies one slalom under four
+   powertrains with a powertrain-unaware controller: a pack drained to 25%
+   saturates its lowered thrust ceiling ~98% of steps and stalls after one gate
+   where the fresh drone threads all four.
 
 ## Push Checklist
 

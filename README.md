@@ -99,6 +99,7 @@ cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-featu
 cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_cbf_safety_filter --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
 cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-features --features control
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example headless_branchout_multimodal_driving --no-default-features --features planning

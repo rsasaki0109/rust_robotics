@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="420" viewBox="0 0 920 420">
+<rect width="920" height="420" fill="#fbfbfd"/>
+<text x="40" y="34" font-family="sans-serif" font-size="20" fill="#1d1d1f">Motor-lag and battery-sag powertrain: same plan, four powertrains</text>
+<text x="40" y="56" font-family="sans-serif" font-size="13" fill="#6e6e73">left: lap progress (bar) with ceiling-saturation labels; right: battery state of charge over the run</text>
+<line x1="60" y1="320.0" x2="420.0" y2="320.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="52.0" y="324.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.0</text>
+<line x1="60" y1="215.0" x2="420.0" y2="215.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="52.0" y="219.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.5</text>
+<line x1="60" y1="110.0" x2="420.0" y2="110.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="52.0" y="114.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">1.0</text>
+<rect x="82.5" y="110.0" width="45.0" height="210.0" fill="#0a84ff" rx="3"/>
+<text x="105.0" y="102.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">4/4</text>
+<text x="105.0" y="342.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">ideal</text>
+<text x="105.0" y="358.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">ceil 0%</text>
+<rect x="172.5" y="110.0" width="45.0" height="210.0" fill="#30b0c7" rx="3"/>
+<text x="195.0" y="102.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">4/4</text>
+<text x="195.0" y="342.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">motor-lag</text>
+<text x="195.0" y="358.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">ceil 0%</text>
+<rect x="262.5" y="110.0" width="45.0" height="210.0" fill="#ff9f0a" rx="3"/>
+<text x="285.0" y="102.0" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">4/4</text>
+<text x="285.0" y="342.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">lag+battery</text>
+<text x="285.0" y="358.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">ceil 74%</text>
+<rect x="352.5" y="267.5" width="45.0" height="52.5" fill="#ff453a" rx="3"/>
+<text x="375.0" y="259.5" font-family="sans-serif" font-size="11" fill="#1d1d1f" text-anchor="middle">1/4</text>
+<text x="375.0" y="342.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">drained-pack</text>
+<text x="375.0" y="358.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">ceil 98%</text>
+<rect x="520" y="90" width="360" height="230" fill="#ffffff" stroke="#e5e5ea"/>
+<line x1="520" y1="320.0" x2="880.0" y2="320.0" stroke="#f0f0f2" stroke-width="1"/>
+<text x="514.0" y="323.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="end">0%</text>
+<line x1="520" y1="262.5" x2="880.0" y2="262.5" stroke="#f0f0f2" stroke-width="1"/>
+<text x="514.0" y="265.5" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="end">25%</text>
+<line x1="520" y1="205.0" x2="880.0" y2="205.0" stroke="#f0f0f2" stroke-width="1"/>
+<text x="514.0" y="208.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="end">50%</text>
+<line x1="520" y1="147.5" x2="880.0" y2="147.5" stroke="#f0f0f2" stroke-width="1"/>
+<text x="514.0" y="150.5" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="end">75%</text>
+<line x1="520" y1="90.0" x2="880.0" y2="90.0" stroke="#f0f0f2" stroke-width="1"/>
+<text x="514.0" y="93.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="end">100%</text>
+<polyline points="520.0,90.0 522.1,90.0 524.3,90.0 526.4,90.0 528.5,90.0 530.7,90.0 532.8,90.0 534.9,90.0 537.0,90.0 539.2,90.0 541.3,90.0 543.4,90.0 545.6,90.0 547.7,90.0 549.8,90.0 552.0,90.0 554.1,90.0 556.2,90.0 558.3,90.0 560.5,90.0 562.6,90.0 564.7,90.0 566.9,90.0 569.0,90.0 571.1,90.0 573.3,90.0 575.4,90.0 577.5,90.0 579.6,90.0 581.8,90.0 583.9,90.0 586.0,90.0 588.2,90.0 590.3,90.0 592.4,90.0 594.6,90.0 596.7,90.0 598.8,90.0 600.9,90.0 603.1,90.0 605.2,90.0 607.3,90.0 609.5,90.0 611.6,90.0 613.7,90.0 615.9,90.0 618.0,90.0 620.1,90.0 622.2,90.0 624.4,90.0 626.5,90.0 628.6,90.0 630.8,90.0 632.9,90.0 635.0,90.0 637.2,90.0 639.3,90.0 641.4,90.0 643.6,90.0 645.7,90.0 647.8,90.0 649.9,90.0 652.1,90.0 654.2,90.0" fill="none" stroke="#0a84ff" stroke-width="2"/>
+<polyline points="520.0,90.0 522.1,90.0 524.3,90.0 526.4,90.0 528.5,90.0 530.7,90.0 532.8,90.0 534.9,90.0 537.0,90.0 539.2,90.0 541.3,90.0 543.4,90.0 545.6,90.0 547.7,90.0 549.8,90.0 552.0,90.0 554.1,90.0 556.2,90.0 558.3,90.0 560.5,90.0 562.6,90.0 564.7,90.0 566.9,90.0 569.0,90.0 571.1,90.0 573.3,90.0 575.4,90.0 577.5,90.0 579.6,90.0 581.8,90.0 583.9,90.0 586.0,90.0 588.2,90.0 590.3,90.0 592.4,90.0 594.6,90.0 596.7,90.0 598.8,90.0" fill="none" stroke="#30b0c7" stroke-width="2"/>
+<polyline points="520.0,90.3 522.1,90.6 524.3,90.9 526.4,91.3 528.5,91.6 530.7,91.9 532.8,92.2 534.9,92.5 537.0,93.0 539.2,93.4 541.3,93.8 543.4,94.2 545.6,94.5 547.7,94.9 549.8,95.4 552.0,95.7 554.1,96.1 556.2,96.4 558.3,96.7 560.5,97.1 562.6,97.4 564.7,97.8 566.9,98.3 569.0,98.6 571.1,98.9 573.3,99.2 575.4,99.6 577.5,100.0 579.6,100.4 581.8,100.8 583.9,101.3 586.0,101.7 588.2,102.1 590.3,102.5 592.4,103.0 594.6,103.4 596.7,103.8 598.8,104.2 600.9,104.5 603.1,104.8 605.2,105.0 607.3,105.4 609.5,105.7 611.6,106.0 613.7,106.3 615.9,106.7 618.0,107.0 620.1,107.3 622.2,107.7 624.4,108.1 626.5,108.5 628.6,108.8 630.8,109.1 632.9,109.4 635.0,109.7 637.2,110.1 639.3,110.5" fill="none" stroke="#ff9f0a" stroke-width="2"/>
+<polyline points="520.0,262.8 522.1,263.1 524.3,263.3 526.4,263.6 528.5,263.9 530.7,264.1 532.8,264.4 534.9,264.7 537.0,265.0 539.2,265.3 541.3,265.6 543.4,265.9 545.6,266.2 547.7,266.4 549.8,266.7 552.0,267.0 554.1,267.2 556.2,267.4 558.3,267.7 560.5,268.0 562.6,268.3 564.7,268.5 566.9,268.7 569.0,269.0 571.1,269.2 573.3,269.5 575.4,269.8 577.5,270.1 579.6,270.3 581.8,270.6 583.9,270.9 586.0,271.2 588.2,271.5 590.3,271.8 592.4,272.1 594.6,272.4 596.7,272.7 598.8,273.0 600.9,273.3 603.1,273.6 605.2,273.9 607.3,274.2 609.5,274.5 611.6,274.8 613.7,275.1 615.9,275.5 618.0,275.7 620.1,276.1 622.2,276.4 624.4,276.6 626.5,276.8 628.6,277.1 630.8,277.4 632.9,277.7 635.0,277.9 637.2,278.3 639.3,278.6 641.4,278.9 643.6,279.2 645.7,279.4 647.8,279.8 649.9,280.1 652.1,280.3 654.2,280.6 656.3,280.8 658.5,281.0 660.6,281.3 662.7,281.6 664.9,281.9 667.0,282.3 669.1,282.5 671.2,282.8 673.4,283.1 675.5,283.3 677.6,283.6 679.8,283.9 681.9,284.2 684.0,284.4 686.2,284.7 688.3,285.0 690.4,285.3 692.5,285.6 694.7,285.8 696.8,286.1 698.9,286.4 701.1,286.7 703.2,287.0 705.3,287.3 707.5,287.6 709.6,287.9 711.7,288.1 713.8,288.4 716.0,288.7 718.1,289.1 720.2,289.4 722.4,289.8 724.5,290.1 726.6,290.4 728.8,290.7 730.9,290.9 733.0,291.2 735.1,291.4 737.3,291.7 739.4,292.0 741.5,292.3 743.7,292.7 745.8,293.0 747.9,293.3 750.1,293.6 752.2,293.9 754.3,294.2 756.4,294.4 758.6,294.7 760.7,294.9 762.8,295.2 765.0,295.5 767.1,295.9 769.2,296.2 771.4,296.4 773.5,296.7 775.6,297.0 777.8,297.2 779.9,297.5 782.0,297.7 784.1,298.1 786.3,298.3 788.4,298.6 790.5,298.8 792.7,299.1 794.8,299.3 796.9,299.5 799.1,299.8 801.2,300.1 803.3,300.4 805.4,300.7 807.6,301.0 809.7,301.3 811.8,301.6 814.0,301.9 816.1,302.2 818.2,302.5 820.4,302.8 822.5,303.2 824.6,303.5 826.7,303.8 828.9,304.2 831.0,304.5 833.1,304.7 835.3,305.0 837.4,305.3 839.5,305.6 841.7,305.9 843.8,306.1 845.9,306.4 848.0,306.7 850.2,307.0 852.3,307.3 854.4,307.6 856.6,307.9 858.7,308.2 860.8,308.4 863.0,308.7 865.1,309.0 867.2,309.3 869.3,309.7 871.5,310.0 873.6,310.3 875.7,310.6 877.9,310.9 880.0,311.2" fill="none" stroke="#ff453a" stroke-width="2"/>
+<rect x="760.0" y="94.0" width="12" height="12" fill="#0a84ff" rx="2"/>
+<text x="776.0" y="104.0" font-family="sans-serif" font-size="10" fill="#1d1d1f">ideal</text>
+<rect x="760.0" y="110.0" width="12" height="12" fill="#30b0c7" rx="2"/>
+<text x="776.0" y="120.0" font-family="sans-serif" font-size="10" fill="#1d1d1f">motor-lag</text>
+<rect x="760.0" y="126.0" width="12" height="12" fill="#ff9f0a" rx="2"/>
+<text x="776.0" y="136.0" font-family="sans-serif" font-size="10" fill="#1d1d1f">lag+battery</text>
+<rect x="760.0" y="142.0" width="12" height="12" fill="#ff453a" rx="2"/>
+<text x="776.0" y="152.0" font-family="sans-serif" font-size="10" fill="#1d1d1f">drained-pack</text>
+<text x="700.0" y="342.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="middle">battery state of charge vs step</text>
+</svg>
