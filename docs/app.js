@@ -474,6 +474,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Motor-Level Racing MPPI",
+    category: "Control",
+    image: "assets/racing-motor.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control",
+    description: "Reference-free MPPI on a four-rotor quadrotor: rotor thrusts mix into collective thrust and body torques, body rates are states, and rotors saturate. A thrust-limited drone saturates far more and flies slower on the same slalom, exposing the thrust/torque trade-off.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

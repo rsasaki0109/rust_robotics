@@ -151,26 +151,35 @@ Implemented:
   gate. Reports tilt and body-rate metrics; closes a full lap on attitude alone.
 - CSV/SVG quadrotor benchmark across slalom, climbing, closed-lap, and heavy
   high-gravity courses.
+- Motor-level rotor-mixing model (`racing_mppi_motor`): four rotor thrusts mix
+  into collective thrust and body torques, body rates are states with rate
+  damping, and rotors saturate. Reports a rotor saturation fraction; a
+  thrust-limited drone saturates ~57% vs ~44% and falls short on the slalom.
+- CSV/SVG motor benchmark contrasting an agile vs a thrust-limited drone.
 
 Primary files:
 
 - `crates/rust_robotics_control/src/mppi.rs`
 - `crates/rust_robotics_control/src/racing_mppi_3d.rs`
 - `crates/rust_robotics_control/src/racing_mppi_quadrotor.rs`
+- `crates/rust_robotics_control/src/racing_mppi_motor.rs`
 - `crates/rust_robotics/examples/headless_mppi_racing_gate_progress.rs`
 - `crates/rust_robotics/examples/render_mppi_racing_gate_progress_svg.rs`
 - `crates/rust_robotics/examples/benchmark_racing_mppi_3d.rs`
 - `crates/rust_robotics/examples/benchmark_racing_quadrotor.rs`
+- `crates/rust_robotics/examples/benchmark_racing_motor.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
 - `docs/assets/racing-quadrotor.svg`
 - `docs/assets/racing-quadrotor.csv`
+- `docs/assets/racing-motor.svg`
+- `docs/assets/racing-motor.csv`
 
 Next useful extension:
 
-- Add a motor-level thrust-and-torque model with a rotor mixing matrix so motor
-  saturation and body-rate tracking limits enter the racing trade-off.
+- Add per-rotor first-order motor lag (spin-up dynamics) and a battery-sag
+  thrust limit that drops with sustained current.
 
 ### Adap-RPF-lite MPPI
 
@@ -508,6 +517,7 @@ The docs gallery is extended with research reproduction assets:
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-quadrotor.svg`
+- `docs/assets/racing-motor.svg`
 - `docs/assets/adap-rpf-lite-mppi.svg`
 - `docs/assets/adap-rpf-metrics-sweep.svg`
 - `docs/assets/branchout-multimodal-driving.svg`
@@ -654,9 +664,11 @@ benchmark/headless example + SVG/CSV artifact + docs.
    compares lattice vs RRT vs exact and the exact path is shortest (open-detour
    10.0 -> 8.06).
 
-6. **Racing motor-level model (extension).** A thrust-and-torque quadrotor with a
-   rotor mixing matrix on top of `racing_mppi_quadrotor`, so motor saturation and
-   body-rate tracking limits enter the racing trade-off.
+6. ~~Racing motor-level model (extension).~~ **Done (2026-06-07).**
+   `racing_mppi_motor` adds a four-rotor rotor-mixing quadrotor (body rates as
+   states, rotors saturate); `benchmark_racing_motor` shows a thrust-limited
+   drone saturating ~57% vs ~44% and falling short on the slalom — the
+   thrust/torque trade-off the body-rate model cannot express.
 
 ## Push Checklist
 
