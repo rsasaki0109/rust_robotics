@@ -72,7 +72,8 @@ pub use racing_mppi_motor::{
     MotorQuadParams, MotorQuadState, MotorRacingLapReport,
 };
 pub use racing_mppi_powertrain::{
-    simulate_powertrain_race, PowertrainLapReport, PowertrainParams, PowertrainState,
+    simulate_powertrain_race, simulate_powertrain_race_aware, PowertrainLapReport,
+    PowertrainMppiController, PowertrainParams, PowertrainState,
 };
 pub use racing_mppi_quadrotor::{
     simulate_quadrotor_race, QuadrotorControl, QuadrotorLapReport, QuadrotorMppiConfig,
