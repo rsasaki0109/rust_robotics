@@ -29,6 +29,9 @@ Implemented slice:
 19. Full quadrotor attitude model (collective thrust + body-rate inputs) whose
     orientation is driven by the gate-progress objective, with tilt and
     body-rate metrics.
+20. Motor-level rotor-mixing quadrotor (four rotor thrusts -> collective thrust
+    and body torques, body rates as states) with rotor saturation, so the
+    thrust/torque trade-off enters racing.
 
 Run:
 
@@ -48,6 +51,7 @@ cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-feature
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_mppi_3d --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -156,6 +160,7 @@ and a heavier high-gravity drone, writing `docs/assets/racing-quadrotor.csv` and
 
 ```bash
 cargo run -p rust_robotics --example benchmark_racing_quadrotor --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
 ```
 
 All four courses finish, including a full closed lap flown purely through
@@ -164,6 +169,34 @@ high-gravity drone has to reach a noticeably larger peak tilt to thread the same
 slalom gates — the attitude-coupling the quadrotor model exposes that the
 point-mass model cannot.
 
-Next useful extension is a thrust-and-torque (motor-level) model with a rotor
-mixing matrix, so motor saturation and body-rate tracking limits become part of
-the racing trade-off.
+## Motor-Level Rotor-Mixing Model
+
+`racing_mppi_motor` deepens the attitude model one more level: the control input
+is the four rotor thrusts, not body rates.
+
+- A rotor-mixing map turns the four thrusts into a collective thrust and roll/
+  pitch/yaw torques (`MotorQuadParams`); the body angular velocity is now a
+  *state* driven by those torques with light aerodynamic rate damping, and every
+  rotor saturates at `max_rotor_thrust`.
+- Because a rotor cannot supply maximum lift and a large differential torque at
+  once, demanding aggressive attitude changes steals thrust authority. The MPPI
+  samples per-rotor perturbations around an even hover command and scores the
+  reference-free gate progress as before.
+- `simulate_motor_race` returns `MotorRacingLapReport`, adding the rotor
+  saturation fraction to the lap-progress and attitude metrics.
+
+The benchmark contrasts an agile drone against a thrust-limited one on the same
+slalom, plus a climb and a closed square lap, writing `docs/assets/racing-motor.csv`
+and `.svg`:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_motor --no-default-features --features control
+```
+
+The agile drone completes the slalom, while the thrust-limited drone (rotors
+topping out near 1.6 g) saturates far more often (around 57% of steps versus
+44%), flies slower, and falls short of the last gate — the thrust/torque
+trade-off that the body-rate model, which commands rates for free, cannot show.
+
+Next useful extension is per-rotor first-order motor lag (spin-up dynamics) and a
+battery-sag thrust limit that drops with sustained current.

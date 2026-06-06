@@ -1,0 +1,5 @@
+scenario,gates,gates_passed,laps_completed,lap_fraction,first_lap_time,mean_speed,max_speed,saturation_fraction,max_tilt_deg,max_body_rate,min_aperture_margin
+agile-slalom,4,4,1,0.000,3.50,2.274,5.472,0.443,66.56,8.627,0.016
+limited-slalom,4,3,0,0.750,,1.527,2.624,0.567,46.71,5.707,0.205
+agile-climb,3,3,1,0.000,1.95,2.827,4.809,0.410,49.25,5.577,0.491
+agile-square,4,4,1,0.000,3.30,3.612,5.615,0.197,71.77,7.853,0.025
