@@ -176,6 +176,12 @@ Implemented:
   sweeps the weight over a draining multi-lap square and traces one Pareto
   frontier (heavier budget -> slower, fewer laps, more reserve). Honest finding:
   on a hover-dominated quad with no regen, pacing buys reserve, not extra laps.
+- Battery-recovery model (`PowertrainParams::with_recovery`): a relaxation
+  overpotential that builds under load and decays on ease-off, so the terminal
+  voltage (thrust ceiling) recovers during a rest while SoC keeps falling.
+  `terminal_voltage_scale` folds it in; with recovery off it equals `voltage_scale`.
+  `benchmark_racing_powertrain_recovery` (dynamics-only) drives a scripted
+  hard/rest profile and shows the terminal voltage climbing back across a rest.
 
 Primary files:
 
@@ -192,6 +198,7 @@ Primary files:
 - `crates/rust_robotics/examples/benchmark_racing_powertrain.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_aware.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_budget.rs`
+- `crates/rust_robotics/examples/benchmark_racing_powertrain_recovery.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
@@ -205,13 +212,15 @@ Primary files:
 - `docs/assets/racing-powertrain-aware.csv`
 - `docs/assets/racing-powertrain-budget.svg`
 - `docs/assets/racing-powertrain-budget.csv`
+- `docs/assets/racing-powertrain-recovery.svg`
+- `docs/assets/racing-powertrain-recovery.csv`
 
 Next useful extension:
 
-- Add a per-rotor torque/current map so yaw authority sags separately from
-  thrust (reaction torque draws extra current), and model battery recovery so a
-  pack that eases off can partly recover terminal voltage — which would let the
-  charge budget buy laps, not just reserve.
+- Combine the charge budget with the recovery model on a multi-lap race and tune
+  for the regime where pacing (rest-and-recover) genuinely completes more laps
+  than greedy flight — the payoff the recovery model unlocks. Separately, add a
+  per-rotor torque/current map so yaw authority sags apart from thrust.
 
 ### Adap-RPF-lite MPPI
 
@@ -723,6 +732,14 @@ benchmark/headless example + SVG/CSV artifact + docs.
    multi-lap square and traces a Pareto frontier (heavier budget -> slower,
    fewer laps, more reserve). Honest finding documented: on a hover-dominated
    quad with no regen, pacing buys reserve, not extra laps.
+
+10. ~~Battery-recovery model (extension).~~ **Done (2026-06-07).**
+    `PowertrainParams::with_recovery` adds a relaxation overpotential that builds
+    under load and decays on ease-off, so `terminal_voltage_scale` (the thrust
+    ceiling) recovers during a rest while SoC keeps falling. Recovery off equals
+    the prior behavior. `benchmark_racing_powertrain_recovery` (dynamics-only)
+    shows the terminal voltage climbing back across a hover phase (~0.585 ->
+    0.614) as charge only ever drops.
 
 ## Push Checklist
 

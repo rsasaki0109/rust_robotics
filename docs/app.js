@@ -506,6 +506,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Battery Recovery (Voltage Relaxation)",
+    category: "Control",
+    image: "assets/racing-powertrain-recovery.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_powertrain_recovery --no-default-features --features control",
+    description: "A relaxation-overpotential model so the pack's terminal voltage recovers when the load eases. Driven through a scripted hard/rest profile, the recovery model's terminal voltage is dragged down during full throttle and climbs back over the following hover, even as the state of charge only ever falls — the lever a charge budget needs to buy laps, not just reserve.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

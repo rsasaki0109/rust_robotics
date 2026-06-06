@@ -41,6 +41,9 @@ Implemented slice:
 23. Charge-budget term on the aware controller that penalizes below-reserve
     current draw, exposing a tunable endurance/progress trade-off over a draining
     multi-lap race.
+24. Battery-recovery (relaxation-overpotential) model so the terminal voltage —
+    and thus the thrust ceiling — recovers when the load eases, even though the
+    state of charge only ever falls.
 
 Run:
 
@@ -64,6 +67,7 @@ cargo run -p rust_robotics --example benchmark_racing_motor --no-default-feature
 cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain_budget --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain_recovery --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -306,3 +310,32 @@ that on a hover-dominated quad with no regeneration, pacing buys reserve rather
 than extra laps — covering distance faster is the more energy-efficient way to
 spend a fixed pack, so the budget is a knob for *where on that trade-off to sit*
 rather than a free win.
+
+### Battery Recovery
+
+`PowertrainParams::with_recovery` adds a relaxation-overpotential state to the
+pack. Real cells do not just sag instantaneously with current; a slower
+overpotential builds under sustained load and relaxes when the load eases, so the
+terminal voltage recovers during a rest even though no charge returns. The state
+`relaxation` builds toward the load at `relax_build`, decays at `relax_recover`,
+and depresses the terminal voltage by `relax_coeff` per unit.
+`terminal_voltage_scale` is the open-circuit-minus-sag `voltage_scale` less that
+relaxation term; with recovery off it is exactly `voltage_scale`, so all earlier
+results are unchanged.
+
+`benchmark_racing_powertrain_recovery` is a dynamics-only demo (no MPPI): it
+drives the powertrain through a scripted hard/rest/hard/rest load profile and
+compares the terminal voltage with and without the recovery model:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_powertrain_recovery --no-default-features --features control
+```
+
+On the bundled profile the relaxation overpotential climbs to about 0.8 by the
+end of the first full-throttle phase, dragging the recovery model's terminal
+voltage well below the no-recovery trace. Across the following hover phase the
+overpotential decays and the terminal voltage climbs back (about 0.585 to 0.614
+on the bundled run) while the state of charge keeps falling monotonically. That
+recovery is the lever the charge budget needs to eventually buy laps rather than
+only reserve: a paced pack that rests between bursts regains ceiling a hard-flown
+pack never gets back.
