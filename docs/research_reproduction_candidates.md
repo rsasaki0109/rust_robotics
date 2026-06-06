@@ -54,10 +54,12 @@ reuse of the MPPI/planning modules already added.
      a charge-budget term (`ChargeBudget`, `benchmark_racing_powertrain_budget.rs`)
      tracing the endurance/progress Pareto frontier; and a battery-recovery model
      (`PowertrainParams::with_recovery`, `benchmark_racing_powertrain_recovery.rs`)
-     whose terminal voltage relaxes back on ease-off as charge keeps falling.
-   - Remaining extensions: combine the budget with recovery so rest-and-recover
-     pacing buys laps, and a per-rotor torque/current map so yaw authority sags
-     separately from thrust.
+     whose terminal voltage relaxes back on ease-off as charge keeps falling; and
+     a budget x recovery capstone (`benchmark_racing_powertrain_endurance.rs`)
+     where recovery reverses the budget from a lap loss into a Pareto win.
+   - Remaining extensions: a low-hover-overhead platform or true-idle-rest course
+     where pacing wins laps outright, and a per-rotor torque/current map so yaw
+     authority sags separately from thrust.
 
 2. Adap-RPF: Adaptive Trajectory Sampling for Robot Person Following
    - Source: https://adap-rpf.github.io/
@@ -262,3 +264,7 @@ All six v2 queue items are landed.
    Done (2026-06-07; `PowertrainParams::with_recovery`, `terminal_voltage_scale`,
    `benchmark_racing_powertrain_recovery.rs`; relaxation overpotential that
    recovers on ease-off while state of charge keeps falling).
+5. ~~Combine the charge budget with recovery on a multi-lap race~~ — Done
+   (2026-06-07; `benchmark_racing_powertrain_endurance.rs`, the budget x recovery
+   2x2). Honest finding: recovery reverses the budget's sign (lap loss -> Pareto
+   win), but a strict more-laps flip needs low hover overhead or true idle rests.

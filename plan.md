@@ -182,6 +182,12 @@ Implemented:
   `terminal_voltage_scale` folds it in; with recovery off it equals `voltage_scale`.
   `benchmark_racing_powertrain_recovery` (dynamics-only) drives a scripted
   hard/rest profile and shows the terminal voltage climbing back across a rest.
+- Budget x recovery capstone (`benchmark_racing_powertrain_endurance`): a 2x2 of
+  {greedy, budgeted} x {recovery off, on} on a draining undulating lap. Honest
+  finding: recovery reverses the budget's sign — without recovery pacing gives up
+  a full lap, with recovery it pulls even on laps while flying faster with more
+  reserve (a Pareto win). A strict more-laps flip needs low hover overhead or
+  true idle rests.
 
 Primary files:
 
@@ -199,6 +205,7 @@ Primary files:
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_aware.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_budget.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain_recovery.rs`
+- `crates/rust_robotics/examples/benchmark_racing_powertrain_endurance.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
@@ -214,13 +221,15 @@ Primary files:
 - `docs/assets/racing-powertrain-budget.csv`
 - `docs/assets/racing-powertrain-recovery.svg`
 - `docs/assets/racing-powertrain-recovery.csv`
+- `docs/assets/racing-powertrain-endurance.svg`
+- `docs/assets/racing-powertrain-endurance.csv`
 
 Next useful extension:
 
-- Combine the charge budget with the recovery model on a multi-lap race and tune
-  for the regime where pacing (rest-and-recover) genuinely completes more laps
-  than greedy flight — the payoff the recovery model unlocks. Separately, add a
-  per-rotor torque/current map so yaw authority sags apart from thrust.
+- Chase the strict more-laps flip on a low-hover-overhead platform (a fixed-wing
+  or a much lighter quad) or a course with true idle rests, where rest-and-recover
+  pacing can win outright. Separately, add a per-rotor torque/current map so yaw
+  authority sags apart from thrust.
 
 ### Adap-RPF-lite MPPI
 
@@ -740,6 +749,14 @@ benchmark/headless example + SVG/CSV artifact + docs.
     the prior behavior. `benchmark_racing_powertrain_recovery` (dynamics-only)
     shows the terminal voltage climbing back across a hover phase (~0.585 ->
     0.614) as charge only ever drops.
+
+11. ~~Budget x recovery capstone (extension).~~ **Done (2026-06-07).**
+    `benchmark_racing_powertrain_endurance` runs the 2x2 of {greedy, budgeted} x
+    {recovery off, on} on a draining undulating lap. Honest finding: recovery
+    reverses the budget's sign — without recovery pacing gives up a full lap
+    (1.75 vs 2.75); with recovery it pulls even on laps (1.75) while flying faster
+    (2.0 vs 1.75 m/s) with more reserve. A strict more-laps flip needs low hover
+    overhead or true idle rests, recorded as the next extension.
 
 ## Push Checklist
 
