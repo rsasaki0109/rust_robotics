@@ -22,7 +22,7 @@ reproduction slices in this workspace.
 | TRG-planner: Traversal Risk Graph-Based Path Planning in Unstructured Environments | Terrain risk graph planner, elevation risk, smoothing, clearance exposure, SVG/CSV sweep | `traversal_risk_graph.rs`, demos, docs assets |
 | Adaptive Costmap-based Path Planning in Partially Known Environments with Movable Obstacles | Pure-Rust adaptive movable-obstacle costmap and replanning demo | `adaptive_costmap_namo.rs`, headless demo, docs |
 | TD-CD-MPPI | MPPI baseline, constraint discounting, terminal value grid, online/replay value learning, adaptive lambda, track-progress terminal values, SVGs | `mppi.rs`, multiple demos, `docs/assets/mppi-*.svg` |
-| Rethinking Reference Trajectories in Agile Drone Racing | Reference-free gate-progress objective, oriented gate crossing logic, waypoint-reference comparison, SVG; 3-D gate planes, drag-limited drone dynamics, open/closed laps, lap-progress metrics, CSV/SVG; full quadrotor attitude model (collective thrust + body rates) with tilt/body-rate metrics | `MppiGateRace2D`, `racing_mppi_3d.rs`, `racing_mppi_quadrotor.rs`, `headless_mppi_racing_gate_progress.rs`, `benchmark_racing_mppi_3d.rs`, `benchmark_racing_quadrotor.rs`, `docs/assets/mppi-racing-gate-progress.svg`, `docs/assets/racing-mppi-3d.svg`, `docs/assets/racing-quadrotor.svg` |
+| Rethinking Reference Trajectories in Agile Drone Racing | Reference-free gate-progress objective, oriented gate crossing logic, waypoint-reference comparison, SVG; 3-D gate planes, drag-limited drone dynamics, open/closed laps, lap-progress metrics, CSV/SVG; full quadrotor attitude model (collective thrust + body rates) with tilt/body-rate metrics; motor-level four-rotor model with rotor saturation | `MppiGateRace2D`, `racing_mppi_3d.rs`, `racing_mppi_quadrotor.rs`, `racing_mppi_motor.rs`, `headless_mppi_racing_gate_progress.rs`, `benchmark_racing_mppi_3d.rs`, `benchmark_racing_quadrotor.rs`, `benchmark_racing_motor.rs`, `docs/assets/mppi-racing-gate-progress.svg`, `docs/assets/racing-mppi-3d.svg`, `docs/assets/racing-quadrotor.svg`, `docs/assets/racing-motor.svg` |
 | Adap-RPF | Target-centric following-point sampling, visibility/proximity/distance/travel/stickiness scoring, prediction-aware MPPI with moving pedestrians, SVG | `person_following_mppi.rs`, `headless_adap_rpf_mppi.rs`, `docs/assets/adap-rpf-lite-mppi.svg` |
 | BranchOut | Lane-level multimodal driving scene, compact mode/GMM-style trajectory head, distributional metrics, SVG | `branchout_multimodal.rs`, `headless_branchout_multimodal_driving.rs`, `docs/assets/branchout-multimodal-driving.svg` |
 | Multi-Robot Trajectory Planning via cBOT and STL-KCBS | Grid CBS, vertex/edge constraints, STL robustness, heading/time kinodynamic search, continuous-time pairwise occupancy checks, SVGs | `stl_cbs.rs`, `kinodynamic_stl_cbs.rs`, `docs/assets/stl-cbs-multi-robot.svg`, `docs/assets/kinodynamic-stl-cbs.svg` |
@@ -228,5 +228,8 @@ The first build queue is fully landed (2026-06-04/05):
 5. ~~Rigid-body exact MILP backend behind `RigidBodyPlanningBackend`, benchmarked
    for path optimality against the lattice/RRT backends~~ — Done
    (`RigidBodyExactBackend2D`, length-optimal branch-and-bound).
-6. Racing motor-level model: thrust-and-torque quadrotor with a rotor mixing
-   matrix so motor saturation enters the trade-off.
+6. ~~Racing motor-level model: thrust-and-torque quadrotor with a rotor mixing
+   matrix so motor saturation enters the trade-off~~ — Done
+   (`racing_mppi_motor.rs`, `benchmark_racing_motor.rs`).
+
+All six v2 queue items are landed.
