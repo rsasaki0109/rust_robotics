@@ -164,6 +164,13 @@ Implemented:
   every step and stalls after one gate where the fresh drone finishes.
 - CSV/SVG powertrain benchmark: one slalom, four powertrains, with a
   battery-state-of-charge trace panel.
+- Powertrain-aware controller (`PowertrainMppiController`): rolls candidates out
+  through the lag/battery model so it plans within deliverable authority and
+  conserves charge for later gates. On an ideal powertrain it plans the same
+  command as the motor controller (unit-tested). `benchmark_racing_powertrain_aware`
+  pits aware vs unaware: on a 25%-drained pack the unaware controller stalls at
+  1/4 gates draining to ~2%, while the aware one threads 4/4 and finishes with
+  ~18% charge in reserve.
 
 Primary files:
 
@@ -178,6 +185,7 @@ Primary files:
 - `crates/rust_robotics/examples/benchmark_racing_quadrotor.rs`
 - `crates/rust_robotics/examples/benchmark_racing_motor.rs`
 - `crates/rust_robotics/examples/benchmark_racing_powertrain.rs`
+- `crates/rust_robotics/examples/benchmark_racing_powertrain_aware.rs`
 - `docs/assets/mppi-racing-gate-progress.svg`
 - `docs/assets/racing-mppi-3d.svg`
 - `docs/assets/racing-mppi-3d.csv`
@@ -187,12 +195,14 @@ Primary files:
 - `docs/assets/racing-motor.csv`
 - `docs/assets/racing-powertrain.svg`
 - `docs/assets/racing-powertrain.csv`
+- `docs/assets/racing-powertrain-aware.svg`
+- `docs/assets/racing-powertrain-aware.csv`
 
 Next useful extension:
 
-- Make the controller *powertrain-aware* (roll out through the lag/battery model
-  so it conserves authority for late-race gates), and add a per-rotor torque/
-  current map so yaw authority sags too.
+- Add a per-rotor torque/current map so yaw authority sags too, and give the
+  aware controller a charge-budget term so it explicitly trades remaining energy
+  against gate progress over a multi-lap race.
 
 ### Adap-RPF-lite MPPI
 
@@ -690,6 +700,13 @@ benchmark/headless example + SVG/CSV artifact + docs.
    powertrains with a powertrain-unaware controller: a pack drained to 25%
    saturates its lowered thrust ceiling ~98% of steps and stalls after one gate
    where the fresh drone threads all four.
+
+8. ~~Powertrain-aware controller (extension).~~ **Done (2026-06-07).**
+   `PowertrainMppiController` rolls candidates out through the lag/battery model,
+   so it plans within deliverable authority (and matches the motor controller on
+   an ideal powertrain, unit-tested). `benchmark_racing_powertrain_aware` shows
+   that on a 25%-drained pack the unaware controller stalls at 1/4 gates while the
+   aware one threads 4/4 and finishes with ~18% charge in reserve.
 
 ## Push Checklist
 

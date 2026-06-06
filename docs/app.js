@@ -490,6 +490,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Powertrain-Aware vs Unaware MPPI",
+    category: "Control",
+    image: "assets/racing-powertrain-aware.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control",
+    description: "Two controllers fly the same lagging, sagging powertrain. The aware one rolls candidates out through the lag and battery model, so it plans within the authority the pack can deliver. On a drained 25-percent pack the unaware controller stalls after one gate while the aware one threads all four and finishes with charge to spare.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

@@ -29,11 +29,18 @@
 //!   real powertrain and reports [`PowertrainLapReport`], adding battery and
 //!   ceiling-saturation metrics. The honest result is how much an idealized
 //!   plan costs when it meets a laggy, sagging powertrain.
+//! - [`PowertrainMppiController`] is the *powertrain-aware* answer: it rolls
+//!   candidates out through [`PowertrainParams::step`], so it plans within the
+//!   deliverable authority and conserves charge for later gates.
+//!   [`simulate_powertrain_race_aware`] runs it through the same closed loop.
 
 use crate::racing_mppi_3d::{RacingGateLap3D, RacingGatePlane3D};
 use crate::racing_mppi_motor::{
-    MotorCommand, MotorMppiConfig, MotorMppiController, MotorQuadParams, MotorQuadState,
+    MotorCommand, MotorMppiConfig, MotorMppiController, MotorMppiPlan, MotorQuadParams,
+    MotorQuadState,
 };
+use rand::{rngs::StdRng, SeedableRng};
+use rand_distr::{Distribution, Normal};
 use rust_robotics_core::{RoboticsError, RoboticsResult};
 
 /// State of the powertrain-level quadrotor.
@@ -231,23 +238,201 @@ pub struct PowertrainLapReport {
     pub battery_trace: Vec<f64>,
 }
 
-/// Drive the powertrain-unaware MPPI controller through the real powertrain.
+/// Validate the MPPI config fields shared by both powertrain controllers.
+fn validate_config(config: &MotorMppiConfig) -> RoboticsResult<()> {
+    if config.horizon == 0 || config.samples == 0 {
+        return Err(RoboticsError::InvalidParameter(
+            "powertrain MPPI horizon and samples must be positive".to_string(),
+        ));
+    }
+    if !config.dt.is_finite() || config.dt <= 0.0 {
+        return Err(RoboticsError::InvalidParameter(
+            "powertrain MPPI dt must be finite and positive".to_string(),
+        ));
+    }
+    if !config.rotor_sigma.is_finite() || config.rotor_sigma <= 0.0 {
+        return Err(RoboticsError::InvalidParameter(
+            "powertrain MPPI rotor_sigma must be finite and positive".to_string(),
+        ));
+    }
+    if !config.lambda.is_finite() || config.lambda <= 0.0 {
+        return Err(RoboticsError::InvalidParameter(
+            "powertrain MPPI lambda must be finite and positive".to_string(),
+        ));
+    }
+    if config.velocity_weight < 0.0 || config.rotor_weight < 0.0 || config.level_weight < 0.0 {
+        return Err(RoboticsError::InvalidParameter(
+            "powertrain MPPI weights must be non-negative".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// Powertrain-*aware* MPPI controller.
 ///
-/// The controller plans rotor commands with `config` and `params.base`,
-/// assuming ideal actuators; each command is then executed through the lagging,
-/// sagging powertrain. The gap between plan and execution is the point.
-pub fn simulate_powertrain_race(
+/// Unlike [`MotorMppiController`], which rolls candidate commands out through
+/// the ideal motor model, this controller rolls them out through the full
+/// [`PowertrainParams::step`] — so its samples already feel the motor lag and
+/// the battery-limited thrust ceiling. Commands above the (causal) ceiling are
+/// clamped inside the rollout, so over-commanding earns no gate progress while
+/// still paying the rotor-effort penalty; the controller is therefore pushed to
+/// plan within the authority the battery can actually deliver, and it sees the
+/// pack drain over the horizon rather than assuming infinite charge.
+#[derive(Debug, Clone)]
+pub struct PowertrainMppiController {
     config: MotorMppiConfig,
+    params: PowertrainParams,
+    nominal: Vec<MotorCommand>,
+    rng: StdRng,
+}
+
+impl PowertrainMppiController {
+    pub fn new(config: MotorMppiConfig, params: PowertrainParams) -> RoboticsResult<Self> {
+        validate_config(&config)?;
+        let nominal = vec![MotorCommand::hover(params.base.gravity); config.horizon];
+        let rng = StdRng::seed_from_u64(config.seed);
+        Ok(Self {
+            config,
+            params,
+            nominal,
+            rng,
+        })
+    }
+
+    pub fn config(&self) -> &MotorMppiConfig {
+        &self.config
+    }
+
+    fn rollout(&self, start: PowertrainState, controls: &[MotorCommand]) -> (Vec<[f64; 3]>, f64) {
+        let mut state = start;
+        let mut positions = Vec::with_capacity(controls.len() + 1);
+        positions.push(state.motor.position);
+        let mut regularizer = 0.0;
+        let hover = self.params.base.gravity / 4.0;
+        for &command in controls {
+            state = self.params.step(state, command, self.config.dt);
+            let speed = state.speed();
+            let tilt_cost = 1.0 - state.motor.thrust_axis()[2];
+            // The effort penalty is on the *commanded* thrust, so commanding
+            // past the battery ceiling (which the rollout clamps away) costs
+            // effort for no benefit.
+            let rotor_effort: f64 = command.rotors.iter().map(|&r| (r - hover).powi(2)).sum();
+            regularizer += self.config.velocity_weight * speed * speed
+                + self.config.rotor_weight * rotor_effort
+                + self.config.level_weight * tilt_cost;
+            positions.push(state.motor.position);
+        }
+        (positions, regularizer)
+    }
+
+    /// Plan the next rotor command given the full powertrain state, lap, and
+    /// pass count.
+    pub fn plan(
+        &mut self,
+        start: PowertrainState,
+        lap: &RacingGateLap3D,
+        passed: usize,
+    ) -> RoboticsResult<MotorMppiPlan> {
+        let noise = Normal::new(0.0, self.config.rotor_sigma).map_err(|_| {
+            RoboticsError::InvalidParameter(
+                "invalid powertrain MPPI rotor distribution".to_string(),
+            )
+        })?;
+
+        let mut costs = Vec::with_capacity(self.config.samples);
+        let mut sequences = Vec::with_capacity(self.config.samples);
+        let mut best_cost = f64::INFINITY;
+
+        for _ in 0..self.config.samples {
+            let mut controls = Vec::with_capacity(self.config.horizon);
+            for &base in &self.nominal {
+                let mut rotors = base.rotors;
+                for r in &mut rotors {
+                    *r += noise.sample(&mut self.rng);
+                }
+                controls.push(self.params.base.saturate(MotorCommand::new(rotors)));
+            }
+            let (positions, regularizer) = self.rollout(start, &controls);
+            let (gate_cost, _) = lap.score_positions(&positions, passed);
+            let cost = gate_cost + regularizer;
+            best_cost = best_cost.min(cost);
+            costs.push(cost);
+            sequences.push(controls);
+        }
+
+        let min_cost = costs.iter().copied().fold(f64::INFINITY, f64::min);
+        let mut weights = Vec::with_capacity(costs.len());
+        let mut weight_sum = 0.0;
+        for &cost in &costs {
+            let weight = (-(cost - min_cost) / self.config.lambda).exp();
+            weight_sum += weight;
+            weights.push(weight);
+        }
+
+        if weight_sum <= 0.0 || !weight_sum.is_finite() {
+            let best_index = costs
+                .iter()
+                .enumerate()
+                .min_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+            let command = sequences[best_index][0];
+            return Ok(MotorMppiPlan {
+                command,
+                best_cost,
+                normalized_effective_sample_size: 0.0,
+            });
+        }
+
+        let mut updated = vec![MotorCommand::new([0.0; 4]); self.config.horizon];
+        let mut sum_sq = 0.0;
+        for (weight, controls) in weights.iter().zip(&sequences) {
+            let normalized = weight / weight_sum;
+            sum_sq += normalized * normalized;
+            for (acc, command) in updated.iter_mut().zip(controls) {
+                for k in 0..4 {
+                    acc.rotors[k] += normalized * command.rotors[k];
+                }
+            }
+        }
+        for command in &mut updated {
+            *command = self.params.base.saturate(*command);
+        }
+
+        let first_command = updated[0];
+        self.nominal.clear();
+        self.nominal.extend_from_slice(&updated[1..]);
+        self.nominal.push(*updated.last().unwrap());
+
+        let normalized_effective_sample_size = if sum_sq > 0.0 {
+            1.0 / (sum_sq * self.config.samples as f64)
+        } else {
+            0.0
+        };
+
+        Ok(MotorMppiPlan {
+            command: first_command,
+            best_cost,
+            normalized_effective_sample_size,
+        })
+    }
+}
+
+/// Shared closed-loop driver: step the powertrain under whatever command the
+/// `plan_command` closure returns each step, accumulating the lap report.
+fn run_powertrain_race<F>(
+    dt: f64,
     params: PowertrainParams,
     lap: &RacingGateLap3D,
     start: PowertrainState,
     max_steps: usize,
     target_laps: usize,
-) -> RoboticsResult<PowertrainLapReport> {
-    let dt = config.dt;
+    mut plan_command: F,
+) -> RoboticsResult<PowertrainLapReport>
+where
+    F: FnMut(&PowertrainState, usize) -> RoboticsResult<MotorCommand>,
+{
     let gate_count = lap.gate_count();
-    let mut controller = MotorMppiController::new(config, params.base)?;
-
     let mut state = start;
     let mut passed = 0usize;
     let mut path = vec![state.motor.position];
@@ -265,19 +450,18 @@ pub fn simulate_powertrain_race(
     let mut executed_steps = 0usize;
 
     for step in 0..max_steps {
-        // Plan as if actuators were ideal (controller sees only the base model).
-        let plan = controller.plan(state.motor, lap, passed)?;
+        let command = plan_command(&state, passed)?;
 
         // Diagnose whether this command will hit the battery ceiling.
         let eff_max = params.effective_max_rotor(state);
         let load = params.load(state.rotor_thrust);
         sum_voltage_scale += params.voltage_scale(state.battery_soc, load);
-        if plan.command.rotors.iter().any(|&r| r > eff_max + 1e-9) {
+        if command.rotors.iter().any(|&r| r > eff_max + 1e-9) {
             ceiling_saturated += 1;
         }
 
         // Execute through the real powertrain.
-        let next = params.step(state, plan.command, dt);
+        let next = params.step(state, command, dt);
         let from = state.motor.position;
         let to = next.motor.position;
 
@@ -343,6 +527,59 @@ pub fn simulate_powertrain_race(
         path,
         battery_trace,
     })
+}
+
+/// Drive the powertrain-*unaware* MPPI controller through the real powertrain.
+///
+/// The controller plans rotor commands with `config` and `params.base`,
+/// assuming ideal actuators; each command is then executed through the lagging,
+/// sagging powertrain. The gap between plan and execution is the point.
+pub fn simulate_powertrain_race(
+    config: MotorMppiConfig,
+    params: PowertrainParams,
+    lap: &RacingGateLap3D,
+    start: PowertrainState,
+    max_steps: usize,
+    target_laps: usize,
+) -> RoboticsResult<PowertrainLapReport> {
+    let dt = config.dt;
+    let mut controller = MotorMppiController::new(config, params.base)?;
+    run_powertrain_race(
+        dt,
+        params,
+        lap,
+        start,
+        max_steps,
+        target_laps,
+        |state, passed| controller.plan(state.motor, lap, passed).map(|p| p.command),
+    )
+}
+
+/// Drive the powertrain-*aware* MPPI controller through the real powertrain.
+///
+/// The controller rolls candidates out through [`PowertrainParams::step`], so it
+/// plans within the lag and battery-limited authority instead of assuming ideal
+/// actuators. On a drained pack this conserves the authority the unaware
+/// controller wastes against the ceiling.
+pub fn simulate_powertrain_race_aware(
+    config: MotorMppiConfig,
+    params: PowertrainParams,
+    lap: &RacingGateLap3D,
+    start: PowertrainState,
+    max_steps: usize,
+    target_laps: usize,
+) -> RoboticsResult<PowertrainLapReport> {
+    let dt = config.dt;
+    let mut controller = PowertrainMppiController::new(config, params)?;
+    run_powertrain_race(
+        dt,
+        params,
+        lap,
+        start,
+        max_steps,
+        target_laps,
+        |state, passed| controller.plan(*state, lap, passed).map(|p| p.command),
+    )
 }
 
 fn aperture_crossing_margin(gate: &RacingGatePlane3D, from: [f64; 3], to: [f64; 3]) -> f64 {
@@ -529,5 +766,77 @@ mod tests {
         assert_eq!(first.path, second.path);
         assert_eq!(first.battery_trace, second.battery_trace);
         assert_eq!(first.gates_passed, second.gates_passed);
+    }
+
+    #[test]
+    fn aware_on_ideal_matches_motor_controller() {
+        // On an ideal powertrain the aware rollout equals the base motor model,
+        // so with the same seed the aware controller must plan the same command.
+        let base = MotorQuadParams::default();
+        let lap = straight_lap();
+        let config = MotorMppiConfig::default();
+        let mut motor = MotorMppiController::new(config.clone(), base).unwrap();
+        let mut aware =
+            PowertrainMppiController::new(config, PowertrainParams::ideal(base)).unwrap();
+        let motor_plan = motor
+            .plan(MotorQuadState::at(0.0, 0.0, 0.0), &lap, 0)
+            .unwrap();
+        let aware_plan = aware
+            .plan(PowertrainState::at(0.0, 0.0, 0.0, base.gravity), &lap, 0)
+            .unwrap();
+        // Equal up to the float rounding of the (no-op) lag blend `h + (t - h)`.
+        for (m, a) in motor_plan
+            .command
+            .rotors
+            .iter()
+            .zip(aware_plan.command.rotors.iter())
+        {
+            assert!((m - a).abs() < 1e-9, "{m} vs {a}");
+        }
+    }
+
+    #[test]
+    fn aware_controller_makes_gate_progress() {
+        let lap = straight_lap();
+        let pt = racing_params();
+        let report = simulate_powertrain_race_aware(
+            MotorMppiConfig::default(),
+            pt,
+            &lap,
+            PowertrainState::at(0.0, 0.0, 0.0, pt.base.gravity),
+            160,
+            1,
+        )
+        .unwrap();
+        assert!(
+            report.gates_passed >= 1,
+            "expected gate progress, got {}",
+            report.gates_passed
+        );
+        assert_eq!(report.battery_trace.len(), report.steps);
+    }
+
+    #[test]
+    fn aware_beats_unaware_on_drained_pack() {
+        // A reach-up climb under a drained pack: the unaware controller wastes
+        // authority against the ceiling, the aware one budgets within it.
+        let gates = vec![
+            gate([1.4, 0.0, 0.5], [1.0, 0.0, 0.4]),
+            gate([2.8, 0.0, 1.1], [1.0, 0.0, 0.4]),
+        ];
+        let lap = RacingGateLap3D::open(gates).unwrap();
+        let pt = racing_params();
+        let start = PowertrainState::at_soc(0.0, 0.0, 0.0, pt.base.gravity, 0.22);
+        let unaware =
+            simulate_powertrain_race(MotorMppiConfig::default(), pt, &lap, start, 200, 1).unwrap();
+        let aware =
+            simulate_powertrain_race_aware(MotorMppiConfig::default(), pt, &lap, start, 200, 1)
+                .unwrap();
+        assert!(
+            aware.gates_passed >= unaware.gates_passed,
+            "aware {} should reach >= unaware {}",
+            aware.gates_passed,
+            unaware.gates_passed
+        );
     }
 }

@@ -1,0 +1,5 @@
+scenario,aware,gates,gates_passed,lap_fraction,mean_speed,ceiling_saturation,min_battery_soc,final_battery_soc,steps
+fresh · unaware,false,4,4,0.000,2.733,0.737,0.911,0.911,57
+fresh · aware,true,4,4,0.000,3.251,0.721,0.934,0.934,43
+drained · unaware,false,4,1,0.250,2.684,0.978,0.025,0.025,180
+drained · aware,true,4,4,0.000,2.497,0.982,0.176,0.176,56
