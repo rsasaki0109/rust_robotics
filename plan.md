@@ -386,8 +386,14 @@ Implemented:
 - `RigidBodyRrtBackend2D`: a sampling RRT over SE(2) reusing the lattice
   planner's pose/segment separation-certificate geometry, with seeded
   SplitMix64 sampling for reproducibility.
-- Backend comparison benchmark (lattice A* vs RRT) over seeded scenes, emitting
-  CSV/SVG.
+- `RigidBodyExactBackend2D`: an exact branch-and-bound backend that minimizes
+  true Euclidean path length over a 16-connected motion grid with the body
+  oriented along travel; feasibility uses the same disjunctive separating-
+  half-space certificates (best-first search with an admissible straight-line
+  lower bound = length-optimal on the motion graph).
+- Backend comparison benchmark (lattice A* vs RRT vs exact branch-and-bound)
+  over seeded scenes, emitting CSV/SVG. The exact backend is shortest: on the
+  open-detour scene it cuts the lattice's 10.0 path to 8.06.
 
 Primary files:
 
@@ -410,9 +416,8 @@ Current validation:
 
 Next useful extension:
 
-- Implement the exact MILP backend behind `RigidBodyPlanningBackend` (e.g. via a
-  branch-and-bound disjunctive-constraint solver) and benchmark optimality vs
-  the lattice/RRT backends.
+- Add continuous swept-volume certificates (exact area-swept separation between
+  lattice poses) and a heading-constrained variant of the exact backend.
 
 ### SafeDec-lite STL-Shielded Navigation
 
@@ -642,9 +647,12 @@ benchmark/headless example + SVG/CSV artifact + docs.
    boundary with probability ~1/region; rate 1.00 -> 0.19 over regions 1..6,
    every scene still resolved).
 
-5. **Rigid-body exact MILP backend (extension).** A branch-and-bound disjunctive
-   separating-axis backend behind `RigidBodyPlanningBackend`, benchmarked for
-   path optimality against the lattice/RRT backends.
+5. ~~Rigid-body exact MILP backend (extension).~~ **Done (2026-06-06).**
+   `RigidBodyExactBackend2D` is a length-optimal branch-and-bound over a
+   16-connected motion grid (body oriented along travel) using the disjunctive
+   separating-half-space certificates; `benchmark_rigid_body_backends` now
+   compares lattice vs RRT vs exact and the exact path is shortest (open-detour
+   10.0 -> 8.06).
 
 6. **Racing motor-level model (extension).** A thrust-and-torque quadrotor with a
    rotor mixing matrix on top of `racing_mppi_quadrotor`, so motor saturation and

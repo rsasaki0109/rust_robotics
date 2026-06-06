@@ -896,6 +896,252 @@ impl SplitMix64 {
     }
 }
 
+/// Exact branch-and-bound rigid-body backend.
+///
+/// Where the lattice backend minimizes an integer move/turn cost over a coarse
+/// 8-heading SE(2) lattice, this backend minimizes the *true Euclidean path
+/// length* over a 16-connected motion grid, with the body oriented along its
+/// direction of travel. Feasibility of every motion uses the same disjunctive
+/// separating-half-space certificates as the MIP formulation: for each obstacle,
+/// at least one of its half-spaces must separate the swept footprint (the
+/// binary/disjunctive choice). Best-first search with an admissible
+/// straight-line lower bound is a branch-and-bound that returns the
+/// length-optimal path on this motion graph, so it dominates the coarse lattice
+/// and the sampling RRT in realized path length and heading change.
+///
+/// The body is oriented along motion, so heading constraints (`require_goal_
+/// heading`) are not enforced; the backend is meant for optimal *position*
+/// routing of the rigid footprint.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RigidBodyExactBackend2D {
+    planner: RigidBodyMipPlanner2D,
+}
+
+/// 16-connected motion set: 8 unit moves plus 8 knight moves, so headings take
+/// ~22.5/26.5-degree increments and paths approach the true Euclidean optimum.
+const EXACT_MOVES: [(i32, i32); 16] = [
+    (1, 0),
+    (-1, 0),
+    (0, 1),
+    (0, -1),
+    (1, 1),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
+    (2, 1),
+    (2, -1),
+    (-2, 1),
+    (-2, -1),
+    (1, 2),
+    (1, -2),
+    (-1, 2),
+    (-1, -2),
+];
+
+#[derive(Debug, Clone, Copy)]
+struct ExactOpen {
+    f: f64,
+    g: f64,
+    cell: (i32, i32),
+}
+
+impl PartialEq for ExactOpen {
+    fn eq(&self, other: &Self) -> bool {
+        self.f == other.f && self.g == other.g && self.cell == other.cell
+    }
+}
+impl Eq for ExactOpen {}
+impl Ord for ExactOpen {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // Min-heap on f, then g, then cell (deterministic).
+        other
+            .f
+            .total_cmp(&self.f)
+            .then_with(|| other.g.total_cmp(&self.g))
+            .then_with(|| other.cell.cmp(&self.cell))
+    }
+}
+impl PartialOrd for ExactOpen {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl RigidBodyExactBackend2D {
+    pub fn new(config: RigidBodyMipConfig2D) -> RoboticsResult<Self> {
+        Ok(Self {
+            planner: RigidBodyMipPlanner2D::new(config)?,
+        })
+    }
+
+    pub fn config(&self) -> &RigidBodyMipConfig2D {
+        self.planner.config()
+    }
+
+    fn grid_extent(&self) -> (i32, i32) {
+        let c = self.config();
+        let nx = ((c.max_x - c.min_x) / c.position_step).floor() as i32;
+        let ny = ((c.max_y - c.min_y) / c.position_step).floor() as i32;
+        (nx.max(0), ny.max(0))
+    }
+
+    fn snap(&self, x: f64, y: f64, nx: i32, ny: i32) -> (i32, i32) {
+        let c = self.config();
+        let ix = ((x - c.min_x) / c.position_step).round() as i32;
+        let iy = ((y - c.min_y) / c.position_step).round() as i32;
+        (ix.clamp(0, nx), iy.clamp(0, ny))
+    }
+
+    fn world(&self, cell: (i32, i32)) -> (f64, f64) {
+        let c = self.config();
+        (
+            c.min_x + cell.0 as f64 * c.position_step,
+            c.min_y + cell.1 as f64 * c.position_step,
+        )
+    }
+
+    /// Heading of the move `(dx, dy)` in world space (cells are square).
+    fn move_heading(&self, dx: i32, dy: i32) -> f64 {
+        (dy as f64).atan2(dx as f64).rem_euclid(TAU)
+    }
+}
+
+impl RigidBodyPlanningBackend for RigidBodyExactBackend2D {
+    fn name(&self) -> &'static str {
+        "exact-bnb"
+    }
+
+    fn plan_path(
+        &self,
+        start: RigidBodyPose2D,
+        goal: RigidBodyPose2D,
+        _require_goal_heading: bool,
+    ) -> RoboticsResult<RigidBodyPlanOutcome2D> {
+        let (nx, ny) = self.grid_extent();
+        let start_cell = self.snap(start.x, start.y, nx, ny);
+        let goal_cell = self.snap(goal.x, goal.y, nx, ny);
+
+        let heuristic = |cell: (i32, i32)| {
+            let (wx, wy) = self.world(cell);
+            let (gx, gy) = self.world(goal_cell);
+            ((wx - gx).powi(2) + (wy - gy).powi(2)).sqrt()
+        };
+
+        let mut best_g: HashMap<(i32, i32), f64> = HashMap::new();
+        let mut parent: HashMap<(i32, i32), ((i32, i32), f64)> = HashMap::new();
+        let mut open = BinaryHeap::new();
+        best_g.insert(start_cell, 0.0);
+        open.push(ExactOpen {
+            f: heuristic(start_cell),
+            g: 0.0,
+            cell: start_cell,
+        });
+
+        let mut expanded = 0usize;
+        let max_expansions = self.config().max_expansions;
+        let mut reached = false;
+
+        while let Some(ExactOpen { g, cell, .. }) = open.pop() {
+            if g > *best_g.get(&cell).unwrap_or(&f64::INFINITY) {
+                continue;
+            }
+            if cell == goal_cell {
+                reached = true;
+                break;
+            }
+            expanded += 1;
+            if expanded > max_expansions {
+                break;
+            }
+
+            let (wx, wy) = self.world(cell);
+            for (dx, dy) in EXACT_MOVES {
+                let next = (cell.0 + dx, cell.1 + dy);
+                if next.0 < 0 || next.1 < 0 || next.0 > nx || next.1 > ny {
+                    continue;
+                }
+                let heading = self.move_heading(dx, dy);
+                let (wnx, wny) = self.world(next);
+                let from = RigidBodyPose2D::new(wx, wy, heading);
+                let to = RigidBodyPose2D::new(wnx, wny, heading);
+                if !self.planner.is_segment_feasible(from, to) {
+                    continue;
+                }
+                let edge = ((wnx - wx).powi(2) + (wny - wy).powi(2)).sqrt();
+                let tentative = g + edge;
+                if tentative + 1e-9 < *best_g.get(&next).unwrap_or(&f64::INFINITY) {
+                    best_g.insert(next, tentative);
+                    parent.insert(next, (cell, heading));
+                    open.push(ExactOpen {
+                        f: tentative + heuristic(next),
+                        g: tentative,
+                        cell: next,
+                    });
+                }
+            }
+        }
+
+        if !reached {
+            return Err(RoboticsError::PlanningError(
+                "exact rigid-body backend found no feasible path".to_string(),
+            ));
+        }
+
+        // Reconstruct the cell path and the per-segment heading.
+        let mut cells = vec![goal_cell];
+        let mut headings = Vec::new();
+        let mut current = goal_cell;
+        while let Some(&(prev, heading)) = parent.get(&current) {
+            headings.push(heading);
+            cells.push(prev);
+            current = prev;
+        }
+        cells.reverse();
+        headings.reverse();
+
+        // Each pose carries its outgoing-segment heading (last repeats the final
+        // segment heading), so the body is oriented along motion.
+        let mut poses = Vec::with_capacity(cells.len());
+        for (i, &cell) in cells.iter().enumerate() {
+            let (wx, wy) = self.world(cell);
+            let heading = if i < headings.len() {
+                headings[i]
+            } else {
+                *headings.last().unwrap_or(&start.theta)
+            };
+            poses.push(RigidBodyPose2D::new(wx, wy, heading));
+        }
+
+        let (path_length, heading_change) = path_extent(&poses);
+
+        // Minimum margin under the constant-heading-per-segment model actually
+        // used for feasibility (not the lattice's heading-interpolated check).
+        let mut min_separation_margin = f64::INFINITY;
+        for (i, window) in poses.windows(2).enumerate() {
+            let heading = headings.get(i).copied().unwrap_or(window[0].theta);
+            let from = RigidBodyPose2D::new(window[0].x, window[0].y, heading);
+            let to = RigidBodyPose2D::new(window[1].x, window[1].y, heading);
+            if let Some(certificates) = self.planner.segment_separation_certificates(from, to) {
+                for certificate in certificates {
+                    min_separation_margin = min_separation_margin.min(certificate.margin);
+                }
+            }
+        }
+        if !min_separation_margin.is_finite() {
+            min_separation_margin = 0.0;
+        }
+
+        Ok(RigidBodyPlanOutcome2D {
+            backend: self.name(),
+            path_length,
+            heading_change,
+            iterations: expanded,
+            min_separation_margin,
+            poses,
+        })
+    }
+}
+
 fn path_extent(poses: &[RigidBodyPose2D]) -> (f64, f64) {
     let mut length = 0.0;
     let mut heading = 0.0;
@@ -1249,5 +1495,47 @@ mod tests {
         let mut rrt = RigidBodyRrtConfig2D::new(1);
         rrt.goal_bias = 1.5;
         assert!(RigidBodyRrtBackend2D::new(open_field_config(), rrt).is_err());
+    }
+
+    #[test]
+    fn exact_backend_reaches_goal_and_is_deterministic() {
+        let config = open_field_config();
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+        let backend = RigidBodyExactBackend2D::new(config.clone()).unwrap();
+        let first = backend.plan_path(start, goal, false).unwrap();
+        let second = backend.plan_path(start, goal, false).unwrap();
+
+        assert_eq!(first.backend, "exact-bnb");
+        assert_eq!(first.poses, second.poses);
+        assert!(first.min_separation_margin > config.clearance);
+        let last = first.poses.last().unwrap();
+        let position_error = ((last.x - goal.x).powi(2) + (last.y - goal.y).powi(2)).sqrt();
+        assert!(position_error <= 0.5, "ended {position_error} from goal");
+    }
+
+    #[test]
+    fn exact_backend_is_no_longer_than_lattice() {
+        let config = open_field_config();
+        let start = RigidBodyPose2D::new(0.5, 4.5, 0.0);
+        let goal = RigidBodyPose2D::new(7.5, 1.5, 0.0);
+
+        let lattice = RigidBodyMipPlanner2D::new(config.clone())
+            .unwrap()
+            .plan_path(start, goal, false)
+            .unwrap();
+        let exact = RigidBodyExactBackend2D::new(config)
+            .unwrap()
+            .plan_path(start, goal, false)
+            .unwrap();
+
+        // The exact backend minimizes true Euclidean length over a richer motion
+        // set, so it never produces a longer path than the coarse lattice.
+        assert!(
+            exact.path_length <= lattice.path_length + 1e-6,
+            "exact {} should not exceed lattice {}",
+            exact.path_length,
+            lattice.path_length
+        );
     }
 }
