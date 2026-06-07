@@ -326,6 +326,16 @@ ROS_DOMAIN_ID=88 ./ros2_nodes/launch/run_slam_icp_acceptance_test.sh
 
 That starts `slam_node` alone, feeds deterministic synthetic odom plus `/scan`, and waits for `/synthetic_slam_diagnostics` to report `status=icp_ok`, `gate_reason=accepted`, and `blend_applied=true`. This is a controlled positive test for clean scan-to-scan matches; it does not replace the Gazebo ground-truth revaluation below.
 
+### Synthetic scan fallback (headless / rootless)
+
+If the host cannot run Gazebo's GPU lidar stack, set `ENABLE_SYNTHETIC_SCAN=true` when launching the full mission demo:
+
+```bash
+ENABLE_SYNTHETIC_SCAN=true ./ros2_nodes/launch/run_gazebo_mission_demo.sh
+```
+
+The launch file then spawns a TurtleBot3 model with the lidar sensor stripped from its SDF and starts [synthetic_scan_publisher.py](../ros2_nodes/launch/synthetic_scan_publisher.py), which derives a deterministic `/scan` from Gazebo ground-truth pose (against an approximation of the `turtlebot3_world` obstacles) and stamps it with `/clock`. The real `spawn_turtlebot3` path is disabled in this mode. Treat this as a headless smoke fallback; real lidar/Gazebo runs remain the higher-fidelity validation path.
+
 To **re-evaluate** corrected-frame accuracy across several pre-defined waypoint missions, run the matrix script. It starts a fresh Gazebo + navigation stack per scenario and writes one metrics row per scenario to CSV and JSONL.
 
 ```bash
