@@ -57,7 +57,35 @@ cargo run -p rust_robotics --example benchmark_admm_formation --no-default-featu
 
 On the bundled instance the consensus center settles at about `(-1.20, -0.03)` —
 shifted left by the corridor — and both residuals fall below `1e-7` in about 91
-iterations (versus ~25 when the corridor does not bind). The next extension is a
-receding-horizon variant (consensus over short trajectories rather than static
-positions) and edge-wise consensus on a communication graph rather than a global
-average.
+iterations (versus ~25 when the corridor does not bind).
+
+## Decentralized Graph Consensus
+
+The centralized solver above uses a global average in its z-update. The
+*decentralized* variant ([`solve_graph_consensus`]) removes the central
+coordinator: agents agree only with their neighbors on a communication graph,
+using edge-based ADMM. For `minimize sum_i (w_i/2)||x_i - a_i||^2` subject to
+`x_i - offset_i = x_j - offset_j` on every edge, each agent keeps an aggregated
+dual `alpha_i` over its incident edges and updates (on shifted `y_i = x_i -
+offset_i`, with `a_i' = a_i - offset_i`):
+
+`y_i = (w a_i' - alpha_i + rho * sum_{j in N_i}(y_i + y_j)) / (w + 2 rho deg_i)`,
+then `alpha_i += rho * sum_{j in N_i}(y_i - y_j)`,
+
+using only neighbor values `y_j`. On a connected graph it converges to the same
+weighted-average consensus as the centralized solver; the *rate* is set by the
+graph connectivity.
+
+`benchmark_admm_graph_consensus` runs the same eight agents over a line graph, a
+ring, and a complete graph:
+
+```bash
+cargo run -p rust_robotics --example benchmark_admm_graph_consensus --no-default-features --features control
+```
+
+All three reach the same center, but the complete graph converges in about 36
+iterations versus ~80 for the sparse line/ring graphs — better connectivity
+(larger algebraic connectivity) means faster agreement. (For a small graph the
+line and ring are close and can swap; the robust ordering is the complete graph
+being far faster.) The remaining extension is a receding-horizon variant
+(consensus over short trajectories rather than static positions).

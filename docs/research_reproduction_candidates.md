@@ -179,7 +179,7 @@ reuse of the MPPI/planning modules already added.
 | A- | Long Range Navigator | Code/data coming soon | Frontier planning beyond local maps | Affordance frontier graph planner |
 | A- | PolyMerge | Code coming soon | Geometry + CBF safety | Convex obstacle covers and CBF filter |
 | B+ | EARTH Excavation Autonomy | Code coming soon | Traversability/terrain handling | Excavation terrain grid with traversability and material-handling state |
-| B+ | ACLM distributed MPC | Code coming soon; initial slice implemented | Distributed MPC and payload transport | Consensus-ADMM formation slice done (`admm_consensus.rs`, `benchmark_admm_formation.rs`, box-constrained formation rendezvous with residual convergence); next: receding-horizon and edge-wise graph consensus |
+| B+ | ACLM distributed MPC | Code coming soon; initial slice implemented | Distributed MPC and payload transport | Centralized consensus-ADMM (`admm_consensus.rs`, box-constrained formation) and decentralized edge-based graph consensus (`solve_graph_consensus`, `benchmark_admm_graph_consensus.rs`, line/ring/complete convergence-rate comparison) done; next: receding-horizon consensus over short trajectories |
 | B+ | Meta-Control | Code coming soon | Controller selection/synthesis | Task requirement parser + controller mode selector |
 | B+ | Deep Reactive Policy | Code coming soon | Reactive local planning | Point-obstacle reactive goal proposal module in joint/SE2 space |
 | B | STAMP | Code coming soon | Task and motion planning | SVGD particle optimizer for a toy geometric TAMP task |

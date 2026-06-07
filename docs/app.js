@@ -554,6 +554,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Decentralized Graph Consensus (ADMM)",
+    category: "Control",
+    image: "assets/admm-graph-consensus.svg",
+    command: "cargo run -p rust_robotics --example benchmark_admm_graph_consensus --no-default-features --features control",
+    description: "Edge-based decentralized ADMM with no central coordinator: agents agree on a formation only by talking to graph neighbors. The same eight agents converge over a line, ring, and complete graph — all to the same center, but the complete graph converges in ~36 iterations versus ~80 for the sparse graphs, so connectivity sets the rate.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
