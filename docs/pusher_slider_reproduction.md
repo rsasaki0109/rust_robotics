@@ -114,5 +114,39 @@ across. All three settle within about a centimetre of their slots:
 cargo run -p rust_robotics --example benchmark_pusher_slider_multi --no-default-features --features control
 ```
 
-Simultaneous multi-contact pushing (two pushers acting at once, a contact-implicit
-complementarity problem) remains the natural next extension.
+## Two-Contact Pushing
+
+`PusherSliderParams::two_contact_twist` / `two_contact_step` solve *two*
+simultaneous point contacts contact-implicitly. Each contact keeps its commanded
+normal speed; its tangential degree of freedom is either sticking (tangential
+velocity matches the pusher) or sliding (the tangential force sits on the
+friction-cone edge). Two independent pushers generically cannot both stick — the
+relative velocity of two points on a rigid body is constrained — so the realized
+regime is found by enumerating the per-contact stick/slide modes, solving the
+resulting 4x4 contact-force system (`solve4`, Gaussian elimination with partial
+pivoting), and keeping the first combination whose forces push (`fn >= 0`),
+respect the cone (stick), or sit on the correct edge with a consistent slip
+direction (slide). When both contacts are rigid-redundant the force solution is
+non-unique (a squeeze degree of freedom), so the solver lands on a cone-edge
+combination; the resulting *motion* is still the correct rigid-consistent twist.
+
+`benchmark_pusher_slider_two_contact` is a scripted demo (no controller) showing
+what a second contact buys:
+
+```bash
+cargo run -p rust_robotics --example benchmark_pusher_slider_two_contact --no-default-features --features control
+```
+
+- `single` — one off-center contact pushing forward: the slider rotates as it
+  translates, so its path curves sharply (about 127 degrees of spin over the run).
+- `two-point` — two contacts on the same face at +/-h pushing forward: the second
+  contact cancels the off-center torque, and the slider tracks dead straight
+  (0.20 m forward, ~0 degrees).
+- `couple` — a back-face contact high and a front-face contact low push in
+  opposite directions, forming a couple: the slider spins ~278 degrees with
+  essentially zero net translation — a single contact cannot produce zero-net-force
+  rotation.
+
+The remaining extension is a contact-implicit MPPI/MPC controller that *chooses*
+the two contacts and their motions (rather than the scripted commands here),
+plus a least-norm resolution of the squeeze degree of freedom.
