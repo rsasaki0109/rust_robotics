@@ -43,8 +43,8 @@ pub mod sliding_mode_control;
 
 // Re-exports
 pub use admm_consensus::{
-    solve_formation_consensus, solve_graph_consensus, AdmmConfig, AdmmReport, AgentSpec,
-    GraphConsensusReport,
+    solve_formation_consensus, solve_graph_consensus, solve_horizon_consensus, AdmmConfig,
+    AdmmReport, AgentSpec, AgentTrajectory, GraphConsensusReport, HorizonConsensusReport,
 };
 pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
 pub use cbf_safety_filter::{

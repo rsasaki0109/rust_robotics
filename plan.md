@@ -810,8 +810,22 @@ benchmark/headless example + SVG/CSV artifact + docs.
     centralized solver (unit-tested). `benchmark_admm_graph_consensus` compares
     line/ring/complete graphs on 8 agents — all reach the same center but the
     complete graph converges in ~36 iters vs ~80 for the sparse graphs
-    (connectivity sets the rate). Next: receding-horizon consensus over short
-    trajectories.
+    (connectivity sets the rate).
+
+18. ~~Receding-horizon (trajectory) consensus ADMM (extension).~~
+    **Done (2026-06-08).** `solve_horizon_consensus` agrees on a shared center
+    *trajectory* `z[0..H]` rather than a static point. A temporal-smoothness
+    (acceleration) penalty couples the center across time, so the consensus
+    z-update becomes a banded SPD solve `(rho N I + lambda D^T D) z = rho sum_i(...)`,
+    Cholesky-factorized once and back-solved per iteration; an optional `anchor`
+    fixes `z[0]` for use as the inner step of an MPC loop (reduces to the static
+    centralized solver when lambda=0, H=1; unit-tested).
+    `benchmark_admm_horizon_consensus` runs the MPC loop: a four-agent formation
+    follows a moving goal past an L-corner under noisy per-agent perception.
+    Honest two-regime result: with noise, consensus smoothing rejects it spatially
+    and temporally — cutting executed jerk ~66% AND improving tracking
+    (0.055 -> 0.031); with clean sensing the classic corner-cutting lag returns
+    (tracking 0.000 -> 0.021). See `docs/admm_consensus_reproduction.md`.
 
 ## Push Checklist
 
