@@ -1,0 +1,4 @@
+topology,iterations,center_x,center_y,final_disagreement
+line,78,0.0192,0.3747,9.235e-7
+ring,80,0.0192,0.3747,8.234e-7
+complete,36,0.0192,0.3747,8.796e-7

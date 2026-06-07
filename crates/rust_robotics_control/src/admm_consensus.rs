@@ -18,8 +18,11 @@
 //!   and box bounds.
 //! - [`AdmmConfig`] holds the penalty `rho`, the iteration cap, and the residual
 //!   tolerance.
-//! - [`solve_formation_consensus`] runs consensus ADMM and returns the agent
-//!   positions, the consensus center, and the primal/dual residual history.
+//! - [`solve_formation_consensus`] runs (centralized) consensus ADMM and returns
+//!   the agent positions, the consensus center, and the primal/dual residuals.
+//! - [`solve_graph_consensus`] runs the *decentralized* edge-based variant where
+//!   agents agree only with communication-graph neighbors (no global average);
+//!   the convergence rate is set by the graph connectivity.
 
 use rust_robotics_core::{RoboticsError, RoboticsResult};
 
@@ -207,6 +210,154 @@ pub fn solve_formation_consensus(
     })
 }
 
+/// Result of a decentralized (graph) consensus-ADMM solve.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GraphConsensusReport {
+    /// Final agent positions `x_i`.
+    pub positions: Vec<[f64; 2]>,
+    /// Mean consensus value (the agreed formation center).
+    pub center: [f64; 2],
+    /// Edge-disagreement norm per iteration (`sqrt(sum_edges ||y_i - y_j||^2)`).
+    pub disagreement: Vec<f64>,
+    /// Iterations actually run.
+    pub iterations: usize,
+}
+
+/// Solve formation consensus *decentralized* over a communication graph, where
+/// each agent exchanges only with its graph neighbors (no global average).
+///
+/// This is the standard edge-based decentralized ADMM for
+/// `minimize sum_i (w_i/2)||x_i - a_i||^2  s.t.  x_i - offset_i = x_j - offset_j`
+/// for every edge `(i, j)`. Each agent keeps an aggregated dual `alpha_i` over
+/// its incident edges and updates
+/// `y_i = (w a_i' - alpha_i + rho * sum_{j in N_i}(y_i + y_j)) / (w + 2 rho deg_i)`
+/// using only neighbor values `y_j` (with `a_i' = a_i - offset_i` and the
+/// position recovered as `x_i = y_i + offset_i`, projected onto the box). On a
+/// connected graph it converges to the same weighted-average consensus as the
+/// centralized solver; the convergence rate is set by the graph connectivity.
+#[allow(clippy::needless_range_loop)]
+pub fn solve_graph_consensus(
+    config: AdmmConfig,
+    agents: &[AgentSpec],
+    edges: &[(usize, usize)],
+) -> RoboticsResult<GraphConsensusReport> {
+    if agents.is_empty() {
+        return Err(RoboticsError::InvalidParameter(
+            "graph consensus needs at least one agent".to_string(),
+        ));
+    }
+    if !config.rho.is_finite() || config.rho <= 0.0 || config.max_iters == 0 {
+        return Err(RoboticsError::InvalidParameter(
+            "graph consensus rho must be positive and max_iters > 0".to_string(),
+        ));
+    }
+    let n = agents.len();
+    for a in agents {
+        if !a.weight.is_finite() || a.weight <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "graph consensus agent weight must be finite and positive".to_string(),
+            ));
+        }
+    }
+    let mut neighbors = vec![Vec::new(); n];
+    for &(i, j) in edges {
+        if i >= n || j >= n || i == j {
+            return Err(RoboticsError::InvalidParameter(
+                "graph consensus edge endpoints out of range or self-loop".to_string(),
+            ));
+        }
+        neighbors[i].push(j);
+        neighbors[j].push(i);
+    }
+
+    let rho = config.rho;
+    // Shifted preferred values a_i' = a_i - offset_i; consensus is on y_i.
+    let ashift: Vec<[f64; 2]> = agents
+        .iter()
+        .map(|a| [a.preferred[0] - a.offset[0], a.preferred[1] - a.offset[1]])
+        .collect();
+    let mut y = ashift.clone();
+    let mut alpha = vec![[0.0; 2]; n];
+
+    let project = |y_i: [f64; 2], a: &AgentSpec| -> [f64; 2] {
+        let x = clamp2(
+            [y_i[0] + a.offset[0], y_i[1] + a.offset[1]],
+            a.lower,
+            a.upper,
+        );
+        [x[0] - a.offset[0], x[1] - a.offset[1]]
+    };
+
+    let mut disagreement = Vec::new();
+    let mut iterations = 0;
+
+    for _ in 0..config.max_iters {
+        iterations += 1;
+        let y_prev = y.clone();
+        // Synchronous local updates using only neighbor values.
+        for i in 0..n {
+            let w = agents[i].weight;
+            let deg = neighbors[i].len() as f64;
+            for k in 0..2 {
+                let mut neigh_sum = 0.0;
+                for &j in &neighbors[i] {
+                    neigh_sum += y_prev[i][k] + y_prev[j][k];
+                }
+                y[i][k] =
+                    (w * ashift[i][k] - alpha[i][k] + rho * neigh_sum) / (w + 2.0 * rho * deg);
+            }
+            y[i] = project(y[i], &agents[i]);
+        }
+        // Dual update from the updated disagreements.
+        for i in 0..n {
+            for k in 0..2 {
+                let mut diff = 0.0;
+                for &j in &neighbors[i] {
+                    diff += y[i][k] - y[j][k];
+                }
+                alpha[i][k] += rho * diff;
+            }
+        }
+        // Edge-disagreement and step size.
+        let mut dis_sq = 0.0;
+        for &(i, j) in edges {
+            for k in 0..2 {
+                let d = y[i][k] - y[j][k];
+                dis_sq += d * d;
+            }
+        }
+        let mut step_sq = 0.0;
+        for i in 0..n {
+            for k in 0..2 {
+                let d = y[i][k] - y_prev[i][k];
+                step_sq += d * d;
+            }
+        }
+        disagreement.push(dis_sq.sqrt());
+        if dis_sq.sqrt() < config.tol && step_sq.sqrt() < config.tol {
+            break;
+        }
+    }
+
+    let mut center = [0.0; 2];
+    for yi in &y {
+        center[0] += yi[0] / n as f64;
+        center[1] += yi[1] / n as f64;
+    }
+    let positions: Vec<[f64; 2]> = y
+        .iter()
+        .zip(agents)
+        .map(|(yi, a)| [yi[0] + a.offset[0], yi[1] + a.offset[1]])
+        .collect();
+
+    Ok(GraphConsensusReport {
+        positions,
+        center,
+        disagreement,
+        iterations,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +438,104 @@ mod tests {
         assert_eq!(a.positions, b.positions);
         assert_eq!(a.center, b.center);
         assert_eq!(a.primal_residuals, b.primal_residuals);
+    }
+
+    fn ring_edges(n: usize) -> Vec<(usize, usize)> {
+        (0..n).map(|i| (i, (i + 1) % n)).collect()
+    }
+
+    fn line_edges(n: usize) -> Vec<(usize, usize)> {
+        (0..n - 1).map(|i| (i, i + 1)).collect()
+    }
+
+    fn complete_edges(n: usize) -> Vec<(usize, usize)> {
+        let mut e = Vec::new();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                e.push((i, j));
+            }
+        }
+        e
+    }
+
+    #[test]
+    fn graph_consensus_matches_centralized_center() {
+        let agents = [
+            AgentSpec::new([2.0, 1.0], [1.0, 1.0]),
+            AgentSpec::new([-2.0, 1.0], [-1.0, 1.0]),
+            AgentSpec::new([-2.0, -1.0], [-1.0, -1.0]),
+            AgentSpec::new([2.0, -1.0], [1.0, -1.0]),
+        ];
+        let config = AdmmConfig {
+            max_iters: 2000,
+            tol: 1e-8,
+            ..AdmmConfig::default()
+        };
+        let report = solve_graph_consensus(config, &agents, &ring_edges(4)).unwrap();
+        // Closed-form weighted-average consensus center.
+        let mut zx = 0.0;
+        let mut zy = 0.0;
+        for a in &agents {
+            zx += (a.preferred[0] - a.offset[0]) / 4.0;
+            zy += (a.preferred[1] - a.offset[1]) / 4.0;
+        }
+        assert!(
+            (report.center[0] - zx).abs() < 1e-3,
+            "{} vs {}",
+            report.center[0],
+            zx
+        );
+        assert!(
+            (report.center[1] - zy).abs() < 1e-3,
+            "{} vs {}",
+            report.center[1],
+            zy
+        );
+        assert!(*report.disagreement.last().unwrap() < 1e-6);
+    }
+
+    #[test]
+    fn connectivity_speeds_convergence() {
+        let agents: Vec<AgentSpec> = (0..6)
+            .map(|i| {
+                let f = i as f64;
+                AgentSpec::new([f - 2.5, (f * 1.3).sin()], [0.0, 0.0])
+            })
+            .collect();
+        let config = AdmmConfig {
+            max_iters: 5000,
+            tol: 1e-6,
+            ..AdmmConfig::default()
+        };
+        let line = solve_graph_consensus(config, &agents, &line_edges(6)).unwrap();
+        let complete = solve_graph_consensus(config, &agents, &complete_edges(6)).unwrap();
+        assert!(
+            complete.iterations < line.iterations,
+            "complete graph ({}) should converge faster than line ({})",
+            complete.iterations,
+            line.iterations
+        );
+    }
+
+    #[test]
+    fn graph_consensus_is_deterministic() {
+        let agents = [
+            AgentSpec::new([1.0, 0.0], [0.5, 0.5]),
+            AgentSpec::new([0.0, 1.0], [-0.5, 0.5]),
+            AgentSpec::new([-1.0, 0.0], [-0.5, -0.5]),
+        ];
+        let e = ring_edges(3);
+        let a = solve_graph_consensus(AdmmConfig::default(), &agents, &e).unwrap();
+        let b = solve_graph_consensus(AdmmConfig::default(), &agents, &e).unwrap();
+        assert_eq!(a.positions, b.positions);
+        assert_eq!(a.disagreement, b.disagreement);
+    }
+
+    #[test]
+    fn graph_consensus_rejects_bad_edges() {
+        let agents = [AgentSpec::new([0.0, 0.0], [0.0, 0.0])];
+        assert!(solve_graph_consensus(AdmmConfig::default(), &agents, &[(0, 5)]).is_err());
+        assert!(solve_graph_consensus(AdmmConfig::default(), &agents, &[(0, 0)]).is_err());
     }
 
     #[test]

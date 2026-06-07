@@ -108,6 +108,7 @@ cargo run -p rust_robotics --example benchmark_pusher_slider --no-default-featur
 cargo run -p rust_robotics --example benchmark_pusher_slider_multi --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_pusher_slider_two_contact --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_admm_formation --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_admm_graph_consensus --no-default-features --features control
 cargo run -p rust_robotics --example headless_adap_rpf_mppi --no-default-features --features control
 cargo run -p rust_robotics --example render_adap_rpf_mppi_svg --no-default-features --features control
 cargo run -p rust_robotics --example headless_branchout_multimodal_driving --no-default-features --features planning

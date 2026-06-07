@@ -801,8 +801,17 @@ benchmark/headless example + SVG/CSV artifact + docs.
     `benchmark_admm_formation` forms a hexagon where two corridor-confined agents
     pull the center left to (-1.20, -0.03); residuals fall below 1e-7 in ~91
     iters. First distributed/optimization-control target. See
-    `docs/admm_consensus_reproduction.md`. Next: receding-horizon and graph-wise
-    (edge) consensus.
+    `docs/admm_consensus_reproduction.md`.
+
+17. ~~Decentralized graph consensus ADMM (extension).~~ **Done (2026-06-08).**
+    `solve_graph_consensus` removes the central coordinator: edge-based ADMM where
+    each agent agrees only with graph neighbors (aggregated dual `alpha_i` over
+    incident edges). Converges to the same weighted-average center as the
+    centralized solver (unit-tested). `benchmark_admm_graph_consensus` compares
+    line/ring/complete graphs on 8 agents — all reach the same center but the
+    complete graph converges in ~36 iters vs ~80 for the sparse graphs
+    (connectivity sets the rate). Next: receding-horizon consensus over short
+    trajectories.
 
 ## Push Checklist
 
