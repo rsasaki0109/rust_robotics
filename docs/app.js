@@ -498,6 +498,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Charge-Budget Endurance Sweep",
+    category: "Control",
+    image: "assets/racing-powertrain-budget.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_powertrain_budget --no-default-features --features control",
+    description: "A charge-budget term on the powertrain-aware controller penalizes drawing the pack below a protected reserve. Sweeping its weight over a draining multi-lap race traces one Pareto frontier: heavier budgets fly slower and complete fewer laps but end with more charge in reserve. On a hover-dominated quad, pacing buys reserve, not extra laps.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
