@@ -23,6 +23,10 @@
 //! - [`solve_graph_consensus`] runs the *decentralized* edge-based variant where
 //!   agents agree only with communication-graph neighbors (no global average);
 //!   the convergence rate is set by the graph connectivity.
+//! - [`solve_horizon_consensus`] is the *receding-horizon* variant: agents agree
+//!   on a shared center **trajectory** over a short horizon (rather than a single
+//!   static center), with a temporal smoothness penalty that couples the center
+//!   across time and turns the consensus z-update into a banded linear solve.
 
 use rust_robotics_core::{RoboticsError, RoboticsResult};
 
@@ -358,6 +362,336 @@ pub fn solve_graph_consensus(
     })
 }
 
+/// One agent's planning slice in the receding-horizon (trajectory) consensus
+/// problem: a per-step reference trajectory, a constant formation offset, a cost
+/// weight, and an optional box constraint applied at every step.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentTrajectory {
+    /// Per-step reference positions `a_i[t]` the agent is pulled toward.
+    pub reference: Vec<[f64; 2]>,
+    /// Constant formation offset `offset_i` from the shared center trajectory.
+    pub offset: [f64; 2],
+    /// Cost weight on staying near the reference (relative to the consensus pull).
+    pub weight: f64,
+    /// Lower box bound, applied to every step (`f64::NEG_INFINITY` disables).
+    pub lower: [f64; 2],
+    /// Upper box bound, applied to every step (`f64::INFINITY` disables).
+    pub upper: [f64; 2],
+}
+
+impl AgentTrajectory {
+    /// An unconstrained agent with unit weight tracking `reference`.
+    pub fn new(reference: Vec<[f64; 2]>, offset: [f64; 2]) -> Self {
+        Self {
+            reference,
+            offset,
+            weight: 1.0,
+            lower: [f64::NEG_INFINITY; 2],
+            upper: [f64::INFINITY; 2],
+        }
+    }
+
+    /// Set a per-step box constraint on the agent's position.
+    pub fn with_box(mut self, lower: [f64; 2], upper: [f64; 2]) -> Self {
+        self.lower = lower;
+        self.upper = upper;
+        self
+    }
+
+    /// Set the cost weight on tracking the reference.
+    pub fn with_weight(mut self, weight: f64) -> Self {
+        self.weight = weight;
+        self
+    }
+}
+
+/// Result of a receding-horizon (trajectory) consensus-ADMM solve.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HorizonConsensusReport {
+    /// Shared center trajectory `z[t]`, length `H`.
+    pub center: Vec<[f64; 2]>,
+    /// Per-agent trajectories `x_i[t]`.
+    pub trajectories: Vec<Vec<[f64; 2]>>,
+    /// Primal residual norm per iteration (`sqrt(sum_{i,t} ||x_i[t]-z[t]-offset_i||^2)`).
+    pub primal_residuals: Vec<f64>,
+    /// Dual residual norm per iteration.
+    pub dual_residuals: Vec<f64>,
+    /// Iterations actually run.
+    pub iterations: usize,
+}
+
+/// Dense Cholesky factorization `A = L L^T` of a symmetric positive-definite
+/// matrix; returns the lower-triangular `L`. Panics only on a non-SPD matrix,
+/// which the construction here precludes.
+#[allow(clippy::needless_range_loop)]
+fn cholesky(a: &[Vec<f64>]) -> Vec<Vec<f64>> {
+    let m = a.len();
+    let mut l = vec![vec![0.0; m]; m];
+    for i in 0..m {
+        for j in 0..=i {
+            let mut sum = a[i][j];
+            for k in 0..j {
+                sum -= l[i][k] * l[j][k];
+            }
+            if i == j {
+                l[i][j] = sum.max(0.0).sqrt();
+            } else {
+                l[i][j] = sum / l[j][j];
+            }
+        }
+    }
+    l
+}
+
+/// Solve `L L^T x = b` in place given the Cholesky factor `L`.
+fn chol_solve(l: &[Vec<f64>], b: &[f64]) -> Vec<f64> {
+    let m = l.len();
+    let mut y = vec![0.0; m];
+    for i in 0..m {
+        let mut sum = b[i];
+        for k in 0..i {
+            sum -= l[i][k] * y[k];
+        }
+        y[i] = sum / l[i][i];
+    }
+    let mut x = vec![0.0; m];
+    for i in (0..m).rev() {
+        let mut sum = y[i];
+        for k in (i + 1)..m {
+            sum -= l[k][i] * x[k];
+        }
+        x[i] = sum / l[i][i];
+    }
+    x
+}
+
+/// Solve the *receding-horizon* formation-consensus problem: agents agree on a
+/// shared center **trajectory** `z[0..H]` rather than a single static center.
+///
+/// Each agent tracks a per-step reference `a_i[t]`, sits at `z[t] + offset_i`,
+/// and respects a per-step box; the shared center carries a temporal-smoothness
+/// (acceleration) penalty `(smooth_weight/2) sum_t ||z[t+1]-2 z[t]+z[t-1]||^2`
+/// that couples the center across time. The full problem is
+/// `minimize sum_{i,t} (w_i/2)||x_i[t]-a_i[t]||^2 + (smooth_weight/2) sum_t
+/// ||z[t+1]-2z[t]+z[t-1]||^2  s.t.  x_i[t] - offset_i = z[t]` with per-step boxes.
+///
+/// Consensus ADMM mirrors [`solve_formation_consensus`], but the z-update is no
+/// longer a per-step average: the smoothness term makes it a banded
+/// (pentadiagonal) symmetric-positive-definite linear solve
+/// `(rho N I + smooth_weight D^T D) z = rho sum_i (x_i - offset_i + u_i)` per
+/// coordinate, where `D` is the second-difference operator. The system matrix is
+/// constant across iterations, so it is Cholesky-factorized once and back-solved
+/// each iteration. An optional `anchor` fixes `z[0]` (the current team center),
+/// which is what makes the solve usable as the inner step of a receding-horizon
+/// MPC loop: solve over the horizon, apply `z[1]`, shift, and re-solve.
+///
+/// With `smooth_weight = 0` and a one-step horizon this reduces exactly to the
+/// static centralized consensus of [`solve_formation_consensus`].
+#[allow(clippy::needless_range_loop)]
+pub fn solve_horizon_consensus(
+    config: AdmmConfig,
+    agents: &[AgentTrajectory],
+    smooth_weight: f64,
+    anchor: Option<[f64; 2]>,
+) -> RoboticsResult<HorizonConsensusReport> {
+    if agents.is_empty() {
+        return Err(RoboticsError::InvalidParameter(
+            "horizon consensus needs at least one agent".to_string(),
+        ));
+    }
+    if !config.rho.is_finite() || config.rho <= 0.0 || config.max_iters == 0 {
+        return Err(RoboticsError::InvalidParameter(
+            "horizon consensus rho must be positive and max_iters > 0".to_string(),
+        ));
+    }
+    if !smooth_weight.is_finite() || smooth_weight < 0.0 {
+        return Err(RoboticsError::InvalidParameter(
+            "horizon consensus smooth_weight must be finite and non-negative".to_string(),
+        ));
+    }
+    let horizon = agents[0].reference.len();
+    if horizon == 0 {
+        return Err(RoboticsError::InvalidParameter(
+            "horizon consensus reference trajectories must be non-empty".to_string(),
+        ));
+    }
+    for a in agents {
+        if a.reference.len() != horizon {
+            return Err(RoboticsError::InvalidParameter(
+                "horizon consensus reference trajectories must share one length".to_string(),
+            ));
+        }
+        if !a.weight.is_finite() || a.weight <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "horizon consensus agent weight must be finite and positive".to_string(),
+            ));
+        }
+        if a.lower[0] > a.upper[0] || a.lower[1] > a.upper[1] {
+            return Err(RoboticsError::InvalidParameter(
+                "horizon consensus agent box lower must not exceed upper".to_string(),
+            ));
+        }
+    }
+    if let Some(p) = anchor {
+        if !p[0].is_finite() || !p[1].is_finite() {
+            return Err(RoboticsError::InvalidParameter(
+                "horizon consensus anchor must be finite".to_string(),
+            ));
+        }
+    }
+
+    let n = agents.len();
+    let rho = config.rho;
+    let anchored = anchor.is_some();
+
+    // Build the dense z-update system matrix A = rho N I + smooth_weight D^T D,
+    // where D is the second-difference (acceleration) operator. A is constant
+    // across ADMM iterations, so it is factorized once below.
+    let mut a_mat = vec![vec![0.0; horizon]; horizon];
+    for t in 0..horizon {
+        a_mat[t][t] += rho * n as f64;
+    }
+    if smooth_weight > 0.0 {
+        // One acceleration row per interior step t: coeffs (1,-2,1) at (t-1,t,t+1).
+        for t in 1..horizon.saturating_sub(1) {
+            let idx = [t - 1, t, t + 1];
+            let coeff = [1.0, -2.0, 1.0];
+            for (a_i, &ia) in idx.iter().enumerate() {
+                for (b_i, &ib) in idx.iter().enumerate() {
+                    a_mat[ia][ib] += smooth_weight * coeff[a_i] * coeff[b_i];
+                }
+            }
+        }
+    }
+
+    // Free indices: all steps, or steps 1.. when z[0] is anchored.
+    let free: Vec<usize> = if anchored {
+        (1..horizon).collect()
+    } else {
+        (0..horizon).collect()
+    };
+    let m = free.len();
+    // Reduced system over the free indices (anchored z[0] moves to the RHS).
+    let mut a_red = vec![vec![0.0; m]; m];
+    for (r, &ir) in free.iter().enumerate() {
+        for (c, &ic) in free.iter().enumerate() {
+            a_red[r][c] = a_mat[ir][ic];
+        }
+    }
+    // When m == 0 (anchored, horizon == 1) the whole trajectory is the anchor.
+    let chol = if m > 0 { cholesky(&a_red) } else { Vec::new() };
+
+    // Initialize the center trajectory at the per-step mean reference-minus-offset.
+    let mut z = vec![[0.0; 2]; horizon];
+    for t in 0..horizon {
+        for a in agents {
+            z[t][0] += (a.reference[t][0] - a.offset[0]) / n as f64;
+            z[t][1] += (a.reference[t][1] - a.offset[1]) / n as f64;
+        }
+    }
+    if let Some(p) = anchor {
+        z[0] = p;
+    }
+    let mut x: Vec<Vec<[f64; 2]>> = agents
+        .iter()
+        .map(|a| {
+            (0..horizon)
+                .map(|t| {
+                    clamp2(
+                        [z[t][0] + a.offset[0], z[t][1] + a.offset[1]],
+                        a.lower,
+                        a.upper,
+                    )
+                })
+                .collect()
+        })
+        .collect();
+    let mut u = vec![vec![[0.0; 2]; horizon]; n];
+
+    let mut primal_residuals = Vec::new();
+    let mut dual_residuals = Vec::new();
+    let mut iterations = 0;
+
+    for _ in 0..config.max_iters {
+        iterations += 1;
+        // x-update: per agent, per step — local proximal step then box projection.
+        for (xi, (a, ui)) in x.iter_mut().zip(agents.iter().zip(u.iter())) {
+            let w = a.weight;
+            for t in 0..horizon {
+                for k in 0..2 {
+                    xi[t][k] = (w * a.reference[t][k] + rho * (z[t][k] + a.offset[k] - ui[t][k]))
+                        / (w + rho);
+                }
+                xi[t] = clamp2(xi[t], a.lower, a.upper);
+            }
+        }
+
+        // z-update: banded SPD solve per coordinate (couples the center in time).
+        let z_prev = z.clone();
+        for k in 0..2 {
+            // RHS b[t] = rho * sum_i (x_i[t] - offset_i + u_i[t]).
+            let mut b_full = vec![0.0; horizon];
+            for t in 0..horizon {
+                let mut s = 0.0;
+                for (xi, (a, ui)) in x.iter().zip(agents.iter().zip(u.iter())) {
+                    s += xi[t][k] - a.offset[k] + ui[t][k];
+                }
+                b_full[t] = rho * s;
+            }
+            if m == 0 {
+                continue;
+            }
+            // Reduce: move the anchored z[0] contribution to the RHS.
+            let mut b_red = vec![0.0; m];
+            for (r, &ir) in free.iter().enumerate() {
+                let mut v = b_full[ir];
+                if anchored {
+                    v -= a_mat[ir][0] * z[0][k];
+                }
+                b_red[r] = v;
+            }
+            let sol = chol_solve(&chol, &b_red);
+            for (r, &ir) in free.iter().enumerate() {
+                z[ir][k] = sol[r];
+            }
+        }
+
+        // dual update and primal residual.
+        let mut primal_sq = 0.0;
+        for (xi, (a, ui)) in x.iter().zip(agents.iter().zip(u.iter_mut())) {
+            for t in 0..horizon {
+                for k in 0..2 {
+                    let r = xi[t][k] - z[t][k] - a.offset[k];
+                    ui[t][k] += r;
+                    primal_sq += r * r;
+                }
+            }
+        }
+        let mut dz_sq = 0.0;
+        for t in 0..horizon {
+            for k in 0..2 {
+                let d = z[t][k] - z_prev[t][k];
+                dz_sq += d * d;
+            }
+        }
+        let primal = primal_sq.sqrt();
+        let dual = rho * (n as f64 * dz_sq).sqrt();
+        primal_residuals.push(primal);
+        dual_residuals.push(dual);
+        if primal < config.tol && dual < config.tol {
+            break;
+        }
+    }
+
+    Ok(HorizonConsensusReport {
+        center: z,
+        trajectories: x,
+        primal_residuals,
+        dual_residuals,
+        iterations,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -536,6 +870,132 @@ mod tests {
         let agents = [AgentSpec::new([0.0, 0.0], [0.0, 0.0])];
         assert!(solve_graph_consensus(AdmmConfig::default(), &agents, &[(0, 5)]).is_err());
         assert!(solve_graph_consensus(AdmmConfig::default(), &agents, &[(0, 0)]).is_err());
+    }
+
+    #[test]
+    fn horizon_one_step_no_smoothing_matches_static() {
+        // With smooth_weight = 0 and a one-step horizon the trajectory consensus
+        // collapses to the static centralized consensus.
+        let statics = [
+            AgentSpec::new([2.0, 1.0], [1.0, 1.0]),
+            AgentSpec::new([-2.0, 1.0], [-1.0, 1.0]),
+            AgentSpec::new([-2.0, -1.0], [-1.0, -1.0]),
+        ];
+        let trajs: Vec<AgentTrajectory> = statics
+            .iter()
+            .map(|s| AgentTrajectory::new(vec![s.preferred], s.offset))
+            .collect();
+        let stat = solve_formation_consensus(AdmmConfig::default(), &statics).unwrap();
+        let horiz = solve_horizon_consensus(AdmmConfig::default(), &trajs, 0.0, None).unwrap();
+        assert!((horiz.center[0][0] - stat.center[0]).abs() < 1e-6);
+        assert!((horiz.center[0][1] - stat.center[1]).abs() < 1e-6);
+    }
+
+    #[test]
+    #[allow(clippy::needless_range_loop)]
+    fn smoothing_reduces_center_acceleration() {
+        // A jagged set of references; smoothing should flatten the center path.
+        let h = 16;
+        let refs: Vec<[f64; 2]> = (0..h)
+            .map(|t| {
+                let f = t as f64;
+                [f * 0.3, if t % 2 == 0 { 1.0 } else { -1.0 }]
+            })
+            .collect();
+        let agents = vec![AgentTrajectory::new(refs, [0.0, 0.0])];
+        let config = AdmmConfig {
+            max_iters: 2000,
+            tol: 1e-9,
+            ..AdmmConfig::default()
+        };
+        let accel = |r: &HorizonConsensusReport| {
+            let z = &r.center;
+            let mut s = 0.0;
+            for t in 1..z.len() - 1 {
+                for k in 0..2 {
+                    let a = z[t + 1][k] - 2.0 * z[t][k] + z[t - 1][k];
+                    s += a * a;
+                }
+            }
+            s
+        };
+        let stiff = solve_horizon_consensus(config, &agents, 0.0, None).unwrap();
+        let smooth = solve_horizon_consensus(config, &agents, 20.0, None).unwrap();
+        assert!(
+            accel(&smooth) < 0.25 * accel(&stiff),
+            "smoothing should cut acceleration: {} vs {}",
+            accel(&smooth),
+            accel(&stiff)
+        );
+    }
+
+    #[test]
+    fn anchor_fixes_first_center_step() {
+        let h = 8;
+        let refs: Vec<[f64; 2]> = (0..h).map(|t| [t as f64, 0.0]).collect();
+        let agents = vec![AgentTrajectory::new(refs, [0.0, 0.0])];
+        let anchor = [-5.0, 2.0];
+        let report = solve_horizon_consensus(
+            AdmmConfig {
+                max_iters: 500,
+                ..AdmmConfig::default()
+            },
+            &agents,
+            5.0,
+            Some(anchor),
+        )
+        .unwrap();
+        assert!((report.center[0][0] - anchor[0]).abs() < 1e-9);
+        assert!((report.center[0][1] - anchor[1]).abs() < 1e-9);
+    }
+
+    #[test]
+    fn horizon_box_is_respected() {
+        let h = 6;
+        let refs: Vec<[f64; 2]> = (0..h).map(|t| [t as f64, 3.0]).collect();
+        let agents = vec![
+            AgentTrajectory::new(refs.clone(), [0.0, 0.5]),
+            AgentTrajectory::new(refs, [0.0, -0.5]).with_box([-100.0, -1.0], [100.0, 1.0]),
+        ];
+        let report = solve_horizon_consensus(AdmmConfig::default(), &agents, 1.0, None).unwrap();
+        for p in &report.trajectories[1] {
+            assert!(p[1] >= -1.0 - 1e-9 && p[1] <= 1.0 + 1e-9, "y {p:?} in box");
+        }
+    }
+
+    #[test]
+    fn horizon_consensus_is_deterministic() {
+        let refs: Vec<[f64; 2]> = (0..10)
+            .map(|t| [t as f64 * 0.5, (t as f64).sin()])
+            .collect();
+        let agents = vec![
+            AgentTrajectory::new(refs.clone(), [0.5, 0.5]),
+            AgentTrajectory::new(refs, [-0.5, -0.5]),
+        ];
+        let a =
+            solve_horizon_consensus(AdmmConfig::default(), &agents, 3.0, Some([0.0, 0.0])).unwrap();
+        let b =
+            solve_horizon_consensus(AdmmConfig::default(), &agents, 3.0, Some([0.0, 0.0])).unwrap();
+        assert_eq!(a.center, b.center);
+        assert_eq!(a.trajectories, b.trajectories);
+        assert_eq!(a.primal_residuals, b.primal_residuals);
+    }
+
+    #[test]
+    fn horizon_rejects_invalid_input() {
+        assert!(solve_horizon_consensus(AdmmConfig::default(), &[], 1.0, None).is_err());
+        let a = vec![AgentTrajectory::new(vec![[0.0, 0.0]], [0.0, 0.0])];
+        // Negative smoothing.
+        assert!(solve_horizon_consensus(AdmmConfig::default(), &a, -1.0, None).is_err());
+        // Mismatched trajectory lengths.
+        let mixed = vec![
+            AgentTrajectory::new(vec![[0.0, 0.0], [1.0, 0.0]], [0.0, 0.0]),
+            AgentTrajectory::new(vec![[0.0, 0.0]], [0.0, 0.0]),
+        ];
+        assert!(solve_horizon_consensus(AdmmConfig::default(), &mixed, 1.0, None).is_err());
+        // Empty trajectory.
+        let empty = vec![AgentTrajectory::new(vec![], [0.0, 0.0])];
+        assert!(solve_horizon_consensus(AdmmConfig::default(), &empty, 1.0, None).is_err());
     }
 
     #[test]
