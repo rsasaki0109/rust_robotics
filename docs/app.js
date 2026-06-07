@@ -514,6 +514,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Charge Budget x Battery Recovery",
+    category: "Control",
+    image: "assets/racing-powertrain-endurance.svg",
+    command: "cargo run -p rust_robotics --example benchmark_racing_powertrain_endurance --no-default-features --features control",
+    description: "The capstone 2x2 of greedy vs budgeted and recovery off vs on, on a draining undulating multi-lap square. Without recovery the budget gives up a full lap; with recovery it pulls even on laps while flying faster and ending with more charge — recovery reverses pacing from a strict loss to a Pareto win. An honest finding: a clean more-laps flip needs lower hover overhead or true idle rests.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

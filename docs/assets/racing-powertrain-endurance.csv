@@ -1,0 +1,5 @@
+scenario,recovery,budgeted,gates,gates_passed,laps,mean_speed,mean_voltage_scale,ceiling_saturation,min_battery_soc,final_battery_soc,steps
+greedy, no-recovery,false,false,4,11,2.750,2.184,0.617,0.908,0.100,0.100,260
+budget, no-recovery,false,true,4,7,1.750,1.777,0.625,0.904,0.131,0.131,260
+greedy, recovery,true,false,4,7,1.750,1.752,0.532,0.965,0.116,0.116,260
+budget, recovery,true,true,4,7,1.750,2.006,0.539,0.958,0.130,0.130,260

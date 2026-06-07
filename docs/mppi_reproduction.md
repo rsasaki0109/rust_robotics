@@ -44,6 +44,9 @@ Implemented slice:
 24. Battery-recovery (relaxation-overpotential) model so the terminal voltage —
     and thus the thrust ceiling — recovers when the load eases, even though the
     state of charge only ever falls.
+25. Charge-budget x recovery capstone: a 2x2 showing that the recovery model
+    reverses the sign of the charge budget — pacing goes from a strict lap loss
+    to a Pareto win (even on laps, faster, more reserve).
 
 Run:
 
@@ -68,6 +71,7 @@ cargo run -p rust_robotics --example benchmark_racing_powertrain --no-default-fe
 cargo run -p rust_robotics --example benchmark_racing_powertrain_aware --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain_budget --no-default-features --features control
 cargo run -p rust_robotics --example benchmark_racing_powertrain_recovery --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_racing_powertrain_endurance --no-default-features --features control
 ```
 
 The constraint-discounted example compares vanilla MPPI against rollouts that
@@ -339,3 +343,32 @@ on the bundled run) while the state of charge keeps falling monotonically. That
 recovery is the lever the charge budget needs to eventually buy laps rather than
 only reserve: a paced pack that rests between bursts regains ceiling a hard-flown
 pack never gets back.
+
+### Charge Budget x Recovery
+
+`benchmark_racing_powertrain_endurance` is the capstone that puts the budget and
+the recovery model together, running the 2x2 of {greedy, budgeted} x {recovery
+off, recovery on} on the same draining, undulating multi-lap square:
+
+```bash
+cargo run -p rust_robotics --example benchmark_racing_powertrain_endurance --no-default-features --features control
+```
+
+The honest result is a *reversal of sign*, not a clean lap win:
+
+- **No recovery.** The budget is strictly worse — it gives up a full lap (about
+  1.75 vs 2.75) to fly slower and hold reserve, exactly the trade-off the budget
+  sweep documented.
+- **Recovery on.** The relaxation overpotential depresses the ceiling for
+  everyone, costing the greedy run a lap (2.75 down to about 1.75). But the
+  greedy run pins its overpotential high and bogs down (mean speed about 1.75
+  m/s), while the budgeted run keeps its overpotential — and thus its ceiling —
+  lower: it pulls *even* on laps while flying faster (about 2.0 m/s) and ending
+  with more charge in reserve. Pacing has gone from a clear loss to a Pareto win.
+
+A strict "more laps" flip stays out of reach on this platform: the same
+throttling that lowers the overpotential also limits the thrust needed to climb
+to the high gates, and on a hover-dominated quad every controller must keep the
+rotors near hover. The recovery model makes pacing *worthwhile* rather than
+*free* — buying it laps would need a platform with low hover overhead (a
+fixed-wing or a much lighter quad) or a course with true idle rests.

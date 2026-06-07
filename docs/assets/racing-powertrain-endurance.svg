@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+<rect width="900" height="420" fill="#fbfbfd"/>
+<text x="70" y="34" font-family="sans-serif" font-size="20" fill="#1d1d1f">Charge budget x battery recovery: recovery flips pacing from a loss to a Pareto win</text>
+<text x="70" y="56" font-family="sans-serif" font-size="13" fill="#6e6e73">bar = lap progress; blue = budgeted, orange = greedy; labels show end charge and mean voltage scale</text>
+<line x1="70" y1="310.0" x2="830.0" y2="310.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="314.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">0.0</text>
+<line x1="70" y1="210.0" x2="830.0" y2="210.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="214.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">1.4</text>
+<line x1="70" y1="110.0" x2="830.0" y2="110.0" stroke="#e5e5ea" stroke-width="1"/>
+<text x="62.0" y="114.0" font-family="sans-serif" font-size="11" fill="#6e6e73" text-anchor="end">2.8</text>
+<rect x="121.3" y="110.0" width="87.4" height="200.0" fill="#ff9f0a" rx="3"/>
+<text x="165.0" y="102.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">2.75</text>
+<text x="165.0" y="332.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">greedy, no-recovery</text>
+<text x="165.0" y="348.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">end soc 10% · v 0.62</text>
+<rect x="311.3" y="182.7" width="87.4" height="127.3" fill="#0a84ff" rx="3"/>
+<text x="355.0" y="174.7" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">1.75</text>
+<text x="355.0" y="332.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">budget, no-recovery</text>
+<text x="355.0" y="348.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">end soc 13% · v 0.63</text>
+<rect x="501.3" y="182.7" width="87.4" height="127.3" fill="#ff9f0a" rx="3"/>
+<text x="545.0" y="174.7" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">1.75</text>
+<text x="545.0" y="332.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">greedy, recovery</text>
+<text x="545.0" y="348.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">end soc 12% · v 0.53</text>
+<rect x="691.3" y="182.7" width="87.4" height="127.3" fill="#0a84ff" rx="3"/>
+<text x="735.0" y="174.7" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">1.75</text>
+<text x="735.0" y="332.0" font-family="sans-serif" font-size="12" fill="#1d1d1f" text-anchor="middle">budget, recovery</text>
+<text x="735.0" y="348.0" font-family="sans-serif" font-size="10" fill="#6e6e73" text-anchor="middle">end soc 13% · v 0.54</text>
+<text x="260.0" y="368.0" font-family="sans-serif" font-size="11" fill="#ff9f0a" text-anchor="middle">no recovery: budget gives up a lap</text>
+<text x="640.0" y="368.0" font-family="sans-serif" font-size="11" fill="#0a84ff" text-anchor="middle">recovery: budget ties on laps, faster, more reserve</text>
+</svg>
