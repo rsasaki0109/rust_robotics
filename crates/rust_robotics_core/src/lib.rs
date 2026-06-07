@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 //! Core types, traits, and error definitions for the RustRobotics workspace.
 
+/// Error types and definitions for the RustRobotics workspace.
 pub mod error;
 pub mod experiments;
 pub mod traits;
