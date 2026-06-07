@@ -64,8 +64,9 @@ pub use person_following_mppi::{
 };
 pub use pure_pursuit::{PurePursuitConfig, PurePursuitController};
 pub use pusher_slider::{
-    simulate_push, ContactMode, PushReport, PusherCommand, PusherMppiConfig, PusherMppiPlan,
-    PusherSliderMppiController, PusherSliderParams, SliderState,
+    simulate_multi_push, simulate_push, simulate_push_with_obstacles, ContactMode, MultiPushReport,
+    PushReport, PusherCommand, PusherMppiConfig, PusherMppiPlan, PusherSliderMppiController,
+    PusherSliderParams, SliderState,
 };
 pub use racing_mppi_3d::{
     simulate_lap_race, RacingDroneControl3D, RacingDroneDynamics3D, RacingDroneState3D,

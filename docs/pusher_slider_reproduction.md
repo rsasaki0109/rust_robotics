@@ -92,5 +92,27 @@ green, final box in blue, with the CoM path):
 All four reach the goal within about a centimetre, with the stick/slide split
 varying by task. The `spin` case in particular resolves the limitation of the
 single-face model: rotation without coupled lateral drift is now reachable by
-switching faces. Simultaneous multi-contact pushing (two pushers at once) remains
-the natural next extension.
+switching faces.
+
+## Multi-Object Pushing
+
+`simulate_multi_push` reproduces the multi-object setting of "Push Anything": it
+pushes several sliders to their goal poses one at a time, treating the *other*
+objects (at their current poses) as keep-out discs for the active one. The
+keep-out is a soft penalty in the controller cost (`obstacle_weight`,
+`obstacle_radius`), so the active slider is routed around blocks that sit in its
+straight-line path instead of plowing through them. Objects are pushed in index
+order, and each object's resting pose becomes an obstacle for the objects pushed
+after it — no simultaneous multi-contact solve is required.
+
+`benchmark_pusher_slider_multi` arranges three sliders, with object 0's straight
+path to its goal blocked by object 1; object 0 detours around it (about 57 steps
+versus ~40 for an unobstructed push), then object 1 moves up and object 2 slides
+across. All three settle within about a centimetre of their slots:
+
+```bash
+cargo run -p rust_robotics --example benchmark_pusher_slider_multi --no-default-features --features control
+```
+
+Simultaneous multi-contact pushing (two pushers acting at once, a contact-implicit
+complementarity problem) remains the natural next extension.
