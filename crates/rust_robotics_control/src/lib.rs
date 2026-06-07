@@ -42,7 +42,10 @@ pub mod pid_controller;
 pub mod sliding_mode_control;
 
 // Re-exports
-pub use admm_consensus::{solve_formation_consensus, AdmmConfig, AdmmReport, AgentSpec};
+pub use admm_consensus::{
+    solve_formation_consensus, solve_graph_consensus, AdmmConfig, AdmmReport, AgentSpec,
+    GraphConsensusReport,
+};
 pub use behavior_tree::{BehaviorStatus, BehaviorTree, Blackboard};
 pub use cbf_safety_filter::{
     simulate_cbf_navigation, CbfConvexObstacle2D, CbfFilterResult, CbfHalfspace2D, CbfNavConfig,
