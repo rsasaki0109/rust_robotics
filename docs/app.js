@@ -562,6 +562,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Receding-Horizon Trajectory Consensus (ADMM)",
+    category: "Control",
+    image: "assets/admm-horizon-consensus.svg",
+    command: "cargo run -p rust_robotics --example benchmark_admm_horizon_consensus --no-default-features --features control",
+    description: "Consensus over short trajectories, not static points: a four-agent formation follows a moving goal past a sharp L-corner via a receding-horizon MPC loop. A temporal-smoothness penalty couples the shared center across time, turning the consensus z-update into a banded Cholesky solve. Under noisy per-agent perception, smoothing rejects noise both spatially and temporally — cutting executed jerk ~66% while also improving tracking; with clean sensing the classic corner-cutting lag trade-off returns.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",

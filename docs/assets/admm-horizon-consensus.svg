@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="460" viewBox="0 0 920 460">
+<rect width="920" height="460" fill="#fbfbfd"/>
+<text x="40" y="32" font-family="sans-serif" font-size="18" fill="#1d1d1f">Receding-horizon formation consensus over a moving goal</text>
+<text x="40" y="52" font-family="sans-serif" font-size="12" fill="#6e6e73">left: executed team center past an L-corner under noisy per-agent goals; right: jerk / lag trade-off</text>
+<polyline points="96.3,369.6 109.0,369.6 121.6,369.6 134.3,369.6 147.0,369.6 159.6,369.6 172.3,369.6 185.0,369.6 197.6,369.6 210.3,369.6 223.0,369.6 235.6,369.6 248.3,369.6 261.0,369.6 273.6,369.6 286.3,369.6 299.0,369.6 311.6,369.6 324.3,369.6 324.3,358.3 324.3,347.0 324.3,335.6 324.3,324.3 324.3,313.0 324.3,301.6 324.3,290.3 324.3,279.0 324.3,267.6 324.3,256.3 324.3,245.0 324.3,233.6 324.3,222.3 324.3,211.0 324.3,199.6 324.3,188.3" fill="none" stroke="#c7c7cc" stroke-width="3"/>
+<polyline points="96.3,369.6 111.8,372.8 126.0,372.4 138.1,369.8 148.4,367.1 158.0,366.3 168.4,368.0 180.6,370.9 194.9,372.9 210.4,372.3 225.9,369.8 240.0,367.1 252.1,366.3 262.3,368.1 272.0,371.0 282.4,372.9 294.6,372.3 308.9,369.7 324.5,367.1 327.3,355.0 328.7,345.4 328.0,337.0 325.6,327.6 322.6,315.6 320.4,301.7 320.0,287.7 321.7,275.7 324.6,266.2 327.3,257.7 328.7,248.2 328.0,236.2 325.5,222.3 322.5,208.3 320.3,196.4 320.0,186.9" fill="none" stroke="#ff453a" stroke-width="2"/>
+<polyline points="96.3,369.6 109.9,369.8 122.7,369.5 134.7,369.1 146.4,369.0 158.2,369.2 170.7,369.8 183.9,370.2 197.5,370.1 211.2,369.7 224.5,369.2 237.2,369.2 249.4,369.8 261.5,370.7 273.5,371.2 285.4,370.7 296.9,368.8 306.9,365.0 314.6,359.5 319.2,352.1 321.6,343.5 322.3,333.9 322.2,323.4 322.0,312.2 322.2,300.7 322.9,289.4 324.1,278.5 325.2,267.7 325.7,256.8 325.6,245.4 324.8,233.7 323.7,221.8 322.9,210.4 322.8,199.3 323.3,188.5" fill="none" stroke="#0a84ff" stroke-width="2"/>
+<polygon points="138.5,369.6 96.3,331.9 54.1,369.6 96.3,407.4" fill="#0a84ff22" stroke="#0a84ff" stroke-width="0.8"/>
+<polygon points="239.8,370.1 197.5,332.4 155.3,370.1 197.5,407.9" fill="#0a84ff22" stroke="#0a84ff" stroke-width="0.8"/>
+<polygon points="339.1,368.8 296.9,331.0 254.6,368.8 296.9,406.5" fill="#0a84ff22" stroke="#0a84ff" stroke-width="0.8"/>
+<polygon points="364.4,300.7 322.2,262.9 279.9,300.7 322.2,338.5" fill="#0a84ff22" stroke="#0a84ff" stroke-width="0.8"/>
+<polygon points="365.1,210.4 322.9,172.6 280.7,210.4 322.9,248.1" fill="#0a84ff22" stroke="#0a84ff" stroke-width="0.8"/>
+<text x="48.0" y="92.0" font-family="sans-serif" font-size="12" fill="#c7c7cc">true goal</text>
+<text x="48.0" y="108.0" font-family="sans-serif" font-size="12" fill="#ff453a">no smoothing</text>
+<text x="48.0" y="124.0" font-family="sans-serif" font-size="12" fill="#0a84ff">smoothed + formation</text>
+<text x="480.0" y="102.0" font-family="sans-serif" font-size="13" fill="#1d1d1f">RMS accel (jerk)</text>
+<rect x="480.0" y="116.0" width="280.0" height="20" fill="#ff453a" opacity="0.85"/>
+<text x="766.0" y="131.0" font-family="sans-serif" font-size="11" fill="#1d1d1f">no smoothing: 0.055</text>
+<rect x="480.0" y="150.0" width="95.1" height="20" fill="#0a84ff" opacity="0.85"/>
+<text x="581.1" y="165.0" font-family="sans-serif" font-size="11" fill="#1d1d1f">smoothed: 0.019</text>
+<text x="480.0" y="232.0" font-family="sans-serif" font-size="13" fill="#1d1d1f">mean tracking err</text>
+<rect x="480.0" y="246.0" width="280.0" height="20" fill="#ff453a" opacity="0.85"/>
+<text x="766.0" y="261.0" font-family="sans-serif" font-size="11" fill="#1d1d1f">no smoothing: 0.055</text>
+<rect x="480.0" y="280.0" width="159.5" height="20" fill="#0a84ff" opacity="0.85"/>
+<text x="645.5" y="295.0" font-family="sans-serif" font-size="11" fill="#1d1d1f">smoothed: 0.031</text>
+</svg>

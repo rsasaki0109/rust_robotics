@@ -87,5 +87,42 @@ All three reach the same center, but the complete graph converges in about 36
 iterations versus ~80 for the sparse line/ring graphs — better connectivity
 (larger algebraic connectivity) means faster agreement. (For a small graph the
 line and ring are close and can swap; the robust ordering is the complete graph
-being far faster.) The remaining extension is a receding-horizon variant
-(consensus over short trajectories rather than static positions).
+being far faster.)
+
+## Receding-Horizon Trajectory Consensus
+
+The two solvers above agree on a single static center. The *receding-horizon*
+variant ([`solve_horizon_consensus`]) agrees on a shared center **trajectory**
+`z[0..H]` over a short horizon. Each agent tracks a per-step reference `a_i[t]`,
+sits at `z[t] + offset_i`, and the shared center carries a temporal-smoothness
+(acceleration) penalty:
+
+`minimize sum_{i,t} (w_i/2)||x_i[t]-a_i[t]||^2 + (lambda/2) sum_t
+||z[t+1]-2z[t]+z[t-1]||^2  s.t.  x_i[t] - offset_i = z[t]` (plus per-step boxes).
+
+The x- and dual-updates mirror the static solver, but the smoothness term couples
+the center across time, so the z-update is no longer a per-step average — it is a
+banded (pentadiagonal) symmetric-positive-definite linear solve
+`(rho N I + lambda D^T D) z = rho sum_i (x_i - offset_i + u_i)` per coordinate,
+with `D` the second-difference operator. The system matrix is constant across
+iterations, so it is Cholesky-factorized once and back-solved each iteration. An
+optional `anchor` fixes `z[0]` (the current team center) — exactly the inner step
+of a receding-horizon MPC loop: solve over the horizon, apply `z[1]`, shift, and
+re-solve. With `lambda = 0` and a one-step horizon this reduces to the static
+centralized consensus.
+
+`benchmark_admm_horizon_consensus` runs that MPC loop: a four-agent square
+formation follows a moving goal that turns a sharp L-corner, but each agent only
+sees a *noisy* perceived goal:
+
+```bash
+cargo run -p rust_robotics --example benchmark_admm_horizon_consensus --no-default-features --features control
+```
+
+The honest result has two regimes. Under noisy perception (the rendered scenario)
+the consensus rejects noise both spatially (averaging across agents) and
+temporally (smoothing), so smoothing cuts the executed jerk by ~66% *and* lowers
+the tracking error (≈0.055 → 0.031) — the per-agent noise, not the corner, is the
+dominant error and smoothing wins on both axes. With near-perfect perception the
+classic trade-off returns: smoothing still cuts jerk but the corner-cutting lag
+*raises* the tracking error (≈0.000 → 0.021). The benchmark prints both regimes.
