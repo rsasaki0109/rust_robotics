@@ -546,6 +546,14 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Distributed Formation Consensus (ADMM)",
+    category: "Control",
+    image: "assets/admm-formation.svg",
+    command: "cargo run -p rust_robotics --example benchmark_admm_formation --no-default-features --features control",
+    description: "The coordination layer of distributed MPC: six agents agree on a hexagon formation center via consensus ADMM while each is pulled toward its own preferred position. Two agents confined to a corridor pull the consensus center left, the case where ADMM beats the closed-form average. Primal and dual residuals fall below 1e-7 in ~91 iterations.",
+    size: "wide"
+  },
+  {
     title: "Adap-RPF-lite MPPI",
     category: "Control",
     image: "assets/adap-rpf-lite-mppi.svg",
