@@ -41,6 +41,8 @@ cargo run -p rust_robotics_playground
 ```
 
 Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
+Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP timelines, or **ADMM Formation**
+for the multi-agent horizon-consensus demo.
 
 Build and test the complete workspace:
 

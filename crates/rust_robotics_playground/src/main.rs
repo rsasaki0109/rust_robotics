@@ -1,8 +1,10 @@
 //! RustRobotics interactive playground entry point.
 
+mod admm_formation;
 mod app;
 mod grid_planners;
 mod localization;
+mod slam;
 
 use app::PlaygroundApp;
 

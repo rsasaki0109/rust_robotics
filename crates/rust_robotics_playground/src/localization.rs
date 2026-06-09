@@ -161,7 +161,9 @@ impl LocalizationDemo {
         let _ = self.pf.set_range_noise(range);
 
         let r = sigma.powi(2).max(1e-4);
-        let _ = self.ekf.try_set_measurement_noise(Matrix2::new(r, 0.0, 0.0, r));
+        let _ = self
+            .ekf
+            .try_set_measurement_noise(Matrix2::new(r, 0.0, 0.0, r));
     }
 
     fn step_simulation(&mut self, control: ControlInput) {
@@ -224,13 +226,7 @@ impl LocalizationDemo {
         rect.min + Vec2::new(u * side, v * side)
     }
 
-    fn draw_robot(
-        painter: &egui::Painter,
-        center: Pos2,
-        yaw: f64,
-        color: Color32,
-        radius: f32,
-    ) {
+    fn draw_robot(painter: &egui::Painter, center: Pos2, yaw: f64, color: Color32, radius: f32) {
         painter.circle_filled(center, radius, color);
         let tip = center
             + Vec2::new(
@@ -265,10 +261,7 @@ impl LocalizationDemo {
             let p = Point2D::new(center.x + offset.x, center.y + offset.y);
             points.push(self.world_to_screen(rect, side, p));
         }
-        painter.add(egui::Shape::closed_line(
-            points,
-            Stroke::new(1.5, color),
-        ));
+        painter.add(egui::Shape::closed_line(points, Stroke::new(1.5, color)));
     }
 
     fn draw_scene(&self, ui: &mut egui::Ui, rect: Rect, side: f32) {
@@ -307,13 +300,9 @@ impl LocalizationDemo {
 
         if matches!(self.filter, FilterKind::ParticleFilter) {
             for particle in self.pf.get_particles() {
-                let alpha = (particle.w * self.pf.get_particles().len() as f64 * 8.0)
-                    .clamp(0.05, 0.85);
-                let c = self.world_to_screen(
-                    rect,
-                    side,
-                    Point2D::new(particle.x, particle.y),
-                );
+                let alpha =
+                    (particle.w * self.pf.get_particles().len() as f64 * 8.0).clamp(0.05, 0.85);
+                let c = self.world_to_screen(rect, side, Point2D::new(particle.x, particle.y));
                 painter.circle_filled(
                     c,
                     1.8,

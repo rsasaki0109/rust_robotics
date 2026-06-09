@@ -18,6 +18,24 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Interactive SLAM Timeline",
+    category: "SLAM",
+    image: "img/slam/ekf_slam.svg",
+    command: "cargo run -p rust_robotics_playground",
+    description: "Scrub a timeline to replay EKF-SLAM, FastSLAM 1.0, or ICP scan matching on a canned loop — landmarks, particles, and aligned scans.",
+    playLink: "playground/",
+    size: "wide"
+  },
+  {
+    title: "Interactive ADMM Formation",
+    category: "Control",
+    image: "assets/admm-horizon-consensus.svg",
+    command: "cargo run -p rust_robotics_playground",
+    description: "Four agents agree on a shared formation center via receding-horizon ADMM past an L-corner; compare stiff vs smoothed consensus under noisy goals.",
+    playLink: "playground/",
+    size: "wide"
+  },
+  {
     title: "Extended Kalman Filter",
     category: "Localization",
     image: "img/localization/ekf.svg",
