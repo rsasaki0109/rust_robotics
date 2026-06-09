@@ -27,3 +27,10 @@ RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url
 ```
 
 Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
+
+## Tabs
+
+- **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.
+- **Localization** — PF / EKF with arrow-key driving and noise slider.
+- **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop (timeline scrubber).
+- **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
