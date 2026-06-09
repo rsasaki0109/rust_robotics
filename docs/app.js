@@ -1,5 +1,14 @@
 const galleryItems = [
   {
+    title: "Interactive Grid Planners",
+    category: "Path Planning",
+    image: "img/path_planning/dijkstra_planner.svg",
+    command: "cargo run -p rust_robotics_playground",
+    description: "Click obstacles, drag start/goal, and compare A*, Dijkstra, JPS, and Theta* with live timing — runs in the browser via Rust/WASM.",
+    playLink: "playground/",
+    size: "wide"
+  },
+  {
     title: "Extended Kalman Filter",
     category: "Localization",
     image: "img/localization/ekf.svg",
@@ -710,6 +719,7 @@ function createCard(item, index) {
   const description = fragment.querySelector(".card-description");
   const sourceLink = fragment.querySelector(".source-link");
   const docsLink = fragment.querySelector(".docs-link");
+  const playLink = fragment.querySelector(".play-link");
 
   card.dataset.category = item.category;
   card.style.animationDelay = `${Math.min(index * 45, 540)}ms`;
@@ -730,6 +740,12 @@ function createCard(item, index) {
   description.textContent = item.description;
   sourceLink.href = sourceByCategory[item.category] || "https://github.com/rsasaki0109/rust_robotics";
   docsLink.href = docsByCategory[item.category] || "api/rust_robotics/";
+  if (item.playLink) {
+    playLink.href = item.playLink;
+    playLink.classList.remove("hidden");
+  } else {
+    playLink.remove();
+  }
 
   return fragment;
 }

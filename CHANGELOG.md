@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rust_robotics_playground`: native egui grid-planner demo (A\*, Dijkstra, JPS,
   Theta\*) with click-to-edit obstacles, draggable start/goal, and compare-all
   timing table — first slice of the Phase 2 WASM playground.
+- WASM playground deploy: Trunk builds to GitHub Pages at `/playground/` with
+  gallery links (**Run in browser**).
 
 ## [0.1.0] - 2026-03-23
 

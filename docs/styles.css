@@ -490,6 +490,15 @@ button {
   transform: translateY(-1px);
 }
 
+.hidden {
+  display: none !important;
+}
+
+.play-link {
+  border-color: rgba(53, 208, 186, 0.55);
+  color: var(--accent);
+}
+
 .cta-card {
   display: flex;
   align-items: center;
