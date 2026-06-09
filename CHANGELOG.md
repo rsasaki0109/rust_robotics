@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timing table — first slice of the Phase 2 WASM playground.
 - WASM playground deploy: Trunk builds to GitHub Pages at `/playground/` with
   gallery links (**Run in browser**).
+- Playground **Localization** tab: arrow-key unicycle driving with Particle
+  Filter (120 particles) and EKF tabs, noise slider, trails, and steps/sec.
 
 ## [0.1.0] - 2026-03-23
 

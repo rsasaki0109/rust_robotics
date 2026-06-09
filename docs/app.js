@@ -9,6 +9,15 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Interactive Localization",
+    category: "Localization",
+    image: "img/localization/particle_filter_result.png",
+    command: "cargo run -p rust_robotics_playground",
+    description: "Drive a robot with arrow keys; watch Particle Filter particles or EKF covariance ellipses under adjustable sensor noise.",
+    playLink: "playground/",
+    size: "wide"
+  },
+  {
     title: "Extended Kalman Filter",
     category: "Localization",
     image: "img/localization/ekf.svg",
