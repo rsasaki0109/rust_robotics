@@ -25,9 +25,32 @@ jobs:
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-pages-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Install trunk
+      run: command -v trunk || cargo install trunk --locked
+
+    - name: Build playground WASM
+      working-directory: crates/rust_robotics_playground
+      run: trunk build index.html --release --public-url /rust_robotics/playground/
+      env:
+        RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
+        NO_COLOR: "false"
 
     - name: Build API docs
-      run: cargo doc --workspace --no-deps
+      run: cargo doc --workspace --no-deps --exclude rust_robotics_playground
 
     - name: Build static artifact
       run: |
@@ -35,6 +58,7 @@ jobs:
         mkdir -p _site
         cp -R docs/. _site/
         cp -R img _site/img
+        cp -R crates/rust_robotics_playground/dist/. _site/playground/
         cp -R target/doc _site/api
 
     - name: Upload Pages artifact

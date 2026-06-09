@@ -971,3 +971,10 @@ interactive, one front-page-capable announcement post.
   (trunk + Pages) remains open.
 - Updated README/CHANGELOG for crates.io-first library usage; publish still
   requires running `docs/crates_io_release.md` with registry credentials.
+
+2026-06-10 (batch 3 — Phase 2 deploy, no announce):
+
+- WASM entry point for `rust_robotics_playground` (`eframe` WebRunner + Trunk).
+- Pages workflow builds `trunk build --release` into `docs/playground/` on
+  GitHub Pages (`/rust_robotics/playground/`).
+- Gallery hero/topbar/card link: **Run in browser** → interactive grid planners.
