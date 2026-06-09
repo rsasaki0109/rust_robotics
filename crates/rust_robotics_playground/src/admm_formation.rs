@@ -113,10 +113,9 @@ fn run_mpc(smooth_weight: f64, noise_amp: f64) -> AdmmRun {
     let mut accel_sq = 0.0;
     let mut accel_n = 0usize;
     for t in 1..path.len() - 1 {
-        for k in 0..2 {
-            let a = path[t + 1][k] - 2.0 * path[t][k] + path[t - 1][k];
-            accel_sq += a * a;
-        }
+        let dx = path[t + 1][0] - 2.0 * path[t][0] + path[t - 1][0];
+        let dy = path[t + 1][1] - 2.0 * path[t][1] + path[t - 1][1];
+        accel_sq += dx * dx + dy * dy;
         accel_n += 1;
     }
     let rms_accel = if accel_n > 0 {
