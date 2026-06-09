@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- crates.io publish readiness: docs.rs metadata on all first-release crates, CI
+  `package-check` and `wasm-check` jobs, and `.cargo/config.toml` wasm RUSTFLAGS.
+- `rust_robotics_playground`: native egui grid-planner demo (A\*, Dijkstra, JPS,
+  Theta\*) with click-to-edit obstacles, draggable start/goal, and compare-all
+  timing table — first slice of the Phase 2 WASM playground.
+
 ## [0.1.0] - 2026-03-23
 
 ### Added

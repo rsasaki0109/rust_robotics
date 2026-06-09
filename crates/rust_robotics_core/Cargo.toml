@@ -13,5 +13,8 @@ categories.workspace = true
 documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics_core/"
 description = "Core types, traits, and error types for the RustRobotics workspace"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 nalgebra = { workspace = true }
