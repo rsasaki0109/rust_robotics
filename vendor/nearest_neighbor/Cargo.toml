@@ -11,6 +11,9 @@ readme = "README.md"
 keywords = ["robotics", "nearest-neighbor", "kdtree", "slam", "icp"]
 categories = ["algorithms", "science::robotics"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [lib]
 name = "nearest_neighbor"
 path = "src/lib.rs"

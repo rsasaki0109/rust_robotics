@@ -1,0 +1,25 @@
+[package]
+name = "rust_robotics_playground"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Interactive egui playground for RustRobotics algorithms (not published to crates.io)"
+publish = false
+
+[dependencies]
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+egui = "0.31"
+rust_robotics_planning = { workspace = true }
+rust_robotics_core = { workspace = true }
+nalgebra = { workspace = true }
+
+[features]
+default = []
+
+[[bin]]
+name = "rust_robotics_playground"
+path = "src/main.rs"

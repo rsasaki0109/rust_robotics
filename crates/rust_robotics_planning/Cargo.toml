@@ -13,6 +13,9 @@ categories.workspace = true
 documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics_planning/"
 description = "Path planning algorithms (A*, DWA, RRT, PRM, etc.) for the RustRobotics workspace"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 rust_robotics_core = { workspace = true }
 nalgebra = { workspace = true }

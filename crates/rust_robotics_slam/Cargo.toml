@@ -13,6 +13,9 @@ categories.workspace = true
 documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics_slam/"
 description = "SLAM algorithms (EKF-SLAM, FastSLAM, Graph SLAM, ICP) for the RustRobotics workspace"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = []
 viz = ["dep:gnuplot"]
