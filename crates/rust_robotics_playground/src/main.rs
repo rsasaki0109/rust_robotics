@@ -2,6 +2,7 @@
 
 mod app;
 mod grid_planners;
+mod localization;
 
 use app::PlaygroundApp;
 

@@ -224,6 +224,17 @@ impl ParticleFilterLocalizer {
         self.try_set_landmarks(landmarks.points.clone())
     }
 
+    /// Set range-measurement noise used in the likelihood model.
+    pub fn set_range_noise(&mut self, range_noise: f64) -> RoboticsResult<()> {
+        if !range_noise.is_finite() || range_noise <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "particle filter range_noise must be positive and finite".to_string(),
+            ));
+        }
+        self.config.range_noise = range_noise;
+        Ok(())
+    }
+
     /// Get landmarks
     pub fn get_landmarks(&self) -> &[Point2D] {
         &self.landmarks

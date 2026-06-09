@@ -40,6 +40,8 @@ Interactive grid-planner playground (native egui):
 cargo run -p rust_robotics_playground
 ```
 
+Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
+
 Build and test the complete workspace:
 
 ```bash
