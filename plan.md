@@ -978,3 +978,10 @@ interactive, one front-page-capable announcement post.
 - Pages workflow builds `trunk build --release` into `docs/playground/` on
   GitHub Pages (`/rust_robotics/playground/`).
 - Gallery hero/topbar/card link: **Run in browser** → interactive grid planners.
+
+2026-06-10 (batch 4 — Phase 2 slice b):
+
+- Playground **Localization** tab: PF (landmark ranges) + EKF (noisy GPS) with
+  arrow-key driving, noise slider, particle cloud / covariance ellipse, trails,
+  steps/sec. `ParticleFilterLocalizer::set_range_noise` added for live tuning.
+- Gallery card + README note for the localization playground slice.
