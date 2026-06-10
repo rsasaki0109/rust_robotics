@@ -156,7 +156,9 @@ impl RRTPlanner {
     pub fn planning(&mut self, start: [f64; 2], goal: [f64; 2]) -> Option<Vec<[f64; 2]>> {
         let start_pt = Point2D::new(start[0], start[1]);
         let goal_pt = Point2D::new(goal[0], goal[1]);
-        match self.plan(start_pt, goal_pt) {
+        // Plan on `self` (not a clone) so `get_tree` exposes the search tree
+        // afterwards.
+        match self.plan_with_sampler(start_pt, goal_pt, |planner| planner.get_random_node()) {
             Ok(path) => Some(path.points.iter().map(|p| [p.x, p.y]).collect()),
             Err(_) => None,
         }
