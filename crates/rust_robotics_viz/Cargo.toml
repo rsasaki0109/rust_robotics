@@ -17,7 +17,7 @@ description = "Visualization utilities for the RustRobotics workspace"
 all-features = true
 
 [dependencies]
-rust_robotics_core = { workspace = true }
+rust_robotics_core = { workspace = true, features = ["std"] }
 gnuplot = { workspace = true }
 gif = { workspace = true, optional = true }
 

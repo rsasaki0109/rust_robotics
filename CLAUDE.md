@@ -56,3 +56,22 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 ./scripts/generate_gallery_gifs.sh   # media/gallery/*.gif を全再生成
 ```
 
+## no_std (組み込み)
+
+- `rust_robotics_core` と `rust_robotics_localization` は `--no-default-features` で no_std (+alloc) ビルド可能
+- 確認: `cargo build -p rust_robotics_core -p rust_robotics_localization --no-default-features --target thumbv7em-none-eabihf`
+- PF/MCL/EnKF と experiments はエントロピー源が必要なため `std` feature 限定
+- no_std での f64 数学は `#[cfg(not(feature = "std"))] use num_traits::Float;`(libm経由)。新モジュール追加時も同パターンを使う
+- workspace の nalgebra / rust_robotics_core は default-features = false。std が必要なクレートは `features = ["std"]` を明示する
+
+## CI
+
+- GitHub Actions: `.github/workflows/ci.yml`
+- ステップ: build → test → test (no-default-features) → headless examples → clippy → rustdoc → fmt → cargo-deny
+- 別ジョブ: coverage (cargo-tarpaulin → Codecov)
+- Clippy/doc/fmtは `-D warnings` でエラー扱い
+
+## 注意事項
+
+- docコメントで `[m]`, `[rad]` 等を書く場合は `\[m\]` とエスケープ（rustdocがリンクと誤認するため）
+- bare URLは `<https://...>` で囲む（rustdoc警告回避）

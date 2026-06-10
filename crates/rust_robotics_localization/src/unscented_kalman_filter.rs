@@ -4,9 +4,17 @@
 //! UKF propagates sigma points through nonlinear functions for more accurate estimation
 //! compared to EKF linearization.
 
+use alloc::string::ToString;
+use alloc::vec;
+use alloc::vec::Vec;
+use core::f64::consts::PI;
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
+#[cfg(feature = "std")]
 use rand::Rng;
-use std::f64::consts::PI;
 
 use rust_robotics_core::{
     ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,
@@ -720,13 +728,14 @@ pub fn calc_input() -> Vector2<f64> {
 }
 
 /// Simulate observation with noise (for demo)
+#[cfg(feature = "std")]
 pub fn observation(
     x_true: &mut Vector4<f64>,
     x_dr: &mut Vector4<f64>,
     u: &Vector2<f64>,
 ) -> (Vector2<f64>, Vector2<f64>) {
     const INPUT_NOISE_V: f64 = 1.0;
-    const INPUT_NOISE_YAW: f64 = std::f64::consts::FRAC_PI_6; // 30 degrees
+    const INPUT_NOISE_YAW: f64 = core::f64::consts::FRAC_PI_6; // 30 degrees
     const GPS_NOISE_X: f64 = 0.5;
     const GPS_NOISE_Y: f64 = 0.5;
 

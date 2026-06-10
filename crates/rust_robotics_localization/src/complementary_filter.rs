@@ -3,7 +3,12 @@
 //! Implements a simple complementary filter that blends high-frequency
 //! gyroscope/odometry predictions with low-frequency position measurements.
 
+use alloc::format;
 use nalgebra::{Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{RoboticsError, RoboticsResult, State2D, StateEstimator};
 
 /// State representation for Complementary Filter \[x, y, yaw, v\]

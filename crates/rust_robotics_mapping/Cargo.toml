@@ -17,7 +17,7 @@ description = "Mapping algorithms (NDT, occupancy grid, etc.) for the RustRoboti
 all-features = true
 
 [dependencies]
-rust_robotics_core = { workspace = true }
-nalgebra = { workspace = true }
+rust_robotics_core = { workspace = true, features = ["std"] }
+nalgebra = { workspace = true, features = ["std"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
