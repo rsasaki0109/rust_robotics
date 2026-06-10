@@ -40,6 +40,28 @@ Every animation above is rendered by the library itself — regenerate them all 
   and a ROS2 TurtleBot3 Gazebo navigation stack.
 - **Measured comparisons**, including Rust vs Python speed checks and MovingAI planner
   benchmarks with reproducible commands.
+- **`no_std` Kalman filters** — the localization stack cross-compiles for bare-metal
+  Cortex-M microcontrollers, something a Python algorithm collection cannot do.
+
+## Embedded / no_std
+
+The core types and the Kalman-family localizers build without the standard
+library, so the same EKF you simulate on a workstation runs on a $5
+microcontroller (Raspberry Pi Pico 2, STM32, ESP32-C3, ...):
+
+```bash
+rustup target add thumbv7em-none-eabihf
+cargo build -p rust_robotics_core -p rust_robotics_localization \
+  --no-default-features --target thumbv7em-none-eabihf
+```
+
+Available in `no_std` mode (with `alloc`): **EKF, Iterated EKF, UKF, Cubature KF,
+Square-Root UKF, Information Filter, Complementary Filter, Histogram Filter, and
+the EKF/CKF Adaptive Filter**. Math is routed through pure-Rust
+[`libm`](https://crates.io/crates/libm), no FPU or OS required. The
+sampling-based localizers (particle filter, MCL, ensemble KF) stay behind the
+default `std` feature because they need an entropy source. This is verified on
+every commit by the `embedded-check` CI job.
 
 Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
 

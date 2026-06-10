@@ -25,7 +25,10 @@ keywords = ["robotics", "path-planning", "localization", "slam", "control"]
 categories = ["algorithms", "science::robotics", "simulation"]
 
 [workspace.dependencies]
-nalgebra = "0.33"
+# default-features off so no_std crates (core, localization) can opt out of
+# nalgebra/std; std consumers re-enable it via `features = ["std"]`.
+nalgebra = { version = "0.33", default-features = false, features = ["alloc", "libm"] }
+num-traits = { version = "0.2", default-features = false, features = ["libm"] }
 rand = "0.9.3"
 rand_distr = "0.5.1"
 itertools = "0.13"
@@ -34,7 +37,9 @@ gnuplot = "0.0.43"
 gif = "0.13"
 
 # Internal crate dependencies
-rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.1.0" }
+# core is default-features = false so no_std crates can opt out of std;
+# std consumers re-enable it via `features = ["std"]`.
+rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.1.0", default-features = false }
 rust_robotics_planning = { path = "crates/rust_robotics_planning", version = "0.1.0" }
 rust_robotics_localization = { path = "crates/rust_robotics_localization", version = "0.1.0" }
 rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.1.0" }

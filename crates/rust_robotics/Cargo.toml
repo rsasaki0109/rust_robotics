@@ -29,7 +29,7 @@ dora = ["dep:dora-node-api", "dep:eyre", "dep:serde", "dep:serde_json"]
 full = ["planning", "localization", "control", "mapping", "slam", "viz"]
 
 [dependencies]
-rust_robotics_core = { workspace = true }
+rust_robotics_core = { workspace = true, features = ["std"] }
 rust_robotics_planning = { workspace = true, optional = true }
 rust_robotics_localization = { workspace = true, optional = true }
 rust_robotics_control = { workspace = true, optional = true }
@@ -43,7 +43,7 @@ serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 gnuplot = { workspace = true }
-nalgebra = { workspace = true }
+nalgebra = { workspace = true, features = ["std"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 

@@ -7,7 +7,13 @@
 //! Reference: Arasaratnam & Haykin, "Cubature Kalman Filters",
 //! IEEE Transactions on Automatic Control, 2009.
 
+use alloc::format;
+use alloc::string::ToString;
 use nalgebra::{DMatrix, Matrix2, Matrix2x4, Matrix4, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 
 use rust_robotics_core::{
     ControlInput, Point2D, RoboticsError, RoboticsResult, State2D, StateEstimator,

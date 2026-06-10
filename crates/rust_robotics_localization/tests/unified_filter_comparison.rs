@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 //! Unified benchmark comparing 6 localization filters on the same scenario.
 //!
 //! Simulates a vehicle driving in a circle, adds noise to controls and

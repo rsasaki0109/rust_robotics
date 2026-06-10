@@ -16,8 +16,8 @@ rust_robotics_planning = { workspace = true }
 rust_robotics_localization = { workspace = true }
 rust_robotics_slam = { workspace = true }
 rust_robotics_control = { workspace = true }
-rust_robotics_core = { workspace = true }
-nalgebra = { workspace = true }
+rust_robotics_core = { workspace = true, features = ["std"] }
+nalgebra = { workspace = true, features = ["std"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
 
