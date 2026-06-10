@@ -1,0 +1,6 @@
+[build]
+dist = "dist"
+filehash = true
+
+[watch]
+ignore = ["dist"]
