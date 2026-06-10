@@ -8,6 +8,7 @@ members = [
     "crates/rust_robotics_slam",
     "crates/rust_robotics_viz",
     "crates/rust_robotics",
+    "crates/rust_robotics_playground",
 ]
 resolver = "2"
 

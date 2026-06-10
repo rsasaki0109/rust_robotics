@@ -839,3 +839,135 @@ Before pushing a batch:
 6. Commit with a message that describes the reproduction slice rather than a
    generic cleanup.
 
+## Growth Plan
+
+Added: 2026-06-10
+
+Two tracks aimed at growing adoption and visibility. The short-term track
+(crates.io) unblocks ecosystem discovery (lib.rs, docs.rs, `cargo add`). The
+mid-term track (WASM playground) turns the static gallery into an interactive,
+shareable demo — the one thing a Python algorithm collection cannot offer.
+
+### Phase 1 (short term): First crates.io Release
+
+Goal: `cargo add rust_robotics` works, docs.rs builds, README stops saying
+"until the first crates.io release".
+
+The publish mechanics are already written down in
+`docs/crates_io_release.md` (dependency-ordered publish starting from
+`vendor/nearest_neighbor`, then core, then domain crates, then the umbrella
+crate). Remaining work before running it:
+
+1. **Metadata audit.** Every published crate needs `description`, `license`,
+   `repository` (already set via `workspace.package`) plus `keywords`,
+   `categories` (e.g. `science::robotics`, `algorithms`), and `readme`.
+   Check `vendor/nearest_neighbor` has a publishable name (no crates.io
+   squatting conflict) and its own metadata.
+2. **Version policy.** Publish everything as `0.1.0` from
+   `workspace.package.version`. Pin inter-crate dependencies as
+   `version = "0.1.0", path = "..."` so the workspace keeps using path deps
+   while crates.io consumers resolve by version.
+3. **docs.rs configuration.** Add `[package.metadata.docs.rs]` with
+   `all-features = true` (or a curated feature list — `viz` pulls gnuplot,
+   which is a system dependency; verify docs.rs can still build it, otherwise
+   exclude `viz` from docs.rs features).
+4. **Dry-run gate.** `cargo publish --dry-run` for every crate in publish
+   order; fix packaging errors (missing files, oversized media — confirm
+   `media/` and `img/` are excluded from packages via `exclude` in each
+   Cargo.toml so crate tarballs stay small).
+5. **Publish** following `docs/crates_io_release.md`, waiting for index
+   propagation between layers.
+6. **Post-release.** Update README ("Use As A Library" section → plain
+   `cargo add rust_robotics`), tag `v0.1.0`, write `CHANGELOG.md` entry,
+   add crates.io + docs.rs badges.
+7. **Announce.** Self-nominate to This Week in Rust (crate of the week),
+   post to r/rust and r/robotics with the strongest GIF, one X/Twitter
+   thread. Submit PRs to awesome-rust / awesome-robotics lists.
+
+Success metric: crates.io downloads > 0 sustained, lib.rs listing live,
+measurable star uptick in the announcement week.
+
+### Phase 2 (mid term): WASM Interactive Playground
+
+Goal: a browser playground on GitHub Pages where visitors run planners,
+localizers, and SLAM interactively — click to place obstacles, drag start/goal,
+watch the algorithm replan in real time. No install. This is the headline
+differentiator vs PythonRobotics.
+
+Constraints discovered up front:
+
+- `rust_robotics_viz` wraps gnuplot (native process) — it cannot compile to
+  WASM. The playground needs its own rendering path; do NOT try to port viz.
+- Algorithm crates are already headless-friendly (CI runs headless examples),
+  so the core compute should compile to `wasm32-unknown-unknown` with little
+  or no change. RNG usage must go through a seedable PRNG (no `std::time`
+  entropy on wasm without js feature).
+
+Plan:
+
+1. **WASM build audit.** Add CI job:
+   `cargo check --workspace --lib --no-default-features --target wasm32-unknown-unknown`
+   (excluding viz). Fix anything that drags in non-wasm deps (threads, file
+   I/O, time). This also hardens the library for embedded use later.
+2. **Playground crate.** New `crates/rust_robotics_playground` (not published;
+   excluded from the crates.io umbrella). Stack: `eframe`/`egui` compiled with
+   `wasm-bindgen` + `trunk` — single codebase runs native (debug) and in
+   browser (deploy). egui gives immediate-mode canvas drawing for grids,
+   paths, particles, ellipses.
+3. **Demo slices, in order of visual payoff:**
+   a. Grid planners (A*, Dijkstra, JPS, Theta*, RRT, DWA) — click-to-draw
+      obstacles, drag start/goal, animated expansion, side-by-side compare.
+   b. Localization (EKF/UKF/PF) — drive a robot with arrow keys, toggle
+      sensor noise, watch covariance ellipses / particle clouds.
+   c. SLAM (EKF-SLAM / FastSLAM / ICP scan matching) — replay a canned
+      trajectory, scrub a timeline slider.
+   d. One "wow" multi-agent demo (horizon-consensus ADMM formation from
+      slice 18) — this is unique content no other playground has.
+4. **Deploy.** `trunk build --release` artifact published to GitHub Pages
+   alongside the existing gallery (`docs/`); gallery cards link to "Run this
+   in your browser". Keep total wasm payload < ~5 MB (wasm-opt, no debug
+   symbols).
+5. **Performance hook.** Show a live "steps/sec" counter in each demo —
+   quietly makes the Rust-speed argument every visitor can feel.
+6. **Announce.** Show HN ("100+ robotics algorithms running in your
+   browser, in Rust/WASM"), r/rust, This Week in Rust, X thread with screen
+   recordings. Time the announcement to land after Phase 1 so the landing
+   page offers both "try it" and "cargo add".
+
+Success metric: playground live on Pages, at least demo slices (a) and (b)
+interactive, one front-page-capable announcement post.
+
+### Sequencing
+
+- Phase 1 is mostly checklist work: target one focused batch.
+- Phase 2 step 1 (wasm build audit) can start immediately and independently;
+  it is also a prerequisite for any future `no_std`/embedded story.
+- Research reproduction work (above) continues in parallel; new slices should
+  add a playground demo when the visual payoff is high.
+
+### Progress
+
+2026-06-10:
+
+- Added docs.rs metadata to all first-release crate manifests. Domain crates
+  build docs with all features; the umbrella crate uses the `full` feature set
+  so docs include algorithm and viz re-exports without forcing the optional
+  dora integration.
+- Added a CI `wasm-check` job for the headless library stack on
+  `wasm32-unknown-unknown`, excluding `rust_robotics_viz`.
+- Verified `cargo package --workspace --no-verify` and publish dry-runs for the
+  first dependency layer (`rust_robotics_nearest_neighbor`,
+  `rust_robotics_core`). Later dry-runs still require the previous layer to be
+  actually published to crates.io first.
+
+2026-06-10 (batch 2):
+
+- Added CI `package-check` job and `.cargo/config.toml` wasm RUSTFLAGS so local
+  `cargo check --target wasm32-unknown-unknown` matches CI.
+- Confirmed crate tarballs stay small (largest: `rust_robotics_planning` ~1.4 MiB
+  compressed with MovingAI benchdata; no repo `media/`/`img/` leakage).
+- Added `rust_robotics_playground` with grid-planner demo slice (a): native
+  egui, obstacle painting, start/goal drag, compare-all timings. WASM deploy
+  (trunk + Pages) remains open.
+- Updated README/CHANGELOG for crates.io-first library usage; publish still
+  requires running `docs/crates_io_release.md` with registry credentials.

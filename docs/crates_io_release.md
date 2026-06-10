@@ -11,11 +11,31 @@ cargo check -p rust_robotics --all-features
 cargo test -p rust_robotics --lib
 cargo package --manifest-path vendor/nearest_neighbor/Cargo.toml
 cargo package -p rust_robotics_core
+cargo package --workspace --no-verify --exclude rust_robotics_playground
 ```
 
-`cargo package` for dependent workspace crates will fail until their internal
-dependencies already exist on crates.io. That is expected before the first
-release.
+Before the first publish, confirm each package name is still absent from the
+registry:
+
+```bash
+cargo info rust_robotics
+cargo info rust_robotics_core
+cargo info rust_robotics_planning
+cargo info rust_robotics_localization
+cargo info rust_robotics_control
+cargo info rust_robotics_mapping
+cargo info rust_robotics_slam
+cargo info rust_robotics_viz
+cargo info rust_robotics_nearest_neighbor
+```
+
+Each command should report that the crate cannot be found. After the first
+release, the same commands should resolve to the published versions.
+
+`cargo publish --dry-run` for dependent workspace crates will fail until their
+internal dependencies already exist on crates.io. That is expected before the
+first release; run each dependent dry-run only after the previous dependency
+layer has been published and the index has caught up.
 
 ## Publish Order
 

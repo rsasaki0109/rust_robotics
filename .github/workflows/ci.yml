@@ -51,6 +51,55 @@ jobs:
         cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
         cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
 
+  package-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-package-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Verify publishable crate tarballs
+      run: |
+        cargo package --manifest-path vendor/nearest_neighbor/Cargo.toml --allow-dirty
+        cargo package -p rust_robotics_core --allow-dirty
+        cargo package --workspace --no-verify --allow-dirty --exclude rust_robotics_playground
+
+  wasm-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-wasm-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Check headless libraries on wasm
+      run: cargo check -p rust_robotics_core -p rust_robotics_planning -p rust_robotics_localization -p rust_robotics_control -p rust_robotics_mapping -p rust_robotics_slam -p rust_robotics --no-default-features --features "rust_robotics/planning,rust_robotics/localization,rust_robotics/control,rust_robotics/mapping,rust_robotics/slam" --target wasm32-unknown-unknown
+      env:
+        RUSTFLAGS: '--cfg getrandom_backend="unsupported"'
+
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -13,6 +13,9 @@ categories.workspace = true
 documentation = "https://rsasaki0109.github.io/rust_robotics/api/rust_robotics/"
 description = "Umbrella crate for the RustRobotics workspace - feature-gated re-exports of all domain crates"
 
+[package.metadata.docs.rs]
+features = ["full"]
+
 [features]
 default = ["planning", "localization", "control", "mapping", "slam"]
 planning = ["dep:rust_robotics_planning"]

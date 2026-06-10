@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml/badge.svg)](https://github.com/rsasaki0109/rust_robotics/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/rsasaki0109/rust_robotics/branch/main/graph/badge.svg)](https://codecov.io/gh/rsasaki0109/rust_robotics)
+[![crates.io](https://img.shields.io/crates/v/rust_robotics.svg)](https://crates.io/crates/rust_robotics)
+[![docs.rs](https://docs.rs/rust_robotics/badge.svg)](https://docs.rs/rust_robotics)
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://rsasaki0109.github.io/rust_robotics/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
@@ -32,6 +34,12 @@ cd rust_robotics
 cargo run -p rust_robotics --example headless_grid_planners --features planning
 ```
 
+Interactive grid-planner playground (native egui):
+
+```bash
+cargo run -p rust_robotics_playground
+```
+
 Build and test the complete workspace:
 
 ```bash
@@ -41,7 +49,15 @@ cargo test --workspace --lib --tests
 
 ## Use As A Library
 
-Until the first crates.io release is published, depend on the Git repository:
+Add the umbrella crate from crates.io (or the Git repository until the first
+release is indexed):
+
+```toml
+[dependencies]
+rust_robotics = "0.1"
+```
+
+If you need unreleased changes before crates.io propagation finishes:
 
 ```toml
 [dependencies]
