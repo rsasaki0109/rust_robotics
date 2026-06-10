@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use proptest::prelude::*;
 use rust_robotics_localization::ekf::{EKFConfig, EKFLocalizer};
 use rust_robotics_localization::particle_filter::{ParticleFilterConfig, ParticleFilterLocalizer};

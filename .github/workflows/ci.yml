@@ -100,6 +100,29 @@ jobs:
       env:
         RUSTFLAGS: '--cfg getrandom_backend="unsupported"'
 
+  embedded-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: thumbv7em-none-eabihf
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-embedded-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Build no_std crates for Cortex-M (thumbv7em)
+      run: cargo build -p rust_robotics_core -p rust_robotics_localization --no-default-features --target thumbv7em-none-eabihf
+
   lint:
     runs-on: ubuntu-latest
     steps:

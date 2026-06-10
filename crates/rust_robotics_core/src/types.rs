@@ -1,6 +1,13 @@
 //! Common types used throughout rust_robotics
 
+use alloc::format;
+use alloc::vec::Vec;
+
 use nalgebra::{Matrix2, Matrix4, Vector2, Vector3, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 
 use crate::error::{RoboticsError, RoboticsResult};
 
@@ -109,11 +116,11 @@ impl Pose2D {
 
     /// Normalize yaw to [-pi, pi]
     pub fn normalize_yaw(&mut self) {
-        while self.yaw > std::f64::consts::PI {
-            self.yaw -= 2.0 * std::f64::consts::PI;
+        while self.yaw > core::f64::consts::PI {
+            self.yaw -= 2.0 * core::f64::consts::PI;
         }
-        while self.yaw < -std::f64::consts::PI {
-            self.yaw += 2.0 * std::f64::consts::PI;
+        while self.yaw < -core::f64::consts::PI {
+            self.yaw += 2.0 * core::f64::consts::PI;
         }
     }
 }
@@ -427,26 +434,26 @@ impl Covariance4D {
 // Display implementations
 // ---------------------------------------------------------------------------
 
-impl std::fmt::Display for Point2D {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Point2D {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "({:.3}, {:.3})", self.x, self.y)
     }
 }
 
-impl std::fmt::Display for Point3D {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Point3D {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "({:.3}, {:.3}, {:.3})", self.x, self.y, self.z)
     }
 }
 
-impl std::fmt::Display for Pose2D {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Pose2D {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "(x={:.3}, y={:.3}, yaw={:.3})", self.x, self.y, self.yaw)
     }
 }
 
-impl std::fmt::Display for State2D {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for State2D {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "(x={:.3}, y={:.3}, yaw={:.3}, v={:.3})",
@@ -455,8 +462,8 @@ impl std::fmt::Display for State2D {
     }
 }
 
-impl std::fmt::Display for ControlInput {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for ControlInput {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "(v={:.3}, omega={:.3})", self.v, self.omega)
     }
 }
@@ -476,7 +483,7 @@ mod tests {
     fn test_pose2d_normalize_yaw() {
         let mut pose = Pose2D::new(0.0, 0.0, 4.0);
         pose.normalize_yaw();
-        assert!(pose.yaw >= -std::f64::consts::PI && pose.yaw <= std::f64::consts::PI);
+        assert!(pose.yaw >= -core::f64::consts::PI && pose.yaw <= core::f64::consts::PI);
     }
 
     #[test]
@@ -515,8 +522,8 @@ mod tests {
 
         assert_eq!(yaw.len(), path.len());
         assert!(yaw[0].abs() < 1e-10);
-        assert!((yaw[1] - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
-        assert!((yaw[2] - std::f64::consts::FRAC_PI_2).abs() < 1e-10);
+        assert!((yaw[1] - core::f64::consts::FRAC_PI_2).abs() < 1e-10);
+        assert!((yaw[2] - core::f64::consts::FRAC_PI_2).abs() < 1e-10);
     }
 
     #[test]

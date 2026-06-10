@@ -5,7 +5,12 @@
 //! information matrix (inverse of covariance) and information vector
 //! (information\_matrix \* state).
 
+use alloc::string::ToString;
 use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{RoboticsError, RoboticsResult, State2D, StateEstimator};
 
 /// State representation for Information Filter (x, y, yaw, velocity)

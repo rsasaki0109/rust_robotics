@@ -12,6 +12,10 @@
 //! NIS follows a chi-squared distribution with dim(z) degrees of freedom.
 
 use nalgebra::{Matrix2, Matrix4, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{RoboticsResult, State2D};
 
 use crate::cubature_kalman_filter::{CKFConfig, CKFLocalizer};
@@ -215,9 +219,12 @@ impl AdaptiveFilterLocalizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "std")]
     use rand::SeedableRng;
+    #[cfg(feature = "std")]
     use rand_distr::{Distribution, Normal};
 
+    #[cfg(feature = "std")]
     fn motion_model(x: &Vector4<f64>, u: &Vector2<f64>, dt: f64) -> Vector4<f64> {
         let yaw = x[2];
         Vector4::new(
@@ -246,6 +253,7 @@ mod tests {
         assert_eq!(af.active_filter(), ActiveFilter::EKF);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_adaptive_filter_tracks_circular_motion() {
         let mut af = AdaptiveFilterLocalizer::with_defaults();
@@ -274,6 +282,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_adaptive_filter_switches_on_high_noise() {
         let config = AdaptiveFilterConfig {

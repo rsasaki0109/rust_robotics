@@ -19,8 +19,22 @@ all-features = true
 [dependencies]
 rust_robotics_core = { workspace = true }
 nalgebra = { workspace = true }
-rand = { workspace = true }
-rand_distr = { workspace = true }
+num-traits = { workspace = true }
+rand = { workspace = true, optional = true }
+rand_distr = { workspace = true, optional = true }
+
+[features]
+default = ["std"]
+# Without `std`, the sampling-based localizers (particle filter, MCL,
+# ensemble KF) and the experiment harness are disabled; the Kalman-family
+# filters build for bare-metal targets.
+std = [
+    "rust_robotics_core/std",
+    "nalgebra/std",
+    "num-traits/std",
+    "dep:rand",
+    "dep:rand_distr",
+]
 
 [dev-dependencies]
 proptest = "1.4"

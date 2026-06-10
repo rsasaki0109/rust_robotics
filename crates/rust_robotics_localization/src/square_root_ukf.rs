@@ -2,7 +2,13 @@
 //!
 //! SR-UKF propagates the Cholesky factor of covariance for improved numerical stability.
 
+use alloc::string::ToString;
+use alloc::vec;
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{RoboticsError, RoboticsResult, State2D, StateEstimator};
 
 /// State representation for SR-UKF (x, y, yaw, velocity)
@@ -184,7 +190,7 @@ impl SRUKFLocalizer {
         Self::validate_dt(dt)?;
 
         let sigma = self.generate_sigma_points();
-        let sigma_pred = std::array::from_fn(|i| Self::motion_model(&sigma[i], control, dt));
+        let sigma_pred = core::array::from_fn(|i| Self::motion_model(&sigma[i], control, dt));
         let x_pred = self.weighted_state_mean(&sigma_pred);
 
         let sqrt_q = Self::cholesky_lower_4(&self.config.q)?;
@@ -214,7 +220,7 @@ impl SRUKFLocalizer {
         Self::validate_measurement(measurement)?;
 
         let sigma = self.generate_sigma_points();
-        let z_sigma = std::array::from_fn(|i| Self::observation_model(&sigma[i]));
+        let z_sigma = core::array::from_fn(|i| Self::observation_model(&sigma[i]));
         let z_pred = self.weighted_measurement_mean(&z_sigma);
 
         let sqrt_r = Self::cholesky_lower_2(&self.config.r)?;

@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 //! CKF vs UKF broad comparison across multiple noise levels and scenarios.
 //!
 //! Tests the hypothesis that CKF achieves similar accuracy to UKF across

@@ -5,7 +5,13 @@
 //! Implements grid-based Bayesian filtering for 2D robot localization
 //! using a probability distribution over a discretized grid.
 
+use alloc::vec::Vec;
 use nalgebra::{DMatrix, Vector2, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
+#[cfg(feature = "std")]
 use rand_distr::{Distribution, Normal};
 
 // Simulation parameters
@@ -330,7 +336,8 @@ pub fn motion_model(x: Vector4<f64>, u: Vector2<f64>, dt: f64) -> Vector4<f64> {
     )
 }
 
-/// Get observations from RFID landmarks
+/// Get observations from RFID landmarks (for demo)
+#[cfg(feature = "std")]
 pub fn get_observations(
     x_true: &Vector4<f64>,
     rfid: &[(f64, f64)],
@@ -354,6 +361,7 @@ pub fn get_observations(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn test_grid_map_creation() {

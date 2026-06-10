@@ -1,6 +1,7 @@
 //! Error types for rust_robotics
 
-use std::fmt;
+use alloc::string::String;
+use core::fmt;
 
 /// Main error type for robotics algorithms
 #[derive(Debug)]
@@ -16,6 +17,7 @@ pub enum RoboticsError {
     /// Numerical computation failed (matrix inversion, etc.)
     NumericalError(String),
     /// I/O error
+    #[cfg(feature = "std")]
     IoError(std::io::Error),
     /// Visualization error
     VisualizationError(String),
@@ -29,12 +31,14 @@ impl fmt::Display for RoboticsError {
             RoboticsError::ControlError(msg) => write!(f, "Control error: {}", msg),
             RoboticsError::InvalidParameter(msg) => write!(f, "Invalid parameter: {}", msg),
             RoboticsError::NumericalError(msg) => write!(f, "Numerical error: {}", msg),
+            #[cfg(feature = "std")]
             RoboticsError::IoError(e) => write!(f, "I/O error: {}", e),
             RoboticsError::VisualizationError(msg) => write!(f, "Visualization error: {}", msg),
         }
     }
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for RoboticsError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -44,6 +48,7 @@ impl std::error::Error for RoboticsError {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::io::Error> for RoboticsError {
     fn from(e: std::io::Error) -> Self {
         RoboticsError::IoError(e)
@@ -56,6 +61,8 @@ pub type RoboticsResult<T> = Result<T, RoboticsError>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::format;
+    use alloc::string::ToString;
 
     #[test]
     fn test_error_display() {
@@ -63,6 +70,7 @@ mod tests {
         assert_eq!(format!("{}", err), "Planning error: No path found");
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_error_from_io() {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
