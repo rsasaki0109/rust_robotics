@@ -46,17 +46,13 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 
 - `planning`, `localization`, `control`, `mapping`, `slam` — 各ドメインcrate
 - `viz` — 可視化 (gnuplot依存)
+- `gif` — アニメGIF出力 (純Rust、gnuplot不要。`render_gif_*` exampleで使用)
 - `full` — 全feature有効
 - デフォルト: `planning`, `localization`, `control`, `mapping`, `slam`
 
-## CI
+## ギャラリーGIF再生成
 
-- GitHub Actions: `.github/workflows/ci.yml`
-- ステップ: build → test → test (no-default-features) → headless examples → clippy → rustdoc → fmt → cargo-deny
-- 別ジョブ: coverage (cargo-tarpaulin → Codecov)
-- Clippy/doc/fmtは `-D warnings` でエラー扱い
+```bash
+./scripts/generate_gallery_gifs.sh   # media/gallery/*.gif を全再生成
+```
 
-## 注意事項
-
-- docコメントで `[m]`, `[rad]` 等を書く場合は `\[m\]` とエスケープ（rustdocがリンクと誤認するため）
-- bare URLは `<https://...>` で囲む（rustdoc警告回避）

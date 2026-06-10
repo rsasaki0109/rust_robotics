@@ -11,7 +11,26 @@ RustRobotics is a library-first Rust workspace for robotics algorithms, inspired
 [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics) and extended with
 benchmarks, ROS2/Gazebo demos, and a visual showcase.
 
-![Dijkstra motion planner demo](./media/dijkstra-motion-planner.gif)
+<table>
+  <tr>
+    <td align="center"><a href="#rapidly-exploring-random-trees-rrt"><img src="./media/gallery/rrt.gif" width="260" alt="RRT tree growth"/></a><br/><b>RRT</b></td>
+    <td align="center"><a href="#dynamic-window-approach"><img src="./media/gallery/dwa.gif" width="260" alt="Dynamic Window Approach"/></a><br/><b>Dynamic Window Approach</b></td>
+    <td align="center"><a href="#dijkstra-algorithm"><img src="./media/dijkstra-motion-planner.gif" width="260" alt="Dijkstra motion planner"/></a><br/><b>Dijkstra</b></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="#extended-kalman-filter-localization"><img src="./media/gallery/ekf_localization.gif" width="260" alt="EKF localization"/></a><br/><b>EKF Localization</b></td>
+    <td align="center"><a href="#particle-filter-localization"><img src="./media/gallery/particle_filter.gif" width="260" alt="Particle filter localization"/></a><br/><b>Particle Filter</b></td>
+    <td align="center"><a href="#pure-pursuit"><img src="./media/gallery/pure_pursuit.gif" width="260" alt="Pure pursuit path tracking"/></a><br/><b>Pure Pursuit</b></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="#ekf-slam"><img src="./media/gallery/ekf_slam.gif" width="260" alt="EKF SLAM"/></a><br/><b>EKF SLAM</b></td>
+    <td align="center"><a href="#fastslam-10"><img src="./media/gallery/fastslam.gif" width="260" alt="FastSLAM 1.0"/></a><br/><b>FastSLAM 1.0</b></td>
+    <td align="center"><a href="#iterative-closest-point-icp-matching"><img src="./media/gallery/icp_matching.gif" width="260" alt="ICP scan matching"/></a><br/><b>ICP Matching</b></td>
+  </tr>
+</table>
+
+Every animation above is rendered by the library itself — regenerate them all with
+`./scripts/generate_gallery_gifs.sh` (pure Rust, no gnuplot or system packages).
 
 ## Why This Repo Is Useful
 
@@ -94,6 +113,22 @@ crates/
 ## More Examples
 
 ```bash
+# Regenerate every animated GIF in the gallery (pure Rust, no system deps)
+./scripts/generate_gallery_gifs.sh
+```
+
+<details>
+<summary><b>Show all example commands (headless, benchmarks, SVG/GIF renderers, visualization)</b></summary>
+
+```bash
+# Animated GIF renderers (media/gallery/, pure Rust)
+cargo run -p rust_robotics --example render_gif_ekf_localization --features "localization,gif"
+cargo run -p rust_robotics --example render_gif_particle_filter --features "localization,gif"
+cargo run -p rust_robotics --example render_gif_pure_pursuit --features "control,gif"
+cargo run -p rust_robotics --example render_gif_dwa --features "planning,gif"
+cargo run -p rust_robotics --example render_gif_rrt --features "planning,gif"
+cargo run -p rust_robotics --example render_gif_slam --features "slam,gif"
+
 # Headless (no GUI dependencies)
 cargo run -p rust_robotics --example headless_grid_planners --features planning
 cargo run -p rust_robotics --example headless_conformal_sipp --no-default-features --features planning
@@ -155,6 +190,8 @@ cargo run -p rust_robotics --example a_star --features "planning,viz"
 cargo run -p rust_robotics --example jps --features "planning,viz"
 cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz"
 ```
+
+</details>
 
 ### dora-rs dataflow example
 
@@ -378,20 +415,27 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
 # Localization
 ## Extended Kalman Filter Localization
 
-<img src="./img/localization/ekf.svg" width="640px">
+<img src="./media/gallery/ekf_localization.gif" width="640px">
 
-
-Red:GPS, Brue:Ground Truth, Green:EKF, Yellow:Dead Reckoning
+Gray: GPS measurements, Blue: Ground truth, Green: EKF estimate with 2-sigma covariance ellipse
 
 - [src](./crates/rust_robotics_localization/src/ekf.rs)
 
+```
+cargo run -p rust_robotics --example render_gif_ekf_localization --features "localization,gif"
+```
+
 ## Particle Filter Localization
 
-<img src="./img/localization/particle_filter_result.png" width="640px">
+<img src="./media/gallery/particle_filter.gif" width="640px">
 
-Blue: GPS, Red: Ground Truth, Green: Particle Filter, Yellow: Dead Reckoning
+Yellow: Range landmarks, Light blue: Particles, Blue: Ground truth, Green: Particle filter estimate
 
 - [src](./crates/rust_robotics_localization/src/particle_filter.rs)
+
+```
+cargo run -p rust_robotics --example render_gif_particle_filter --features "localization,gif"
+```
 
 ## Unscented Kalman Filter Localization
 
@@ -510,27 +554,33 @@ GP regression with RBF kernel for terrain/surface mapping from sparse measuremen
 
 ## Iterative Closest Point (ICP) Matching
 
-<img src="./img/slam/icp_summary.png" width="640px">
+<img src="./media/gallery/icp_matching.gif" width="640px">
 
-Red: Reference points, Blue: Initial points, Green: Aligned points
+Blue: Previous scan, Red: Current scan, Green: Current scan aligned by ICP
 
 - [src](./crates/rust_robotics_slam/src/icp_matching.rs)
 
+```
+cargo run -p rust_robotics --example render_gif_slam --features "slam,gif"
+```
+
 ## FastSLAM 1.0
 
-<img src="./img/slam/fastslam1.svg" width="640px">
+<img src="./media/gallery/fastslam.gif" width="640px">
 
 Particle filter based SLAM (Simultaneous Localization and Mapping). Each particle maintains its own map of landmarks using EKF.
 
-Blue: True path, Yellow: Dead Reckoning, Green: FastSLAM estimate, Black: True landmarks, Cyan: Estimated landmarks
+Yellow: True landmarks, Red cross: Estimated landmarks, Light blue: Particles, Blue: True path, Green: FastSLAM estimate
 
 - [src](./crates/rust_robotics_slam/src/fastslam1.rs)
 
 ## EKF SLAM
 
-<img src="./img/slam/ekf_slam.svg" width="640px">
+<img src="./media/gallery/ekf_slam.gif" width="640px">
 
 Extended Kalman Filter based SLAM. Maintains a joint state vector of robot pose and landmark positions with full covariance matrix.
+
+Yellow: True landmarks, Red cross: Estimated landmarks, Blue: True path, Green: EKF-SLAM estimate
 
 - [src](./crates/rust_robotics_slam/src/ekf_slam.rs)
 
@@ -640,11 +690,15 @@ Black: Control points, Green: Path
 
 ## Dynamic Window Approach
 
-<img src="./img/path_planning/dwa.svg" width="640px">
+<img src="./media/gallery/dwa.gif" width="640px">
 
-Black: Obstacles, Green: Trajectory, Yellow: Predicted trajectory
+Black: Obstacles, Blue cross: Goal, Green: Traveled trajectory, Light green: Best predicted trajectory
 
 - [src](./crates/rust_robotics_planning/src/dwa.rs)
+
+```
+cargo run -p rust_robotics --example render_gif_dwa --features "planning,gif"
+```
 
 ## D* Lite
 
@@ -696,13 +750,17 @@ Blue: Start, Red: Goal, Green: Path
 
 ## Rapidly-Exploring Random Trees (RRT)
 
-<img src="./img/path_planning/rrt_star_result.svg" width="640px">
+<img src="./media/gallery/rrt.gif" width="640px">
 
 Sampling-based path planning algorithm that builds a tree by randomly sampling the configuration space.
 
-Blue: Start, Red: Goal, Green: Path, Gray: Tree
+Green: Start and tree, Blue cross: Goal, Red: Found path, Black: Obstacles
 
 - [src](./crates/rust_robotics_planning/src/rrt.rs)
+
+```
+cargo run -p rust_robotics --example render_gif_rrt --features "planning,gif"
+```
 
 ## RRT*
 
@@ -790,11 +848,15 @@ Green: Path, Red: Start and Goal
 
 ## Pure Pursuit
 
-<img src="./img/path_tracking/pure_pursuit.png" width="640px">
+<img src="./media/gallery/pure_pursuit.gif" width="640px">
 
-Black: Planned path, Green: Tracked path
+Gray: Planned course, Green: Tracked path, Red: Vehicle
 
 - [src](./crates/rust_robotics_control/src/pure_pursuit.rs)
+
+```
+cargo run -p rust_robotics --example render_gif_pure_pursuit --features "control,gif"
+```
 
 ## Stanley Control
 
