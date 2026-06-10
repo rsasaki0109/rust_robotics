@@ -4,3 +4,9 @@
 mod visualizer;
 
 pub use visualizer::*;
+
+#[cfg(feature = "gif")]
+mod gif_recorder;
+
+#[cfg(feature = "gif")]
+pub use gif_recorder::*;

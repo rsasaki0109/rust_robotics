@@ -31,6 +31,7 @@ rand_distr = "0.5.1"
 itertools = "0.13"
 ordered-float = "4.2"
 gnuplot = "0.0.43"
+gif = "0.13"
 
 # Internal crate dependencies
 rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.1.0" }
