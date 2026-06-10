@@ -14,3 +14,6 @@
 
 # Generated corrected-SLAM revaluation reports
 /reports/slam_revaluation/
+
+# Trunk WASM build output (deployed via GitHub Pages CI)
+/crates/rust_robotics_playground/dist/
