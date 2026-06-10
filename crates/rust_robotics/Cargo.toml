@@ -24,6 +24,7 @@ control = ["dep:rust_robotics_control"]
 mapping = ["dep:rust_robotics_mapping"]
 slam = ["dep:rust_robotics_slam"]
 viz = ["dep:rust_robotics_viz", "rust_robotics_control?/viz", "rust_robotics_slam?/viz"]
+gif = ["viz", "rust_robotics_viz/gif"]
 dora = ["dep:dora-node-api", "dep:eyre", "dep:serde", "dep:serde_json"]
 full = ["planning", "localization", "control", "mapping", "slam", "viz"]
 
@@ -43,6 +44,8 @@ serde_json = { version = "1", optional = true }
 [dev-dependencies]
 gnuplot = { workspace = true }
 nalgebra = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
 
 # === Headless examples (require domain features but not viz) ===
 
@@ -317,3 +320,35 @@ required-features = ["planning"]
 name = "benchmark_localizers"
 path = "examples/benchmark_localizers.rs"
 required-features = ["localization"]
+
+# === Animated GIF gallery examples (no system dependencies) ===
+
+[[example]]
+name = "render_gif_ekf_localization"
+path = "examples/render_gif_ekf_localization.rs"
+required-features = ["localization", "gif"]
+
+[[example]]
+name = "render_gif_particle_filter"
+path = "examples/render_gif_particle_filter.rs"
+required-features = ["localization", "gif"]
+
+[[example]]
+name = "render_gif_pure_pursuit"
+path = "examples/render_gif_pure_pursuit.rs"
+required-features = ["control", "gif"]
+
+[[example]]
+name = "render_gif_dwa"
+path = "examples/render_gif_dwa.rs"
+required-features = ["planning", "gif"]
+
+[[example]]
+name = "render_gif_rrt"
+path = "examples/render_gif_rrt.rs"
+required-features = ["planning", "gif"]
+
+[[example]]
+name = "render_gif_slam"
+path = "examples/render_gif_slam.rs"
+required-features = ["slam", "gif"]

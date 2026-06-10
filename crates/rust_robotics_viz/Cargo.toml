@@ -19,3 +19,7 @@ all-features = true
 [dependencies]
 rust_robotics_core = { workspace = true }
 gnuplot = { workspace = true }
+gif = { workspace = true, optional = true }
+
+[features]
+gif = ["dep:gif"]
