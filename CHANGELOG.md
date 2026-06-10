@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   gallery links (**Run in browser**).
 - Playground **Localization** tab: arrow-key unicycle driving with Particle
   Filter (120 particles) and EKF tabs, noise slider, trails, and steps/sec.
+- Playground **SLAM** tab: canned trajectory replay with timeline scrubber for
+  EKF-SLAM, FastSLAM 1.0, and ICP scan matching (landmarks, particles, aligned scans).
+- Playground **ADMM Formation** tab: receding-horizon consensus ADMM with four
+  agents, stiff vs smoothed overlay, noise slider, and jerk/tracking metrics.
 
 ## [0.1.0] - 2026-03-23
 

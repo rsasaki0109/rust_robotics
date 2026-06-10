@@ -985,3 +985,12 @@ interactive, one front-page-capable announcement post.
   arrow-key driving, noise slider, particle cloud / covariance ellipse, trails,
   steps/sec. `ParticleFilterLocalizer::set_range_noise` added for live tuning.
 - Gallery card + README note for the localization playground slice.
+
+2026-06-10 (batch 5 — Phase 2 slices c & d):
+
+- Playground **SLAM** tab: precomputed EKF-SLAM, FastSLAM 1.0, and ICP timelines
+  with play/scrub controls; true vs estimated pose/landmarks and scan alignment.
+- Playground **ADMM Formation** tab: receding-horizon `solve_horizon_consensus`
+  MPC loop (four agents, L-corner goal), stiff vs smoothed overlay, noise slider,
+  cycle timeline, RMS accel / mean tracking metrics.
+- Gallery cards + README for SLAM and ADMM playground slices.
