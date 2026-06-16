@@ -3,6 +3,19 @@
 This workspace has several crates that depend on each other. Publish them in
 dependency order and wait for the crates.io index to update between layers.
 
+> **Release status (2026-06-17):** `0.1.0` is live on crates.io for all nine
+> crates. The next release is **`0.2.0`** (no_std localization stack + pure-Rust
+> GIF gallery + RRT `get_tree` fix). For subsequent releases the workflow is the
+> same as below, with two differences: the "confirm name is absent" preflight no
+> longer applies (the crates already exist), and `vendor/nearest_neighbor` only
+> needs re-publishing if it actually changed (it is unchanged for 0.2.0, so it
+> stays at `0.1.0` — skip step 1). Bump the version in `[workspace.package]` and
+> the internal dependency pins in `[workspace.dependencies]` together before
+> publishing, so a `0.2.0` crate resolves its siblings to `0.2.0` instead of the
+> already-published `0.1.0`. To ship as a backward-compatible `0.1.1` instead,
+> set both to `0.1.1` — but `0.2.0` is preferred because the no_std default-
+> feature restructuring is a semver-significant change for `0.x` consumers.
+
 ## Preflight
 
 ```bash
@@ -83,9 +96,10 @@ retry after the crates.io index catches up.
 ## After Publish
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
-gh release create v0.1.0 --title "v0.1.0" --notes "Initial crates.io release of RustRobotics."
+git tag v0.2.0
+git push origin v0.2.0
+gh release create v0.2.0 --title "v0.2.0" \
+  --notes "no_std localization stack, pure-Rust GIF gallery, RRT get_tree fix. See CHANGELOG.md."
 ```
 
 Then update the root README library section from the Git dependency to the
