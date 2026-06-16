@@ -13,7 +13,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT"
@@ -39,13 +39,13 @@ gif = "0.13"
 # Internal crate dependencies
 # core is default-features = false so no_std crates can opt out of std;
 # std consumers re-enable it via `features = ["std"]`.
-rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.1.0", default-features = false }
-rust_robotics_planning = { path = "crates/rust_robotics_planning", version = "0.1.0" }
-rust_robotics_localization = { path = "crates/rust_robotics_localization", version = "0.1.0" }
-rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.1.0" }
-rust_robotics_mapping = { path = "crates/rust_robotics_mapping", version = "0.1.0" }
-rust_robotics_slam = { path = "crates/rust_robotics_slam", version = "0.1.0" }
-rust_robotics_viz = { path = "crates/rust_robotics_viz", version = "0.1.0" }
+rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.2.0", default-features = false }
+rust_robotics_planning = { path = "crates/rust_robotics_planning", version = "0.2.0" }
+rust_robotics_localization = { path = "crates/rust_robotics_localization", version = "0.2.0" }
+rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.2.0" }
+rust_robotics_mapping = { path = "crates/rust_robotics_mapping", version = "0.2.0" }
+rust_robotics_slam = { path = "crates/rust_robotics_slam", version = "0.2.0" }
+rust_robotics_viz = { path = "crates/rust_robotics_viz", version = "0.2.0" }
 
 [patch.crates-io]
 raw_sync_2 = { path = "vendor/raw_sync_2" }
