@@ -994,3 +994,55 @@ interactive, one front-page-capable announcement post.
   MPC loop (four agents, L-corner goal), stiff vs smoothed overlay, noise slider,
   cycle timeline, RMS accel / mean tracking metrics.
 - Gallery cards + README for SLAM and ADMM playground slices.
+
+## Release Truth & Next-Release Plan
+
+Added: 2026-06-17
+
+### Confirmed publish state
+
+All nine crates are **already live on crates.io at `0.1.0`** (verified via the
+crates.io API: `rust_robotics`, `_core`, `_planning`, `_localization`,
+`_control`, `_mapping`, `_slam`, `_viz`, `_nearest_neighbor`; low double-digit
+download counts each). So the Phase 1 "first crates.io release" work is **done** —
+the short-term track is now *post-release hardening + the next version*, not the
+initial publish.
+
+### The drift that matters
+
+The published `0.1.0` was cut on 2026-03-23. Since then `main` gained the
+headline differentiators that the launch messaging leans on, but they are **not
+in the published crate**:
+
+- `no_std` localization stack (core + localization, `libm`, `embedded-check` CI).
+- Pure-Rust animated GIF gallery (`gif` feature).
+- RRT `get_tree()` fix.
+- (WASM playground — not a published crate, ships via Pages, so release-neutral.)
+
+Consequence: anyone who `cargo add rust_robotics` today gets a build **without
+no_std or the GIF feature**. Therefore the next release must precede the public
+announcement, or the "no_std Kalman on a $5 MCU" pitch is not reproducible from
+the published artifact.
+
+### Decision
+
+- Cut **`0.2.0`** (not `0.1.1`): the no_std default-feature restructuring is
+  semver-significant for `0.x` consumers, and a minor bump cleanly signals the
+  new capabilities. (`0.1.1` remains a one-line fallback if a strictly
+  backward-compatible patch is preferred.)
+- Version bumped in `[workspace.package]` and the internal dependency pins in
+  `[workspace.dependencies]` together (so a `0.2.0` crate resolves siblings to
+  `0.2.0`, not the already-published `0.1.0`). `vendor/nearest_neighbor` is
+  unchanged → stays `0.1.0`, skip its publish step.
+- `CHANGELOG.md` `[0.2.0]` section backfilled (it had drifted behind no_std / GIF
+  / RRT). `docs/crates_io_release.md` annotated for the subsequent-release path
+  and `v0.2.0` tag.
+
+### Revised short-term order (supersedes "P0 = release truth")
+
+1. **Publish `0.2.0`** in dependency order per `docs/crates_io_release.md`
+   (skip nearest_neighbor), tag `v0.2.0`, GitHub Release.
+2. **Launch kit + announcement** — only after the published version actually
+   contains no_std + GIF, so every claim is reproducible from `cargo add`.
+3. Getting-started funnel / docs coverage / stability tier / benchmark gate /
+   good-first-issue — as planned (adoption-first 45/30/15/10).
