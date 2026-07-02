@@ -1,6 +1,6 @@
 # RustRobotics Research Reproduction Plan
 
-Updated: 2026-06-05
+Updated: 2026-07-03
 
 This plan tracks the current pure-Rust reproduction effort for robotics papers
 whose official code is unavailable, delayed, or too heavy to integrate directly.
@@ -20,6 +20,13 @@ The current emphasis is:
 3. MPPI-style control extensions with measurable behavior changes.
 4. Geometry-heavy planning such as rigid-body MIP-style collision avoidance.
 5. Gallery-ready SVG assets so every reproduction has a visual result.
+
+As of 2026-07-03 the research reproduction queue (slices 1–18 and Growth Plan
+Phases 1–2) is largely landed. The active direction shifts to **shipping and
+adoption** (publish/announce `0.2.0`, contributor funnel, embedded proof point)
+while resuming research at **one breadth-first slice per month** — each new
+slice must also ship as a playground tab or gallery GIF when the visual payoff
+is high. See **Phase 3** and **Next Concrete Queue (v3)** below.
 
 ## Implemented Reproduction Slices
 
@@ -848,7 +855,7 @@ Two tracks aimed at growing adoption and visibility. The short-term track
 mid-term track (WASM playground) turns the static gallery into an interactive,
 shareable demo — the one thing a Python algorithm collection cannot offer.
 
-### Phase 1 (short term): First crates.io Release
+### Phase 1 (short term): First crates.io Release — **Done (0.1.0 live; 0.2.0 staged on main)**
 
 Goal: `cargo add rust_robotics` works, docs.rs builds, README stops saying
 "until the first crates.io release".
@@ -887,7 +894,7 @@ crate). Remaining work before running it:
 Success metric: crates.io downloads > 0 sustained, lib.rs listing live,
 measurable star uptick in the announcement week.
 
-### Phase 2 (mid term): WASM Interactive Playground
+### Phase 2 (mid term): WASM Interactive Playground — **Done (four tabs on Pages; announce pending)**
 
 Goal: a browser playground on GitHub Pages where visitors run planners,
 localizers, and SLAM interactively — click to place obstacles, drag start/goal,
@@ -1040,9 +1047,155 @@ the published artifact.
 
 ### Revised short-term order (supersedes "P0 = release truth")
 
-1. **Publish `0.2.0`** in dependency order per `docs/crates_io_release.md`
-   (skip nearest_neighbor), tag `v0.2.0`, GitHub Release.
-2. **Launch kit + announcement** — only after the published version actually
-   contains no_std + GIF, so every claim is reproducible from `cargo add`.
-3. Getting-started funnel / docs coverage / stability tier / benchmark gate /
-   good-first-issue — as planned (adoption-first 45/30/15/10).
+1. ~~**Cut `0.2.0` in workspace**~~ **Done (2026-06-17, merged via PR #35).**
+   no_std localization, GIF gallery, RRT `get_tree()` fix, playground tabs.
+2. **Publish `0.2.0` to crates.io** in dependency order per
+   `docs/crates_io_release.md` (skip nearest_neighbor), tag `v0.2.0`, GitHub
+   Release — verify index propagation before announcing.
+3. **Launch kit + announcement** — only after crates.io serves `0.2.0`, so
+   every claim (no_std, GIF, playground link) is reproducible from `cargo add`.
+4. Getting-started funnel / docs coverage / stability tier / benchmark gate /
+   good-first-issue — as planned (adoption-first; see Phase 3 resource split).
+
+## Phase 3: Be Dependable — "Browser to Bare Metal"
+
+Added: 2026-07-03
+
+Phase 1 was *be installable* (crates.io). Phase 2 was *be try-able* (WASM
+playground on Pages). Phase 3 is *be dependable*: a documented contract that
+core algorithms won't break under you, measured performance claims, and a
+bare-metal reference deployment.
+
+**Positioning target:** the reference Rust library for classical robotics
+algorithms — from a $5 microcontroller to a browser tab. Not "a Rust
+PythonRobotics" (undersells no_std/WASM/speed) and not a research codebase
+(the reproduction track is content, not the product).
+
+### Three pillars
+
+1. **Stability tier + API coherence (`0.3.0`, ~month 6–9).**
+   - Define traits (`Planner`, `Controller`, `Localizer`; start from
+     `docs/interfaces.md`) and migrate high-traffic modules.
+   - **Tier 1** (semver-checked, no breaking changes without minor bump):
+     `rust_robotics_core`, `rust_robotics_localization`, top ~20 planners and
+     controllers.
+   - **Tier 2** (experimental): research-reproduction modules (`mppi`,
+     `pusher_slider`, `admm_consensus`, etc.).
+
+2. **Verified performance.**
+   - Pick ~10 representative `benchmark_*` examples; commit baseline CSVs;
+     add a CI job that fails on regression beyond tolerance (solve time, path
+     length, final conflicts, residual norms).
+   - Publish a `BENCHMARKS.md` with pinned criteria, comparable release-over-release
+     (MovingAI benchdata already packaged in `rust_robotics_planning`).
+
+3. **Embedded reference deployment.**
+   - One in-tree demo: no_std EKF/UKF on a named MCU (RP2040/STM32) or
+     emulated in CI (QEMU/Renode) so the "no_std Kalman on a $5 MCU" pitch is
+     a screenshot, not just an `embedded-check` job.
+   - Later: extend no_std to `rust_robotics_control` (PID, Pure Pursuit,
+     Stanley, LQR — same `libm` pattern as localization).
+
+**Success metric:** an external team can choose `rust_robotics` for a real
+project and defend the choice — stability contract, measured performance,
+embedded proof.
+
+### Resource allocation (Phase 3 cadence)
+
+| Track | Share | Notes |
+| --- | --- | --- |
+| Adoption & library polish | ~40% | Funnel, docs.rs curation, CONTRIBUTING, release automation |
+| Research reproduction | ~25% | Cap at **1 slice/month**, breadth-first; playground/GIF required |
+| Embedded / no_std | ~15% | Reference demo now; control-crate no_std later |
+| Playground | ~10% | New tabs only when a slice supplies unique content |
+| Maintenance / CI | ~10% | Benchmark gate, plan.md hygiene, link-check README commands |
+
+### Deprioritize / stop
+
+1. **Racing powertrain depth line** — eight extension layers landed; declare
+   complete (endurance capstone's remaining question needs a different platform).
+2. **`experiments_*` / `decisions_*` doc corpus** (~60 of 93 docs files) —
+   freeze; move to `docs/archive/` when touched; do not extend.
+3. **ROS2/dora** — remain frozen unless a contributor owns a standalone Rust slice.
+4. **Neural/perception-heavy watchlist** (ACE-SLAM, HS-SLAM, GaussianFormer3D) —
+   drop from active candidate queue; GPU/training fights repo identity.
+5. **New workspace crates for research domains** — wait until ~5 modules and
+   external demand (e.g. manipulation).
+6. **PythonRobotics parity checklists** — marginal classic planners add less than
+   adoption/embedded work at current scale (~100+ algorithms).
+7. **Net-new benchmark SVG/CSV artifacts** — pause until the regression harness
+   (pillar 2) exists; otherwise manual regeneration debt grows.
+
+### 6–18 month vision (sketch)
+
+- **`0.3.0`:** API coherence + stability tier (see pillar 1).
+- **SLAM upgrade (~month 9–12):** pose-graph optimization (Gauss-Newton SE(2))
+  plus scan-to-map ICP per `docs/scan_to_map_icp_design.md`; playground tab with
+  loop-closure scrubber.
+- **Community:** 2–3 recurring contributors via good-first-issues harvested from
+  "Next useful extension" notes in this file; repo stays maintainer-led.
+- **1.0 is not an 18-month goal** — honest 0.x + stability tier is cheaper.
+
+## Next Concrete Queue (v3 — 2026-07-03)
+
+Queues v1 (#1–#6) and v2 (#1–#18) are fully landed. v3 is adoption-first,
+then maintenance hardening, then controlled research breadth. Items gate where
+noted.
+
+### P0 — Ship and announce (gates everything)
+
+1. **Publish `0.2.0` to crates.io** + tag `v0.2.0` + GitHub Release.
+2. **Announcement wave** — TWiR self-nomination, r/rust (playground link),
+   Show HN ("100+ robotics algorithms in your browser, Rust/WASM"), X thread
+   (strongest GIF + no_std pitch). Landing page offers both "try it" and
+   `cargo add`.
+3. **Release automation** — release-plz or cargo-release so nine version-locked
+   crates do not go stale again (0.1.0 → 0.2.0 gap was ~3 months).
+
+### P1 — Adoption funnel (after P0)
+
+4. **Getting-started guide + three persona recipes:**
+   (a) navigation loop (`headless_navigation_loop`), (b) no_std EKF on
+   `thumbv7em-none-eabihf`, (c) WASM/playground integration notes.
+5. **Curated docs.rs front page** for the umbrella crate — module map,
+   feature-flag table, one worked example per domain.
+6. **Contributor onramp** — `CONTRIBUTING.md`, "how to add an algorithm"
+   template (module + test + headless example + gallery asset), 10–15
+   good-first-issues from extension notes below.
+
+### P2 — Differentiation and safety net (~month 2–4)
+
+7. **Embedded no_std EKF reference demo** — real MCU or QEMU/Renode in CI;
+   short doc + photo/GIF.
+8. **Benchmark regression CI gate** — ~10 `benchmark_*` examples with committed
+   baselines (see Phase 3 pillar 2).
+9. **`plan.md` restructure** — move completed slice detail to existing
+   `docs/*_reproduction.md` pages; keep this file as thin active queue +
+   strategy (this update starts that shift).
+
+### P3 — Research + playground (one item per month, interleave with P2)
+
+10. **Playground pusher-slider tab** — drag goal pose, face-switching MPPI;
+    reuses `pusher_slider.rs`; unique interactive manipulation demo.
+11. **Grasp-MPC slice (candidate pool B)** — 2D grasp-affordance value grid +
+    MPC/MPPI scoring; reuses `mppi.rs` terminal-value machinery; opens
+    manipulation beyond pusher-slider.
+12. **Meta-Control slice (candidate pool B+)** — controller mode selector over
+    Pure Pursuit / Stanley / LQR / MPPI; only this repo has all controllers
+    under one API.
+
+### P4 — Phase 3 library work (~month 4–9)
+
+13. **`0.3.0` API coherence pass** + stability tier declaration +
+    `cargo-semver-checks` enforcement scope documented.
+14. **SLAM pose-graph backend** + scan-to-map ICP implementation per design doc.
+15. **Extend no_std to `rust_robotics_control`** — PID, Pure Pursuit, Stanley, LQR.
+
+### Progress (Phase 3 planning)
+
+2026-07-03:
+
+- Strategic review (Fable): Phase 3 defined; v3 queue replaces open-ended
+  research depth; resource split and deprioritization list recorded.
+- Workspace at `0.2.0` on `main` (PR #35 merged); crates.io publish + public
+  announcement remain the top gate before further feature work.
