@@ -163,6 +163,7 @@ cargo run -p rust_robotics --example render_traversal_risk_graph_svg --no-defaul
 cargo run -p rust_robotics --example headless_localizers --features localization
 cargo run -p rust_robotics --example headless_mppi_double_integrator --no-default-features --features control
 cargo run -p rust_robotics --example headless_mppi_constraint_discount --no-default-features --features control
+cargo run -p rust_robotics --example benchmark_mppi_unified --no-default-features --features control
 cargo run -p rust_robotics --example headless_mppi_terminal_value --no-default-features --features control
 cargo run -p rust_robotics --example headless_mppi_value_learning --no-default-features --features control
 cargo run -p rust_robotics --example headless_mppi_replay_value_learning --no-default-features --features control
@@ -205,6 +206,7 @@ cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-defa
 cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
 cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
 cargo run -p rust_robotics --example benchmark_conformal_sipp --no-default-features --features planning
+cargo run -p rust_robotics --example benchmark_conformal_coverage --no-default-features --features planning
 cargo run -p rust_robotics --example benchmark_traversal_risk_sweep --no-default-features --features planning
 
 # Visualization (requires gnuplot)

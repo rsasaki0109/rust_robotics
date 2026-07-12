@@ -24,6 +24,16 @@ cargo run -p rust_robotics --example benchmark_conformal_sipp --no-default-featu
 The sweep uses a 9x5 corridor with a predicted obstacle at the center lane
 during `t=4..6`. Calibration scores are `[0.10, 0.60, 1.20]`.
 
+Generate calibration scores from paired predicted/observed trajectories and
+sweep held-out coverage versus planning delay with:
+
+```bash
+cargo run -p rust_robotics --example benchmark_conformal_coverage --no-default-features --features planning
+```
+
+This writes `docs/assets/conformal-sipp-coverage.csv` and `.svg` from a
+deterministic dataset of 60 calibration episodes and 400 held-out errors.
+
 Representative output:
 
 ```text

@@ -123,8 +123,8 @@ pub use branchout_multimodal::{
 pub use breadth_first_search::{BFSConfig, BFSPlanner};
 pub use clothoid_path::{ClothoidConfig, ClothoidPath, ClothoidPlanner};
 pub use conformal_sipp::{
-    ConformalSippConfig, ConformalSippPlan, ConformalSippPlanner, PredictedObstaclePoint,
-    PredictedObstacleTrajectory,
+    calibration_errors_from_trajectories, ConformalSippConfig, ConformalSippPlan,
+    ConformalSippPlanner, PredictedObstaclePoint, PredictedObstacleTrajectory,
 };
 pub use cubic_spline_planner::{CubicSplinePlanner, Spline2D};
 pub use d_star_lite::DStarLite;

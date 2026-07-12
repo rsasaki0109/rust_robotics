@@ -105,6 +105,11 @@ path = "examples/headless_mppi_constraint_discount.rs"
 required-features = ["control"]
 
 [[example]]
+name = "benchmark_mppi_unified"
+path = "examples/benchmark_mppi_unified.rs"
+required-features = ["control"]
+
+[[example]]
 name = "headless_mppi_terminal_value"
 path = "examples/headless_mppi_terminal_value.rs"
 required-features = ["control"]
@@ -299,6 +304,11 @@ required-features = ["planning"]
 [[example]]
 name = "benchmark_conformal_sipp"
 path = "examples/benchmark_conformal_sipp.rs"
+required-features = ["planning"]
+
+[[example]]
+name = "benchmark_conformal_coverage"
+path = "examples/benchmark_conformal_coverage.rs"
 required-features = ["planning"]
 
 [[example]]
