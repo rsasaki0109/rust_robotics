@@ -178,17 +178,14 @@ impl TrajectoryGenerator {
 
             let diff = self.calc_diff(&params, target);
 
-            if let Some(j_inv) = jacobian.try_inverse() {
-                let dp = -j_inv * diff;
+            let j_inv = jacobian.try_inverse()?;
+            let dp = -j_inv * diff;
 
-                let alpha = self.line_search(&params, &dp, target);
-                params += alpha * dp;
+            let alpha = self.line_search(&params, &dp, target);
+            params += alpha * dp;
 
-                if params[0] < 0.1 {
-                    params[0] = 0.1;
-                }
-            } else {
-                return None;
+            if params[0] < 0.1 {
+                params[0] = 0.1;
             }
         }
 
