@@ -233,7 +233,7 @@ impl LocalizationDemo {
                 (yaw.cos() as f32) * radius * 1.8,
                 -(yaw.sin() as f32) * radius * 1.8,
             );
-        painter.line_segment([center, tip], Stroke::new(2.0, color));
+        painter.line_segment([center, tip], Stroke::new(2.0_f32, color));
     }
 
     fn draw_covariance_ellipse(
@@ -261,7 +261,10 @@ impl LocalizationDemo {
             let p = Point2D::new(center.x + offset.x, center.y + offset.y);
             points.push(self.world_to_screen(rect, side, p));
         }
-        painter.add(egui::Shape::closed_line(points, Stroke::new(1.5, color)));
+        painter.add(egui::Shape::closed_line(
+            points,
+            Stroke::new(1.5_f32, color),
+        ));
     }
 
     fn draw_scene(&self, ui: &mut egui::Ui, rect: Rect, side: f32) {
@@ -270,7 +273,11 @@ impl LocalizationDemo {
 
         for landmark in &self.landmarks.points {
             let c = self.world_to_screen(rect, side, *landmark);
-            painter.circle_stroke(c, 6.0, Stroke::new(1.5, Color32::from_rgb(200, 180, 80)));
+            painter.circle_stroke(
+                c,
+                6.0,
+                Stroke::new(1.5_f32, Color32::from_rgb(200, 180, 80)),
+            );
             painter.circle_filled(c, 2.5, Color32::from_rgb(220, 200, 90));
         }
 
@@ -282,7 +289,7 @@ impl LocalizationDemo {
                 .collect();
             painter.add(egui::Shape::line(
                 true_pts,
-                Stroke::new(1.5, Color32::from_rgba_unmultiplied(120, 220, 140, 90)),
+                Stroke::new(1.5_f32, Color32::from_rgba_unmultiplied(120, 220, 140, 90)),
             ));
         }
         if self.trail_est.len() >= 2 {
@@ -295,7 +302,7 @@ impl LocalizationDemo {
                 FilterKind::ParticleFilter => Color32::from_rgba_unmultiplied(100, 180, 255, 120),
                 FilterKind::Ekf => Color32::from_rgba_unmultiplied(255, 160, 90, 120),
             };
-            painter.add(egui::Shape::line(est_pts, Stroke::new(1.5, est_color)));
+            painter.add(egui::Shape::line(est_pts, Stroke::new(1.5_f32, est_color)));
         }
 
         if matches!(self.filter, FilterKind::ParticleFilter) {
