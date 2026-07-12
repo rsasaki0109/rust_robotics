@@ -827,7 +827,7 @@ fn bench_unified(c: &mut Criterion) {
             } else {
                 eprintln!(
                     "[SKIP] {} on {} (planner construction failed)",
-                    name, &scenario.name
+                    name, scenario.name
                 );
             }
         }

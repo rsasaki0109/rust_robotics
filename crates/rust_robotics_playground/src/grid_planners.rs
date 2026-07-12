@@ -390,7 +390,7 @@ impl GridPlannerDemo {
                 .collect();
             painter.add(egui::Shape::line(
                 points,
-                Stroke::new(2.5, Color32::from_rgb(80, 180, 255)),
+                Stroke::new(2.5_f32, Color32::from_rgb(80, 180, 255)),
             ));
         }
 

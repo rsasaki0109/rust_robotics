@@ -204,7 +204,7 @@ impl AdmmFormationDemo {
             painter.add(egui::Shape::line(
                 pts,
                 Stroke::new(
-                    2.0,
+                    2.0_f32,
                     Color32::from_rgba_unmultiplied(
                         run.color.r(),
                         run.color.g(),
@@ -225,14 +225,14 @@ impl AdmmFormationDemo {
         color: Color32,
     ) {
         let center = self.world_to_screen(rect, side, frame.center[0], frame.center[1]);
-        painter.circle_stroke(center, 8.0, Stroke::new(1.5, color));
+        painter.circle_stroke(center, 8.0, Stroke::new(1.5_f32, color));
         for agent in &frame.agents {
             let c = self.world_to_screen(rect, side, agent[0], agent[1]);
             painter.circle_filled(c, 5.0, color);
             painter.line_segment(
                 [center, c],
                 Stroke::new(
-                    1.0,
+                    1.0_f32,
                     Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 80),
                 ),
             );
@@ -251,7 +251,7 @@ impl AdmmFormationDemo {
             .collect();
         painter.add(egui::Shape::line(
             goal_pts,
-            Stroke::new(2.5, Color32::from_rgb(180, 180, 190)),
+            Stroke::new(2.5_f32, Color32::from_rgb(180, 180, 190)),
         ));
 
         let idx = self

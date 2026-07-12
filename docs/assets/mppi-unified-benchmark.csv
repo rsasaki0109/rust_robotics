@@ -1,0 +1,5 @@
+variant,runs,success_rate,mean_terminal_error,mean_terminal_cost,max_constraint_violation,mean_plan_time_us
+vanilla,5,0.000,0.030422,0.001021,0.359583,5830.6
+constraint-discounted,5,0.400,0.031128,0.001047,0.000874,8261.4
+terminal-value,5,0.600,0.028110,0.001063,0.002211,8837.9
+adaptive-lambda,5,1.000,0.024516,0.000746,0.000000,8682.8

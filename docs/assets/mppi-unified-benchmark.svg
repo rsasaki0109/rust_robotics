@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430">
+<rect width="960" height="430" fill="#fbfbfd"/>
+<text x="40" y="36" font-family="sans-serif" font-size="22" fill="#1d1d1f">Unified MPPI benchmark</text>
+<text x="40" y="59" font-family="sans-serif" font-size="13" fill="#6e6e73">5 fixed seeds · same dynamics, horizon, samples, goal, and obstacle</text>
+<text x="70" y="96" font-family="sans-serif" font-size="15" fill="#1d1d1f">Success rate</text>
+<rect x="70.0" y="330.0" width="42" height="0.0" rx="3" fill="#8e8e93"/>
+<text x="91.0" y="323.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.00</text>
+<text x="91.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">base</text>
+<rect x="131.0" y="254.0" width="42" height="76.0" rx="3" fill="#0a84ff"/>
+<text x="152.0" y="247.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.40</text>
+<text x="152.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">disc</text>
+<rect x="192.0" y="216.0" width="42" height="114.0" rx="3" fill="#30b0c7"/>
+<text x="213.0" y="209.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.60</text>
+<text x="213.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">value</text>
+<rect x="253.0" y="140.0" width="42" height="190.0" rx="3" fill="#bf5af2"/>
+<text x="274.0" y="133.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">1.00</text>
+<text x="274.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">adapt</text>
+<line x1="70" y1="330" x2="316.0" y2="330" stroke="#d1d1d6"/>
+<text x="360" y="96" font-family="sans-serif" font-size="15" fill="#1d1d1f">Terminal error (m)</text>
+<rect x="360.0" y="161.2" width="42" height="168.8" rx="3" fill="#8e8e93"/>
+<text x="381.0" y="154.2" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.03</text>
+<text x="381.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">base</text>
+<rect x="421.0" y="157.3" width="42" height="172.7" rx="3" fill="#0a84ff"/>
+<text x="442.0" y="150.3" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.03</text>
+<text x="442.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">disc</text>
+<rect x="482.0" y="174.0" width="42" height="156.0" rx="3" fill="#30b0c7"/>
+<text x="503.0" y="167.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.03</text>
+<text x="503.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">value</text>
+<rect x="543.0" y="194.0" width="42" height="136.0" rx="3" fill="#bf5af2"/>
+<text x="564.0" y="187.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.02</text>
+<text x="564.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">adapt</text>
+<line x1="360" y1="330" x2="606.0" y2="330" stroke="#d1d1d6"/>
+<text x="650" y="96" font-family="sans-serif" font-size="15" fill="#1d1d1f">Max violation (m)</text>
+<rect x="650.0" y="157.3" width="42" height="172.7" rx="3" fill="#8e8e93"/>
+<text x="671.0" y="150.3" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.36</text>
+<text x="671.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">base</text>
+<rect x="711.0" y="329.6" width="42" height="0.4" rx="3" fill="#0a84ff"/>
+<text x="732.0" y="322.6" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.00</text>
+<text x="732.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">disc</text>
+<rect x="772.0" y="328.9" width="42" height="1.1" rx="3" fill="#30b0c7"/>
+<text x="793.0" y="321.9" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.00</text>
+<text x="793.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">value</text>
+<rect x="833.0" y="330.0" width="42" height="0.0" rx="3" fill="#bf5af2"/>
+<text x="854.0" y="323.0" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#1d1d1f">0.00</text>
+<text x="854.0" y="349" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#6e6e73">adapt</text>
+<line x1="650" y1="330" x2="896.0" y2="330" stroke="#d1d1d6"/>
+<text x="40" y="395" font-family="sans-serif" font-size="12" fill="#6e6e73">Planning latency is recorded in the companion CSV; wall-clock values depend on the machine.</text>
+</svg>

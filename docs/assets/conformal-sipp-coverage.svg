@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="430" viewBox="0 0 900 430">
+<rect width="900" height="430" fill="#fbfbfd"/>
+<text x="45" y="38" font-family="sans-serif" font-size="22" fill="#1d1d1f">CP-SIPP: coverage versus delay</text>
+<text x="45" y="62" font-family="sans-serif" font-size="13" fill="#6e6e73">60 calibration episodes · 400 held-out errors · deterministic dataset</text>
+<line x1="75" y1="350" x2="815" y2="350" stroke="#e5e5ea"/><text x="62" y="354" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">0.0</text>
+<line x1="75" y1="300" x2="815" y2="300" stroke="#e5e5ea"/><text x="62" y="304" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">0.2</text>
+<line x1="75" y1="250" x2="815" y2="250" stroke="#e5e5ea"/><text x="62" y="254" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">0.4</text>
+<line x1="75" y1="200" x2="815" y2="200" stroke="#e5e5ea"/><text x="62" y="204" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">0.6</text>
+<line x1="75" y1="150" x2="815" y2="150" stroke="#e5e5ea"/><text x="62" y="154" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">0.8</text>
+<line x1="75" y1="100" x2="815" y2="100" stroke="#e5e5ea"/><text x="62" y="104" text-anchor="end" font-family="sans-serif" font-size="11" fill="#6e6e73">1.0</text>
+<polyline points="75.0,346.2 445.0,225.0 593.0,175.6 667.0,150.6 741.0,125.0 778.0,112.5 815.0,100.0" fill="none" stroke="#0a84ff" stroke-width="3"/>
+<circle cx="75.0" cy="346.2" r="5" fill="#0a84ff"/><text x="75.0" y="335.2" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+0t</text>
+<circle cx="445.0" cy="225.0" r="5" fill="#0a84ff"/><text x="445.0" y="214.0" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+2t</text>
+<circle cx="593.0" cy="175.6" r="5" fill="#0a84ff"/><text x="593.0" y="164.6" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+2t</text>
+<circle cx="667.0" cy="150.6" r="5" fill="#0a84ff"/><text x="667.0" y="139.6" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+2t</text>
+<circle cx="741.0" cy="125.0" r="5" fill="#0a84ff"/><text x="741.0" y="114.0" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+4t</text>
+<circle cx="778.0" cy="112.5" r="5" fill="#0a84ff"/><text x="778.0" y="101.5" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+4t</text>
+<circle cx="815.0" cy="100.0" r="5" fill="#0a84ff"/><text x="815.0" y="89.0" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#1d1d1f">+4t</text>
+<text x="445" y="390" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#1d1d1f">Required confidence (labels show planning delay)</text></svg>

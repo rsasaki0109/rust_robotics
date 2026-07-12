@@ -61,6 +61,38 @@ impl PredictedObstacleTrajectory {
     }
 }
 
+/// Build time-indexed Euclidean nonconformity scores from paired predicted and
+/// observed trajectories. Sparse samples are linearly interpolated.
+pub fn calibration_errors_from_trajectories(
+    pairs: &[(PredictedObstacleTrajectory, PredictedObstacleTrajectory)],
+    time_horizon: u64,
+) -> RoboticsResult<Vec<Vec<f64>>> {
+    if pairs.is_empty() {
+        return Err(RoboticsError::InvalidParameter(
+            "at least one calibration trajectory pair is required".to_string(),
+        ));
+    }
+    let mut errors = vec![Vec::with_capacity(pairs.len()); time_horizon as usize + 1];
+    for (episode, (prediction, observation)) in pairs.iter().enumerate() {
+        for t in 0..=time_horizon {
+            let predicted = prediction.position_at(t).ok_or_else(|| {
+                RoboticsError::InvalidParameter(format!(
+                    "prediction in calibration episode {episode} does not cover time {t}"
+                ))
+            })?;
+            let observed = observation.position_at(t).ok_or_else(|| {
+                RoboticsError::InvalidParameter(format!(
+                    "observation in calibration episode {episode} does not cover time {t}"
+                ))
+            })?;
+            errors[t as usize].push(
+                ((predicted.0 - observed.0).powi(2) + (predicted.1 - observed.1).powi(2)).sqrt(),
+            );
+        }
+    }
+    Ok(errors)
+}
+
 /// Configuration for CP-SIPP over a discrete grid and finite time horizon.
 ///
 /// `calibration_errors_by_time[t]` contains historical nonconformity scores for
@@ -567,6 +599,25 @@ mod tests {
         .unwrap();
 
         assert!((planner.conformal_radius_at(0).unwrap() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn calibration_errors_are_generated_from_paired_trajectories() {
+        let pairs = vec![
+            (
+                predicted_line(&[(0, 0.0, 0.0), (2, 2.0, 0.0)]),
+                predicted_line(&[(0, 0.0, 0.3), (2, 2.0, 0.4)]),
+            ),
+            (
+                predicted_line(&[(0, 0.0, 0.0), (2, 2.0, 0.0)]),
+                predicted_line(&[(0, 0.5, 0.0), (2, 2.6, 0.0)]),
+            ),
+        ];
+        let errors = calibration_errors_from_trajectories(&pairs, 2).unwrap();
+        assert_eq!(errors.len(), 3);
+        assert!((errors[0][0] - 0.3).abs() < 1e-9);
+        assert!((errors[1][1] - 0.55).abs() < 1e-9);
+        assert!((errors[2][0] - 0.4).abs() < 1e-9);
     }
 
     #[test]

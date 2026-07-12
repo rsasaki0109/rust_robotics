@@ -338,7 +338,7 @@ impl SlamDemo {
                 (yaw.cos() as f32) * radius * 1.8,
                 -(yaw.sin() as f32) * radius * 1.8,
             );
-        painter.line_segment([center, tip], Stroke::new(2.0, color));
+        painter.line_segment([center, tip], Stroke::new(2.0_f32, color));
     }
 
     fn draw_scene(&self, ui: &mut egui::Ui, rect: Rect, side: f32, frame: &SlamFrame) {
@@ -348,13 +348,21 @@ impl SlamDemo {
 
         for lm in &frame.true_landmarks {
             let c = self.world_to_screen(rect, side, lm[0], lm[1]);
-            painter.circle_stroke(c, 6.0, Stroke::new(1.5, Color32::from_rgb(200, 180, 80)));
+            painter.circle_stroke(
+                c,
+                6.0,
+                Stroke::new(1.5_f32, Color32::from_rgb(200, 180, 80)),
+            );
             painter.circle_filled(c, 2.5, Color32::from_rgb(220, 200, 90));
         }
 
         for lm in &frame.est_landmarks {
             let c = self.world_to_screen(rect, side, lm[0], lm[1]);
-            painter.circle_stroke(c, 5.0, Stroke::new(1.2, Color32::from_rgb(255, 140, 80)));
+            painter.circle_stroke(
+                c,
+                5.0,
+                Stroke::new(1.2_f32, Color32::from_rgb(255, 140, 80)),
+            );
             painter.circle_filled(c, 2.0, Color32::from_rgb(255, 120, 60));
         }
 
@@ -387,7 +395,7 @@ impl SlamDemo {
                 .collect();
             painter.add(egui::Shape::line(
                 trail,
-                Stroke::new(1.2, Color32::from_rgba_unmultiplied(120, 220, 140, 80)),
+                Stroke::new(1.2_f32, Color32::from_rgba_unmultiplied(120, 220, 140, 80)),
             ));
         }
 

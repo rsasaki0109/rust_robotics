@@ -859,9 +859,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-epoch"
-version = "0.9.18"
+version = "0.9.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b82ac4a3c2ca9c3460964f020e1402edd5753411d7737aa39c3714ad1b5420e"
+checksum = "2d6914041f254d6e9176c01941b21115dcfb7089e55135a35411081bd106ef3f"
 dependencies = [
  "crossbeam-utils",
 ]
@@ -3395,7 +3395,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "rust_robotics"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "dora-node-api",
  "eyre",
@@ -3416,7 +3416,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_control"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clarabel",
  "gnuplot",
@@ -3428,7 +3428,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nalgebra",
  "num-traits",
@@ -3436,7 +3436,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_localization"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nalgebra",
  "num-traits",
@@ -3448,7 +3448,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_mapping"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nalgebra",
  "rand",
@@ -3468,7 +3468,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_planning"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "itertools 0.13.0",
@@ -3481,7 +3481,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_playground"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "console_error_panic_hook",
  "eframe",
@@ -3502,7 +3502,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_slam"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gnuplot",
  "nalgebra",
@@ -3514,7 +3514,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_viz"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "gif",
  "gnuplot",

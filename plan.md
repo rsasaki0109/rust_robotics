@@ -50,7 +50,9 @@ Primary files:
 
 Next useful extension:
 
-- Add calibration-set utilities and benchmark coverage-vs-delay tradeoffs.
+- Calibration-set utilities and a deterministic held-out coverage-vs-delay
+  benchmark are implemented in `benchmark_conformal_coverage`, with CSV/SVG
+  artifacts generated from 60 calibration and 400 evaluation episodes.
 
 ### Traversal Risk Graph
 
@@ -135,7 +137,10 @@ Primary files:
 
 Next useful extension:
 
-- Add benchmark tables for solve time, constraint violation, and terminal cost.
+- Unified benchmark added: vanilla, constraint-discounted, terminal-value, and
+  adaptive-lambda MPPI now run under identical conditions across five fixed
+  seeds, reporting success, solve time, constraint violation, and terminal cost
+  to `docs/assets/mppi-unified-benchmark.{csv,svg}`.
 
 ### Racing MPPI
 
@@ -845,7 +850,6 @@ Before pushing a batch:
 5. Update `docs/research_reproduction_candidates.md` and this `PLAN.md`.
 6. Commit with a message that describes the reproduction slice rather than a
    generic cleanup.
-
 ## Growth Plan
 
 Added: 2026-06-10
