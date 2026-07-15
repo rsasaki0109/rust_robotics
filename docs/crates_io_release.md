@@ -18,6 +18,22 @@ dependency order and wait for the crates.io index to update between layers.
 
 ## Preflight
 
+The preferred path is the manually triggered `Release` GitHub Actions
+workflow. Run it once with `publish=false`; after the preflight succeeds, run
+the same version with `publish=true`. The publishing run requires a
+`CARGO_REGISTRY_TOKEN` secret in the protected `crates-io` environment. It
+publishes in dependency order, waits for crates.io propagation, and then
+creates the matching tag and GitHub Release. Re-running it is safe: versions
+already visible on crates.io are skipped.
+
+For a local preflight, run:
+
+```bash
+bash scripts/publish_workspace.sh --check
+```
+
+The commands below document the manual fallback.
+
 ```bash
 cargo fmt --all -- --check
 cargo check -p rust_robotics --all-features
@@ -99,8 +115,9 @@ retry after the crates.io index catches up.
 git tag v0.2.0
 git push origin v0.2.0
 gh release create v0.2.0 --title "v0.2.0" \
-  --notes "no_std localization stack, pure-Rust GIF gallery, RRT get_tree fix. See CHANGELOG.md."
+  --generate-notes
 ```
 
-Then update the root README library section from the Git dependency to the
-published version.
+Then verify that `cargo add rust_robotics` resolves the published version and
+that docs.rs has built it. The root README intentionally uses `cargo add`
+instead of hard-coding a version, so no post-release version edit is required.

@@ -28,6 +28,14 @@ RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url
 
 Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
+## Reproducible links
+
+Use **Copy share link** in the header to copy a URL for the active demo. Grid
+planner links preserve the selected planner, start and goal cells, and the full
+obstacle map, so another visitor opens the same planning problem. For example,
+`?tab=grid&planner=theta&start=2,12&goal=29,12&map=...` opens a reproducible
+Theta* scenario. The other tabs currently preserve the selected demo tab.
+
 ## Tabs
 
 - **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.

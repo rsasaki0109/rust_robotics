@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Exact workspace version to release (for example 0.2.0)"
+        required: true
+        type: string
+      publish:
+        description: "Publish crates and create the GitHub Release"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rust-robotics-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Verify requested version
+      shell: bash
+      run: |
+        actual="$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+        test "$actual" = "${{ inputs.version }}" || {
+          echo "requested ${{ inputs.version }}, but workspace version is $actual" >&2
+          exit 1
+        }
+        test "$GITHUB_REF_NAME" = "main" || {
+          echo "releases must run from main (selected: $GITHUB_REF_NAME)" >&2
+          exit 1
+        }
+
+    - name: Run release preflight
+      run: bash scripts/publish_workspace.sh --check
+
+    - name: Publish workspace crates
+      if: inputs.publish
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      run: bash scripts/publish_workspace.sh --publish
+
+    - name: Create tag and GitHub Release
+      if: inputs.publish
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ inputs.version }}
+      shell: bash
+      run: |
+        tag="v${VERSION}"
+        if git rev-parse "$tag" >/dev/null 2>&1; then
+          test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA" || {
+            echo "$tag already points to a different commit" >&2
+            exit 1
+          }
+        else
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+        fi
+        gh release view "$tag" >/dev/null 2>&1 || \
+          gh release create "$tag" --verify-tag --generate-notes --title "$tag"
