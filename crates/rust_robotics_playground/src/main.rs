@@ -4,6 +4,7 @@ mod admm_formation;
 mod app;
 mod grid_planners;
 mod localization;
+mod share;
 mod slam;
 
 use app::PlaygroundApp;

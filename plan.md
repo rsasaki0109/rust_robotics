@@ -1203,3 +1203,13 @@ noted.
   research depth; resource split and deprioritization list recorded.
 - Workspace at `0.2.0` on `main` (PR #35 merged); crates.io publish + public
   announcement remain the top gate before further feature work.
+
+2026-07-15:
+
+- Added a guarded, manually triggered release workflow plus a dependency-ordered,
+  restart-safe publish script. The local `--check` preflight packages every
+  publishable `0.2.0` crate without publishing anything.
+- Promoted browser, crate, embedded, and gallery entry points to the top of the
+  README and removed the stale hard-coded `0.1` dependency instruction.
+- Added reproducible Playground links. Grid-planner URLs preserve the planner,
+  start/goal, and full obstacle map; native tests and a release Trunk build pass.

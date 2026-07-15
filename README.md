@@ -11,6 +11,16 @@ RustRobotics is a library-first Rust workspace for robotics algorithms, inspired
 [PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics) and extended with
 benchmarks, ROS2/Gazebo demos, and a visual showcase.
 
+<p align="center">
+  <a href="https://rsasaki0109.github.io/rust_robotics/playground/"><b>Run in your browser</b></a>
+  ·
+  <a href="#quick-start"><b>Use the Rust crate</b></a>
+  ·
+  <a href="#embedded--no_std"><b>Run on a microcontroller</b></a>
+  ·
+  <a href="https://rsasaki0109.github.io/rust_robotics/"><b>Browse the gallery</b></a>
+</p>
+
 <table>
   <tr>
     <td align="center"><a href="#rapidly-exploring-random-trees-rrt"><img src="./media/gallery/rrt.gif" width="260" alt="RRT tree growth"/></a><br/><b>RRT</b></td>
@@ -67,7 +77,18 @@ Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
 
 ## Quick Start
 
-Run a headless planner demo with no GUI dependencies:
+Try the interactive planners, localization, SLAM, and multi-agent formation
+demo with no installation:
+
+<https://rsasaki0109.github.io/rust_robotics/playground/>
+
+Add the latest published umbrella crate:
+
+```bash
+cargo add rust_robotics --features planning
+```
+
+Then run a headless planner demo from this repository with no GUI dependencies:
 
 ```bash
 git clone https://github.com/rsasaki0109/rust_robotics.git
@@ -94,15 +115,13 @@ cargo test --workspace --lib --tests
 
 ## Use As A Library
 
-Add the umbrella crate from crates.io (or the Git repository until the first
-release is indexed):
+Add the latest published umbrella crate from crates.io:
 
-```toml
-[dependencies]
-rust_robotics = "0.1"
+```bash
+cargo add rust_robotics --features "planning,localization,control"
 ```
 
-If you need unreleased changes before crates.io propagation finishes:
+If you need changes that have not reached crates.io yet:
 
 ```toml
 [dependencies]

@@ -29,7 +29,7 @@ eframe = { version = "0.31", default-features = false, features = ["default_font
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"
 getrandom = { version = "0.3", features = ["wasm_js"] }
-web-sys = { version = "0.3", features = ["Document", "Window", "HtmlCanvasElement", "Element"] }
+web-sys = { version = "0.3", features = ["Document", "Window", "HtmlCanvasElement", "Element", "History", "Location"] }
 wasm-bindgen = "0.2"
 
 [features]

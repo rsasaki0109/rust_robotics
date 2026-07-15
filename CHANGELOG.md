@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-06-17
+## [0.2.0] - 2026-07-15
 
 ### Added
 - **`no_std` localization stack.** `rust_robotics_core` and
@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   EKF-SLAM, FastSLAM 1.0, and ICP scan matching (landmarks, particles, aligned scans).
 - Playground **ADMM Formation** tab: receding-horizon consensus ADMM with four
   agents, stiff vs smoothed overlay, noise slider, and jerk/tracking metrics.
+- Reproducible playground links: the selected tab is shareable, and grid-planner
+  links preserve the planner, start/goal cells, and complete obstacle map.
+- Guarded release workflow for dependency-ordered workspace publishing,
+  crates.io propagation checks, tagging, and GitHub Release creation.
 
 ### Fixed
 - `RRTPlanner::planning()` now records the search tree so `get_tree()` exposes

@@ -34,6 +34,25 @@ impl PlannerKind {
             Self::ThetaStar => "Theta*",
         }
     }
+
+    fn slug(self) -> &'static str {
+        match self {
+            Self::AStar => "astar",
+            Self::Dijkstra => "dijkstra",
+            Self::Jps => "jps",
+            Self::ThetaStar => "theta",
+        }
+    }
+
+    fn from_slug(value: &str) -> Option<Self> {
+        match value {
+            "astar" => Some(Self::AStar),
+            "dijkstra" => Some(Self::Dijkstra),
+            "jps" => Some(Self::Jps),
+            "theta" => Some(Self::ThetaStar),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,6 +108,87 @@ impl Default for GridPlannerDemo {
 }
 
 impl GridPlannerDemo {
+    pub(crate) fn apply_share_query(&mut self, query: &str) {
+        if let Some(planner) =
+            crate::share::value(query, "planner").and_then(PlannerKind::from_slug)
+        {
+            self.planner = planner;
+        }
+        if let Some(map) = crate::share::value(query, "map").and_then(Self::decode_map) {
+            self.obstacles = map;
+        }
+        if let Some(start) = crate::share::value(query, "start").and_then(Self::decode_point) {
+            if !self.obstacles[start.0][start.1] {
+                self.start = start;
+            }
+        }
+        if let Some(goal) = crate::share::value(query, "goal").and_then(Self::decode_point) {
+            if !self.obstacles[goal.0][goal.1] {
+                self.goal = goal;
+            }
+        }
+        self.compare_results.clear();
+        self.replan();
+    }
+
+    pub(crate) fn share_query(&self) -> String {
+        format!(
+            "tab=grid&planner={}&start={},{}&goal={},{}&map={}",
+            self.planner.slug(),
+            self.start.0,
+            self.start.1,
+            self.goal.0,
+            self.goal.1,
+            self.encode_map()
+        )
+    }
+
+    fn decode_point(value: &str) -> Option<(usize, usize)> {
+        let (x, y) = value.split_once(',')?;
+        let point = (x.parse().ok()?, y.parse().ok()?);
+        (point.0 < GRID_W && point.1 < GRID_H).then_some(point)
+    }
+
+    fn encode_map(&self) -> String {
+        const HEX: &[u8; 16] = b"0123456789abcdef";
+        let mut encoded = String::with_capacity(GRID_W * GRID_H / 4);
+        for group in 0..(GRID_W * GRID_H / 4) {
+            let mut nibble = 0_u8;
+            for bit in 0..4 {
+                let index = group * 4 + bit;
+                let x = index % GRID_W;
+                let y = index / GRID_W;
+                if self.obstacles[x][y] {
+                    nibble |= 1 << bit;
+                }
+            }
+            encoded.push(HEX[nibble as usize] as char);
+        }
+        encoded
+    }
+
+    fn decode_map(value: &str) -> Option<Vec<Vec<bool>>> {
+        if value.len() != GRID_W * GRID_H / 4 {
+            return None;
+        }
+        let mut obstacles = vec![vec![false; GRID_H]; GRID_W];
+        for (group, digit) in value.bytes().enumerate() {
+            let nibble = match digit {
+                b'0'..=b'9' => digit - b'0',
+                b'a'..=b'f' => digit - b'a' + 10,
+                b'A'..=b'F' => digit - b'A' + 10,
+                _ => return None,
+            };
+            for bit in 0..4 {
+                let index = group * 4 + bit;
+                let x = index % GRID_W;
+                let y = index / GRID_W;
+                obstacles[x][y] = nibble & (1 << bit) != 0;
+            }
+        }
+        Some(obstacles)
+    }
+
     fn set_border_obstacles(&mut self) {
         for x in 0..GRID_W {
             self.obstacles[x][0] = true;
@@ -479,5 +579,33 @@ impl GridPlannerDemo {
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         self.handle_pointer(rect, cell, &response);
         self.draw_grid(ui, rect, cell);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GridPlannerDemo, PlannerKind};
+
+    #[test]
+    fn shared_grid_state_round_trips() {
+        let original = GridPlannerDemo::default();
+        let query = original.share_query();
+        let mut restored = GridPlannerDemo::default();
+        restored.clear_interior();
+        restored.apply_share_query(&query);
+
+        assert_eq!(restored.planner, PlannerKind::AStar);
+        assert_eq!(restored.start, original.start);
+        assert_eq!(restored.goal, original.goal);
+        assert_eq!(restored.obstacles, original.obstacles);
+    }
+
+    #[test]
+    fn malformed_shared_state_is_ignored() {
+        let mut demo = GridPlannerDemo::default();
+        let original_map = demo.obstacles.clone();
+        demo.apply_share_query("planner=unknown&start=99,99&map=xyz");
+        assert_eq!(demo.planner, PlannerKind::AStar);
+        assert_eq!(demo.obstacles, original_map);
     }
 }
