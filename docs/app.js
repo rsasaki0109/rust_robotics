@@ -36,6 +36,15 @@ const galleryItems = [
     size: "wide"
   },
   {
+    title: "Interactive Controller Arena",
+    category: "Control",
+    image: "assets/controller-arena.png",
+    command: "cargo run -p rust_robotics_playground",
+    description: "Replay Pure Pursuit, Stanley, and LQR Steer under the same path, initial state, clock, and actuation response; compare error and command smoothness.",
+    playLink: "playground/?tab=arena&preset=slalom&speed=3.00&response=0.85",
+    size: "wide"
+  },
+  {
     title: "Extended Kalman Filter",
     category: "Localization",
     image: "img/localization/ekf.svg",

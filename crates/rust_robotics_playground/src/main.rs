@@ -2,6 +2,7 @@
 
 mod admm_formation;
 mod app;
+mod controller_arena;
 mod grid_planners;
 mod localization;
 mod share;
