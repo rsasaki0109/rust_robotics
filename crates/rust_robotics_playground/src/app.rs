@@ -1,6 +1,7 @@
 //! Top-level egui application shell.
 
 use crate::admm_formation::AdmmFormationDemo;
+use crate::controller_arena::ControllerArenaDemo;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
 use crate::slam::SlamDemo;
@@ -11,6 +12,7 @@ enum PlaygroundTab {
     Localization,
     Slam,
     AdmmFormation,
+    ControllerArena,
 }
 
 pub struct PlaygroundApp {
@@ -19,6 +21,7 @@ pub struct PlaygroundApp {
     localization_demo: LocalizationDemo,
     slam_demo: SlamDemo,
     admm_demo: AdmmFormationDemo,
+    controller_arena_demo: ControllerArenaDemo,
     share_status: Option<&'static str>,
 }
 
@@ -30,12 +33,15 @@ impl PlaygroundApp {
             .unwrap_or(PlaygroundTab::GridPlanners);
         let mut grid_demo = GridPlannerDemo::default();
         grid_demo.apply_share_query(&query);
+        let mut controller_arena_demo = ControllerArenaDemo::default();
+        controller_arena_demo.apply_share_query(&query);
         Self {
             tab,
             grid_demo,
             localization_demo: LocalizationDemo::default(),
             slam_demo: SlamDemo::default(),
             admm_demo: AdmmFormationDemo::default(),
+            controller_arena_demo,
             share_status: None,
         }
     }
@@ -46,12 +52,14 @@ impl PlaygroundApp {
             PlaygroundTab::Localization => "Localization",
             PlaygroundTab::Slam => "SLAM",
             PlaygroundTab::AdmmFormation => "ADMM Formation",
+            PlaygroundTab::ControllerArena => "Controller Arena",
         }
     }
 
     fn share_query(&self) -> String {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.share_query(),
+            PlaygroundTab::ControllerArena => self.controller_arena_demo.share_query(),
             tab => format!("tab={}", tab.slug()),
         }
     }
@@ -70,6 +78,9 @@ impl PlaygroundApp {
             PlaygroundTab::AdmmFormation => {
                 "Receding-horizon ADMM formation: four agents track a noisy moving goal past an L-corner"
             }
+            PlaygroundTab::ControllerArena => {
+                "Replay Pure Pursuit / Stanley / LQR Steer under identical paths and dynamics"
+            }
         }
     }
 }
@@ -81,6 +92,7 @@ impl PlaygroundTab {
             Self::Localization => "localization",
             Self::Slam => "slam",
             Self::AdmmFormation => "admm",
+            Self::ControllerArena => "arena",
         }
     }
 
@@ -90,6 +102,7 @@ impl PlaygroundTab {
             "localization" => Some(Self::Localization),
             "slam" => Some(Self::Slam),
             "admm" => Some(Self::AdmmFormation),
+            "arena" => Some(Self::ControllerArena),
             _ => None,
         }
     }
@@ -106,6 +119,7 @@ impl eframe::App for PlaygroundApp {
                     PlaygroundTab::Localization,
                     PlaygroundTab::Slam,
                     PlaygroundTab::AdmmFormation,
+                    PlaygroundTab::ControllerArena,
                 ] {
                     if ui
                         .selectable_label(self.tab == tab, Self::tab_label(tab))
@@ -133,11 +147,15 @@ impl eframe::App for PlaygroundApp {
             PlaygroundTab::Localization => self.localization_demo.ui(ctx, ui),
             PlaygroundTab::Slam => self.slam_demo.ui(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.ui(ctx, ui),
+            PlaygroundTab::ControllerArena => self.controller_arena_demo.ui(ctx, ui),
         });
 
         if matches!(
             self.tab,
-            PlaygroundTab::Localization | PlaygroundTab::Slam | PlaygroundTab::AdmmFormation
+            PlaygroundTab::Localization
+                | PlaygroundTab::Slam
+                | PlaygroundTab::AdmmFormation
+                | PlaygroundTab::ControllerArena
         ) {
             ctx.request_repaint();
         }

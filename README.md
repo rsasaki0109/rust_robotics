@@ -77,8 +77,8 @@ Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
 
 ## Quick Start
 
-Try the interactive planners, localization, SLAM, and multi-agent formation
-demo with no installation:
+Try the interactive planners, localization, SLAM, multi-agent formation, and
+path-tracking controller comparison with no installation:
 
 <https://rsasaki0109.github.io/rust_robotics/playground/>
 
@@ -104,7 +104,11 @@ cargo run -p rust_robotics_playground
 
 Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
 Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP timelines, or **ADMM Formation**
-for the multi-agent horizon-consensus demo.
+for the multi-agent horizon-consensus demo. **Controller Arena** replays Pure
+Pursuit, Stanley, and LQR Steer under an identical path, initial state, clock,
+and actuation model, with shareable speed and turn-response settings.
+
+<img src="./docs/assets/controller-arena.png" width="900" alt="Controller Arena comparing Pure Pursuit, Stanley, and LQR Steer">
 
 Build and test the complete workspace:
 

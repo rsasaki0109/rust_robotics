@@ -1213,3 +1213,16 @@ noted.
   README and removed the stale hard-coded `0.1` dependency instruction.
 - Added reproducible Playground links. Grid-planner URLs preserve the planner,
   start/goal, and full obstacle map; native tests and a release Trunk build pass.
+
+2026-07-28:
+
+- Selected **Controller Arena** as the next development project after comparing
+  adoption, interactive, embedded, benchmark, and manipulation candidates.
+  Version 1 compares Pure Pursuit, Stanley, and LQR Steer under one deterministic
+  headless simulation and exposes the result as a shareable Playground tab.
+  Scope, metrics, milestones, and completion gates are recorded in
+  `docs/controller_arena_project.md`. The `0.2.0` publish and release remain P0.
+- Implemented the Controller Arena slice on `feature/controller-arena`: shared
+  deterministic engine, three path presets, four metrics, Playground replay
+  controls, reproducible links, tests, and a generated gallery visual. Targeted
+  native tests, warning-free clippy, and the release WASM build pass.

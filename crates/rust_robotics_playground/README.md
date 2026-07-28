@@ -32,9 +32,11 @@ Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
 Use **Copy share link** in the header to copy a URL for the active demo. Grid
 planner links preserve the selected planner, start and goal cells, and the full
-obstacle map, so another visitor opens the same planning problem. For example,
-`?tab=grid&planner=theta&start=2,12&goal=29,12&map=...` opens a reproducible
-Theta* scenario. The other tabs currently preserve the selected demo tab.
+obstacle map. Controller Arena links preserve the path preset, target speed,
+and turn-response disturbance. For example,
+`?tab=arena&preset=hairpin&speed=4.25&response=0.65` reopens an identical
+three-controller comparison. Localization, SLAM, and ADMM links currently
+preserve the selected tab.
 
 ## Tabs
 
@@ -42,3 +44,20 @@ Theta* scenario. The other tabs currently preserve the selected demo tab.
 - **Localization** — PF / EKF with arrow-key driving and noise slider.
 - **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop (timeline scrubber).
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
+- **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
+  LQR Steer traces under identical paths and dynamics. Compare cross-track
+  RMSE, final and maximum error, and angular-command smoothness; replay, pause,
+  single-step, or share the scenario.
+
+Controller Arena does not declare a universal winner. Its three presets and
+bounded speed/turn-response controls make differences visible while keeping
+the state, clock, propagation model, and limits identical for every controller.
+
+![Controller Arena comparison](../../docs/assets/controller-arena.png)
+
+Regenerate the gallery comparison from the same headless engine:
+
+```bash
+cargo run -p rust_robotics --example render_controller_arena_svg \
+  --no-default-features --features control
+```
