@@ -78,9 +78,7 @@ pub fn euroc_vio_input(
     tracks: &EurocFeatureTracks,
     gravity: Vector3<f64>,
 ) -> OptimizationResult<VioPipelineInput> {
-    let first_truth = dataset.ground_truth.first().ok_or_else(|| {
-        OptimizationError::InvalidParameter("EuRoC VIO initialization needs ground truth".into())
-    })?;
+    let (initial_state, bias) = euroc_initial_conditions(dataset)?;
     let observations = tracks
         .observations
         .iter()
@@ -108,21 +106,8 @@ pub fn euroc_vio_input(
             .map(|frame| frame.timestamp_ns)
             .collect(),
         imu_samples: dataset.imu.clone(),
-        initial_state: NavState {
-            rotation: first_truth
-                .world_from_body
-                .fixed_view::<3, 3>(0, 0)
-                .into_owned(),
-            position: first_truth
-                .world_from_body
-                .fixed_view::<3, 1>(0, 3)
-                .into_owned(),
-            velocity: first_truth.velocity,
-        },
-        bias: ImuBias {
-            accelerometer: first_truth.accelerometer_bias,
-            gyroscope: first_truth.gyroscope_bias,
-        },
+        initial_state,
+        bias,
         gravity,
         body_from_camera: dataset.camera.body_from_sensor,
         landmarks: tracks
@@ -138,6 +123,35 @@ pub fn euroc_vio_input(
             cy: dataset.camera.intrinsics[3],
         },
     })
+}
+
+/// Produces the metric camera trajectory used to initialize visual tracks.
+///
+/// Only the first EuRoC ground-truth state supplies pose, velocity and biases;
+/// every later camera pose is predicted from the IMU.
+pub fn euroc_imu_camera_trajectory(
+    dataset: &EurocDataset,
+    gravity: Vector3<f64>,
+    noise: ImuNoise,
+) -> OptimizationResult<Vec<Matrix4<f64>>> {
+    let (initial_state, bias) = euroc_initial_conditions(dataset)?;
+    let timestamps = dataset
+        .camera_frames
+        .iter()
+        .map(|frame| frame.timestamp_ns)
+        .collect::<Vec<_>>();
+    let (states, _) = initialize_imu_sequence(
+        &timestamps,
+        &dataset.imu,
+        initial_state,
+        bias,
+        gravity,
+        noise,
+    )?;
+    Ok(states
+        .iter()
+        .map(|state| nav_state_pose(state) * dataset.camera.body_from_sensor)
+        .collect())
 }
 
 /// Runs IMU initialization, joint camera/landmark BA, then SE(3) graph fusion.
@@ -214,25 +228,62 @@ fn initialize_from_imu(
     input: &VioPipelineInput,
     config: &VioPipelineConfig,
 ) -> OptimizationResult<(Vec<NavState>, Vec<PreintegratedImuMeasurement>)> {
-    let mut states = vec![input.initial_state.clone()];
-    let mut measurements = Vec::with_capacity(input.keyframe_timestamps_ns.len() - 1);
-    for interval in input.keyframe_timestamps_ns.windows(2) {
-        let measurement = preintegrate_interval(
-            &input.imu_samples,
-            interval[0],
-            interval[1],
-            input.bias,
-            config.imu_noise,
-        )?;
-        let next = measurement.predict(
-            states.last().expect("initial state exists"),
-            &input.bias,
-            input.gravity,
-        );
+    initialize_imu_sequence(
+        &input.keyframe_timestamps_ns,
+        &input.imu_samples,
+        input.initial_state.clone(),
+        input.bias,
+        input.gravity,
+        config.imu_noise,
+    )
+}
+
+fn initialize_imu_sequence(
+    timestamps_ns: &[i64],
+    samples: &[ImuSample],
+    initial_state: NavState,
+    bias: ImuBias,
+    gravity: Vector3<f64>,
+    noise: ImuNoise,
+) -> OptimizationResult<(Vec<NavState>, Vec<PreintegratedImuMeasurement>)> {
+    if timestamps_ns.len() < 2 {
+        return Err(OptimizationError::InvalidParameter(
+            "IMU initialization requires at least two keyframes".into(),
+        ));
+    }
+    let mut states = vec![initial_state];
+    let mut measurements = Vec::with_capacity(timestamps_ns.len() - 1);
+    for interval in timestamps_ns.windows(2) {
+        let measurement = preintegrate_interval(samples, interval[0], interval[1], bias, noise)?;
+        let next =
+            measurement.predict(states.last().expect("initial state exists"), &bias, gravity);
         states.push(next);
         measurements.push(measurement);
     }
     Ok((states, measurements))
+}
+
+fn euroc_initial_conditions(dataset: &EurocDataset) -> OptimizationResult<(NavState, ImuBias)> {
+    let first_truth = dataset.ground_truth.first().ok_or_else(|| {
+        OptimizationError::InvalidParameter("EuRoC VIO initialization needs ground truth".into())
+    })?;
+    Ok((
+        NavState {
+            rotation: first_truth
+                .world_from_body
+                .fixed_view::<3, 3>(0, 0)
+                .into_owned(),
+            position: first_truth
+                .world_from_body
+                .fixed_view::<3, 1>(0, 3)
+                .into_owned(),
+            velocity: first_truth.velocity,
+        },
+        ImuBias {
+            accelerometer: first_truth.accelerometer_bias,
+            gyroscope: first_truth.gyroscope_bias,
+        },
+    ))
 }
 
 fn preintegrate_interval(

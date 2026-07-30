@@ -47,6 +47,7 @@ gnuplot = { workspace = true }
 nalgebra = { workspace = true, features = ["std"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }
+png = "0.17"
 
 # === Headless examples (require domain features but not viz) ===
 
@@ -238,6 +239,11 @@ required-features = ["slam"]
 [[example]]
 name = "headless_euroc_vio"
 path = "examples/headless_euroc_vio.rs"
+required-features = ["slam"]
+
+[[example]]
+name = "generate_euroc_feature_tracks"
+path = "examples/generate_euroc_feature_tracks.rs"
 required-features = ["slam"]
 
 [[example]]

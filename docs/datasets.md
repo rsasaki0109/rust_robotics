@@ -23,10 +23,26 @@ MH_01_easy/
 
 It validates increasing timestamps, parses camera intrinsics, resolution and
 `T_BS`, and exposes efficient IMU interval slices. Images remain paths so
-applications can choose their own decoder and feature frontend.
+applications can choose their own decoder. RustRobotics includes a PNG-based
+sparse frontend CLI:
 
-The offline VIO example consumes pre-extracted tracks from this optional
-sidecar:
+```bash
+cargo run --release -p rust_robotics \
+  --example generate_euroc_feature_tracks \
+  --no-default-features --features slam -- \
+  /datasets/EuRoC/MH_01_easy
+```
+
+The frontend distributes Shi-Tomasi corners, tracks them with pyramidal
+Lucas-Kanade optical flow, applies a forward/backward consistency check, and
+triangulates persistent tracks from the metric IMU-predicted camera
+trajectory. Only the first ground-truth state initializes pose, velocity and
+IMU biases. Existing sidecars are never replaced unless `--force` is passed.
+Use `--output DIR` to write elsewhere and `--max-features N` to adjust the
+per-frame cap.
+
+The offline VIO example consumes generated or externally extracted tracks
+from this optional sidecar:
 
 ```text
 mav0/rust_robotics/
@@ -35,15 +51,15 @@ mav0/rust_robotics/
 ```
 
 Landmark IDs must be contiguous and zero-based. Observation timestamps must
-match `cam0/data.csv`. A frontend can export this interchange format without
-coupling the SLAM crate to an image library.
+match `cam0/data.csv`. A different frontend can export the same interchange
+format without coupling the SLAM crate itself to an image library.
 
 ```bash
 # Checked-in miniature replay
 cargo run -p rust_robotics --example headless_euroc_vio \
   --no-default-features --features slam
 
-# Extracted sequence with a generated feature sidecar
+# Extracted sequence after running generate_euroc_feature_tracks
 cargo run --release -p rust_robotics --example headless_euroc_vio \
   --no-default-features --features slam -- /datasets/EuRoC/MH_01_easy
 ```

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- A streaming EuRoC visual frontend with Shi-Tomasi detection, pyramidal
+  Lucas-Kanade tracking, forward/backward checks, IMU-seeded triangulation,
+  protected sidecar output, and a PNG CLI.
+
 ## [0.2.0] - 2026-07-31
 
 ### Added

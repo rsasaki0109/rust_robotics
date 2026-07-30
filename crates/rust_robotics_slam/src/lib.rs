@@ -16,6 +16,7 @@ pub mod pose_graph_optimization;
 pub mod pose_graph_optimization_3d;
 pub mod robust_icp;
 pub mod vio_pipeline;
+pub mod visual_frontend;
 
 // Re-exports
 pub use ekf_slam::EKFSLAMState;
