@@ -49,6 +49,7 @@ registry:
 ```bash
 cargo info rust_robotics
 cargo info rust_robotics_core
+cargo info rust_robotics_optimization
 cargo info rust_robotics_planning
 cargo info rust_robotics_localization
 cargo info rust_robotics_control
@@ -81,7 +82,13 @@ cargo publish -p rust_robotics_core
 
 # Wait until `cargo info rust_robotics_core` resolves from crates.io.
 
-# 3. Domain crates that depend on core.
+# 3. Shared optimization crate.
+cargo publish -p rust_robotics_optimization --dry-run
+cargo publish -p rust_robotics_optimization
+
+# Wait until `cargo info rust_robotics_optimization` resolves from crates.io.
+
+# 4. Domain crates that depend on core.
 cargo publish -p rust_robotics_planning --dry-run
 cargo publish -p rust_robotics_planning
 
@@ -97,11 +104,11 @@ cargo publish -p rust_robotics_mapping
 cargo publish -p rust_robotics_viz --dry-run
 cargo publish -p rust_robotics_viz
 
-# 4. SLAM depends on core plus rust_robotics_nearest_neighbor.
+# 5. SLAM depends on core, optimization, and rust_robotics_nearest_neighbor.
 cargo publish -p rust_robotics_slam --dry-run
 cargo publish -p rust_robotics_slam
 
-# 5. Umbrella crate depends on all domain crates.
+# 6. Umbrella crate depends on all domain crates.
 cargo publish -p rust_robotics --dry-run
 cargo publish -p rust_robotics
 ```

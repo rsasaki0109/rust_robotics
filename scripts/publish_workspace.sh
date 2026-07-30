@@ -28,6 +28,7 @@ fi
 
 packages=(
   rust_robotics_core
+  rust_robotics_optimization
   rust_robotics_planning
   rust_robotics_localization
   rust_robotics_control

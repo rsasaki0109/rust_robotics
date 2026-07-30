@@ -11,11 +11,13 @@ extern crate alloc;
 pub mod error;
 #[cfg(feature = "std")]
 pub mod experiments;
+pub mod lie;
 pub mod traits;
 pub mod types;
 
 pub use error::*;
 #[cfg(feature = "std")]
 pub use experiments::*;
+pub use lie::*;
 pub use traits::*;
 pub use types::*;

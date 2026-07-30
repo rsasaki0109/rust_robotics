@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/rust_robotics_core",
+    "crates/rust_robotics_optimization",
     "crates/rust_robotics_planning",
     "crates/rust_robotics_localization",
     "crates/rust_robotics_control",
@@ -40,6 +41,7 @@ gif = "0.13"
 # core is default-features = false so no_std crates can opt out of std;
 # std consumers re-enable it via `features = ["std"]`.
 rust_robotics_core = { path = "crates/rust_robotics_core", version = "0.2.0", default-features = false }
+rust_robotics_optimization = { path = "crates/rust_robotics_optimization", version = "0.2.0" }
 rust_robotics_planning = { path = "crates/rust_robotics_planning", version = "0.2.0" }
 rust_robotics_localization = { path = "crates/rust_robotics_localization", version = "0.2.0" }
 rust_robotics_control = { path = "crates/rust_robotics_control", version = "0.2.0" }

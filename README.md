@@ -8,8 +8,9 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 
 RustRobotics is a library-first Rust workspace for robotics algorithms, inspired by
-[PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics) and extended with
-benchmarks, ROS2/Gazebo demos, and a visual showcase.
+[PythonRobotics](https://github.com/AtsushiSakai/PythonRobotics) and
+[MathematicalRobotics](https://github.com/scomup/MathematicalRobotics), and
+extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
 
 <p align="center">
   <a href="https://rsasaki0109.github.io/rust_robotics/playground/"><b>Run in your browser</b></a>
@@ -52,6 +53,9 @@ Every animation above is rendered by the library itself — regenerate them all 
   benchmarks with reproducible commands.
 - **`no_std` Kalman filters** — the localization stack cross-compiles for bare-metal
   Cortex-M microcontrollers, something a Python algorithm collection cannot do.
+- **Lie groups and factor graphs** — reusable SO(2)/SE(2)/SO(3)/SE(3),
+  robust nonlinear least squares, pose graphs, IMU preintegration, and bundle
+  adjustment share one tested mathematical foundation.
 
 ## Embedded / no_std
 
@@ -140,16 +144,32 @@ use rust_robotics::localization::{EKFConfig, EKFLocalizer};
 use rust_robotics::control::{PurePursuitController, StanleyController};
 ```
 
+Lie-group and optimization primitives are always available from the umbrella
+crate:
+
+```rust
+use rust_robotics::core::{se3_exp, se3_log, Vector6};
+use rust_robotics::optimization::{RobustKernel, SolverConfig};
+
+let tangent = Vector6::new(1.0, 0.0, 0.0, 0.1, -0.2, 0.3);
+let transform = se3_exp(&tangent);
+assert!((se3_log(&transform) - tangent).norm() < 1.0e-9);
+
+let _config = SolverConfig::default();
+let _loss = RobustKernel::Huber { delta: 1.0 };
+```
+
 ## What Is Inside
 
 ```
 crates/
-├── rust_robotics_core/          — Core types, traits, errors
+├── rust_robotics_core/          — Core types, traits, errors, Lie groups
+├── rust_robotics_optimization/  — Factor graphs, robust losses, Gauss-Newton/LM
 ├── rust_robotics_planning/      — Path planning (A*, DWA, RRT, PRM, etc.)
 ├── rust_robotics_localization/  — Localization (EKF, UKF, PF, Histogram)
 ├── rust_robotics_control/       — Control & path tracking (Pure Pursuit, LQR, MPC, etc.)
-├── rust_robotics_mapping/       — Mapping (NDT, Gaussian Grid, Ray Casting)
-├── rust_robotics_slam/          — SLAM (EKF-SLAM, FastSLAM, Graph SLAM, ICP)
+├── rust_robotics_mapping/       — Mapping (NDT, Gaussian Grid, IMLS)
+├── rust_robotics_slam/          — SLAM, pose graphs, IMU, BA, geometric ICP
 ├── rust_robotics_viz/           — Visualization (gnuplot wrapper)
 ├── ros2_nodes/                  — ROS2 navigation nodes (safe_drive-based)
 └── rust_robotics/               — Umbrella crate (feature-gated re-exports)
@@ -585,6 +605,14 @@ Extracts line segments from 2D scan data using the Split-and-Merge (Iterative En
 
 - [src](./crates/rust_robotics_mapping/src/line_extraction.rs)
 
+## Implicit Moving Least Squares (IMLS)
+
+PCA-based local normal estimation and Gaussian-weighted implicit surface
+projection for 2D point sets. The API reports signed distance, surface normal,
+projected point, and local support count.
+
+- [src](./crates/rust_robotics_mapping/src/imls.rs)
+
 ## Occupancy Grid Map
 
 Probabilistic occupancy grid using log-odds representation. Updates cells via Bresenham ray casting — free along rays, occupied at endpoints.
@@ -610,6 +638,11 @@ Blue: Previous scan, Red: Current scan, Green: Current scan aligned by ICP
 ```
 cargo run -p rust_robotics --example render_gif_slam --features "slam,gif"
 ```
+
+The SLAM crate also provides robust optimizer-backed point-to-line ICP in 2D
+and point-to-plane ICP in 3D:
+
+- [src](./crates/rust_robotics_slam/src/geometric_icp.rs)
 
 ## FastSLAM 1.0
 
@@ -647,9 +680,29 @@ Pose graph optimization for SLAM. Constructs a graph of robot poses connected by
 
 ## Pose Graph Optimization
 
-2D pose graph optimization using Gauss-Newton iteration. Core backend for graph-based SLAM — optimizes a graph of robot poses connected by odometry and loop closure constraints.
+SE(2) and SE(3) pose graph optimization using the shared
+Levenberg-Marquardt factor-graph backend. The module fixes the first pose to
+remove gauge freedom and supports standard g2o SE2/SE3 quaternion text I/O.
 
 - [src](./crates/rust_robotics_slam/src/pose_graph_optimization.rs)
+- [SE(3) src](./crates/rust_robotics_slam/src/pose_graph_optimization_3d.rs)
+- [g2o I/O](./crates/rust_robotics_slam/src/g2o.rs)
+
+## IMU Preintegration
+
+Bias-aware accelerometer/gyroscope preintegration with SO(3) updates, 9-state
+error covariance propagation, 9x6 bias Jacobians, navigation-state prediction,
+and an optimizer-ready IMU factor.
+
+- [src](./crates/rust_robotics_slam/src/imu_preintegration.rs)
+
+## Bundle Adjustment
+
+Pinhole projection, analytic camera/landmark reprojection Jacobians, robust
+losses, configurable gauge anchoring, and joint camera/landmark optimization.
+Camera poses use world-from-camera SE(3) matrices.
+
+- [src](./crates/rust_robotics_slam/src/bundle_adjustment.rs)
 
 ## Correlative Scan Matching
 
@@ -1005,3 +1058,6 @@ library easier to evaluate.
 - [Security policy](./SECURITY.md)
 - [Issue templates](./.github/ISSUE_TEMPLATE)
 - [Pull request template](./.github/PULL_REQUEST_TEMPLATE.md)
+
+Mathematical foundations and demonstrations adapted from third-party projects
+retain their original attribution in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,16 @@
+[package]
+name = "rust_robotics_optimization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Nonlinear least-squares and factor-graph optimization for RustRobotics"
+
+[dependencies]
+nalgebra = { workspace = true, features = ["std"] }

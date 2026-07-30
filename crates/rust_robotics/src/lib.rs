@@ -5,6 +5,7 @@
 
 // Always available
 pub use rust_robotics_core as core;
+pub use rust_robotics_optimization as optimization;
 
 #[cfg(feature = "planning")]
 pub use rust_robotics_planning as planning;

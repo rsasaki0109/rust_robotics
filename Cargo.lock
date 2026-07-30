@@ -3407,6 +3407,7 @@ dependencies = [
  "rust_robotics_core",
  "rust_robotics_localization",
  "rust_robotics_mapping",
+ "rust_robotics_optimization",
  "rust_robotics_planning",
  "rust_robotics_slam",
  "rust_robotics_viz",
@@ -3467,6 +3468,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rust_robotics_optimization"
+version = "0.2.0"
+dependencies = [
+ "nalgebra",
+]
+
+[[package]]
 name = "rust_robotics_planning"
 version = "0.2.0"
 dependencies = [
@@ -3510,6 +3518,7 @@ dependencies = [
  "rand_distr",
  "rust_robotics_core",
  "rust_robotics_nearest_neighbor",
+ "rust_robotics_optimization",
 ]
 
 [[package]]

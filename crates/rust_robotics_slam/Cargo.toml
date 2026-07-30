@@ -22,6 +22,7 @@ viz = ["dep:gnuplot"]
 
 [dependencies]
 rust_robotics_core = { workspace = true, features = ["std"] }
+rust_robotics_optimization = { workspace = true }
 nalgebra = { workspace = true, features = ["std"] }
 rand = { workspace = true }
 rand_distr = { workspace = true }

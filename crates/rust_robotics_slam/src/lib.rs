@@ -1,13 +1,18 @@
 #![forbid(unsafe_code)]
 //! SLAM algorithms for the RustRobotics workspace.
 
+pub mod bundle_adjustment;
 pub mod correlative_scan_matching;
 pub mod ekf_slam;
 pub mod fastslam1;
 pub mod fastslam2;
+pub mod g2o;
+pub mod geometric_icp;
 pub mod graph_based_slam;
 pub mod icp_matching;
+pub mod imu_preintegration;
 pub mod pose_graph_optimization;
+pub mod pose_graph_optimization_3d;
 pub mod robust_icp;
 
 // Re-exports

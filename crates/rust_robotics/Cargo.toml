@@ -30,6 +30,7 @@ full = ["planning", "localization", "control", "mapping", "slam", "viz"]
 
 [dependencies]
 rust_robotics_core = { workspace = true, features = ["std"] }
+rust_robotics_optimization = { workspace = true }
 rust_robotics_planning = { workspace = true, optional = true }
 rust_robotics_localization = { workspace = true, optional = true }
 rust_robotics_control = { workspace = true, optional = true }

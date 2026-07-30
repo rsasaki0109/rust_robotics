@@ -9,6 +9,10 @@
 //!   <https://www.ipb.uni-bonn.de/wp-content/papercite-data/pdf/grisetti10titsmag.pdf>
 
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix3, Vector2, Vector3};
+use rust_robotics_optimization::{
+    solve, Factor, FactorEvaluation, OptimizationResult, Problem, SolverConfig, SolverMethod,
+    TerminationReason, Variable, VariableId,
+};
 use std::f64::consts::PI;
 
 /// Configuration for pose graph optimization.
@@ -61,105 +65,109 @@ pub struct PoseGraphResult {
     pub converged: bool,
 }
 
-/// Optimizes a 2D pose graph using Gauss-Newton iteration.
+/// Optimizes a 2D pose graph using the workspace nonlinear least-squares
+/// backend. The first pose is fixed to remove gauge freedom.
 pub fn optimize_pose_graph(
     initial_poses: &[Pose2DNode],
     edges: &[Edge2D],
     config: &PoseGraphConfig,
 ) -> PoseGraphResult {
-    let mut poses = initial_poses.to_vec();
-
-    if poses.len() <= 1 || edges.is_empty() {
+    if initial_poses.len() <= 1 || edges.is_empty() {
         return PoseGraphResult {
-            poses,
+            poses: initial_poses.to_vec(),
             iterations: 0,
             converged: true,
         };
     }
 
-    let state_size = 3 * poses.len();
-    let anchor_weight = 1.0e6;
-    let mut converged = false;
-    let mut iterations = 0;
+    let mut problem = Problem::new();
+    let variable_ids = initial_poses
+        .iter()
+        .map(|pose| {
+            problem.add_variable(
+                Variable::with_retraction(
+                    DVector::from_vec(vec![pose.x, pose.y, pose.yaw]),
+                    3,
+                    retract_pose_2d,
+                )
+                .expect("SE(2) pose dimensions are valid"),
+            )
+        })
+        .collect::<Vec<_>>();
+    problem
+        .variable_mut(variable_ids[0])
+        .expect("first pose exists")
+        .set_fixed(true);
 
-    for iter in 0..config.max_iterations {
-        iterations = iter + 1;
-        let mut h = DMatrix::<f64>::zeros(state_size, state_size);
-        let mut b = DVector::<f64>::zeros(state_size);
-
-        for edge in edges {
-            if edge.from >= poses.len() || edge.to >= poses.len() {
-                continue;
-            }
-
-            let (error, j_i, j_j) =
-                edge_error_and_jacobians(&poses[edge.from], &poses[edge.to], &edge.measurement);
-
-            accumulate_block(&mut h, &mut b, edge, &error, &j_i, &j_j);
-        }
-
-        for index in 0..3 {
-            h[(index, index)] += anchor_weight;
-        }
-
-        let rhs = -&b;
-        let Some(delta) = h.lu().solve(&rhs) else {
-            return PoseGraphResult {
-                poses,
-                iterations,
-                converged: false,
-            };
-        };
-
-        for (node_index, pose) in poses.iter_mut().enumerate() {
-            let base = 3 * node_index;
-            pose.x += delta[base];
-            pose.y += delta[base + 1];
-            pose.yaw = normalize_angle(pose.yaw + delta[base + 2]);
-        }
-
-        if delta.norm() < config.tolerance {
-            converged = true;
-            break;
+    for edge in edges {
+        if edge.from < initial_poses.len() && edge.to < initial_poses.len() {
+            let _ = problem.add_factor(PoseGraphFactor2D {
+                variables: [variable_ids[edge.from], variable_ids[edge.to]],
+                edge: edge.clone(),
+            });
         }
     }
+
+    let solver_config = SolverConfig {
+        method: SolverMethod::LevenbergMarquardt,
+        max_iterations: config.max_iterations.max(1),
+        gradient_tolerance: config.tolerance,
+        step_tolerance: config.tolerance,
+        cost_tolerance: config.tolerance * config.tolerance,
+        ..SolverConfig::default()
+    };
+    let summary = solve(&mut problem, &solver_config).ok();
+    let poses = variable_ids
+        .iter()
+        .map(|id| {
+            let value = problem.variable(*id).expect("pose variable exists").value();
+            Pose2DNode::new(value[0], value[1], value[2])
+        })
+        .collect();
 
     PoseGraphResult {
         poses,
-        iterations,
-        converged,
+        iterations: summary.as_ref().map_or(0, |result| result.iterations),
+        converged: summary
+            .is_some_and(|result| result.termination != TerminationReason::MaxIterations),
     }
 }
 
-fn accumulate_block(
-    h: &mut DMatrix<f64>,
-    b: &mut DVector<f64>,
-    edge: &Edge2D,
-    error: &Vector3<f64>,
-    j_i: &Matrix3<f64>,
-    j_j: &Matrix3<f64>,
-) {
-    let from_offset = 3 * edge.from;
-    let to_offset = 3 * edge.to;
+struct PoseGraphFactor2D {
+    variables: [VariableId; 2],
+    edge: Edge2D,
+}
 
-    let h_ii = j_i.transpose() * edge.information * j_i;
-    let h_ij = j_i.transpose() * edge.information * j_j;
-    let h_ji = j_j.transpose() * edge.information * j_i;
-    let h_jj = j_j.transpose() * edge.information * j_j;
-
-    let b_i = j_i.transpose() * edge.information * error;
-    let b_j = j_j.transpose() * edge.information * error;
-
-    for row in 0..3 {
-        b[from_offset + row] += b_i[row];
-        b[to_offset + row] += b_j[row];
-        for col in 0..3 {
-            h[(from_offset + row, from_offset + col)] += h_ii[(row, col)];
-            h[(from_offset + row, to_offset + col)] += h_ij[(row, col)];
-            h[(to_offset + row, from_offset + col)] += h_ji[(row, col)];
-            h[(to_offset + row, to_offset + col)] += h_jj[(row, col)];
-        }
+impl Factor for PoseGraphFactor2D {
+    fn variable_ids(&self) -> &[VariableId] {
+        &self.variables
     }
+
+    fn evaluate(&self, values: &[&DVector<f64>]) -> OptimizationResult<FactorEvaluation> {
+        let from = Pose2DNode::new(values[0][0], values[0][1], values[0][2]);
+        let to = Pose2DNode::new(values[1][0], values[1][1], values[1][2]);
+        let (error, from_jacobian, to_jacobian) =
+            edge_error_and_jacobians(&from, &to, &self.edge.measurement);
+        Ok(FactorEvaluation {
+            residual: DVector::from_column_slice(error.as_slice()),
+            information: DMatrix::from_column_slice(3, 3, self.edge.information.as_slice()),
+            jacobians: vec![
+                DMatrix::from_column_slice(3, 3, from_jacobian.as_slice()),
+                DMatrix::from_column_slice(3, 3, to_jacobian.as_slice()),
+            ],
+        })
+    }
+}
+
+fn retract_pose_2d(
+    value: &DVector<f64>,
+    increment: &DVector<f64>,
+) -> OptimizationResult<DVector<f64>> {
+    Ok(DVector::from_vec(vec![
+        value[0] + increment[0],
+        value[1] + increment[1],
+        normalize_angle(value[2] + increment[2]),
+    ]))
 }
 
 fn edge_error_and_jacobians(

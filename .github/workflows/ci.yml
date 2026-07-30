@@ -96,7 +96,7 @@ jobs:
         key: ${{ runner.os }}-wasm-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
 
     - name: Check headless libraries on wasm
-      run: cargo check -p rust_robotics_core -p rust_robotics_planning -p rust_robotics_localization -p rust_robotics_control -p rust_robotics_mapping -p rust_robotics_slam -p rust_robotics --no-default-features --features "rust_robotics/planning,rust_robotics/localization,rust_robotics/control,rust_robotics/mapping,rust_robotics/slam" --target wasm32-unknown-unknown
+      run: cargo check -p rust_robotics_core -p rust_robotics_optimization -p rust_robotics_planning -p rust_robotics_localization -p rust_robotics_control -p rust_robotics_mapping -p rust_robotics_slam -p rust_robotics --no-default-features --features "rust_robotics/planning,rust_robotics/localization,rust_robotics/control,rust_robotics/mapping,rust_robotics/slam" --target wasm32-unknown-unknown
       env:
         RUSTFLAGS: '--cfg getrandom_backend="unsupported"'
 
@@ -210,5 +210,5 @@ jobs:
       uses: obi1kenobi/cargo-semver-checks-action@v2
       with:
         # Exclude crates not published to crates.io
-        package: rust_robotics_core rust_robotics_planning rust_robotics_localization rust_robotics_control rust_robotics_mapping rust_robotics_slam rust_robotics_viz
+        package: rust_robotics_core rust_robotics_optimization rust_robotics_planning rust_robotics_localization rust_robotics_control rust_robotics_mapping rust_robotics_slam rust_robotics_viz
       continue-on-error: true
