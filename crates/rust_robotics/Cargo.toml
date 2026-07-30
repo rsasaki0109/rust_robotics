@@ -236,8 +236,23 @@ path = "examples/headless_factor_graph_stack.rs"
 required-features = ["slam"]
 
 [[example]]
+name = "headless_euroc_vio"
+path = "examples/headless_euroc_vio.rs"
+required-features = ["slam"]
+
+[[example]]
+name = "render_euroc_vio_svg"
+path = "examples/render_euroc_vio_svg.rs"
+required-features = ["slam"]
+
+[[example]]
 name = "benchmark_factor_graph_scaling"
 path = "examples/benchmark_factor_graph_scaling.rs"
+required-features = ["slam"]
+
+[[example]]
+name = "benchmark_large_pose_graph"
+path = "examples/benchmark_large_pose_graph.rs"
 required-features = ["slam"]
 
 [[example]]

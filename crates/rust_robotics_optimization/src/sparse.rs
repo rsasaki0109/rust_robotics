@@ -81,16 +81,35 @@ impl BlockSparseHessian {
         result
     }
 
-    fn inverse_diagonal(&self) -> DVector<f64> {
-        let mut diagonal = DVector::from_element(self.dimension, 1.0);
-        for (&(row_offset, column_offset), block) in &self.blocks {
-            if row_offset == column_offset {
-                for index in 0..block.nrows().min(block.ncols()) {
-                    diagonal[row_offset + index] = 1.0 / block[(index, index)].abs().max(1.0e-12);
-                }
+    fn block_jacobi_inverse(&self) -> Vec<(usize, DMatrix<f64>)> {
+        let mut inverses = Vec::new();
+        for (&(row, column), block) in &self.blocks {
+            if row != column {
+                continue;
             }
+            let inverse = block.clone().try_inverse().unwrap_or_else(|| {
+                DMatrix::from_diagonal(&DVector::from_iterator(
+                    block.nrows(),
+                    (0..block.nrows()).map(|index| 1.0 / block[(index, index)].abs().max(1.0e-12)),
+                ))
+            });
+            inverses.push((row, inverse));
         }
-        diagonal
+        inverses
+    }
+
+    fn apply_block_jacobi(
+        residual: &DVector<f64>,
+        inverse_blocks: &[(usize, DMatrix<f64>)],
+    ) -> DVector<f64> {
+        let mut preconditioned = residual.clone();
+        for (offset, inverse) in inverse_blocks {
+            let local = residual.rows(*offset, inverse.ncols());
+            preconditioned
+                .rows_mut(*offset, inverse.nrows())
+                .copy_from(&(inverse * local));
+        }
+        preconditioned
     }
 
     pub(crate) fn solve_pcg(
@@ -101,8 +120,8 @@ impl BlockSparseHessian {
     ) -> OptimizationResult<(DVector<f64>, usize)> {
         let mut solution = DVector::zeros(self.dimension);
         let mut residual = right_hand_side.clone();
-        let inverse_diagonal = self.inverse_diagonal();
-        let mut preconditioned = inverse_diagonal.component_mul(&residual);
+        let inverse_blocks = self.block_jacobi_inverse();
+        let mut preconditioned = Self::apply_block_jacobi(&residual, &inverse_blocks);
         let mut direction = preconditioned.clone();
         let mut residual_dot_preconditioned = residual.dot(&preconditioned);
         let threshold = tolerance * (1.0 + right_hand_side.norm());
@@ -126,7 +145,7 @@ impl BlockSparseHessian {
             if residual.norm() <= threshold {
                 return Ok((solution, iteration + 1));
             }
-            preconditioned = inverse_diagonal.component_mul(&residual);
+            preconditioned = Self::apply_block_jacobi(&residual, &inverse_blocks);
             let next_dot = residual.dot(&preconditioned);
             if !next_dot.is_finite() {
                 return Err(OptimizationError::NonFiniteValue);

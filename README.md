@@ -59,6 +59,8 @@ Every animation above is rendered by the library itself — regenerate them all 
 - **Lie groups and factor graphs** — reusable SO(2)/SE(2)/SO(3)/SE(3),
   robust nonlinear least squares, pose graphs, IMU preintegration, and bundle
   adjustment share one tested mathematical foundation.
+- **Real dataset ingestion** — standard EuRoC MAV and KITTI odometry layouts,
+  plus a connected IMU → bundle-adjustment → SE(3) replay pipeline.
 
 ## Embedded / no_std
 
@@ -252,6 +254,8 @@ cargo run -p rust_robotics --example render_hierarchical_mapf_replanning_svg --n
 cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-default-features --features planning
 cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
 cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
+cargo run -p rust_robotics --example headless_euroc_vio --no-default-features --features slam
+cargo run -p rust_robotics --example render_euroc_vio_svg --no-default-features --features slam
 cargo run -p rust_robotics --example benchmark_conformal_sipp --no-default-features --features planning
 cargo run -p rust_robotics --example benchmark_conformal_coverage --no-default-features --features planning
 cargo run -p rust_robotics --example benchmark_traversal_risk_sweep --no-default-features --features planning
@@ -711,6 +715,40 @@ Reproduce the full 10/50/100/200 sweep:
 
 ```bash
 cargo run --release -p rust_robotics --example benchmark_factor_graph_scaling \
+  --no-default-features --features slam
+```
+
+For genuinely large graphs, `benchmark_large_pose_graph` runs only the
+block-sparse path and fails if convergence or RMSE acceptance is missed:
+
+| Poses | Parameters | Dense equivalent | Stored blocks | Iterations | Time | RMSE |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 2,997 | 68.5 MiB | 141.0 KiB | 8 | 0.64 s | 2.20e-3 |
+| 5,000 | 14,997 | 1.68 GiB | 706.3 KiB | 9 | 4.54 s | 1.13e-3 |
+| 10,000 | 29,997 | 6.70 GiB | 1.38 MiB | 9 | 8.62 s | 3.52e-4 |
+
+```bash
+cargo run --release -p rust_robotics --example benchmark_large_pose_graph \
+  --no-default-features --features slam
+```
+
+## EuRoC / KITTI Dataset Replay
+
+<img src="./docs/assets/euroc-vio-pipeline.svg" width="1000px" alt="EuRoC IMU, bundle adjustment, and SE3 pose graph pipeline">
+
+The SLAM crate loads official EuRoC MAV and KITTI odometry directory layouts
+without imposing an image decoder. EuRoC replay accepts a compact pre-extracted
+feature sidecar, preintegrates IMU samples, jointly optimizes cameras and
+landmarks with Schur elimination, then fuses metric IMU edges and the visual
+closure in an SE(3) pose graph.
+
+- [Dataset and sidecar guide](./docs/datasets.md)
+- [loader source](./crates/rust_robotics_slam/src/dataset.rs)
+- [VIO pipeline source](./crates/rust_robotics_slam/src/vio_pipeline.rs)
+- [MathematicalRobotics numerical parity](./docs/mathematical-robotics-parity.md)
+
+```bash
+cargo run -p rust_robotics --example headless_euroc_vio \
   --no-default-features --features slam
 ```
 

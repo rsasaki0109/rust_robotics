@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   differences.
 - Reproducible factor-graph integration/scaling examples plus pure-Rust SVG/GIF
   gallery assets.
+- EuRoC MAV and KITTI odometry loaders, optional pre-extracted EuRoC feature
+  sidecars, and an IMU preintegration → Schur BA → block-sparse SE(3) replay.
+- Golden-value regression tests against MathematicalRobotics commit
+  `79600010f0c86179905a6960e5fce2bb7cc85d77`.
+- Convergent 1k/5k/10k pose benchmarks and precomputed block-Jacobi PCG
+  preconditioners.
 
 ### Fixed
 - `RRTPlanner::planning()` now records the search tree so `get_tree()` exposes

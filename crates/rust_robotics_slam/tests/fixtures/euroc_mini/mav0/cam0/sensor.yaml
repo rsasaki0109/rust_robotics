@@ -1,0 +1,10 @@
+sensor_type: camera
+T_BS:
+  cols: 4
+  rows: 4
+  data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+resolution: [752, 480]
+camera_model: pinhole
+intrinsics: [458.654, 457.296, 367.215, 248.375]
+distortion_model: radial-tangential
+distortion_coefficients: [-0.28340811, 0.07395907, 0.00019359, 1.76187114e-05]
