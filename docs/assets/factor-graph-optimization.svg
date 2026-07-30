@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="560" viewBox="0 0 1320 560" role="img" aria-labelledby="title desc">
+<title id="title">Block-sparse pose graph optimization</title>
+<desc id="desc">A drifted pose graph before and after loop-closure optimization.</desc><rect width="1320" height="560" fill="#f8fafc"/>
+<text x="56" y="48" font-family="sans-serif" font-size="28" font-weight="700" fill="#0f172a">Factor graph: drift → globally consistent trajectory</text>
+<text x="56" y="77" font-family="sans-serif" font-size="15" fill="#475569">SE(2) loop closures · block-sparse Hessian · PCG · 6 nonlinear iterations</text>
+<rect x="50" y="105" width="560" height="350" rx="18" fill="#ffffff" stroke="#cbd5e1"/><text x="74" y="140" font-family="sans-serif" font-size="19" font-weight="700" fill="#0f172a">Noisy odometry</text><polyline points="562.0,255.0 562.9,210.9 544.3,177.3 506.3,149.6 453.2,129.7 392.2,118.8 330.9,117.6 274.9,126.1 226.4,143.7 185.4,169.3 151.9,201.4 127.4,238.0 115.6,277.0 121.0,316.0 146.6,352.9 191.5,385.3 250.7,411.4 317.0,429.5 382.9,438.3 443.8,437.4 497.9,426.6 545.4,406.5 585.9,378.6 617.3,344.5" fill="none" stroke="#ef4444" stroke-width="4" stroke-linejoin="round"/>
+<rect x="710" y="105" width="560" height="350" rx="18" fill="#ffffff" stroke="#cbd5e1"/><text x="734" y="140" font-family="sans-serif" font-size="19" font-weight="700" fill="#0f172a">Optimized graph</text><polyline points="1222.0,255.0 1213.8,215.2 1189.8,178.2 1151.7,146.4 1102.0,122.0 1044.1,106.6 982.0,101.4 919.9,106.6 862.0,122.0 812.3,146.4 774.2,178.2 750.2,215.2 742.0,255.0 750.2,294.8 774.2,331.8 812.3,363.6 862.0,388.0 919.9,403.4 982.0,408.6 1044.1,403.4 1102.0,388.0 1151.7,363.6 1189.8,331.8 1213.8,294.8" fill="none" stroke="#0f9f75" stroke-width="4" stroke-linejoin="round"/>
+<line x1="562.0" y1="255.0" x2="330.9" y2="117.6" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<line x1="330.9" y1="117.6" x2="115.6" y2="277.0" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<line x1="115.6" y1="277.0" x2="382.9" y2="438.3" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<circle cx="562.0" cy="255.0" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="562.9" cy="210.9" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="544.3" cy="177.3" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="506.3" cy="149.6" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="453.2" cy="129.7" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="392.2" cy="118.8" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="330.9" cy="117.6" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="274.9" cy="126.1" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="226.4" cy="143.7" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="185.4" cy="169.3" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="151.9" cy="201.4" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="127.4" cy="238.0" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="115.6" cy="277.0" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="121.0" cy="316.0" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="146.6" cy="352.9" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="191.5" cy="385.3" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="250.7" cy="411.4" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="317.0" cy="429.5" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="382.9" cy="438.3" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="443.8" cy="437.4" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="497.9" cy="426.6" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="545.4" cy="406.5" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="585.9" cy="378.6" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<circle cx="617.3" cy="344.5" r="5" fill="#ef4444" stroke="#fff" stroke-width="2"/>
+<line x1="1222.0" y1="255.0" x2="982.0" y2="101.4" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<line x1="982.0" y1="101.4" x2="742.0" y2="255.0" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<line x1="742.0" y1="255.0" x2="982.0" y2="408.6" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="7 6" opacity=".75"/>
+<circle cx="1222.0" cy="255.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1213.8" cy="215.2" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1189.8" cy="178.2" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1151.7" cy="146.4" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1102.0" cy="122.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1044.1" cy="106.6" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="982.0" cy="101.4" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="919.9" cy="106.6" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="862.0" cy="122.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="812.3" cy="146.4" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="774.2" cy="178.2" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="750.2" cy="215.2" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="742.0" cy="255.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="750.2" cy="294.8" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="774.2" cy="331.8" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="812.3" cy="363.6" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="862.0" cy="388.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="919.9" cy="403.4" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="982.0" cy="408.6" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1044.1" cy="403.4" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1102.0" cy="388.0" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1151.7" cy="363.6" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1189.8" cy="331.8" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="1213.8" cy="294.8" r="5" fill="#0f9f75" stroke="#fff" stroke-width="2"/>
+<circle cx="101" cy="255" r="9" fill="#2563eb"/><circle cx="761" cy="255" r="9" fill="#2563eb"/><text x="56" y="505" font-family="sans-serif" font-size="14" fill="#475569">Blue: fixed gauge anchor · Purple dashed: loop closures · Generated entirely by RustRobotics</text></svg>

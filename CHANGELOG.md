@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - 2026-07-15
+## [0.2.0] - 2026-07-31
 
 ### Added
 - **`no_std` localization stack.** `rust_robotics_core` and
@@ -38,6 +38,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   links preserve the planner, start/goal cells, and complete obstacle map.
 - Guarded release workflow for dependency-ordered workspace publishing,
   crates.io propagation checks, tagging, and GitHub Release creation.
+- Reusable Lie-group/factor-graph stack inspired by MathematicalRobotics:
+  stable SO(2)/SE(2)/SO(3)/SE(3), robust Gauss-Newton/Levenberg-Marquardt,
+  g2o pose graphs, bias-aware IMU preintegration, bundle adjustment, and
+  point-to-line/point-to-plane ICP.
+- Block-sparse PCG and bundle-adjustment Schur-complement linear solvers, with
+  analytic SE(3), IMU, and reprojection Jacobians validated against finite
+  differences.
+- Reproducible factor-graph integration/scaling examples plus pure-Rust SVG/GIF
+  gallery assets.
 
 ### Fixed
 - `RRTPlanner::planning()` now records the search tree so `get_tree()` exposes

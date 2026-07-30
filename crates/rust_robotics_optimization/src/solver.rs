@@ -1,7 +1,8 @@
 use core::ops::AddAssign;
 
-use nalgebra::{DMatrix, DVector};
+use nalgebra::DVector;
 
+use crate::sparse::BlockSparseHessian;
 use crate::{OptimizationError, OptimizationResult, Problem};
 
 /// Nonlinear least-squares algorithm.
@@ -9,6 +10,23 @@ use crate::{OptimizationError, OptimizationResult, Problem};
 pub enum SolverMethod {
     GaussNewton,
     LevenbergMarquardt,
+}
+
+/// Linear solver used for each nonlinear iteration.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LinearSolver {
+    /// Materialize the block Hessian as a dense matrix and use LU.
+    Dense,
+    /// Keep the Hessian block-sparse and solve it with preconditioned
+    /// conjugate gradients.
+    BlockSparsePcg {
+        max_iterations: usize,
+        tolerance: f64,
+    },
+    /// Eliminate independent trailing variable blocks, then solve the reduced
+    /// retained system densely. This is the classic bundle-adjustment Schur
+    /// complement when cameras precede landmarks.
+    SchurComplement { retained_dimension: usize },
 }
 
 /// Solver limits and convergence tolerances.
@@ -20,6 +38,7 @@ pub struct SolverConfig {
     pub step_tolerance: f64,
     pub cost_tolerance: f64,
     pub initial_damping: f64,
+    pub linear_solver: LinearSolver,
 }
 
 impl Default for SolverConfig {
@@ -31,6 +50,7 @@ impl Default for SolverConfig {
             step_tolerance: 1.0e-10,
             cost_tolerance: 1.0e-12,
             initial_damping: 1.0e-3,
+            linear_solver: LinearSolver::Dense,
         }
     }
 }
@@ -52,6 +72,9 @@ pub struct SolverSummary {
     pub iterations: usize,
     pub accepted_steps: usize,
     pub termination: TerminationReason,
+    pub linear_iterations: usize,
+    pub hessian_blocks: usize,
+    pub hessian_scalar_entries: usize,
 }
 
 /// Solves a factor graph in place.
@@ -66,6 +89,9 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
             iterations: 0,
             accepted_steps: 0,
             termination: TerminationReason::GradientConverged,
+            linear_iterations: 0,
+            hessian_blocks: 0,
+            hessian_scalar_entries: 0,
         });
     }
 
@@ -73,9 +99,14 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
     let mut current_cost = initial_cost;
     let mut damping = config.initial_damping;
     let mut accepted_steps = 0;
+    let mut total_linear_iterations = 0;
+    let mut hessian_blocks = 0;
+    let mut hessian_scalar_entries = 0;
 
     for iteration in 0..config.max_iterations {
-        let linearization = linearize(problem, &layout)?;
+        let mut linearization = linearize(problem, &layout)?;
+        hessian_blocks = linearization.hessian.block_count();
+        hessian_scalar_entries = linearization.hessian.scalar_entries();
         if linearization.gradient.amax() <= config.gradient_tolerance {
             return Ok(summary(
                 initial_cost,
@@ -83,21 +114,23 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                 iteration,
                 accepted_steps,
                 TerminationReason::GradientConverged,
+                total_linear_iterations,
+                hessian_blocks,
+                hessian_scalar_entries,
             ));
         }
 
-        let mut hessian = linearization.hessian;
         if config.method == SolverMethod::LevenbergMarquardt {
-            for index in 0..hessian.nrows() {
-                hessian[(index, index)] += damping * hessian[(index, index)].abs().max(1.0);
-            }
+            linearization.hessian.add_levenberg_damping(damping);
         }
 
         let right_hand_side = -linearization.gradient;
-        let increment = hessian
-            .lu()
-            .solve(&right_hand_side)
-            .ok_or(OptimizationError::LinearSolveFailed)?;
+        let (increment, linear_iterations) = solve_linear_system(
+            &linearization.hessian,
+            &right_hand_side,
+            config.linear_solver,
+        )?;
+        total_linear_iterations += linear_iterations;
         if !increment.iter().all(|value| value.is_finite()) {
             return Err(OptimizationError::NonFiniteValue);
         }
@@ -108,6 +141,9 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                 iteration + 1,
                 accepted_steps,
                 TerminationReason::StepConverged,
+                total_linear_iterations,
+                hessian_blocks,
+                hessian_scalar_entries,
             ));
         }
 
@@ -128,6 +164,9 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                     iteration + 1,
                     accepted_steps,
                     TerminationReason::CostConverged,
+                    total_linear_iterations,
+                    hessian_blocks,
+                    hessian_scalar_entries,
                 ));
             }
         } else {
@@ -142,6 +181,9 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
         config.max_iterations,
         accepted_steps,
         TerminationReason::MaxIterations,
+        total_linear_iterations,
+        hessian_blocks,
+        hessian_scalar_entries,
     ))
 }
 
@@ -167,12 +209,12 @@ impl Layout {
 }
 
 struct Linearization {
-    hessian: DMatrix<f64>,
+    hessian: BlockSparseHessian,
     gradient: DVector<f64>,
 }
 
 fn linearize(problem: &Problem, layout: &Layout) -> OptimizationResult<Linearization> {
-    let mut hessian = DMatrix::zeros(layout.dimension, layout.dimension);
+    let mut hessian = BlockSparseHessian::new(layout.dimension);
     let mut gradient = DVector::zeros(layout.dimension);
 
     for factor in problem.factors() {
@@ -207,12 +249,9 @@ fn linearize(problem: &Problem, layout: &Layout) -> OptimizationResult<Lineariza
                 };
                 let jacobian_j = &evaluation.jacobians[local_j];
                 let block = weight * jacobian_i.transpose() * &evaluation.information * jacobian_j;
-                hessian
-                    .view_mut(
-                        (offset_i, offset_j),
-                        (jacobian_i.ncols(), jacobian_j.ncols()),
-                    )
-                    .add_assign(&block);
+                if offset_i <= offset_j {
+                    hessian.add_block(offset_i, offset_j, block);
+                }
             }
         }
     }
@@ -310,6 +349,17 @@ fn validate_config(config: &SolverConfig) -> OptimizationResult<()> {
         || config.step_tolerance < 0.0
         || config.cost_tolerance < 0.0
         || config.initial_damping <= 0.0
+        || matches!(
+            config.linear_solver,
+            LinearSolver::BlockSparsePcg {
+                max_iterations: 0,
+                ..
+            }
+        )
+        || matches!(
+            config.linear_solver,
+            LinearSolver::BlockSparsePcg { tolerance, .. } if tolerance <= 0.0
+        )
     {
         return Err(OptimizationError::InvalidParameter(
             "solver limits and tolerances must be positive".into(),
@@ -318,12 +368,16 @@ fn validate_config(config: &SolverConfig) -> OptimizationResult<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn summary(
     initial_cost: f64,
     final_cost: f64,
     iterations: usize,
     accepted_steps: usize,
     termination: TerminationReason,
+    linear_iterations: usize,
+    hessian_blocks: usize,
+    hessian_scalar_entries: usize,
 ) -> SolverSummary {
     SolverSummary {
         initial_cost,
@@ -331,6 +385,31 @@ fn summary(
         iterations,
         accepted_steps,
         termination,
+        linear_iterations,
+        hessian_blocks,
+        hessian_scalar_entries,
+    }
+}
+
+fn solve_linear_system(
+    hessian: &BlockSparseHessian,
+    right_hand_side: &DVector<f64>,
+    solver: LinearSolver,
+) -> OptimizationResult<(DVector<f64>, usize)> {
+    match solver {
+        LinearSolver::Dense => hessian
+            .to_dense()
+            .lu()
+            .solve(right_hand_side)
+            .map(|solution| (solution, 1))
+            .ok_or(OptimizationError::LinearSolveFailed),
+        LinearSolver::BlockSparsePcg {
+            max_iterations,
+            tolerance,
+        } => hessian.solve_pcg(right_hand_side, max_iterations, tolerance),
+        LinearSolver::SchurComplement { retained_dimension } => hessian
+            .solve_schur(right_hand_side, retained_dimension)
+            .map(|solution| (solution, 1)),
     }
 }
 
@@ -376,5 +455,30 @@ mod tests {
         assert!((solution[0] - 1.0).abs() < 1.0e-7);
         assert!((solution[1] - 1.0).abs() < 1.0e-7);
         assert!(summary.final_cost < summary.initial_cost);
+    }
+
+    #[test]
+    fn block_sparse_solver_solves_rosenbrock_problem() {
+        let mut problem = Problem::new();
+        let variable =
+            problem.add_variable(Variable::euclidean(DVector::from_vec(vec![-1.2, 1.0])));
+        problem
+            .add_factor(RosenbrockFactor {
+                variables: [variable],
+            })
+            .unwrap();
+        let config = SolverConfig {
+            linear_solver: LinearSolver::BlockSparsePcg {
+                max_iterations: 100,
+                tolerance: 1.0e-12,
+            },
+            ..SolverConfig::default()
+        };
+        let summary = solve(&mut problem, &config).unwrap();
+        let solution = problem.variable(variable).unwrap().value();
+        assert!((solution[0] - 1.0).abs() < 1.0e-7);
+        assert!((solution[1] - 1.0).abs() < 1.0e-7);
+        assert!(summary.hessian_scalar_entries <= 4);
+        assert!(summary.linear_iterations > 0);
     }
 }

@@ -38,6 +38,9 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
     <td align="center"><a href="#fastslam-10"><img src="./media/gallery/fastslam.gif" width="260" alt="FastSLAM 1.0"/></a><br/><b>FastSLAM 1.0</b></td>
     <td align="center"><a href="#iterative-closest-point-icp-matching"><img src="./media/gallery/icp_matching.gif" width="260" alt="ICP scan matching"/></a><br/><b>ICP Matching</b></td>
   </tr>
+  <tr>
+    <td colspan="3" align="center"><a href="#pose-graph-optimization"><img src="./media/gallery/factor_graph_optimization.gif" width="540" alt="Block-sparse factor graph optimization"/></a><br/><b>Block-sparse Factor Graph Optimization</b></td>
+  </tr>
 </table>
 
 Every animation above is rendered by the library itself — regenerate them all with
@@ -193,6 +196,7 @@ cargo run -p rust_robotics --example render_gif_pure_pursuit --features "control
 cargo run -p rust_robotics --example render_gif_dwa --features "planning,gif"
 cargo run -p rust_robotics --example render_gif_rrt --features "planning,gif"
 cargo run -p rust_robotics --example render_gif_slam --features "slam,gif"
+cargo run -p rust_robotics --example render_factor_graph_optimization --features "slam,gif"
 
 # Headless (no GUI dependencies)
 cargo run -p rust_robotics --example headless_grid_planners --features planning
@@ -680,27 +684,50 @@ Pose graph optimization for SLAM. Constructs a graph of robot poses connected by
 
 ## Pose Graph Optimization
 
+<img src="./docs/assets/factor-graph-optimization.svg" width="1000px" alt="Pose graph before and after block-sparse optimization">
+
 SE(2) and SE(3) pose graph optimization using the shared
-Levenberg-Marquardt factor-graph backend. The module fixes the first pose to
-remove gauge freedom and supports standard g2o SE2/SE3 quaternion text I/O.
+Levenberg-Marquardt factor-graph backend. Dense LU and block-sparse
+preconditioned conjugate-gradient linear solvers are available; SE(3) factors
+use analytic Jacobians. The module fixes the first pose to remove gauge freedom
+and supports standard g2o SE2/SE3 quaternion text I/O.
 
 - [src](./crates/rust_robotics_slam/src/pose_graph_optimization.rs)
 - [SE(3) src](./crates/rust_robotics_slam/src/pose_graph_optimization_3d.rs)
 - [g2o I/O](./crates/rust_robotics_slam/src/g2o.rs)
+- [headless integration demo](./crates/rust_robotics/examples/headless_factor_graph_stack.rs)
+- [scaling benchmark](./crates/rust_robotics/examples/benchmark_factor_graph_scaling.rs)
+
+Representative `--release` results at size 200 on a development workstation:
+
+| Problem / solver | Parameters | Dense matrix | Stored blocks | Iterations | Time | RMSE |
+|---|---:|---:|---:|---:|---:|---:|
+| Pose graph / dense LU | 597 | 2.72 MiB | 29.2 KiB | 9 | 188.7 ms | 8.11e-7 |
+| Pose graph / block-sparse PCG | 597 | 2.72 MiB | 29.2 KiB | 9 | 79.1 ms | 8.11e-7 |
+| BA / dense LU | 600 | 2.75 MiB | 14.1 KiB | 4 | 80.9 ms | 8.42e-13 |
+| BA / Schur complement | 600 | 2.75 MiB | 14.1 KiB | 4 | 1.86 ms | 8.42e-13 |
+
+Reproduce the full 10/50/100/200 sweep:
+
+```bash
+cargo run --release -p rust_robotics --example benchmark_factor_graph_scaling \
+  --no-default-features --features slam
+```
 
 ## IMU Preintegration
 
 Bias-aware accelerometer/gyroscope preintegration with SO(3) updates, 9-state
 error covariance propagation, 9x6 bias Jacobians, navigation-state prediction,
-and an optimizer-ready IMU factor.
+and an optimizer-ready IMU factor with analytic state and bias Jacobians.
 
 - [src](./crates/rust_robotics_slam/src/imu_preintegration.rs)
 
 ## Bundle Adjustment
 
 Pinhole projection, analytic camera/landmark reprojection Jacobians, robust
-losses, configurable gauge anchoring, and joint camera/landmark optimization.
-Camera poses use world-from-camera SE(3) matrices.
+losses, configurable gauge anchoring, and joint camera/landmark optimization
+with landmark Schur elimination enabled by default. Camera poses use
+world-from-camera SE(3) matrices.
 
 - [src](./crates/rust_robotics_slam/src/bundle_adjustment.rs)
 

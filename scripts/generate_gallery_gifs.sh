@@ -21,6 +21,7 @@ run render_gif_pure_pursuit "control,gif"
 run render_gif_dwa "planning,gif"
 run render_gif_rrt "planning,gif"
 run render_gif_slam "slam,gif"
+run render_factor_graph_optimization "slam,gif"
 
 echo
 echo "Gallery GIFs:"

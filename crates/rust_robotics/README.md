@@ -5,7 +5,7 @@ for planning, localization, mapping, SLAM, control, and visualization crates.
 
 ```toml
 [dependencies]
-rust_robotics = "0.1"
+rust_robotics = "0.2"
 ```
 
 ```rust

@@ -1,7 +1,7 @@
 //! SE(3) pose-graph optimization on the shared factor-graph backend.
 
 use nalgebra::{DMatrix, DVector, Matrix4};
-use rust_robotics_core::{se3_exp, se3_inverse, se3_log, Matrix6, Vector6};
+use rust_robotics_core::{se3_adjoint, se3_exp, se3_inverse, se3_log, skew, Matrix6, Vector6};
 use rust_robotics_optimization::{
     solve, Factor, FactorEvaluation, OptimizationResult, Problem, SolverConfig, SolverMethod,
     TerminationReason, Variable, VariableId,
@@ -99,6 +99,7 @@ pub fn optimize_pose_graph_3d(
         gradient_tolerance: config.tolerance,
         step_tolerance: config.tolerance,
         cost_tolerance: config.tolerance * config.tolerance,
+        linear_solver: config.linear_solver,
         ..SolverConfig::default()
     };
     let summary = solve(&mut problem, &solver_config).ok();
@@ -133,9 +134,15 @@ impl Factor for PoseGraphFactor3D {
         let from = se3_exp(&Vector6::from_column_slice(values[0].as_slice()));
         let to = se3_exp(&Vector6::from_column_slice(values[1].as_slice()));
         let residual = edge_residual(&from, &to, &self.measurement);
+        let left_inverse = se3_left_jacobian_inverse(&residual);
+        let right_inverse = se3_left_jacobian_inverse(&(-residual));
         let jacobians = vec![
-            numerical_jacobian(&from, &to, &self.measurement, true),
-            numerical_jacobian(&from, &to, &self.measurement, false),
+            DMatrix::from_column_slice(
+                6,
+                6,
+                (-left_inverse * se3_adjoint(&se3_inverse(&self.measurement))).as_slice(),
+            ),
+            DMatrix::from_column_slice(6, 6, right_inverse.as_slice()),
         ];
         Ok(FactorEvaluation {
             residual: DVector::from_column_slice(residual.as_slice()),
@@ -149,6 +156,31 @@ fn edge_residual(from: &Matrix4<f64>, to: &Matrix4<f64>, measurement: &Matrix4<f
     se3_log(&(se3_inverse(measurement) * se3_inverse(from) * to))
 }
 
+fn se3_left_jacobian_inverse(tangent: &Vector6) -> Matrix6 {
+    let velocity = tangent.fixed_rows::<3>(0).into_owned();
+    let omega = tangent.fixed_rows::<3>(3).into_owned();
+    let mut ad = Matrix6::zeros();
+    ad.fixed_view_mut::<3, 3>(0, 0).copy_from(&skew(&omega));
+    ad.fixed_view_mut::<3, 3>(0, 3).copy_from(&skew(&velocity));
+    ad.fixed_view_mut::<3, 3>(3, 3).copy_from(&skew(&omega));
+
+    // J_l(x) = sum ad(x)^n / (n + 1)!. Evaluating the matrix series and
+    // inverting it avoids finite-differencing the nonlinear factor while
+    // remaining stable at the identity.
+    let mut jacobian = Matrix6::identity();
+    let mut power = Matrix6::identity();
+    let mut factorial = 1.0;
+    for order in 1..=24 {
+        power *= ad;
+        factorial *= (order + 1) as f64;
+        jacobian += power / factorial;
+    }
+    jacobian
+        .try_inverse()
+        .expect("the SE(3) left Jacobian is nonsingular on the principal branch")
+}
+
+#[cfg(test)]
 fn numerical_jacobian(
     from: &Matrix4<f64>,
     to: &Matrix4<f64>,
@@ -230,5 +262,20 @@ mod tests {
             assert!(error.fixed_rows::<3>(0).norm() < 1.0e-5);
             assert!(Vector3::from(error.fixed_rows::<3>(3)).norm() < 1.0e-5);
         }
+    }
+
+    #[test]
+    fn analytic_se3_jacobians_match_finite_differences() {
+        let from = se3_exp(&Vector6::new(0.4, -0.2, 0.1, 0.2, -0.1, 0.3));
+        let to = se3_exp(&Vector6::new(1.1, 0.5, -0.3, -0.1, 0.25, 0.15));
+        let measurement = se3_exp(&Vector6::new(0.6, 0.4, -0.2, 0.1, 0.2, -0.1));
+        let residual = edge_residual(&from, &to, &measurement);
+        let analytic_from =
+            -se3_left_jacobian_inverse(&residual) * se3_adjoint(&se3_inverse(&measurement));
+        let analytic_to = se3_left_jacobian_inverse(&(-residual));
+        let numeric_from = numerical_jacobian(&from, &to, &measurement, true);
+        let numeric_to = numerical_jacobian(&from, &to, &measurement, false);
+        assert!((analytic_from - numeric_from).norm() < 1.0e-7);
+        assert!((analytic_to - numeric_to).norm() < 1.0e-7);
     }
 }

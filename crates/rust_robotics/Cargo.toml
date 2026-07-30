@@ -231,6 +231,21 @@ path = "examples/headless_mission_recovery.rs"
 required-features = ["planning", "localization", "control"]
 
 [[example]]
+name = "headless_factor_graph_stack"
+path = "examples/headless_factor_graph_stack.rs"
+required-features = ["slam"]
+
+[[example]]
+name = "benchmark_factor_graph_scaling"
+path = "examples/benchmark_factor_graph_scaling.rs"
+required-features = ["slam"]
+
+[[example]]
+name = "render_factor_graph_optimization"
+path = "examples/render_factor_graph_optimization.rs"
+required-features = ["slam", "gif"]
+
+[[example]]
 name = "dora_path_planning_node"
 path = "examples/dora_path_planning_node.rs"
 required-features = ["planning", "dora"]

@@ -11,9 +11,12 @@ rust_robotics_slam = "0.2"
 ```
 
 The advanced estimation modules share `rust_robotics_optimization` for
-Levenberg-Marquardt, information-weighted factors, manifold retractions, and
+Levenberg-Marquardt, block-sparse PCG and Schur solvers,
+information-weighted factors, manifold retractions, and
 Huber/Pseudo-Huber/Cauchy losses. Camera poses and 3D pose graphs use
-world-from-local SE(3) matrices; tangent vectors are translation-first.
+world-from-local SE(3) matrices; tangent vectors are translation-first. SE(3)
+pose graph and IMU factors use analytic Jacobians checked against finite
+differences.
 
 Run its focused test suite with:
 

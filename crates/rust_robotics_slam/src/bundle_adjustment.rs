@@ -3,8 +3,8 @@
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix4, SMatrix, Vector2, Vector3};
 use rust_robotics_core::{se3_exp, se3_inverse, se3_log, skew, Vector6};
 use rust_robotics_optimization::{
-    solve, Factor, FactorEvaluation, OptimizationError, OptimizationResult, Problem, RobustKernel,
-    SolverConfig, SolverSummary, Variable, VariableId,
+    solve, Factor, FactorEvaluation, LinearSolver, OptimizationError, OptimizationResult, Problem,
+    RobustKernel, SolverConfig, SolverSummary, Variable, VariableId,
 };
 
 /// Pinhole camera calibration without distortion.
@@ -68,6 +68,8 @@ pub struct BundleAdjustmentConfig {
     pub solver: SolverConfig,
     /// Number of leading camera poses kept constant to remove gauge freedom.
     pub fixed_cameras: usize,
+    /// Eliminate landmark blocks before solving the reduced camera system.
+    pub use_schur_complement: bool,
     pub robust_kernel: RobustKernel,
 }
 
@@ -76,6 +78,7 @@ impl Default for BundleAdjustmentConfig {
         Self {
             solver: SolverConfig::default(),
             fixed_cameras: 1,
+            use_schur_complement: true,
             robust_kernel: RobustKernel::Huber { delta: 2.0 },
         }
     }
@@ -155,7 +158,13 @@ pub fn bundle_adjust(
         })?;
     }
 
-    let summary = solve(&mut problem, &config.solver)?;
+    let mut solver = config.solver;
+    if config.use_schur_complement {
+        solver.linear_solver = LinearSolver::SchurComplement {
+            retained_dimension: input.cameras.len().saturating_sub(config.fixed_cameras) * 6,
+        };
+    }
+    let summary = solve(&mut problem, &solver)?;
     let cameras = camera_ids
         .iter()
         .map(|id| {

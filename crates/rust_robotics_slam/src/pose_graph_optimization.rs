@@ -10,8 +10,8 @@
 
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix3, Vector2, Vector3};
 use rust_robotics_optimization::{
-    solve, Factor, FactorEvaluation, OptimizationResult, Problem, SolverConfig, SolverMethod,
-    TerminationReason, Variable, VariableId,
+    solve, Factor, FactorEvaluation, LinearSolver, OptimizationResult, Problem, SolverConfig,
+    SolverMethod, TerminationReason, Variable, VariableId,
 };
 use std::f64::consts::PI;
 
@@ -22,6 +22,8 @@ pub struct PoseGraphConfig {
     pub max_iterations: usize,
     /// Convergence threshold on the update vector norm.
     pub tolerance: f64,
+    /// Linear backend used inside each nonlinear iteration.
+    pub linear_solver: LinearSolver,
 }
 
 impl Default for PoseGraphConfig {
@@ -29,6 +31,7 @@ impl Default for PoseGraphConfig {
         Self {
             max_iterations: 20,
             tolerance: 1.0e-5,
+            linear_solver: LinearSolver::Dense,
         }
     }
 }
@@ -114,6 +117,7 @@ pub fn optimize_pose_graph(
         gradient_tolerance: config.tolerance,
         step_tolerance: config.tolerance,
         cost_tolerance: config.tolerance * config.tolerance,
+        linear_solver: config.linear_solver,
         ..SolverConfig::default()
     };
     let summary = solve(&mut problem, &solver_config).ok();

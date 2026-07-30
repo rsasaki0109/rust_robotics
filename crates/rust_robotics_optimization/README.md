@@ -1,8 +1,9 @@
 # rust_robotics_optimization
 
-Dense nonlinear least-squares building blocks for RustRobotics, including
-factor graphs, robust loss functions, Gauss-Newton, and
-Levenberg-Marquardt. See the workspace README for examples.
+Nonlinear least-squares building blocks for RustRobotics, including factor
+graphs, robust loss functions, Gauss-Newton, and Levenberg-Marquardt. Linear
+systems can use dense LU, block-sparse PCG, or trailing-block Schur elimination.
+See the workspace README for examples and scaling results.
 
 ```toml
 [dependencies]

@@ -4,7 +4,7 @@
 //! `[accelerometer, gyroscope]`.
 
 use nalgebra::{DMatrix, DVector, Matrix3, SMatrix, Vector3};
-use rust_robotics_core::{skew, so3_exp, so3_log};
+use rust_robotics_core::{skew, so3_exp, so3_left_jacobian, so3_left_jacobian_inverse, so3_log};
 use rust_robotics_optimization::{
     Factor, FactorEvaluation, OptimizationError, OptimizationResult, Variable, VariableId,
 };
@@ -236,9 +236,7 @@ impl Factor for ImuFactor {
             ));
         }
         let residual = self.residual(values);
-        let jacobians = (0..3)
-            .map(|variable| self.numerical_jacobian(values, variable))
-            .collect::<Vec<_>>();
+        let jacobians = self.analytic_jacobians(values, &residual);
         let regularized = self.measurement.covariance + Matrix9::identity() * 1.0e-12;
         let information = regularized
             .try_inverse()
@@ -280,6 +278,80 @@ impl ImuFactor {
         )
     }
 
+    fn analytic_jacobians(
+        &self,
+        values: &[&DVector<f64>],
+        residual: &nalgebra::SVector<f64, 9>,
+    ) -> Vec<DMatrix<f64>> {
+        let state_i = decode_nav_state(values[0]);
+        let state_j = decode_nav_state(values[1]);
+        let bias = decode_bias(values[2]);
+        let inverse_rotation_i = state_i.rotation.transpose();
+        let dt = self.measurement.delta_time;
+        let position_delta = state_j.position
+            - state_i.position
+            - state_i.velocity * dt
+            - self.gravity * (0.5 * dt * dt);
+        let velocity_delta = state_j.velocity - state_i.velocity - self.gravity * dt;
+        let local_position = inverse_rotation_i * position_delta;
+        let local_velocity = inverse_rotation_i * velocity_delta;
+        let rotation_residual = Vector3::from(residual.fixed_rows::<3>(0));
+        let left_inverse = so3_left_jacobian_inverse(&rotation_residual);
+        let right_inverse = so3_left_jacobian_inverse(&(-rotation_residual));
+        let (corrected_rotation, _, _) = self.measurement.corrected_delta(&bias);
+
+        let mut state_i_jacobian = DMatrix::zeros(9, 9);
+        state_i_jacobian
+            .view_mut((0, 0), (3, 3))
+            .copy_from(&(-left_inverse * corrected_rotation.transpose()));
+        state_i_jacobian
+            .view_mut((3, 0), (3, 3))
+            .copy_from(&skew(&local_position));
+        state_i_jacobian
+            .view_mut((3, 3), (3, 3))
+            .copy_from(&(-inverse_rotation_i));
+        state_i_jacobian
+            .view_mut((3, 6), (3, 3))
+            .copy_from(&(-inverse_rotation_i * dt));
+        state_i_jacobian
+            .view_mut((6, 0), (3, 3))
+            .copy_from(&skew(&local_velocity));
+        state_i_jacobian
+            .view_mut((6, 6), (3, 3))
+            .copy_from(&(-inverse_rotation_i));
+
+        let mut state_j_jacobian = DMatrix::zeros(9, 9);
+        state_j_jacobian
+            .view_mut((0, 0), (3, 3))
+            .copy_from(&right_inverse);
+        state_j_jacobian
+            .view_mut((3, 3), (3, 3))
+            .copy_from(&inverse_rotation_i);
+        state_j_jacobian
+            .view_mut((6, 6), (3, 3))
+            .copy_from(&inverse_rotation_i);
+
+        let bias_delta = bias.vector() - self.measurement.linearization_bias.vector();
+        let correction = self.measurement.bias_jacobian * bias_delta;
+        let rotation_correction = Vector3::from(correction.fixed_rows::<3>(0));
+        let correction_right_jacobian = so3_left_jacobian(&(-rotation_correction));
+        let mut bias_jacobian = DMatrix::zeros(9, 6);
+        bias_jacobian.view_mut((0, 0), (3, 6)).copy_from(
+            &(-left_inverse
+                * correction_right_jacobian
+                * self.measurement.bias_jacobian.fixed_rows::<3>(0)),
+        );
+        bias_jacobian
+            .view_mut((3, 0), (3, 6))
+            .copy_from(&(-self.measurement.bias_jacobian.fixed_rows::<3>(3)));
+        bias_jacobian
+            .view_mut((6, 0), (3, 6))
+            .copy_from(&(-self.measurement.bias_jacobian.fixed_rows::<3>(6)));
+
+        vec![state_i_jacobian, state_j_jacobian, bias_jacobian]
+    }
+
+    #[cfg(test)]
     fn numerical_jacobian(&self, values: &[&DVector<f64>], variable: usize) -> DMatrix<f64> {
         let dimension = if variable == 2 { 6 } else { 9 };
         let epsilon = 1.0e-6;
@@ -414,5 +486,12 @@ mod tests {
         assert!(evaluation.residual.norm() < 1.0e-9);
         assert_eq!(evaluation.jacobians[0].shape(), (9, 9));
         assert_eq!(evaluation.jacobians[2].shape(), (9, 6));
+        for variable in 0..3 {
+            let numerical = factor.numerical_jacobian(&values, variable);
+            assert!(
+                (&evaluation.jacobians[variable] - numerical).norm() < 1.0e-5,
+                "analytic IMU Jacobian {variable} disagrees with finite differences"
+            );
+        }
     }
 }

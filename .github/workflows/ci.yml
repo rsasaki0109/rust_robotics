@@ -50,6 +50,7 @@ jobs:
         cargo run -p rust_robotics --example headless_localizers --features localization
         cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
         cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
+        cargo run -p rust_robotics --example headless_factor_graph_stack --no-default-features --features slam
 
   package-check:
     runs-on: ubuntu-latest
