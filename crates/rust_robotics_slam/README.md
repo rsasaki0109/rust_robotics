@@ -16,15 +16,19 @@ information-weighted factors, manifold retractions, and
 Huber/Pseudo-Huber/Cauchy losses. Camera poses and 3D pose graphs use
 world-from-local SE(3) matrices; tangent vectors are translation-first. SE(3)
 pose graph and IMU factors use analytic Jacobians checked against finite
-differences.
+differences. IMU support includes body-from-sensor extrinsics with lever-arm
+acceleration, navigation-state/bias priors, bias random walks,
+position/velocity factors, and relative navigation-state factors.
 
 `dataset` loads standard EuRoC MAV and KITTI odometry layouts.
 `visual_frontend` provides decoder-independent Shi-Tomasi detection,
 pyramidal Lucas-Kanade tracking, forward/backward validation and metric
 triangulation. `vio_pipeline` connects timestamped EuRoC IMU samples,
-generated visual tracks, Schur bundle adjustment, and block-sparse SE(3)
-pose-graph fusion. See the [dataset guide](../../docs/datasets.md) and pinned
-[MathematicalRobotics parity report](../../docs/mathematical-robotics-parity.md).
+generated visual tracks, Schur bundle adjustment, joint navigation-state/bias
+refinement, and block-sparse SE(3) pose-graph fusion. See the
+[dataset guide](../../docs/datasets.md) and pinned
+[MathematicalRobotics porting matrix](../../docs/mathematical-robotics-porting.md)
+and [parity report](../../docs/mathematical-robotics-parity.md).
 
 ```bash
 cargo run --release -p rust_robotics \

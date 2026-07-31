@@ -60,7 +60,8 @@ Every animation above is rendered by the library itself — regenerate them all 
   robust nonlinear least squares, pose graphs, IMU preintegration, and bundle
   adjustment share one tested mathematical foundation.
 - **Real dataset ingestion** — standard EuRoC MAV and KITTI odometry layouts,
-  plus a connected IMU → bundle-adjustment → SE(3) replay pipeline.
+  plus lever-arm-corrected IMU input and a connected
+  IMU → bundle-adjustment → state/bias refinement → SE(3) replay pipeline.
 
 ## Embedded / no_std
 
@@ -742,12 +743,15 @@ without imposing an image decoder on the library. A companion CLI decodes
 EuRoC PNGs, tracks Shi-Tomasi corners with forward/backward pyramidal
 Lucas-Kanade, and triangulates them from the IMU-predicted metric trajectory.
 The replay then jointly optimizes cameras and landmarks with Schur elimination
-and fuses metric IMU edges with the visual closure in an SE(3) pose graph.
+then refines navigation states and time-varying IMU biases before fusing metric
+IMU edges with the visual closure in an SE(3) pose graph. EuRoC `imu0` `T_BS`
+extrinsics include centripetal and tangential lever-arm correction.
 
 - [Dataset and sidecar guide](./docs/datasets.md)
 - [loader source](./crates/rust_robotics_slam/src/dataset.rs)
 - [visual frontend source](./crates/rust_robotics_slam/src/visual_frontend.rs)
 - [VIO pipeline source](./crates/rust_robotics_slam/src/vio_pipeline.rs)
+- [MathematicalRobotics porting matrix](./docs/mathematical-robotics-porting.md)
 - [MathematicalRobotics numerical parity](./docs/mathematical-robotics-parity.md)
 
 ```bash

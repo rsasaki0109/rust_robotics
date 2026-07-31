@@ -6,7 +6,7 @@ use nalgebra::{Matrix4, Vector2, Vector3};
 use rust_robotics_core::{se3_exp, se3_inverse, se3_log, Matrix6, Vector6};
 use rust_robotics_slam::bundle_adjustment::{reproject_world_point, CameraIntrinsics};
 use rust_robotics_slam::imu_preintegration::{
-    ImuBias, ImuNoise, NavState, PreintegratedImuMeasurement,
+    ImuBias, ImuExtrinsics, ImuMeasurement, ImuNoise, NavState, PreintegratedImuMeasurement,
 };
 use rust_robotics_slam::pose_graph_optimization::PoseGraphConfig;
 use rust_robotics_slam::pose_graph_optimization_3d::{optimize_pose_graph_3d, Edge3D, Pose3DNode};
@@ -99,6 +99,49 @@ fn imu_prediction_matches_mathr_preintegration() {
             ))
         .norm()
             < IMU_TOLERANCE
+    );
+}
+
+#[test]
+fn imu_extrinsic_transform_matches_mathr_kinematics() {
+    let body_from_sensor = Matrix4::from_row_slice(&[
+        0.9019840683889034,
+        -0.15288908060872075,
+        0.40379409282853806,
+        -0.6466681045654054,
+        0.231301825897598,
+        0.9607936273555614,
+        -0.15288908060872075,
+        0.7059522051667105,
+        -0.36458772018409946,
+        0.231301825897598,
+        0.9019840683889034,
+        2.2347636942319853,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+    ]);
+    let transformed = ImuExtrinsics::from_homogeneous(&body_from_sensor)
+        .unwrap()
+        .transform(
+            ImuMeasurement {
+                acceleration: Vector3::new(0.3, -0.1, 9.7),
+                angular_velocity: Vector3::new(0.2, -0.3, 0.4),
+            },
+            Vector3::new(0.05, 0.02, -0.04),
+        );
+    assert!(
+        (transformed.acceleration
+            - Vector3::new(3.8885115178902527, -1.272134031029738, 9.21754932157626,))
+        .norm()
+            < TOLERANCE
+    );
+    assert!(
+        (transformed.angular_velocity
+            - Vector3::new(0.3877811749918122, -0.3031333552706371, 0.2184855355494621,))
+        .norm()
+            < TOLERANCE
     );
 }
 

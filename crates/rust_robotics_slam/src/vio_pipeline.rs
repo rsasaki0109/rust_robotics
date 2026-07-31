@@ -9,7 +9,10 @@ use crate::bundle_adjustment::{
     ReprojectionObservation,
 };
 use crate::dataset::{EurocDataset, EurocFeatureTracks, ImuSample};
-use crate::imu_preintegration::{ImuBias, ImuNoise, NavState, PreintegratedImuMeasurement};
+use crate::imu_preintegration::{
+    optimize_imu_trajectory, ImuBias, ImuExtrinsics, ImuMeasurement, ImuNoise, ImuTrajectoryConfig,
+    Matrix9, NavState, PreintegratedImuMeasurement,
+};
 use crate::pose_graph_optimization::PoseGraphConfig;
 use crate::pose_graph_optimization_3d::{
     optimize_pose_graph_3d, Edge3D, Pose3DNode, PoseGraphResult3D,
@@ -23,6 +26,8 @@ pub struct VioPipelineInput {
     pub initial_state: NavState,
     pub bias: ImuBias,
     pub gravity: Vector3<f64>,
+    /// Body-from-IMU extrinsic transform.
+    pub body_from_imu: Matrix4<f64>,
     /// Body-from-camera extrinsic transform.
     pub body_from_camera: Matrix4<f64>,
     pub landmarks: Vec<Vector3<f64>>,
@@ -34,6 +39,7 @@ pub struct VioPipelineInput {
 #[derive(Debug, Clone)]
 pub struct VioPipelineConfig {
     pub imu_noise: ImuNoise,
+    pub imu_trajectory: ImuTrajectoryConfig,
     pub bundle_adjustment: BundleAdjustmentConfig,
     pub pose_graph: PoseGraphConfig,
     pub imu_information: Matrix6,
@@ -42,8 +48,16 @@ pub struct VioPipelineConfig {
 
 impl Default for VioPipelineConfig {
     fn default() -> Self {
+        let mut nav_measurement_information = Matrix9::zeros();
+        nav_measurement_information
+            .fixed_view_mut::<6, 6>(0, 0)
+            .copy_from(&(nalgebra::SMatrix::<f64, 6, 6>::identity() * 50.0));
         Self {
             imu_noise: ImuNoise::default(),
+            imu_trajectory: ImuTrajectoryConfig {
+                nav_measurement_information: Some(nav_measurement_information),
+                ..ImuTrajectoryConfig::default()
+            },
             bundle_adjustment: BundleAdjustmentConfig::default(),
             pose_graph: PoseGraphConfig {
                 linear_solver: LinearSolver::BlockSparsePcg {
@@ -62,12 +76,14 @@ impl Default for VioPipelineConfig {
 #[derive(Debug, Clone)]
 pub struct VioPipelineResult {
     pub imu_states: Vec<NavState>,
+    pub imu_biases: Vec<ImuBias>,
     pub bundle_adjusted_cameras: Vec<Matrix4<f64>>,
     pub landmarks: Vec<Vector3<f64>>,
     pub trajectory: Vec<Matrix4<f64>>,
     pub pose_graph_iterations: usize,
     pub pose_graph_converged: bool,
     pub bundle_adjustment_iterations: usize,
+    pub imu_optimization_iterations: usize,
 }
 
 /// Converts a loaded EuRoC sequence and pre-extracted track sidecar into VIO
@@ -109,6 +125,7 @@ pub fn euroc_vio_input(
         initial_state,
         bias,
         gravity,
+        body_from_imu: dataset.imu_body_from_sensor,
         body_from_camera: dataset.camera.body_from_sensor,
         landmarks: tracks
             .landmarks
@@ -146,6 +163,7 @@ pub fn euroc_imu_camera_trajectory(
         initial_state,
         bias,
         gravity,
+        &dataset.imu_body_from_sensor,
         noise,
     )?;
     Ok(states
@@ -160,8 +178,8 @@ pub fn run_vio_pipeline(
     config: &VioPipelineConfig,
 ) -> OptimizationResult<VioPipelineResult> {
     validate_input(input)?;
-    let (imu_states, preintegrated) = initialize_from_imu(input, config)?;
-    let imu_cameras = imu_states
+    let (predicted_imu_states, preintegrated) = initialize_from_imu(input, config)?;
+    let imu_cameras = predicted_imu_states
         .iter()
         .map(|state| nav_state_pose(state) * input.body_from_camera)
         .collect::<Vec<_>>();
@@ -174,6 +192,28 @@ pub fn run_vio_pipeline(
         },
         &config.bundle_adjustment,
     )?;
+    let camera_from_body = se3_inverse(&input.body_from_camera);
+    let visual_nav_states = bundle_adjustment
+        .cameras
+        .iter()
+        .zip(&predicted_imu_states)
+        .map(|(world_from_camera, predicted)| {
+            let world_from_body = world_from_camera * camera_from_body;
+            NavState {
+                rotation: world_from_body.fixed_view::<3, 3>(0, 0).into_owned(),
+                position: world_from_body.fixed_view::<3, 1>(0, 3).into_owned(),
+                velocity: predicted.velocity,
+            }
+        })
+        .collect::<Vec<_>>();
+    let inertial = optimize_imu_trajectory(
+        &visual_nav_states,
+        input.bias,
+        &preintegrated,
+        input.gravity,
+        &config.imu_trajectory,
+    )?;
+    let imu_states = inertial.states;
 
     let graph = fuse_pose_graph(
         &bundle_adjustment.cameras,
@@ -184,12 +224,14 @@ pub fn run_vio_pipeline(
     );
     Ok(VioPipelineResult {
         imu_states,
+        imu_biases: inertial.biases,
         bundle_adjusted_cameras: bundle_adjustment.cameras,
         landmarks: bundle_adjustment.points,
         trajectory: graph.poses.iter().map(|pose| pose.transform).collect(),
         pose_graph_iterations: graph.iterations,
         pose_graph_converged: graph.converged,
         bundle_adjustment_iterations: bundle_adjustment.summary.iterations,
+        imu_optimization_iterations: inertial.summary.iterations,
     })
 }
 
@@ -206,6 +248,15 @@ fn validate_input(input: &VioPipelineInput) -> OptimizationResult<()> {
     {
         return Err(OptimizationError::InvalidParameter(
             "VIO keyframe timestamps must be strictly increasing".into(),
+        ));
+    }
+    if input
+        .imu_samples
+        .windows(2)
+        .any(|window| window[1].timestamp_ns <= window[0].timestamp_ns)
+    {
+        return Err(OptimizationError::InvalidParameter(
+            "VIO IMU timestamps must be strictly increasing".into(),
         ));
     }
     if input.imu_samples.is_empty() || input.landmarks.is_empty() {
@@ -234,6 +285,7 @@ fn initialize_from_imu(
         input.initial_state.clone(),
         input.bias,
         input.gravity,
+        &input.body_from_imu,
         config.imu_noise,
     )
 }
@@ -244,6 +296,7 @@ fn initialize_imu_sequence(
     initial_state: NavState,
     bias: ImuBias,
     gravity: Vector3<f64>,
+    body_from_imu: &Matrix4<f64>,
     noise: ImuNoise,
 ) -> OptimizationResult<(Vec<NavState>, Vec<PreintegratedImuMeasurement>)> {
     if timestamps_ns.len() < 2 {
@@ -253,8 +306,10 @@ fn initialize_imu_sequence(
     }
     let mut states = vec![initial_state];
     let mut measurements = Vec::with_capacity(timestamps_ns.len() - 1);
+    let extrinsics = ImuExtrinsics::from_homogeneous(body_from_imu)?;
     for interval in timestamps_ns.windows(2) {
-        let measurement = preintegrate_interval(samples, interval[0], interval[1], bias, noise)?;
+        let measurement =
+            preintegrate_interval(samples, interval[0], interval[1], bias, noise, &extrinsics)?;
         let next =
             measurement.predict(states.last().expect("initial state exists"), &bias, gravity);
         states.push(next);
@@ -292,6 +347,7 @@ fn preintegrate_interval(
     end_ns: i64,
     bias: ImuBias,
     noise: ImuNoise,
+    extrinsics: &ImuExtrinsics,
 ) -> OptimizationResult<PreintegratedImuMeasurement> {
     let mut measurement = PreintegratedImuMeasurement::new(bias, noise);
     let mut previous_ns = start_ns;
@@ -308,12 +364,37 @@ fn preintegrate_interval(
         .filter(|sample| sample.timestamp_ns > start_ns && sample.timestamp_ns < end_ns)
     {
         let dt = (sample.timestamp_ns - previous_ns) as f64 * 1.0e-9;
-        measurement.integrate(current.acceleration, current.angular_velocity, dt)?;
+        let angular_acceleration = (sample.angular_velocity - current.angular_velocity) / dt;
+        measurement.integrate_sensor_measurement(
+            ImuMeasurement {
+                acceleration: current.acceleration,
+                angular_velocity: current.angular_velocity,
+            },
+            angular_acceleration,
+            extrinsics,
+            dt,
+        )?;
         previous_ns = sample.timestamp_ns;
         current = sample;
     }
     let final_dt = (end_ns - previous_ns) as f64 * 1.0e-9;
-    measurement.integrate(current.acceleration, current.angular_velocity, final_dt)?;
+    let angular_acceleration = samples
+        .iter()
+        .find(|sample| sample.timestamp_ns >= end_ns && sample.timestamp_ns > current.timestamp_ns)
+        .map(|next| {
+            (next.angular_velocity - current.angular_velocity)
+                / ((next.timestamp_ns - current.timestamp_ns) as f64 * 1.0e-9)
+        })
+        .unwrap_or_else(Vector3::zeros);
+    measurement.integrate_sensor_measurement(
+        ImuMeasurement {
+            acceleration: current.acceleration,
+            angular_velocity: current.angular_velocity,
+        },
+        angular_acceleration,
+        extrinsics,
+        final_dt,
+    )?;
     Ok(measurement)
 }
 
@@ -430,6 +511,7 @@ mod tests {
             },
             bias: ImuBias::zero(),
             gravity: Vector3::new(0.0, 0.0, -9.81),
+            body_from_imu: Matrix4::identity(),
             body_from_camera: Matrix4::identity(),
             landmarks: truth_points
                 .iter()
@@ -441,6 +523,7 @@ mod tests {
         let result = run_vio_pipeline(&input, &VioPipelineConfig::default()).unwrap();
         assert!(result.pose_graph_converged);
         assert_eq!(result.trajectory.len(), truth_cameras.len());
+        assert_eq!(result.imu_biases.len(), truth_cameras.len());
         let terminal_error = pose_error(&result.trajectory[4], &truth_cameras[4]);
         assert!(terminal_error < 2.0e-2, "terminal error: {terminal_error}");
         let landmark_error = result
