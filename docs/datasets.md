@@ -17,14 +17,19 @@ MH_01_easy/
     │   ├── data.csv
     │   ├── data/*.png
     │   └── sensor.yaml
-    ├── imu0/data.csv
+    ├── imu0/
+    │   ├── data.csv
+    │   └── sensor.yaml
     └── state_groundtruth_estimate0/data.csv  # optional
 ```
 
 It validates increasing timestamps, parses camera intrinsics, resolution and
-`T_BS`, and exposes efficient IMU interval slices. Images remain paths so
-applications can choose their own decoder. RustRobotics includes a PNG-based
-sparse frontend CLI:
+the camera/IMU `T_BS` transforms, and exposes efficient IMU interval slices.
+IMU samples are transformed into the body frame before preintegration,
+including centripetal and tangential acceleration caused by a non-zero sensor
+lever arm. A missing legacy `imu0/sensor.yaml` falls back to an identity
+transform. Images remain paths so applications can choose their own decoder.
+RustRobotics includes a PNG-based sparse frontend CLI:
 
 ```bash
 cargo run --release -p rust_robotics \
@@ -68,9 +73,10 @@ The replay uses ground truth only for the initial state and acceptance report.
 Later ground-truth states are not optimizer inputs:
 
 ```text
-EuRoC IMU ──> bias-aware preintegration ──> metric initial trajectory
-feature tracks ───────────────────────────> camera/landmark BA (Schur)
-IMU relative edges + visual closure ─────> block-sparse SE(3) pose graph
+EuRoC IMU + T_BS ──> lever-arm correction ──> bias-aware preintegration
+feature tracks ─────────────────────────────> camera/landmark BA (Schur)
+BA poses + IMU factors ─────────────────────> navigation-state/bias refinement
+IMU relative edges + visual closure ────────> block-sparse SE(3) pose graph
 ```
 
 ## KITTI odometry

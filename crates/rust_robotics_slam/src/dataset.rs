@@ -72,6 +72,8 @@ pub struct EurocCameraCalibration {
 pub struct EurocDataset {
     pub root: PathBuf,
     pub imu: Vec<ImuSample>,
+    /// EuRoC `T_BS`: body-from-IMU transform.
+    pub imu_body_from_sensor: Matrix4<f64>,
     pub camera_frames: Vec<CameraFrame>,
     pub ground_truth: Vec<GroundTruthState>,
     pub camera: EurocCameraCalibration,
@@ -110,6 +112,12 @@ impl EurocDataset {
             root.to_path_buf()
         };
         let imu = parse_euroc_imu(&mav0.join("imu0/data.csv"))?;
+        let imu_calibration_path = mav0.join("imu0/sensor.yaml");
+        let imu_body_from_sensor = if imu_calibration_path.exists() {
+            parse_euroc_body_from_sensor_yaml(&imu_calibration_path)?
+        } else {
+            Matrix4::identity()
+        };
         let camera_frames =
             parse_image_index(&mav0.join("cam0/data.csv"), &mav0.join("cam0/data"))?;
         let ground_truth_path = mav0.join("state_groundtruth_estimate0/data.csv");
@@ -127,6 +135,7 @@ impl EurocDataset {
         Ok(Self {
             root: mav0,
             imu,
+            imu_body_from_sensor,
             camera_frames,
             ground_truth,
             camera,
@@ -446,8 +455,23 @@ fn parse_euroc_camera_yaml(path: &Path) -> DatasetResult<EurocCameraCalibration>
         .ok_or_else(|| DatasetError::InvalidData("missing EuRoC resolution".into()))?;
     let intrinsics = bracket_values::<f64>(intrinsics_line, "intrinsics:")?;
     let resolution = bracket_values::<usize>(resolution_line, "resolution:")?;
+    Ok(EurocCameraCalibration {
+        intrinsics: intrinsics.try_into().map_err(|_| {
+            DatasetError::InvalidData("EuRoC intrinsics must contain four values".into())
+        })?,
+        resolution: resolution.try_into().map_err(|_| {
+            DatasetError::InvalidData("EuRoC resolution must contain two values".into())
+        })?,
+        body_from_sensor: parse_euroc_body_from_sensor(&contents)?,
+    })
+}
+
+fn parse_euroc_body_from_sensor_yaml(path: &Path) -> DatasetResult<Matrix4<f64>> {
+    parse_euroc_body_from_sensor(&fs::read_to_string(path)?)
+}
+
+fn parse_euroc_body_from_sensor(contents: &str) -> DatasetResult<Matrix4<f64>> {
     let mut in_body_from_sensor = false;
-    let mut body_from_sensor = None;
     for line in contents.lines().map(str::trim) {
         if line == "T_BS:" {
             in_body_from_sensor = true;
@@ -458,20 +482,10 @@ fn parse_euroc_camera_yaml(path: &Path) -> DatasetResult<EurocCameraCalibration>
                     "EuRoC T_BS must contain 16 values".into(),
                 ));
             }
-            body_from_sensor = Some(Matrix4::from_row_slice(&values));
-            break;
+            return Ok(Matrix4::from_row_slice(&values));
         }
     }
-    Ok(EurocCameraCalibration {
-        intrinsics: intrinsics.try_into().map_err(|_| {
-            DatasetError::InvalidData("EuRoC intrinsics must contain four values".into())
-        })?,
-        resolution: resolution.try_into().map_err(|_| {
-            DatasetError::InvalidData("EuRoC resolution must contain two values".into())
-        })?,
-        body_from_sensor: body_from_sensor
-            .ok_or_else(|| DatasetError::InvalidData("missing EuRoC camera T_BS".into()))?,
-    })
+    Err(DatasetError::InvalidData("missing EuRoC T_BS".into()))
 }
 
 fn numeric_lines(path: &Path) -> DatasetResult<Vec<f64>> {
@@ -628,6 +642,7 @@ mod tests {
         assert_eq!(dataset.ground_truth.len(), 3);
         assert_eq!(dataset.camera.resolution, [752, 480]);
         assert_eq!(dataset.camera.body_from_sensor, Matrix4::identity());
+        assert_eq!(dataset.imu_body_from_sensor, Matrix4::identity());
         assert_eq!(dataset.imu_between(1_000_000_000, 1_010_000_000).len(), 2);
         assert!(dataset.camera_frames[0]
             .image_path
@@ -635,6 +650,19 @@ mod tests {
         let tracks = dataset.load_feature_tracks().unwrap();
         assert_eq!(tracks.landmarks.len(), 4);
         assert_eq!(tracks.observations.len(), 12);
+    }
+
+    #[test]
+    fn parses_euroc_imu_body_from_sensor_transform() {
+        let transform = parse_euroc_body_from_sensor(
+            "sensor_type: imu\nT_BS:\n  data: [0, -1, 0, 0.2, 1, 0, 0, -0.1, 0, 0, 1, 0.3, 0, 0, 0, 1]\n",
+        )
+        .unwrap();
+        assert_eq!(transform[(0, 1)], -1.0);
+        assert_eq!(transform[(1, 0)], 1.0);
+        assert_eq!(transform[(0, 3)], 0.2);
+        assert_eq!(transform[(1, 3)], -0.1);
+        assert_eq!(transform[(2, 3)], 0.3);
     }
 
     #[test]
