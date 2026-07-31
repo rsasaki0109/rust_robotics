@@ -169,19 +169,53 @@ impl EurocDataset {
                 })
             })
             .collect::<DatasetResult<Vec<_>>>()?;
-        if landmarks
-            .iter()
-            .enumerate()
-            .any(|(index, landmark)| landmark.id != index)
-        {
-            return Err(DatasetError::InvalidData(
-                "feature landmark IDs must be contiguous and zero-based".into(),
-            ));
-        }
-        Ok(EurocFeatureTracks {
+        let tracks = EurocFeatureTracks {
             landmarks,
             observations,
-        })
+        };
+        validate_feature_tracks(&tracks, &self.camera_frames)?;
+        Ok(tracks)
+    }
+
+    /// Writes a generated feature sidecar. Existing files are preserved unless
+    /// `overwrite` is true.
+    pub fn write_feature_tracks(
+        &self,
+        tracks: &EurocFeatureTracks,
+        directory: impl AsRef<Path>,
+        overwrite: bool,
+    ) -> DatasetResult<()> {
+        validate_feature_tracks(tracks, &self.camera_frames)?;
+        let directory = directory.as_ref();
+        let landmarks_path = directory.join("landmarks.csv");
+        let observations_path = directory.join("observations.csv");
+        if !overwrite && (landmarks_path.exists() || observations_path.exists()) {
+            return Err(DatasetError::InvalidData(format!(
+                "feature sidecar already exists at {}; pass overwrite=true to replace it",
+                directory.display()
+            )));
+        }
+        fs::create_dir_all(directory)?;
+        let mut landmarks = String::from("#landmark_id,x,y,z\n");
+        for landmark in &tracks.landmarks {
+            landmarks.push_str(&format!(
+                "{},{:.17},{:.17},{:.17}\n",
+                landmark.id, landmark.position.x, landmark.position.y, landmark.position.z
+            ));
+        }
+        let mut observations = String::from("#timestamp_ns,landmark_id,u,v\n");
+        for observation in &tracks.observations {
+            observations.push_str(&format!(
+                "{},{},{:.17},{:.17}\n",
+                observation.timestamp_ns,
+                observation.landmark_id,
+                observation.pixel.x,
+                observation.pixel.y
+            ));
+        }
+        fs::write(landmarks_path, landmarks)?;
+        fs::write(observations_path, observations)?;
+        Ok(())
     }
 }
 
@@ -537,6 +571,45 @@ fn ensure_strict_timestamps(
     Ok(())
 }
 
+fn validate_feature_tracks(
+    tracks: &EurocFeatureTracks,
+    camera_frames: &[CameraFrame],
+) -> DatasetResult<()> {
+    if tracks.landmarks.is_empty() || tracks.observations.is_empty() {
+        return Err(DatasetError::InvalidData(
+            "feature sidecar must contain landmarks and observations".into(),
+        ));
+    }
+    if tracks
+        .landmarks
+        .iter()
+        .enumerate()
+        .any(|(index, landmark)| landmark.id != index)
+    {
+        return Err(DatasetError::InvalidData(
+            "feature landmark IDs must be contiguous and zero-based".into(),
+        ));
+    }
+    if tracks.observations.iter().any(|observation| {
+        observation.landmark_id >= tracks.landmarks.len()
+            || !observation.pixel.iter().all(|value| value.is_finite())
+    }) {
+        return Err(DatasetError::InvalidData(
+            "feature observation is invalid or references a missing landmark".into(),
+        ));
+    }
+    if tracks.observations.iter().any(|observation| {
+        camera_frames
+            .binary_search_by_key(&observation.timestamp_ns, |frame| frame.timestamp_ns)
+            .is_err()
+    }) {
+        return Err(DatasetError::InvalidData(
+            "feature observation timestamp has no matching camera frame".into(),
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -581,5 +654,26 @@ mod tests {
         let points = KittiOdometryDataset::read_velodyne(&scan_path).unwrap();
         fs::remove_file(scan_path).unwrap();
         assert_eq!(points, vec![[1.0, 2.0, 3.0, 0.5], [-1.0, 0.0, 4.0, 0.25]]);
+    }
+
+    #[test]
+    fn writes_feature_sidecar_without_silent_overwrite() {
+        let dataset = EurocDataset::load(fixture("euroc_mini")).unwrap();
+        let tracks = dataset.load_feature_tracks().unwrap();
+        let directory = std::env::temp_dir().join(format!(
+            "rust_robotics_feature_sidecar_{}",
+            std::process::id()
+        ));
+        if directory.exists() {
+            fs::remove_dir_all(&directory).unwrap();
+        }
+        dataset
+            .write_feature_tracks(&tracks, &directory, false)
+            .unwrap();
+        assert!(directory.join("landmarks.csv").is_file());
+        assert!(dataset
+            .write_feature_tracks(&tracks, &directory, false)
+            .is_err());
+        fs::remove_dir_all(directory).unwrap();
     }
 }

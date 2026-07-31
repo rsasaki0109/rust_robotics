@@ -254,6 +254,7 @@ cargo run -p rust_robotics --example render_hierarchical_mapf_replanning_svg --n
 cargo run -p rust_robotics --example benchmark_hierarchical_mapf_scale --no-default-features --features planning
 cargo run -p rust_robotics --example headless_navigation_loop --features "planning,localization,control"
 cargo run -p rust_robotics --example headless_mission_recovery --features "planning,localization,control"
+cargo run --release -p rust_robotics --example generate_euroc_feature_tracks --no-default-features --features slam -- /datasets/EuRoC/MH_01_easy
 cargo run -p rust_robotics --example headless_euroc_vio --no-default-features --features slam
 cargo run -p rust_robotics --example render_euroc_vio_svg --no-default-features --features slam
 cargo run -p rust_robotics --example benchmark_conformal_sipp --no-default-features --features planning
@@ -737,17 +738,23 @@ cargo run --release -p rust_robotics --example benchmark_large_pose_graph \
 <img src="./docs/assets/euroc-vio-pipeline.svg" width="1000px" alt="EuRoC IMU, bundle adjustment, and SE3 pose graph pipeline">
 
 The SLAM crate loads official EuRoC MAV and KITTI odometry directory layouts
-without imposing an image decoder. EuRoC replay accepts a compact pre-extracted
-feature sidecar, preintegrates IMU samples, jointly optimizes cameras and
-landmarks with Schur elimination, then fuses metric IMU edges and the visual
-closure in an SE(3) pose graph.
+without imposing an image decoder on the library. A companion CLI decodes
+EuRoC PNGs, tracks Shi-Tomasi corners with forward/backward pyramidal
+Lucas-Kanade, and triangulates them from the IMU-predicted metric trajectory.
+The replay then jointly optimizes cameras and landmarks with Schur elimination
+and fuses metric IMU edges with the visual closure in an SE(3) pose graph.
 
 - [Dataset and sidecar guide](./docs/datasets.md)
 - [loader source](./crates/rust_robotics_slam/src/dataset.rs)
+- [visual frontend source](./crates/rust_robotics_slam/src/visual_frontend.rs)
 - [VIO pipeline source](./crates/rust_robotics_slam/src/vio_pipeline.rs)
 - [MathematicalRobotics numerical parity](./docs/mathematical-robotics-parity.md)
 
 ```bash
+cargo run --release -p rust_robotics \
+  --example generate_euroc_feature_tracks \
+  --no-default-features --features slam -- /datasets/EuRoC/MH_01_easy
+
 cargo run -p rust_robotics --example headless_euroc_vio \
   --no-default-features --features slam
 ```

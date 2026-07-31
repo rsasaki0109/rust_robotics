@@ -18,13 +18,19 @@ world-from-local SE(3) matrices; tangent vectors are translation-first. SE(3)
 pose graph and IMU factors use analytic Jacobians checked against finite
 differences.
 
-`dataset` loads standard EuRoC MAV and KITTI odometry layouts. `vio_pipeline`
-connects timestamped EuRoC IMU samples, optional pre-extracted visual tracks,
-Schur bundle adjustment, and block-sparse SE(3) pose-graph fusion. See the
-[dataset guide](../../docs/datasets.md) and pinned
+`dataset` loads standard EuRoC MAV and KITTI odometry layouts.
+`visual_frontend` provides decoder-independent Shi-Tomasi detection,
+pyramidal Lucas-Kanade tracking, forward/backward validation and metric
+triangulation. `vio_pipeline` connects timestamped EuRoC IMU samples,
+generated visual tracks, Schur bundle adjustment, and block-sparse SE(3)
+pose-graph fusion. See the [dataset guide](../../docs/datasets.md) and pinned
 [MathematicalRobotics parity report](../../docs/mathematical-robotics-parity.md).
 
 ```bash
+cargo run --release -p rust_robotics \
+  --example generate_euroc_feature_tracks \
+  --no-default-features --features slam -- /datasets/EuRoC/MH_01_easy
+
 cargo run -p rust_robotics --example headless_euroc_vio \
   --no-default-features --features slam
 ```
