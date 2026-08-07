@@ -152,8 +152,9 @@ jobs:
 
     - name: Lint embedded demo
       run: |
-        cargo fmt --manifest-path crates/rust_robotics_embedded_demo/Cargo.toml -- --check
-        cargo clippy --manifest-path crates/rust_robotics_embedded_demo/Cargo.toml -- -D warnings
+        cd crates/rust_robotics_embedded_demo
+        cargo fmt -- --check
+        cargo clippy -- -D warnings
 
     - name: Build and run embedded demo under QEMU
       run: scripts/run_embedded_demo.sh

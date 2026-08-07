@@ -6,15 +6,19 @@
 # semihosting for console output and exit. CI greps for the PASS line and
 # relies on the QEMU exit status.
 #
+# Commands run from inside the demo directory so the crate's own
+# `.cargo/config.toml` (target + `-Tlink.x` rustflags) applies.
+#
 # Usage: scripts/run_embedded_demo.sh
 set -euo pipefail
 
 DEMO_DIR="$(git rev-parse --show-toplevel)/crates/rust_robotics_embedded_demo"
+cd "$DEMO_DIR"
 
 echo "== Building embedded demo (thumbv7em-none-eabihf) =="
-cargo build --manifest-path "$DEMO_DIR/Cargo.toml"
+cargo build
 
-BIN="$DEMO_DIR/target/thumbv7em-none-eabihf/debug/rust_robotics_embedded_demo"
+BIN="target/thumbv7em-none-eabihf/debug/rust_robotics_embedded_demo"
 
 echo "== Running under QEMU (netduinoplus2, semihosting) =="
 OUTPUT="$(qemu-system-arm -machine netduinoplus2 -semihosting -nographic -monitor none -kernel "$BIN")"
