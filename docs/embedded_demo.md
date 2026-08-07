@@ -31,7 +31,9 @@ Prerequisites: `rustup target add thumbv7em-none-eabihf` and `qemu-system-arm`.
 ```
 
 This builds the demo and runs it under QEMU on the `netduinoplus2` machine
-(STM32F405, Cortex-M4) with semihosting for console output and exit:
+(STM32F405, Cortex-M4) with semihosting for console output and exit.
+`memory.x` targets 128 KB SRAM to match what QEMU models for this board
+(the real F405 has 192 KB):
 
 ```
 rust_robotics embedded demo: EKF + PID/Pure Pursuit on Cortex-M
