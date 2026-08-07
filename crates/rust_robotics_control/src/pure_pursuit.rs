@@ -3,6 +3,11 @@
 //! A geometric path tracking controller that computes the steering angle
 //! to follow a reference path by looking ahead to a target point.
 
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 
 /// Vehicle state for Pure Pursuit

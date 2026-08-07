@@ -1,0 +1,6 @@
+[build]
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+runner = "qemu-system-arm -machine netduinoplus2 -semihosting -nographic -monitor none -kernel"
+rustflags = ["-C", "link-arg=-Tlink.x"]

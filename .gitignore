@@ -17,3 +17,6 @@
 
 # Trunk WASM build output (deployed via GitHub Pages CI)
 /crates/rust_robotics_playground/dist/
+
+# Embedded reference demo build output (excluded workspace crate)
+/crates/rust_robotics_embedded_demo/target/

@@ -34,7 +34,7 @@ fn main() {
         .join("../..")
         .canonicalize()
         .expect("repo root should exist");
-    let docs_dir = repo_root.join("docs");
+    let docs_dir = repo_root.join("docs/archive");
     let baseline_problem = localization_noise_process_problem();
     let long_horizon_problem = localization_long_horizon_process_problem();
     let dropout_bias_problem = localization_dropout_bias_process_problem();

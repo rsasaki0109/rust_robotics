@@ -51,18 +51,6 @@ pub trait StateEstimator {
     }
 }
 
-/// Simplified state estimator for 2D localization
-pub trait Estimator2D {
-    /// Prediction step
-    fn predict(&mut self, control: &ControlInput, dt: f64);
-
-    /// Update step with position measurement
-    fn update(&mut self, measurement: Point2D);
-
-    /// Get current state estimate
-    fn get_state(&self) -> State2D;
-}
-
 /// Trait for path tracking/following algorithms
 pub trait PathTracker {
     /// Compute control input to follow the path

@@ -40,7 +40,7 @@ jobs:
         cargo test -p rust_robotics_core --no-default-features
         cargo test -p rust_robotics_planning --no-default-features --lib --tests
         cargo test -p rust_robotics_localization --no-default-features --lib --tests
-        cargo test -p rust_robotics_control --no-default-features --lib --tests
+        cargo test -p rust_robotics_control --no-default-features --lib
         cargo test -p rust_robotics_mapping --no-default-features --lib --tests
         cargo test -p rust_robotics_slam --no-default-features --lib --tests
 
@@ -124,7 +124,60 @@ jobs:
         key: ${{ runner.os }}-embedded-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
 
     - name: Build no_std crates for Cortex-M (thumbv7em)
-      run: cargo build -p rust_robotics_core -p rust_robotics_localization --no-default-features --target thumbv7em-none-eabihf
+      run: cargo build -p rust_robotics_core -p rust_robotics_localization -p rust_robotics_control --no-default-features --target thumbv7em-none-eabihf
+
+  embedded-demo:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: thumbv7em-none-eabihf
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+          crates/rust_robotics_embedded_demo/target/
+        key: ${{ runner.os }}-embedded-demo-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Install QEMU
+      run: sudo apt-get update && sudo apt-get install -y qemu-system-arm
+
+    - name: Lint embedded demo
+      run: |
+        cargo fmt --manifest-path crates/rust_robotics_embedded_demo/Cargo.toml -- --check
+        cargo clippy --manifest-path crates/rust_robotics_embedded_demo/Cargo.toml -- -D warnings
+
+    - name: Build and run embedded demo under QEMU
+      run: scripts/run_embedded_demo.sh
+
+  benchmark-gate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-benchmark-gate-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Run benchmark regression gate
+      run: scripts/check_benchmark_gate.sh
 
   lint:
     runs-on: ubuntu-latest

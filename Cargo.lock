@@ -3436,6 +3436,7 @@ dependencies = [
  "clarabel",
  "gnuplot",
  "nalgebra",
+ "num-traits",
  "rand",
  "rand_distr",
  "rust_robotics_core",

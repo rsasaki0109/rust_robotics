@@ -127,7 +127,7 @@ pub struct ArenaScenario {
 }
 
 impl ArenaScenario {
-    fn validate(&self) -> RoboticsResult<()> {
+    pub(crate) fn validate(&self) -> RoboticsResult<()> {
         if self.path.len() < 2 {
             return Err(invalid("arena path must contain at least two points"));
         }
@@ -283,17 +283,7 @@ fn run_one(scenario: &ArenaScenario, kind: ArenaControllerKind) -> RoboticsResul
 
         // Controllers contribute steering curvature. Longitudinal response is
         // owned by the arena so all controllers receive the same speed model.
-        let curvature = if requested.v.abs() > MIN_CURVATURE_SPEED {
-            requested.omega / requested.v
-        } else {
-            0.0
-        };
-        let speed_alpha = (SPEED_RESPONSE_PER_SECOND * scenario.dt).clamp(0.0, 1.0);
-        let v = (state.v + (scenario.target_speed - state.v) * speed_alpha)
-            .clamp(0.0, scenario.max_linear_speed);
-        let omega = (curvature * v * scenario.turn_rate_response_gain)
-            .clamp(-scenario.max_angular_speed, scenario.max_angular_speed);
-        let command = ControlInput::new(v, omega);
+        let command = apply_shared_response(scenario, state, requested);
         state = propagate(state, command, scenario.dt);
         let sample = ArenaSample {
             time: step as f64 * scenario.dt,
@@ -322,7 +312,32 @@ fn run_one(scenario: &ArenaScenario, kind: ArenaControllerKind) -> RoboticsResul
     })
 }
 
-fn build_tracker(kind: ArenaControllerKind, scenario: &ArenaScenario) -> Box<dyn PathTracker> {
+/// Shared longitudinal/turn-rate response applied identically to every
+/// controller (arena and meta-control runs). Controllers contribute steering
+/// curvature; the arena owns the speed model so all controllers see the same
+/// actuation.
+pub(crate) fn apply_shared_response(
+    scenario: &ArenaScenario,
+    state: State2D,
+    requested: ControlInput,
+) -> ControlInput {
+    let curvature = if requested.v.abs() > MIN_CURVATURE_SPEED {
+        requested.omega / requested.v
+    } else {
+        0.0
+    };
+    let speed_alpha = (SPEED_RESPONSE_PER_SECOND * scenario.dt).clamp(0.0, 1.0);
+    let v = (state.v + (scenario.target_speed - state.v) * speed_alpha)
+        .clamp(0.0, scenario.max_linear_speed);
+    let omega = (curvature * v * scenario.turn_rate_response_gain)
+        .clamp(-scenario.max_angular_speed, scenario.max_angular_speed);
+    ControlInput::new(v, omega)
+}
+
+pub(crate) fn build_tracker(
+    kind: ArenaControllerKind,
+    scenario: &ArenaScenario,
+) -> Box<dyn PathTracker> {
     match kind {
         ArenaControllerKind::PurePursuit => {
             Box::new(PurePursuitController::new(PurePursuitConfig {
@@ -355,14 +370,14 @@ fn build_tracker(kind: ArenaControllerKind, scenario: &ArenaScenario) -> Box<dyn
     }
 }
 
-fn propagate(state: State2D, command: ControlInput, dt: f64) -> State2D {
+pub(crate) fn propagate(state: State2D, command: ControlInput, dt: f64) -> State2D {
     let x = state.x + command.v * state.yaw.cos() * dt;
     let y = state.y + command.v * state.yaw.sin() * dt;
     let yaw = normalize_angle(state.yaw + command.omega * dt);
     State2D::new(x, y, yaw, command.v)
 }
 
-fn normalize_angle(mut angle: f64) -> f64 {
+pub(crate) fn normalize_angle(mut angle: f64) -> f64 {
     while angle > std::f64::consts::PI {
         angle -= 2.0 * std::f64::consts::PI;
     }
@@ -372,7 +387,7 @@ fn normalize_angle(mut angle: f64) -> f64 {
     angle
 }
 
-fn cross_track_error(path: &Path2D, state: State2D) -> f64 {
+pub(crate) fn cross_track_error(path: &Path2D, state: State2D) -> f64 {
     let position = state.position();
     path.nearest_point_index(position)
         .map(|index| position.distance(&path.points[index]))
@@ -417,11 +432,11 @@ fn hairpin_path() -> Path2D {
     Path2D::from_points(points)
 }
 
-fn state_is_finite(state: State2D) -> bool {
+pub(crate) fn state_is_finite(state: State2D) -> bool {
     state.x.is_finite() && state.y.is_finite() && state.yaw.is_finite() && state.v.is_finite()
 }
 
-fn sample_is_finite(sample: &ArenaSample) -> bool {
+pub(crate) fn sample_is_finite(sample: &ArenaSample) -> bool {
     sample.time.is_finite()
         && state_is_finite(sample.state)
         && sample.command.v.is_finite()
@@ -429,7 +444,7 @@ fn sample_is_finite(sample: &ArenaSample) -> bool {
         && sample.cross_track_error.is_finite()
 }
 
-fn invalid(message: &str) -> RoboticsError {
+pub(crate) fn invalid(message: &str) -> RoboticsError {
     RoboticsError::InvalidParameter(message.to_string())
 }
 

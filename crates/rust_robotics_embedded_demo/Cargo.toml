@@ -1,0 +1,25 @@
+[package]
+name = "rust_robotics_embedded_demo"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT"
+publish = false
+description = "no_std reference demo: EKF localization + PID/Pure Pursuit control on a Cortex-M (QEMU)"
+
+[dependencies]
+rust_robotics_core = { path = "../rust_robotics_core", version = "0.2.0", default-features = false }
+rust_robotics_localization = { path = "../rust_robotics_localization", version = "0.2.0", default-features = false }
+rust_robotics_control = { path = "../rust_robotics_control", version = "0.2.0", default-features = false }
+nalgebra = { version = "0.33", default-features = false, features = ["alloc", "libm"] }
+num-traits = { version = "0.2", default-features = false, features = ["libm"] }
+embedded-alloc = "0.5"
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+cortex-m-semihosting = "0.5"
+panic-halt = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

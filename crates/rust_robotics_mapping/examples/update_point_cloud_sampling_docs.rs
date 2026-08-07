@@ -32,7 +32,7 @@ fn main() {
         .join("../..")
         .canonicalize()
         .expect("repo root should exist");
-    let docs_dir = repo_root.join("docs");
+    let docs_dir = repo_root.join("docs/archive");
 
     let baseline_problem = mapping_point_cloud_sampling_process_problem();
     let occlusion_problem = mapping_occlusion_corruption_process_problem();

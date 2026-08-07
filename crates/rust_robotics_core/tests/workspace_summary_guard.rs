@@ -13,6 +13,11 @@ fn docs_file(name: &str) -> String {
         .unwrap_or_else(|_| panic!("docs/{name} should be readable"))
 }
 
+fn docs_archive_file(name: &str) -> String {
+    fs::read_to_string(repo_root().join("docs/archive").join(name))
+        .unwrap_or_else(|_| panic!("docs/archive/{name} should be readable"))
+}
+
 fn parse_ratio_pair(line: &str) -> Option<(usize, usize)> {
     let start = line.find('`')? + 1;
     let end = line[start..].find('`').map(|offset| start + offset)?;
@@ -113,16 +118,16 @@ fn workspace_stop_condition_holds(experiments: &str, decisions: &str) -> bool {
 fn cross_package_refs_registered(interfaces: &str) -> bool {
     [
         "## Cross-Package Summaries",
-        "docs/experiments_planning_summary.md",
-        "docs/decisions_planning_summary.md",
-        "docs/experiments_localization_summary.md",
-        "docs/decisions_localization_summary.md",
-        "docs/experiments_control_summary.md",
-        "docs/decisions_control_summary.md",
-        "docs/experiments_mapping_summary.md",
-        "docs/decisions_mapping_summary.md",
-        "docs/experiments_workspace_summary.md",
-        "docs/decisions_workspace_summary.md",
+        "docs/archive/experiments_planning_summary.md",
+        "docs/archive/decisions_planning_summary.md",
+        "docs/archive/experiments_localization_summary.md",
+        "docs/archive/decisions_localization_summary.md",
+        "docs/archive/experiments_control_summary.md",
+        "docs/archive/decisions_control_summary.md",
+        "docs/archive/experiments_mapping_summary.md",
+        "docs/archive/decisions_mapping_summary.md",
+        "docs/archive/experiments_workspace_summary.md",
+        "docs/archive/decisions_workspace_summary.md",
     ]
     .into_iter()
     .all(|expected| interfaces.contains(expected))
@@ -170,8 +175,8 @@ fn synthetic_decisions(include_guard_language: bool) -> String {
 
 #[test]
 fn workspace_stop_condition_guard_holds() {
-    let experiments = docs_file("experiments_workspace_summary.md");
-    let decisions = docs_file("decisions_workspace_summary.md");
+    let experiments = docs_archive_file("experiments_workspace_summary.md");
+    let decisions = docs_archive_file("decisions_workspace_summary.md");
     assert!(workspace_stop_condition_holds(&experiments, &decisions));
 }
 
@@ -208,10 +213,10 @@ fn workspace_cross_package_registry_rejects_missing_workspace_summary_refs() {
 
 ## Cross-Package Summaries
 
-- planning summary: [`docs/experiments_planning_summary.md`] + [`docs/decisions_planning_summary.md`]
-- localization summary: [`docs/experiments_localization_summary.md`] + [`docs/decisions_localization_summary.md`]
-- control summary: [`docs/experiments_control_summary.md`] + [`docs/decisions_control_summary.md`]
-- mapping summary: [`docs/experiments_mapping_summary.md`] + [`docs/decisions_mapping_summary.md`]
+- planning summary: [`docs/archive/experiments_planning_summary.md`] + [`docs/archive/decisions_planning_summary.md`]
+- localization summary: [`docs/archive/experiments_localization_summary.md`] + [`docs/archive/decisions_localization_summary.md`]
+- control summary: [`docs/archive/experiments_control_summary.md`] + [`docs/archive/decisions_control_summary.md`]
+- mapping summary: [`docs/archive/experiments_mapping_summary.md`] + [`docs/archive/decisions_mapping_summary.md`]
 ";
     assert!(!cross_package_refs_registered(interfaces));
 }

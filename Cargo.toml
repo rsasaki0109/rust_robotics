@@ -11,6 +11,10 @@ members = [
     "crates/rust_robotics",
     "crates/rust_robotics_playground",
 ]
+# The embedded reference demo targets a bare-metal Cortex-M and is built with a
+# different target (thumbv7em-none-eabihf) than the rest of the workspace, so
+# it is excluded from default workspace builds and built explicitly in CI.
+exclude = ["crates/rust_robotics_embedded_demo"]
 resolver = "2"
 
 [workspace.package]

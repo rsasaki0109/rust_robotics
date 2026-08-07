@@ -29,7 +29,7 @@ fn main() {
         .join("../..")
         .canonicalize()
         .expect("repo root should exist");
-    let docs_dir = repo_root.join("docs");
+    let docs_dir = repo_root.join("docs/archive");
     let sources = [
         PackageSummarySource {
             package: "planning",

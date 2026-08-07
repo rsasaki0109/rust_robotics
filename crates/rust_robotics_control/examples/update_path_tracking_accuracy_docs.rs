@@ -29,7 +29,7 @@ fn main() {
         .join("../..")
         .canonicalize()
         .expect("repo root should exist");
-    let docs_dir = repo_root.join("docs");
+    let docs_dir = repo_root.join("docs/archive");
 
     let baseline_problem = control_tracking_process_problem();
     let actuation_mismatch_problem = control_actuation_mismatch_process_problem();

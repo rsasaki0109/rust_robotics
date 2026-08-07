@@ -6,9 +6,14 @@
 //! author: Atsushi Sakai (@Atsushi_twi)
 //!         Ryohei Sasaki (@rsasaki0109)
 
+use alloc::vec::Vec;
+use core::f64::consts::PI;
 use nalgebra::{Matrix1, Matrix1x4, Matrix4, Vector4};
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
-use std::f64::consts::PI;
 
 /// Vehicle state for LQR controller
 #[derive(Debug, Clone, Copy)]

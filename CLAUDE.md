@@ -58,17 +58,20 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 
 ## no_std (組み込み)
 
-- `rust_robotics_core` と `rust_robotics_localization` は `--no-default-features` で no_std (+alloc) ビルド可能
-- 確認: `cargo build -p rust_robotics_core -p rust_robotics_localization --no-default-features --target thumbv7em-none-eabihf`
-- PF/MCL/EnKF と experiments はエントロピー源が必要なため `std` feature 限定
+- `rust_robotics_core` / `rust_robotics_localization` / `rust_robotics_control` は `--no-default-features` で no_std (+alloc) ビルド可能
+- 確認: `cargo build -p rust_robotics_core -p rust_robotics_localization -p rust_robotics_control --no-default-features --target thumbv7em-none-eabihf`
+- 実行デモ: `crates/rust_robotics_embedded_demo/`(workspace除外)。`./scripts/run_embedded_demo.sh` で QEMU (netduinoplus2, semihosting) 上に EKF + Pure Pursuit/PID を走らせる。詳細は `docs/embedded_demo.md`
+- localization: PF/MCL/EnKF と experiments はエントロピー源が必要なため `std` feature 限定
+- control: Tier 1 コントローラ(PID / Pure Pursuit / Stanley / LQR Steer)のみ no_std。MPPI / MPC / cgmres / pusher-slider / racing / consensus ADMM は `rand` / `clarabel` が必要なため `std` feature 限定
 - no_std での f64 数学は `#[cfg(not(feature = "std"))] use num_traits::Float;`(libm経由)。新モジュール追加時も同パターンを使う
+- no_std モジュールで `Vec` / `vec!` を使う場合は `use alloc::vec::Vec;` をモジュール先頭に追加(`#[macro_use] extern crate alloc;` は lib.rs に既にあるので `vec!` は全体で使える)
 - workspace の nalgebra / rust_robotics_core は default-features = false。std が必要なクレートは `features = ["std"]` を明示する
 
 ## CI
 
 - GitHub Actions: `.github/workflows/ci.yml`
 - ステップ: build → test → test (no-default-features) → headless examples → clippy → rustdoc → fmt → cargo-deny
-- 別ジョブ: coverage (cargo-tarpaulin → Codecov)
+- 別ジョブ: benchmark-gate (代表 benchmark 11本の回帰ゲート), coverage (cargo-tarpaulin → Codecov)
 - Clippy/doc/fmtは `-D warnings` でエラー扱い
 
 ## 注意事項

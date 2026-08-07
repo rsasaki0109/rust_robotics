@@ -1226,3 +1226,54 @@ noted.
   deterministic engine, three path presets, four metrics, Playground replay
   controls, reproducible links, tests, and a generated gallery visual. Targeted
   native tests, warning-free clippy, and the release WASM build pass.
+
+2026-08-07:
+
+- **Phase 3 pillar 2 (verified performance): benchmark regression CI gate
+  landed.** `scripts/check_benchmark_gate.sh` + `scripts/check_benchmark_gate.py`
+  run 11 representative deterministic benchmark examples (planning: rigid-body
+  backends, hierarchical MAPF scale, branchout closed-loop, conformal coverage,
+  traversal risk; control: CBF filter, unified MPPI, racing MPPI 3-D, quadrotor,
+  ADMM formation, Adap-RPF metrics) and compare each freshly generated
+  `docs/assets/*.csv` against the `HEAD` baseline. Functional columns must match
+  to `1e-6`; wall-clock columns (`*_ms`, `*_us`, `*_ns`) are ignored. CI job
+  `benchmark-gate` added; criteria documented in `BENCHMARKS.md`. All 11 pass
+  locally (~40 s).
+- **Phase 3 pillar 3 (embedded reference): `rust_robotics_control` no_std
+  landed.** Tier 1 controllers (PID, Pure Pursuit, Stanley, LQR Steer) now
+  build for bare-metal with `--no-default-features`; the remaining controllers
+  (MPPI, MPC, cgmres, pusher-slider, racing, consensus ADMM, experiments) are
+  gated behind the `std` feature (`rand`/`rand_distr`/`clarabel` made optional,
+  `num-traits` added, `#[macro_use] extern crate alloc;` + `use alloc::vec::Vec;`
+  pattern). `cargo build -p rust_robotics_control --no-default-features --target
+  thumbv7em-none-eabihf` passes; 17 no_std unit tests pass; std mode, wasm, and
+  full workspace build remain green. CI embedded-check now builds core +
+  localization + control for Cortex-M.
+- **Phase 3 pillar 3 (embedded reference demo) landed.**
+  `crates/rust_robotics_embedded_demo/` is a `no_std` binary for
+  `thumbv7em-none-eabihf` (excluded workspace crate) that runs EKF
+  (localization) + Pure Pursuit / PID (control) closed-loop on an emulated
+  STM32F405 in QEMU (`netduinoplus2`, semihosting): EKF converges to ~0.04 m
+  position error and prints PASS. `scripts/run_embedded_demo.sh` builds and runs
+  it; CI job `embedded-demo` installs QEMU, runs fmt/clippy for the demo, and
+  gates on the PASS output. See `docs/embedded_demo.md`. The "no_std on a $5
+  MCU" pitch is now a runnable, CI-gated screenshot.
+- **0.3.0 API coherence pass (design + duplicate elimination) started.**
+  Removed the dead, never-implemented `Estimator2D` trait (the only estimation
+  trait is `StateEstimator`; 2D accessors are inherent methods). Documented the
+  trait map, the controller family relationship, and the Tier 1 / Tier 2
+  stability classification plus cargo-semver-checks scope in
+  `docs/api_traits.md`. Frozen the `experiments_*` / `decisions_*` doc corpus
+  (~70 files) into `docs/archive/` and repointed the five `update_*_docs`
+  generators, the `workspace_summary_guard` test, and `docs/interfaces.md`
+  links at the archive paths. Guard test and workspace tests stay green.
+- **P3 research slice: Meta-Control landed.** `meta_control.rs` composes Pure
+  Pursuit / Stanley / LQR Steer under the single `PathTracker` contract and
+  switches mid-run by a deterministic policy (`Fixed`, `SwitchOnError`,
+  `SwitchOnCurvature`); each sub-controller keeps its own state. Runs on the
+  shared Controller Arena engine (`apply_shared_response` extracted so meta and
+  fixed runs share one speed/turn-response model). The curvature policy beats
+  every fixed controller on the hairpin (RMSE 0.518 vs best fixed 0.543) and
+  exposes an error-threshold flutter artifact (15 switches). 7 focused tests,
+  `benchmark_meta_control` CSV+SVG, and the CSV is pinned in the benchmark
+  gate. See `docs/meta_control_reproduction.md`.

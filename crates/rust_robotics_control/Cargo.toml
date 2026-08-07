@@ -17,13 +17,26 @@ description = "Control and path tracking algorithms for the RustRobotics workspa
 all-features = true
 
 [features]
-default = []
+default = ["std"]
+# Without `std`, the Tier 1 controllers (PID, Pure Pursuit, Stanley, LQR Steer)
+# build for bare-metal targets; the sampling / optimization-based controllers
+# (MPPI, MPC, cgmres, pusher-slider, racing, ...) need `std` for random number
+# generation or the clarabel solver.
+std = [
+    "rust_robotics_core/std",
+    "nalgebra/std",
+    "num-traits/std",
+    "dep:rand",
+    "dep:rand_distr",
+    "dep:clarabel",
+]
 viz = ["dep:gnuplot"]
 
 [dependencies]
-rust_robotics_core = { workspace = true, features = ["std"] }
-nalgebra = { workspace = true, features = ["std"] }
-rand = { workspace = true }
-rand_distr = { workspace = true }
+rust_robotics_core = { workspace = true }
+nalgebra = { workspace = true }
+num-traits = { workspace = true }
+rand = { workspace = true, optional = true }
+rand_distr = { workspace = true, optional = true }
 gnuplot = { workspace = true, optional = true }
-clarabel = "0.11"
+clarabel = { version = "0.11", optional = true }

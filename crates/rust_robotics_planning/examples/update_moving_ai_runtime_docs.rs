@@ -30,6 +30,7 @@ fn main() {
         .canonicalize()
         .expect("repo root should exist");
     let docs_dir = repo_root.join("docs");
+    let archive_dir = repo_root.join("docs/archive");
 
     let crossover_problem = current_runtime_process_problem();
     let long_tail_problem = long_tail_runtime_process_problem();
@@ -58,21 +59,21 @@ fn main() {
     };
 
     write_problem_docs(
-        &docs_dir,
+        &archive_dir,
         &crossover_spec,
         &crossover_reports,
         &crossover_problem,
         config,
     );
     write_problem_docs(
-        &docs_dir,
+        &archive_dir,
         &long_tail_spec,
         &long_tail_reports,
         &long_tail_problem,
         config,
     );
     write_problem_docs(
-        &docs_dir,
+        &archive_dir,
         &synthetic_spec,
         &synthetic_reports,
         &synthetic_problem,
@@ -94,12 +95,12 @@ fn main() {
         },
     ];
     fs::write(
-        docs_dir.join("experiments_planning_summary.md"),
+        archive_dir.join("experiments_planning_summary.md"),
         render_summary_experiments_md(&summary_runs),
     )
     .expect("experiments_planning_summary.md should be writable");
     fs::write(
-        docs_dir.join("decisions_planning_summary.md"),
+        archive_dir.join("decisions_planning_summary.md"),
         render_summary_decisions_md(&summary_runs),
     )
     .expect("decisions_planning_summary.md should be writable");
@@ -109,31 +110,33 @@ fn main() {
     )
     .expect("interfaces.md should be writable");
 
-    println!("updated {}", docs_dir.join("experiments.md").display());
-    println!("updated {}", docs_dir.join("decisions.md").display());
+    println!("updated {}", archive_dir.join("experiments.md").display());
+    println!("updated {}", archive_dir.join("decisions.md").display());
     println!(
         "updated {}",
-        docs_dir.join("experiments_long_tail.md").display()
+        archive_dir.join("experiments_long_tail.md").display()
     );
     println!(
         "updated {}",
-        docs_dir.join("decisions_long_tail.md").display()
+        archive_dir.join("decisions_long_tail.md").display()
     );
     println!(
         "updated {}",
-        docs_dir.join("experiments_synthetic.md").display()
+        archive_dir.join("experiments_synthetic.md").display()
     );
     println!(
         "updated {}",
-        docs_dir.join("decisions_synthetic.md").display()
+        archive_dir.join("decisions_synthetic.md").display()
     );
     println!(
         "updated {}",
-        docs_dir.join("experiments_planning_summary.md").display()
+        archive_dir
+            .join("experiments_planning_summary.md")
+            .display()
     );
     println!(
         "updated {}",
-        docs_dir.join("decisions_planning_summary.md").display()
+        archive_dir.join("decisions_planning_summary.md").display()
     );
     println!("updated {}", docs_dir.join("interfaces.md").display());
 }
@@ -480,107 +483,107 @@ fn render_interfaces_md(reports: &[RuntimeVariantReport]) -> String {
     writeln!(&mut md).unwrap();
     writeln!(
         &mut md,
-        "- `crossover-windows`: [`docs/experiments.md`] + [`docs/decisions.md`]"
+        "- `crossover-windows`: [`docs/archive/experiments.md`] + [`docs/archive/decisions.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `long-tail-windows`: [`docs/experiments_long_tail.md`] + [`docs/decisions_long_tail.md`]"
+        "- `long-tail-windows`: [`docs/archive/experiments_long_tail.md`] + [`docs/archive/decisions_long_tail.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `synthetic-local-grids`: [`docs/experiments_synthetic.md`] + [`docs/decisions_synthetic.md`]"
+        "- `synthetic-local-grids`: [`docs/archive/experiments_synthetic.md`] + [`docs/archive/decisions_synthetic.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-noise-windows`: [`docs/experiments_localization.md`] + [`docs/decisions_localization.md`]"
+        "- `localization-noise-windows`: [`docs/archive/experiments_localization.md`] + [`docs/archive/decisions_localization.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-long-horizon-windows`: [`docs/experiments_localization_long_horizon.md`] + [`docs/decisions_localization_long_horizon.md`]"
+        "- `localization-long-horizon-windows`: [`docs/archive/experiments_localization_long_horizon.md`] + [`docs/archive/decisions_localization_long_horizon.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-dropout-bias-windows`: [`docs/experiments_localization_dropout_bias.md`] + [`docs/decisions_localization_dropout_bias.md`]"
+        "- `localization-dropout-bias-windows`: [`docs/archive/experiments_localization_dropout_bias.md`] + [`docs/archive/decisions_localization_dropout_bias.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-outlier-burst-windows`: [`docs/experiments_localization_outlier_burst.md`] + [`docs/decisions_localization_outlier_burst.md`]"
+        "- `localization-outlier-burst-windows`: [`docs/archive/experiments_localization_outlier_burst.md`] + [`docs/archive/decisions_localization_outlier_burst.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-process-mismatch-windows`: [`docs/experiments_localization_process_mismatch.md`] + [`docs/decisions_localization_process_mismatch.md`]"
+        "- `localization-process-mismatch-windows`: [`docs/archive/experiments_localization_process_mismatch.md`] + [`docs/archive/decisions_localization_process_mismatch.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-sensor-rate-mismatch-windows`: [`docs/experiments_localization_sensor_rate_mismatch.md`] + [`docs/decisions_localization_sensor_rate_mismatch.md`]"
+        "- `localization-sensor-rate-mismatch-windows`: [`docs/archive/experiments_localization_sensor_rate_mismatch.md`] + [`docs/archive/decisions_localization_sensor_rate_mismatch.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-control-latency-windows`: [`docs/experiments_localization_control_latency.md`] + [`docs/decisions_localization_control_latency.md`]"
+        "- `localization-control-latency-windows`: [`docs/archive/experiments_localization_control_latency.md`] + [`docs/archive/decisions_localization_control_latency.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-process-noise-anisotropy-windows`: [`docs/experiments_localization_process_noise_anisotropy.md`] + [`docs/decisions_localization_process_noise_anisotropy.md`]"
+        "- `localization-process-noise-anisotropy-windows`: [`docs/archive/experiments_localization_process_noise_anisotropy.md`] + [`docs/archive/decisions_localization_process_noise_anisotropy.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-sensor-bias-burst-windows`: [`docs/experiments_localization_sensor_bias_burst.md`] + [`docs/decisions_localization_sensor_bias_burst.md`]"
+        "- `localization-sensor-bias-burst-windows`: [`docs/archive/experiments_localization_sensor_bias_burst.md`] + [`docs/archive/decisions_localization_sensor_bias_burst.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `localization-actuator-saturation-windows`: [`docs/experiments_localization_actuator_saturation.md`] + [`docs/decisions_localization_actuator_saturation.md`]"
+        "- `localization-actuator-saturation-windows`: [`docs/archive/experiments_localization_actuator_saturation.md`] + [`docs/archive/decisions_localization_actuator_saturation.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `control-tracking-windows`: [`docs/experiments_control_tracking.md`] + [`docs/decisions_control_tracking.md`]"
+        "- `control-tracking-windows`: [`docs/archive/experiments_control_tracking.md`] + [`docs/archive/decisions_control_tracking.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `control-actuation-mismatch-windows`: [`docs/experiments_control_actuation_mismatch.md`] + [`docs/decisions_control_actuation_mismatch.md`]"
+        "- `control-actuation-mismatch-windows`: [`docs/archive/experiments_control_actuation_mismatch.md`] + [`docs/archive/decisions_control_actuation_mismatch.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-point-cloud-sampling-windows`: [`docs/experiments_mapping_sampling.md`] + [`docs/decisions_mapping_sampling.md`]"
+        "- `mapping-point-cloud-sampling-windows`: [`docs/archive/experiments_mapping_sampling.md`] + [`docs/archive/decisions_mapping_sampling.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-occlusion-corruption-windows`: [`docs/experiments_mapping_occlusion.md`] + [`docs/decisions_mapping_occlusion.md`]"
+        "- `mapping-occlusion-corruption-windows`: [`docs/archive/experiments_mapping_occlusion.md`] + [`docs/archive/decisions_mapping_occlusion.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-density-shift-windows`: [`docs/experiments_mapping_density_shift.md`] + [`docs/decisions_mapping_density_shift.md`]"
+        "- `mapping-density-shift-windows`: [`docs/archive/experiments_mapping_density_shift.md`] + [`docs/archive/decisions_mapping_density_shift.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-anisotropic-noise-windows`: [`docs/experiments_mapping_anisotropic_noise.md`] + [`docs/decisions_mapping_anisotropic_noise.md`]"
+        "- `mapping-anisotropic-noise-windows`: [`docs/archive/experiments_mapping_anisotropic_noise.md`] + [`docs/archive/decisions_mapping_anisotropic_noise.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-sparse-outlier-burst-windows`: [`docs/experiments_mapping_sparse_outlier_burst.md`] + [`docs/decisions_mapping_sparse_outlier_burst.md`]"
+        "- `mapping-sparse-outlier-burst-windows`: [`docs/archive/experiments_mapping_sparse_outlier_burst.md`] + [`docs/archive/decisions_mapping_sparse_outlier_burst.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- `mapping-resolution-ladder-windows`: [`docs/experiments_mapping_resolution_ladder.md`] + [`docs/decisions_mapping_resolution_ladder.md`]"
+        "- `mapping-resolution-ladder-windows`: [`docs/archive/experiments_mapping_resolution_ladder.md`] + [`docs/archive/decisions_mapping_resolution_ladder.md`]"
     )
     .unwrap();
     writeln!(&mut md).unwrap();
@@ -588,27 +591,27 @@ fn render_interfaces_md(reports: &[RuntimeVariantReport]) -> String {
     writeln!(&mut md).unwrap();
     writeln!(
         &mut md,
-        "- planning summary: [`docs/experiments_planning_summary.md`] + [`docs/decisions_planning_summary.md`]"
+        "- planning summary: [`docs/archive/experiments_planning_summary.md`] + [`docs/archive/decisions_planning_summary.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- localization summary: [`docs/experiments_localization_summary.md`] + [`docs/decisions_localization_summary.md`]"
+        "- localization summary: [`docs/archive/experiments_localization_summary.md`] + [`docs/archive/decisions_localization_summary.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- control summary: [`docs/experiments_control_summary.md`] + [`docs/decisions_control_summary.md`]"
+        "- control summary: [`docs/archive/experiments_control_summary.md`] + [`docs/archive/decisions_control_summary.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- mapping summary: [`docs/experiments_mapping_summary.md`] + [`docs/decisions_mapping_summary.md`]"
+        "- mapping summary: [`docs/archive/experiments_mapping_summary.md`] + [`docs/archive/decisions_mapping_summary.md`]"
     )
     .unwrap();
     writeln!(
         &mut md,
-        "- workspace summary: [`docs/experiments_workspace_summary.md`] + [`docs/decisions_workspace_summary.md`]"
+        "- workspace summary: [`docs/archive/experiments_workspace_summary.md`] + [`docs/archive/decisions_workspace_summary.md`]"
     )
     .unwrap();
     writeln!(&mut md).unwrap();

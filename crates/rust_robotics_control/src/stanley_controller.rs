@@ -7,8 +7,13 @@
 //!     - [Stanley: The robot that won the DARPA grand challenge](http://isl.ecst.csuchico.edu/DOCS/darpa2005/DARPA%202005%20Stanley.pdf)
 //!     - [Autonomous Automobile Path Tracking](https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomous_Automobile_Path_Tracking.pdf)
 
+use alloc::vec::Vec;
+use core::f64::consts::PI;
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+// f64 math via libm on no_std targets; on std hosts the inherent methods win
+use num_traits::Float;
 use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
-use std::f64::consts::PI;
 
 /// Vehicle state for Stanley Controller
 #[derive(Debug, Clone, Copy)]
