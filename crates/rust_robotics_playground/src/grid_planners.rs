@@ -108,6 +108,10 @@ impl Default for GridPlannerDemo {
 }
 
 impl GridPlannerDemo {
+    pub(crate) fn run_guided_comparison(&mut self) {
+        self.compare_all();
+    }
+
     pub(crate) fn apply_share_query(&mut self, query: &str) {
         if let Some(planner) =
             crate::share::value(query, "planner").and_then(PlannerKind::from_slug)

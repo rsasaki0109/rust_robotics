@@ -28,6 +28,31 @@ RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url
 
 Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
+## First visit and saved experiments
+
+New browser visitors see a 30-second mission that runs all four grid planners
+on the same map and saves the result as a reproducible URL. The playground
+stores at most five recent experiments and the last saved configuration in the
+browser's local storage; no account is required and this data is not sent by
+the playground.
+
+All tabs encode their important configuration in share links:
+
+- Grid Planners: planner, endpoints, and obstacle map
+- Localization: filter and measurement-noise scale
+- SLAM: algorithm, timeline frame, and playback state
+- ADMM Formation: noise, visible runs, timeline frame, and playback state
+- Controller Arena: path preset, target speed, and turn response
+
+## Engagement event hooks
+
+The WASM app emits DOM events without making network requests. A Pages-level
+analytics integration can subscribe to events prefixed with
+`rust-robotics:`, including `playground_loaded`, `preset_started`,
+`experiment_completed`, `onboarding_completed`, `share_link_copied`, and
+`returning_experiment_resumed`. This keeps analytics optional and separates it
+from the robotics code.
+
 ## Reproducible links
 
 Use **Copy share link** in the header to copy a URL for the active demo. Grid

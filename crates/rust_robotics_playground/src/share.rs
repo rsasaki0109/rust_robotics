@@ -10,6 +10,26 @@ pub fn value<'a>(query: &'a str, key: &str) -> Option<&'a str> {
         .find_map(|(candidate, value)| (candidate == key).then_some(value))
 }
 
+pub fn bounded_f32(query: &str, key: &str, min: f32, max: f32) -> Option<f32> {
+    value(query, key)
+        .and_then(|value| value.parse::<f32>().ok())
+        .filter(|value| value.is_finite() && (min..=max).contains(value))
+}
+
+pub fn bounded_usize(query: &str, key: &str, max: usize) -> Option<usize> {
+    value(query, key)
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value <= max)
+}
+
+pub fn boolean(query: &str, key: &str) -> Option<bool> {
+    match value(query, key)? {
+        "1" | "true" => Some(true),
+        "0" | "false" => Some(false),
+        _ => None,
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub fn current_query() -> String {
     web_sys::window()
@@ -52,7 +72,7 @@ pub fn share_url(query: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::value;
+    use super::{boolean, bounded_f32, bounded_usize, value};
 
     #[test]
     fn reads_exact_query_keys() {
@@ -60,5 +80,15 @@ mod tests {
         assert_eq!(value(query, "tab"), Some("grid"));
         assert_eq!(value(query, "planner"), Some("theta"));
         assert_eq!(value(query, "plan"), None);
+    }
+
+    #[test]
+    fn validates_typed_query_values() {
+        let query = "noise=1.25&frame=8&playing=1&bad=nan";
+        assert_eq!(bounded_f32(query, "noise", 0.2, 3.0), Some(1.25));
+        assert_eq!(bounded_f32(query, "bad", 0.0, 2.0), None);
+        assert_eq!(bounded_usize(query, "frame", 10), Some(8));
+        assert_eq!(bounded_usize(query, "frame", 4), None);
+        assert_eq!(boolean(query, "playing"), Some(true));
     }
 }

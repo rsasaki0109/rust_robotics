@@ -63,6 +63,21 @@ Every animation above is rendered by the library itself — regenerate them all 
   plus lever-arm-corrected IMU input and a connected
   IMU → bundle-adjustment → state/bias refinement → SE(3) replay pipeline.
 
+## Start Here — Pick Your Goal
+
+You do not need to learn the whole workspace before getting a useful result.
+Choose the path closest to what you want to do:
+
+| I want to... | Start here | First useful result |
+| --- | --- | --- |
+| **Learn or compare algorithms** | [Run the 30-second browser mission](https://rsasaki0109.github.io/rust_robotics/playground/) | Compare A*, Dijkstra, JPS, and Theta* on one map, then save a reproducible link. |
+| **Build a Rust navigation stack** | [Run the navigation-loop recipe](#rust-navigation-loop) | Plan, localize, and track a path from one headless example. |
+| **Run filters on a microcontroller** | [Build the no_std localization stack](#embedded--no_std) | Cross-compile the EKF/UKF family for Cortex-M without an OS. |
+
+The browser playground keeps the five most recent experiments on your device.
+Its share links include each tab's algorithm and configuration, so a saved
+comparison can be reopened without an account.
+
 ## Embedded / no_std
 
 The core types and the Kalman-family localizers build without the standard
@@ -97,6 +112,21 @@ Add the latest published umbrella crate:
 ```bash
 cargo add rust_robotics --features planning
 ```
+
+### Rust navigation loop
+
+Clone the repository and run one deterministic, headless example that connects
+planning, localization, and control:
+
+```bash
+git clone https://github.com/rsasaki0109/rust_robotics.git
+cd rust_robotics
+cargo run -p rust_robotics --example headless_navigation_loop \
+  --features "planning,localization,control"
+```
+
+Once that works, use the domain imports in [Use As A Library](#use-as-a-library)
+to replace the example map, measurements, or controller with your own inputs.
 
 Then run a headless planner demo from this repository with no GUI dependencies:
 

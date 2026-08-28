@@ -166,6 +166,37 @@ impl Default for AdmmFormationDemo {
 }
 
 impl AdmmFormationDemo {
+    pub fn apply_share_query(&mut self, query: &str) {
+        if let Some(noise) = crate::share::bounded_f32(query, "noise", 0.0, 0.5) {
+            self.noise_amp = noise;
+            self.dirty = true;
+        }
+        self.rebuild_if_needed();
+        if let Some(show_stiff) = crate::share::boolean(query, "stiff") {
+            self.show_stiff = show_stiff;
+        }
+        if let Some(show_smooth) = crate::share::boolean(query, "smooth") {
+            self.show_smooth = show_smooth;
+        }
+        if let Some(frame) = crate::share::bounded_usize(query, "frame", CYCLES) {
+            self.frame_idx = frame;
+        }
+        if let Some(playing) = crate::share::boolean(query, "playing") {
+            self.playing = playing;
+        }
+    }
+
+    pub fn share_query(&self) -> String {
+        format!(
+            "tab=admm&noise={:.2}&stiff={}&smooth={}&frame={}&playing={}",
+            self.noise_amp,
+            u8::from(self.show_stiff),
+            u8::from(self.show_smooth),
+            self.frame_idx,
+            u8::from(self.playing)
+        )
+    }
+
     fn rebuild_if_needed(&mut self) {
         if self.dirty {
             let (stiff, smooth) = build_runs(f64::from(self.noise_amp));
@@ -343,5 +374,27 @@ impl AdmmFormationDemo {
         } else if self.frame_idx >= max_idx {
             self.playing = false;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AdmmFormationDemo;
+
+    #[test]
+    fn share_query_round_trips_configuration() {
+        let demo = AdmmFormationDemo {
+            noise_amp: 0.4,
+            show_stiff: false,
+            frame_idx: 8,
+            ..AdmmFormationDemo::default()
+        };
+        let query = demo.share_query();
+        let mut restored = AdmmFormationDemo::default();
+        restored.apply_share_query(&query);
+        assert!((restored.noise_amp - 0.4).abs() < f32::EPSILON);
+        assert!(!restored.show_stiff);
+        assert!(restored.show_smooth);
+        assert_eq!(restored.frame_idx, 8);
     }
 }

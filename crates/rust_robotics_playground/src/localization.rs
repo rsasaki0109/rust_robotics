@@ -30,6 +30,21 @@ impl FilterKind {
             Self::Ekf => "EKF",
         }
     }
+
+    fn slug(self) -> &'static str {
+        match self {
+            Self::ParticleFilter => "pf",
+            Self::Ekf => "ekf",
+        }
+    }
+
+    fn from_slug(value: &str) -> Option<Self> {
+        match value {
+            "pf" => Some(Self::ParticleFilter),
+            "ekf" => Some(Self::Ekf),
+            _ => None,
+        }
+    }
 }
 
 pub struct LocalizationDemo {
@@ -90,6 +105,24 @@ impl Default for LocalizationDemo {
 }
 
 impl LocalizationDemo {
+    pub fn apply_share_query(&mut self, query: &str) {
+        if let Some(filter) = crate::share::value(query, "filter").and_then(FilterKind::from_slug) {
+            self.filter = filter;
+        }
+        if let Some(noise) = crate::share::bounded_f32(query, "noise", 0.2, 3.0) {
+            self.noise_scale = noise;
+            self.apply_noise_scale();
+        }
+    }
+
+    pub fn share_query(&self) -> String {
+        format!(
+            "tab=localization&filter={}&noise={:.2}",
+            self.filter.slug(),
+            self.noise_scale
+        )
+    }
+
     fn reset(&mut self) {
         let filter = self.filter;
         let noise = self.noise_scale;
@@ -412,5 +445,32 @@ impl LocalizationDemo {
         let (rect, side) = self.world_rect(ui);
         let _ = ui.allocate_rect(rect, egui::Sense::hover());
         self.draw_scene(ui, rect, side);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FilterKind, LocalizationDemo};
+
+    #[test]
+    fn share_query_round_trips_configuration() {
+        let demo = LocalizationDemo {
+            filter: FilterKind::Ekf,
+            noise_scale: 2.4,
+            ..LocalizationDemo::default()
+        };
+        let query = demo.share_query();
+        let mut restored = LocalizationDemo::default();
+        restored.apply_share_query(&query);
+        assert_eq!(restored.filter, FilterKind::Ekf);
+        assert!((restored.noise_scale - 2.4).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn invalid_shared_configuration_is_ignored() {
+        let mut demo = LocalizationDemo::default();
+        demo.apply_share_query("filter=bad&noise=99");
+        assert_eq!(demo.filter, FilterKind::ParticleFilter);
+        assert_eq!(demo.noise_scale, 1.0);
     }
 }
