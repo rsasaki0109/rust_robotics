@@ -44,6 +44,23 @@ impl SlamKind {
             Self::Icp => "ICP Scan Matching",
         }
     }
+
+    fn slug(self) -> &'static str {
+        match self {
+            Self::EkfSlam => "ekf",
+            Self::FastSlam => "fastslam",
+            Self::Icp => "icp",
+        }
+    }
+
+    fn from_slug(value: &str) -> Option<Self> {
+        match value {
+            "ekf" => Some(Self::EkfSlam),
+            "fastslam" => Some(Self::FastSlam),
+            "icp" => Some(Self::Icp),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -304,6 +321,28 @@ impl Default for SlamDemo {
 }
 
 impl SlamDemo {
+    pub fn apply_share_query(&mut self, query: &str) {
+        if let Some(kind) = crate::share::value(query, "algorithm").and_then(SlamKind::from_slug) {
+            self.kind = kind;
+        }
+        let max_idx = self.active_frames().len().saturating_sub(1);
+        if let Some(frame) = crate::share::bounded_usize(query, "frame", max_idx) {
+            self.frame_idx = frame;
+        }
+        if let Some(playing) = crate::share::boolean(query, "playing") {
+            self.playing = playing;
+        }
+    }
+
+    pub fn share_query(&self) -> String {
+        format!(
+            "tab=slam&algorithm={}&frame={}&playing={}",
+            self.kind.slug(),
+            self.frame_idx,
+            u8::from(self.playing)
+        )
+    }
+
     fn active_frames(&self) -> &[SlamFrame] {
         match self.kind {
             SlamKind::EkfSlam => &self.ekf_frames,
@@ -476,5 +515,26 @@ impl SlamDemo {
         } else if self.frame_idx >= max_idx {
             self.playing = false;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SlamDemo, SlamKind};
+
+    #[test]
+    fn share_query_round_trips_timeline() {
+        let demo = SlamDemo {
+            kind: SlamKind::Icp,
+            frame_idx: 17,
+            playing: true,
+            ..SlamDemo::default()
+        };
+        let query = demo.share_query();
+        let mut restored = SlamDemo::default();
+        restored.apply_share_query(&query);
+        assert_eq!(restored.kind, SlamKind::Icp);
+        assert_eq!(restored.frame_idx, 17);
+        assert!(restored.playing);
     }
 }

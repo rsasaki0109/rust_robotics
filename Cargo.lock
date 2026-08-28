@@ -3510,6 +3510,7 @@ dependencies = [
  "eframe",
  "egui",
  "getrandom 0.3.4",
+ "js-sys",
  "nalgebra",
  "rand",
  "rand_distr",
