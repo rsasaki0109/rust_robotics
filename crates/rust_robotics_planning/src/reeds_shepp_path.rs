@@ -411,17 +411,12 @@ fn interpolate(
         (x, y, yaw, if length > 0.0 { 1 } else { -1 })
     } else {
         let ldx = dist.sin() / max_curvature;
-        let ldy;
-        let yaw;
-
-        if mode == 'L' {
-            ldy = (1.0 - dist.cos()) / max_curvature;
-            yaw = origin_yaw + dist;
+        let (ldy, yaw) = if mode == 'L' {
+            ((1.0 - dist.cos()) / max_curvature, origin_yaw + dist)
         } else {
             // 'R'
-            ldy = (1.0 - dist.cos()) / -max_curvature;
-            yaw = origin_yaw - dist;
-        }
+            ((1.0 - dist.cos()) / -max_curvature, origin_yaw - dist)
+        };
 
         let gdx = (-origin_yaw).cos() * ldx + (-origin_yaw).sin() * ldy;
         let gdy = -(-origin_yaw).sin() * ldx + (-origin_yaw).cos() * ldy;
