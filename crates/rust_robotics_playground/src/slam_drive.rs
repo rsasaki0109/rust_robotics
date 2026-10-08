@@ -1494,10 +1494,13 @@ impl SlamDriveDemo {
 
         // A column of buttons in the top-right corner of the map.
         let right = rect.right() - 10.0;
+        // Square buttons as tall as the theme's controls (bigger on phones).
+        let size = ui.spacing().interact_size.y.max(30.0);
         let button = |ui: &mut egui::Ui, row: f32, width: f32, label: &str, hover: &str| {
+            let width = width.max(size);
             let at = Rect::from_min_size(
-                egui::pos2(right - width, rect.top() + 10.0 + row * 36.0),
-                Vec2::new(width, 30.0),
+                egui::pos2(right - width, rect.top() + 10.0 + row * (size + 6.0)),
+                Vec2::new(width, size),
             );
             // A detached child, so the buttons do not move the layout cursor
             // (the status line goes below the map, not below them).

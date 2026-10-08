@@ -314,7 +314,10 @@ impl ParticleFilterLocalizer {
         Self::validate_observations(observations)?;
 
         for particle in &mut self.particles {
-            let mut w = 1.0;
+            // Bayes: the new likelihood multiplies the weight carried from
+            // earlier steps (they are only reset by resampling), like
+            // PythonRobotics' w = w * p.
+            let mut w = particle.w;
 
             for &(d_obs, landmark_x, landmark_y) in observations {
                 let dx = particle.x - landmark_x;
@@ -438,35 +441,31 @@ impl ParticleFilterLocalizer {
         }
     }
 
-    /// Systematic resampling
+    /// Systematic resampling: one random offset, `n` evenly spaced
+    /// pointers into the cumulative weights, walked in a single pass.
     fn resample_particles(&mut self) {
         let mut rng = rand::rng();
         let n = self.config.n_particles;
-        let mut new_particles = Vec::with_capacity(n);
-
-        // Calculate cumulative weights
-        let mut cumulative_weights = Vec::with_capacity(n);
-        let mut cum_sum = 0.0;
-        for particle in &self.particles {
-            cum_sum += particle.w;
-            cumulative_weights.push(cum_sum);
+        if self.particles.is_empty() || n == 0 {
+            return;
         }
-
+        let total: f64 = self.particles.iter().map(|p| p.w).sum();
+        let step = if total > 0.0 { total / n as f64 } else { 0.0 };
+        let mut pointer = rng.random::<f64>() * step;
+        let mut index = 0;
+        let mut cumulative = self.particles[0].w;
+        let mut new_particles = Vec::with_capacity(n);
         for _ in 0..n {
-            let r = rng.random::<f64>();
-
-            // Find particle to resample
-            let mut index = 0;
-            for (i, &cum_w) in cumulative_weights.iter().enumerate() {
-                if r <= cum_w {
-                    index = i;
-                    break;
-                }
+            // Rounding can leave the last pointer just past the total:
+            // stay on the last particle then.
+            while pointer > cumulative && index + 1 < self.particles.len() {
+                index += 1;
+                cumulative += self.particles[index].w;
             }
-
             let mut new_particle = self.particles[index].clone();
             new_particle.w = 1.0 / n as f64;
             new_particles.push(new_particle);
+            pointer += step;
         }
 
         self.particles = new_particles;
@@ -575,6 +574,55 @@ impl StateEstimator for ParticleFilterLocalizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Two particles on a line with one landmark at the origin.
+    fn two_particle_filter() -> ParticleFilterLocalizer {
+        let mut pf = ParticleFilterLocalizer::new(ParticleFilterConfig {
+            n_particles: 2,
+            resample_threshold: 0.0,
+            ..ParticleFilterConfig::default()
+        });
+        pf.set_landmarks(vec![Point2D::new(0.0, 0.0)]);
+        pf.particles = vec![
+            Particle::new(1.0, 0.0, 0.0, 0.0, 2),
+            Particle::new(2.0, 0.0, 0.0, 0.0, 2),
+        ];
+        pf
+    }
+
+    #[test]
+    fn evidence_accumulates_across_updates_without_resampling() {
+        let mut pf = two_particle_filter();
+        let observation = vec![(1.0, 0.0, 0.0)];
+        pf.try_update_with_observations(&observation).unwrap();
+        let once = pf.particles[0].w / pf.particles[1].w;
+        pf.try_update_with_observations(&observation).unwrap();
+        let twice = pf.particles[0].w / pf.particles[1].w;
+        // Each update multiplies in the same likelihood ratio.
+        assert!(once > 1.0);
+        assert!(
+            (twice / (once * once) - 1.0).abs() < 1e-9,
+            "{once} then {twice}"
+        );
+    }
+
+    #[test]
+    fn systematic_resampling_follows_the_weights() {
+        let mut pf = two_particle_filter();
+        // Equal weights: one evenly spaced pointer lands in each half.
+        pf.particles[0].w = 0.5;
+        pf.particles[1].w = 0.5;
+        pf.resample_particles();
+        assert_eq!(pf.particles[0].x, 1.0);
+        assert_eq!(pf.particles[1].x, 2.0);
+        // All the weight on the last particle, with a total a hair below 1:
+        // every copy is of the last particle, never particle 0.
+        let mut pf = two_particle_filter();
+        pf.particles[0].w = 0.0;
+        pf.particles[1].w = 1.0 - 1e-12;
+        pf.resample_particles();
+        assert!(pf.particles.iter().all(|p| p.x == 2.0));
+    }
 
     #[test]
     fn test_particle_filter_creation() {

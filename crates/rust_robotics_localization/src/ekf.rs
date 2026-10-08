@@ -255,9 +255,10 @@ impl EKFLocalizer {
         Self::validate_control_vector(control)?;
         Self::validate_dt(dt)?;
 
-        // Predict
+        // Predict (linearized at the prior estimate, like PythonRobotics'
+        // jacob_f(xEst, u), not at the predicted state)
+        let j_f = Self::jacobian_f(&self.state, control, dt);
         let x_pred = Self::motion_model(&self.state, control, dt);
-        let j_f = Self::jacobian_f(&x_pred, control, dt);
         let p_pred = j_f * self.covariance * j_f.transpose() + self.config.q;
 
         // Update
@@ -299,7 +300,7 @@ impl EKFLocalizer {
         dt: f64,
     ) -> (EKFState, Matrix4<f64>) {
         let x_pred = Self::motion_model(&x_est, &u, dt);
-        let j_f = Self::jacobian_f(&x_pred, &u, dt);
+        let j_f = Self::jacobian_f(&x_est, &u, dt);
         let p_pred = j_f * p_est * j_f.transpose() + q;
 
         let j_h = Self::jacobian_h();
@@ -362,7 +363,7 @@ impl StateEstimator for EKFLocalizer {
 
     fn predict(&mut self, control: &Self::Control, dt: f64) {
         let x_pred = Self::motion_model(&self.state, control, dt);
-        let j_f = Self::jacobian_f(&x_pred, control, dt);
+        let j_f = Self::jacobian_f(&self.state, control, dt);
         self.covariance = j_f * self.covariance * j_f.transpose() + self.config.q;
         self.state = x_pred;
     }
@@ -393,6 +394,24 @@ impl StateEstimator for EKFLocalizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_covariance_prediction_is_linearized_at_the_prior_estimate() {
+        use rust_robotics_core::StateEstimator;
+        // Heading 0, turning fast: at the predicted heading (0.5 rad) the
+        // Jacobian's x-yaw term would be -dt v sin(0.5); at the prior, 0.
+        let config = EKFConfig::default();
+        let q = config.q;
+        let mut ekf = EKFLocalizer::with_initial_state(Vector4::new(0.0, 0.0, 0.0, 1.0), config);
+        let dt = 0.5;
+        ekf.predict(&Vector2::new(1.0, 1.0), dt);
+        let mut jacobian = Matrix4::identity();
+        jacobian[(1, 2)] = dt;
+        jacobian[(3, 3)] = 0.0;
+        let expected = jacobian * jacobian.transpose() + q;
+        let got = ekf.get_covariance_matrix();
+        assert!((got - expected).norm() < 1e-12, "{got} vs {expected}");
+    }
 
     #[test]
     fn test_ekf_creation() {

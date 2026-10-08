@@ -36,6 +36,8 @@ pub struct PlaygroundApp {
     onboarding_step: Option<u8>,
     recent_experiments: Vec<Experiment>,
     resume_query: Option<String>,
+    /// Whether the touch-sized spacing is applied (phones).
+    touch_sized: Option<bool>,
 }
 
 impl PlaygroundApp {
@@ -85,6 +87,7 @@ impl PlaygroundApp {
                 .is_empty()
                 .then(crate::engagement::last_query)
                 .flatten(),
+            touch_sized: None,
         }
     }
 
@@ -397,6 +400,10 @@ impl PlaygroundApp {
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let narrow = ctx.screen_rect().width() < NARROW_WIDTH;
+        if self.touch_sized != Some(narrow) {
+            crate::ui_kit::set_touch_sized(ctx, narrow);
+            self.touch_sized = Some(narrow);
+        }
         let bar = ctx.style().visuals.extreme_bg_color;
         egui::TopBottomPanel::top("header")
             .frame(

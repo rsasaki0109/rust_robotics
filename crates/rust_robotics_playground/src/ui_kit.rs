@@ -81,6 +81,28 @@ pub fn apply_style(ctx: &egui::Context) {
     });
 }
 
+/// Finger-sized controls on phones (taller buttons, chips, checkboxes and
+/// slider handles, more space between rows); the compact desktop sizes
+/// otherwise.
+pub fn set_touch_sized(ctx: &egui::Context, touch: bool) {
+    ctx.style_mut_of(egui::Theme::Dark, |style| {
+        let spacing = &mut style.spacing;
+        if touch {
+            spacing.interact_size.y = 36.0;
+            spacing.button_padding = Vec2::new(14.0, 8.0);
+            spacing.item_spacing = Vec2::new(10.0, 10.0);
+            spacing.icon_width = 20.0;
+            spacing.icon_width_inner = 10.0;
+        } else {
+            spacing.interact_size.y = 26.0;
+            spacing.button_padding = Vec2::new(10.0, 5.0);
+            spacing.item_spacing = Vec2::new(8.0, 7.0);
+            spacing.icon_width = 14.0;
+            spacing.icon_width_inner = 8.0;
+        }
+    });
+}
+
 /// A rectangle of the given `aspect` (height / width) that fills the space
 /// left in `ui`, keeping `reserve` points free below it, centered
 /// horizontally.

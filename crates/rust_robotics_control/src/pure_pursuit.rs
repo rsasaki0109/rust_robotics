@@ -146,19 +146,23 @@ impl PurePursuitController {
         };
 
         let alpha = (ty - state.rear_y).atan2(tx - state.rear_x) - state.yaw;
-        (2.0 * state.wheelbase * alpha.sin() / lf).atan2(1.0)
+        // Near the end the target (the last point) can be closer than the
+        // look-ahead distance: steer for the real distance, or the arc is
+        // too wide and the vehicle circles the goal.
+        let ld = lf.min(state.calc_distance(tx, ty)).max(1e-3);
+        (2.0 * state.wheelbase * alpha.sin() / ld).atan2(1.0)
     }
 
     /// Search for target point index on path
     fn search_target_index(&mut self, state: &VehicleState) -> (usize, f64) {
         let query = Point2D::new(state.rear_x, state.rear_y);
-        let mut ind = match self.old_nearest_index {
-            None => self.path.nearest_point_index(query).unwrap_or(0),
-            Some(prev_idx) => self
-                .path
-                .nearest_point_index_from(query, prev_idx)
-                .unwrap_or(prev_idx),
-        };
+        // Follow the path forward from where the vehicle was (from the
+        // start on the first call), so loops and crossings are not skipped.
+        let from = self.old_nearest_index.unwrap_or(0);
+        let mut ind = self
+            .path
+            .nearest_point_index_forward(query, from)
+            .unwrap_or(from);
 
         self.old_nearest_index = Some(ind);
 
