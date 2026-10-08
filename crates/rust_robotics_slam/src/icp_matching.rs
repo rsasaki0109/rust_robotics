@@ -20,7 +20,6 @@
 use nalgebra::{DMatrix, DVector, Matrix2, SVector, Vector2};
 use nearest_neighbor::KdTree;
 use rand::Rng;
-use std::f64;
 
 // ICP parameters
 const EPS: f64 = 0.0001;
