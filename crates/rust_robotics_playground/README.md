@@ -20,7 +20,8 @@ cd crates/rust_robotics_playground
 RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk serve --public-url /
 ```
 
-Release build (matches GitHub Pages):
+Release build (matches GitHub Pages; `index.html` selects the size-tuned
+`wasm-release` cargo profile from the workspace `Cargo.toml`):
 
 ```bash
 RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url /rust_robotics/playground/

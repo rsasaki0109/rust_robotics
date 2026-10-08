@@ -454,8 +454,8 @@ impl PushingDemo {
         } else {
             let mode = match self.last_mode {
                 ContactMode::Stick => "sticking",
-                ContactMode::SlideUp => "sliding ↑",
-                ContactMode::SlideDown => "sliding ↓",
+                ContactMode::SlideUp => "sliding up",
+                ContactMode::SlideDown => "sliding down",
                 ContactMode::Separated => "no contact",
             };
             let face = self.last_command.map_or("-", |command| {

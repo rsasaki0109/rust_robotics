@@ -65,3 +65,13 @@ opt-level = 2
 
 [profile.dev.package.rust_robotics_optimization]
 opt-level = 2
+
+# Web playground build (trunk, see crates/rust_robotics_playground/index.html):
+# smaller and faster to download than plain `release`. Native and benchmark
+# builds keep `release`.
+[profile.wasm-release]
+inherits = "release"
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

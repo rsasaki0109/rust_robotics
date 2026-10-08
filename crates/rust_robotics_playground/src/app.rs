@@ -203,7 +203,7 @@ impl PlaygroundApp {
                 self.resume_query = None;
                 crate::engagement::track("returning_experiment_resumed");
             }
-            if ui.small_button("✕").on_hover_text("Dismiss").clicked() {
+            if ui.small_button("×").on_hover_text("Dismiss").clicked() {
                 self.resume_query = None;
             }
         });

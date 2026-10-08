@@ -48,13 +48,28 @@ fn main() {
             .expect("canvas element was not HtmlCanvasElement");
 
         let web_options = eframe::WebOptions::default();
-        eframe::WebRunner::new()
+        let started = eframe::WebRunner::new()
             .start(
                 canvas,
                 web_options,
                 Box::new(|ctx| Ok(Box::new(PlaygroundApp::new(ctx)))),
             )
-            .await
-            .expect("failed to start RustRobotics playground");
+            .await;
+        // The page shows a spinner until the app runs (or says why not).
+        match started {
+            Ok(()) => {
+                if let Some(loading) = document.get_element_by_id("loading") {
+                    loading.remove();
+                }
+            }
+            Err(error) => {
+                if let Some(text) = document.get_element_by_id("loading-text") {
+                    text.set_text_content(Some(
+                        "The playground could not start (WebGL unavailable?).",
+                    ));
+                }
+                panic!("failed to start RustRobotics playground: {error:?}");
+            }
+        }
     });
 }

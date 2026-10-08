@@ -18,7 +18,7 @@ use rust_robotics_slam::{
     scan_to_map::relative_pose,
 };
 
-use crate::slam_drive::{draw_lidar_scene, LidarSceneView, SlamDriveDemo};
+use crate::slam_drive::{draw_lidar_scene, LidarSceneView, MapView, SlamDriveDemo};
 
 const DT: f64 = 0.1;
 const MAX_RANGE: f64 = 18.0;
@@ -645,7 +645,7 @@ impl SlamDemo {
                 view.loop_edges.push(edge);
             }
         }
-        draw_lidar_scene(ui, &view, 72.0);
+        draw_lidar_scene(ui, &view, 72.0, MapView::default());
     }
 
     fn loop_status(&mut self, ui: &mut egui::Ui) {

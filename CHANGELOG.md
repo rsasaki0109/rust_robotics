@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or remove obstacles, drag the start and goal, watch the tree (or roadmap)
   grow, and compare all four; the field is saved in share links
   (`tab=sampling&planner=&start=&goal=&obstacles=`). Landing page tile.
+- Playground Drive map zoom and pan: mouse wheel or pinch zooms around the
+  pointer, dragging (or two fingers) pans while zoomed, and +, -, Fit,
+  Follow buttons sit in the map's corner. Zoomed in, the view follows the
+  robot until you pan. Taps still set navigation goals and wall drawing
+  works at any zoom.
 - `scripts/capture_playground_thumbs.sh` (+ `scripts/web_smoke/capture_thumbs.mjs`):
   rebuilds the playground and recaptures the landing-page screenshots in
   `docs/assets/playground/`.
@@ -150,6 +155,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- Lighter web playground: the WASM that Pages serves goes from 3.47 MB
+  (1.61 MB gzipped) to 2.79 MB (1.12 MB gzipped). Most of it is fonts: the
+  web build embeds only Ubuntu-Light and egui's icon font instead of all
+  four egui default fonts (NotoEmoji and Hack were nearly unused); a test
+  checks the two cover every symbol in the UI. Trunk also builds with a new
+  `wasm-release` cargo profile (LTO, one codegen unit, `panic = "abort"`).
+  The page keeps a spinner until the app is actually running (it used to
+  vanish on page load, leaving a blank screen while the WASM downloaded)
+  and says so if WebGL is unavailable. Pushing's status says "sliding
+  up/down" instead of arrows.
 - Playground UX: one dark theme, controls in a resizable side panel (below
   the scene on phones), scenes that fill the window, a compact status line
   under each scene, legends, and long explanations folded into "How it
