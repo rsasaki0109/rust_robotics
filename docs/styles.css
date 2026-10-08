@@ -162,8 +162,18 @@ h2 {
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.tile.featured {
+  grid-column: span 2;
+}
+
+/* Twice as wide, same height as its neighbors. */
+.tile.featured img {
+  aspect-ratio: 33 / 10;
+  object-position: center;
 }
 
 .tile {
@@ -325,6 +335,14 @@ h2 {
 
   .tiles {
     grid-template-columns: 1fr;
+  }
+
+  .tile.featured {
+    grid-column: auto;
+  }
+
+  .tile.featured img {
+    aspect-ratio: 16 / 10;
   }
 
   .cards {

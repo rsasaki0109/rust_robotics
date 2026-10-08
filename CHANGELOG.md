@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground **Sampling Planners** tab: RRT, RRT*, Informed RRT* (with its
+  sampling ellipse), and PRM on a field of circular obstacles. Click to add
+  or remove obstacles, drag the start and goal, watch the tree (or roadmap)
+  grow, and compare all four; the field is saved in share links
+  (`tab=sampling&planner=&start=&goal=&obstacles=`). Landing page tile.
+- `scripts/capture_playground_thumbs.sh` (+ `scripts/web_smoke/capture_thumbs.mjs`):
+  rebuilds the playground and recaptures the landing-page screenshots in
+  `docs/assets/playground/`.
 - `rust_robotics_slam::dynamic_filter::DynamicPointFilter`: a short-term
   free-space grid that flags LiDAR points landing where recent scans saw free
   space (people walking by), so they stay out of scan matching and the map;

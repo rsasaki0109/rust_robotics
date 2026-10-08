@@ -6,11 +6,13 @@ use crate::engagement::Experiment;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
 use crate::pushing::PushingDemo;
+use crate::sampling::SamplingDemo;
 use crate::slam::SlamDemo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlaygroundTab {
     GridPlanners,
+    Sampling,
     Localization,
     Slam,
     AdmmFormation,
@@ -21,6 +23,7 @@ enum PlaygroundTab {
 pub struct PlaygroundApp {
     tab: PlaygroundTab,
     grid_demo: GridPlannerDemo,
+    sampling_demo: SamplingDemo,
     localization_demo: LocalizationDemo,
     slam_demo: SlamDemo,
     admm_demo: AdmmFormationDemo,
@@ -41,6 +44,8 @@ impl PlaygroundApp {
             .unwrap_or(PlaygroundTab::GridPlanners);
         let mut grid_demo = GridPlannerDemo::default();
         grid_demo.apply_share_query(&query);
+        let mut sampling_demo = SamplingDemo::default();
+        sampling_demo.apply_share_query(&query);
         let mut controller_arena_demo = ControllerArenaDemo::default();
         controller_arena_demo.apply_share_query(&query);
         let mut localization_demo = LocalizationDemo::default();
@@ -60,6 +65,7 @@ impl PlaygroundApp {
         Self {
             tab,
             grid_demo,
+            sampling_demo,
             localization_demo,
             slam_demo,
             admm_demo,
@@ -79,6 +85,7 @@ impl PlaygroundApp {
     fn tab_label(tab: PlaygroundTab) -> &'static str {
         match tab {
             PlaygroundTab::GridPlanners => "Grid Planners",
+            PlaygroundTab::Sampling => "Sampling Planners",
             PlaygroundTab::Localization => "Localization",
             PlaygroundTab::Slam => "SLAM",
             PlaygroundTab::AdmmFormation => "ADMM Formation",
@@ -90,6 +97,7 @@ impl PlaygroundApp {
     fn share_query(&self) -> String {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.share_query(),
+            PlaygroundTab::Sampling => self.sampling_demo.share_query(),
             PlaygroundTab::Localization => self.localization_demo.share_query(),
             PlaygroundTab::Slam => self.slam_demo.share_query(),
             PlaygroundTab::AdmmFormation => self.admm_demo.share_query(),
@@ -107,6 +115,7 @@ impl PlaygroundApp {
             self.tab = tab;
         }
         self.grid_demo.apply_share_query(query);
+        self.sampling_demo.apply_share_query(query);
         self.localization_demo.apply_share_query(query);
         self.slam_demo.apply_share_query(query);
         self.admm_demo.apply_share_query(query);
@@ -203,6 +212,9 @@ impl PlaygroundApp {
     fn tab_hint(tab: PlaygroundTab) -> &'static str {
         match tab {
             PlaygroundTab::GridPlanners => "Draw walls, drag start and goal, race four planners.",
+            PlaygroundTab::Sampling => {
+                "Watch RRT, RRT*, Informed RRT*, and PRM explore around obstacles."
+            }
             PlaygroundTab::Localization => {
                 "Particle filter vs EKF: steer the robot and watch the estimate."
             }
@@ -224,6 +236,7 @@ impl PlaygroundTab {
     fn from_slug(value: &str) -> Option<Self> {
         match value {
             "grid" => Some(Self::GridPlanners),
+            "sampling" => Some(Self::Sampling),
             "localization" => Some(Self::Localization),
             "slam" => Some(Self::Slam),
             "admm" => Some(Self::AdmmFormation),
@@ -234,8 +247,9 @@ impl PlaygroundTab {
     }
 }
 
-const TABS: [PlaygroundTab; 6] = [
+const TABS: [PlaygroundTab; 7] = [
     PlaygroundTab::GridPlanners,
+    PlaygroundTab::Sampling,
     PlaygroundTab::Localization,
     PlaygroundTab::Slam,
     PlaygroundTab::AdmmFormation,
@@ -243,13 +257,17 @@ const TABS: [PlaygroundTab; 6] = [
     PlaygroundTab::Pushing,
 ];
 
-/// Below this width \[points\] the header collapses for phones.
+/// Below this width \[points\] the controls move below the scene (phones).
 const NARROW_WIDTH: f32 = 700.0;
+/// Below this width \[points\] the tab row no longer fits the header and
+/// becomes a drop-down.
+const TAB_ROW_WIDTH: f32 = 980.0;
 
 impl PlaygroundApp {
     fn controls_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.controls(ctx, ui),
+            PlaygroundTab::Sampling => self.sampling_demo.controls(ctx, ui),
             PlaygroundTab::Localization => self.localization_demo.controls(ctx, ui),
             PlaygroundTab::Slam => self.slam_demo.controls(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.controls(ctx, ui),
@@ -261,6 +279,7 @@ impl PlaygroundApp {
     fn scene_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.scene(ctx, ui),
+            PlaygroundTab::Sampling => self.sampling_demo.scene(ctx, ui),
             PlaygroundTab::Localization => self.localization_demo.scene(ctx, ui),
             PlaygroundTab::Slam => self.slam_demo.scene(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.scene(ctx, ui),
@@ -289,6 +308,7 @@ impl PlaygroundApp {
     }
 
     fn header_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, narrow: bool) {
+        let tab_menu = ctx.screen_rect().width() < TAB_ROW_WIDTH;
         ui.horizontal(|ui| {
             ui.hyperlink_to(
                 egui::RichText::new("RustRobotics")
@@ -298,7 +318,7 @@ impl PlaygroundApp {
             )
             .on_hover_text("Back to the project page");
             ui.add_space(6.0);
-            if narrow {
+            if tab_menu {
                 let mut selected = self.tab;
                 egui::ComboBox::from_id_salt("tab_select")
                     .selected_text(Self::tab_label(self.tab))

@@ -36,6 +36,9 @@ drawing, and a one-line status). Per-frame logic lives in `scene()` so it
 keeps running whatever the panel shows. Shared look and helpers (dark theme,
 `fit_rect`, section headings, legends, the playback bar) are in `ui_kit.rs`.
 
+The landing-page screenshots in `docs/assets/playground/` come from
+`./scripts/capture_playground_thumbs.sh` (rebuild + headless Chromium).
+
 ## First visit and saved experiments
 
 New browser visitors see a 30-second mission that runs all four grid planners
@@ -47,6 +50,7 @@ the playground.
 All tabs encode their important configuration in share links:
 
 - Grid Planners: planner, endpoints, and obstacle map
+- Sampling Planners: planner, start, goal, and circular obstacles
 - Localization: filter and measurement-noise scale
 - SLAM: algorithm, timeline frame, and playback state
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
