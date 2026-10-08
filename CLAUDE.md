@@ -15,7 +15,9 @@ crates/
 ├── rust_robotics_control     # 制御 (Pure Pursuit, Stanley, LQR, MPC, etc.)
 ├── rust_robotics_mapping     # 地図生成 (Gaussian Grid Map, Ray Casting)
 ├── rust_robotics_slam        # SLAM (ICP, EKF-SLAM, FastSLAM)
+├── rust_robotics_optimization # 非線形最小二乗・ファクターグラフ最適化
 ├── rust_robotics_viz         # 可視化 (gnuplot wrapper)
+├── rust_robotics_playground  # egui/WASM インタラクティブデモ (GitHub Pages, 非公開)
 └── rust_robotics             # Umbrella crate (feature-gated re-exports)
 ```
 
@@ -24,7 +26,7 @@ crates/
 ```bash
 cargo build --workspace              # 全体ビルド
 cargo test --workspace               # 全テスト実行
-cargo clippy --workspace --all-features  # lint
+cargo clippy --workspace --all-features --all-targets -- -D warnings  # lint (CI は --all-targets -- -W clippy::all -D warnings)
 cargo fmt --all -- --check           # フォーマットチェック
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps  # doc警告チェック
 ```
@@ -70,8 +72,9 @@ cargo run -p rust_robotics --example rear_wheel_feedback --features "control,viz
 ## CI
 
 - GitHub Actions: `.github/workflows/ci.yml`
-- ステップ: build → test → test (no-default-features) → headless examples → clippy → rustdoc → fmt → cargo-deny
-- 別ジョブ: benchmark-gate (代表 benchmark 11本の回帰ゲート), coverage (cargo-tarpaulin → Codecov)
+- build-test: build → test → test (no-default-features) → headless examples
+- lint: clippy → rustdoc → fmt / deny: cargo-deny
+- 別ジョブ: package-check, wasm-check, web-smoke (Playwright で playground 全タブ 13 ケース, `scripts/web_smoke/`), embedded-check (thumbv7em no_std), embedded-demo (QEMU), benchmark-gate (代表 benchmark 12本の回帰ゲート), coverage (cargo-tarpaulin → Codecov), semver
 - Clippy/doc/fmtは `-D warnings` でエラー扱い
 
 ## 注意事項

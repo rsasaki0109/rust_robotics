@@ -698,6 +698,12 @@ const playTiles = [
     link: "playground/?tab=arena"
   },
   {
+    title: "MPPI",
+    text: "See every sampled rollout as MPPI dodges moving obstacles.",
+    image: "assets/playground/mppi.png",
+    link: "playground/?tab=mppi"
+  },
+  {
     title: "Pushing",
     text: "Face-switching MPPI pushes a box to the goal you drag.",
     image: "assets/playground/pushing.png",
