@@ -474,10 +474,18 @@ impl DWAPlanner {
         for v in arange_samples(dw[0], dw[1], config.v_resolution) {
             for omega in arange_samples(dw[2], dw[3], config.yaw_rate_resolution) {
                 let trajectory = self.predict_trajectory(v, omega);
+                // A colliding arc is never a candidate, whatever the gain
+                // (f64::MAX times a gain below 1 used to rank below other
+                // costs, and an all-colliding window returned an arc into
+                // the obstacle). With every arc colliding the result is a
+                // stop, with cost f64::MAX.
+                let raw_obstacle_cost = self.calc_obstacle_cost(&trajectory);
+                if raw_obstacle_cost == f64::MAX {
+                    continue;
+                }
                 let goal_cost = config.to_goal_cost_gain * self.calc_to_goal_cost(&trajectory);
                 let speed_cost = config.speed_cost_gain * self.calc_speed_cost(&trajectory);
-                let obstacle_cost =
-                    config.obstacle_cost_gain * self.calc_obstacle_cost(&trajectory);
+                let obstacle_cost = config.obstacle_cost_gain * raw_obstacle_cost;
                 let total_cost = goal_cost + speed_cost + obstacle_cost;
                 if total_cost <= min_cost {
                     min_cost = total_cost;
@@ -1060,6 +1068,30 @@ mod tests {
         #[allow(deprecated)]
         let cost = calc_obstacle_cost(&trajectory, &obstacles, &config);
         assert_eq!(cost, f64::MAX);
+    }
+
+    #[test]
+    fn an_all_colliding_window_stops_instead_of_picking_an_arc() {
+        for gain in [0.3, 1.0, 2.0] {
+            let mut dwa = DWAPlanner::new(DWAConfig {
+                obstacle_cost_gain: gain,
+                ..DWAConfig::default()
+            });
+            dwa.set_state(DWAState::new(0.0, 0.0, 0.0, 0.5, 0.0));
+            dwa.set_goal(Point2D::new(10.0, 0.0));
+            // A ring of obstacles hugging the robot: every arc collides.
+            dwa.set_obstacles(
+                (0..36)
+                    .map(|k| {
+                        let a = k as f64 * std::f64::consts::TAU / 36.0;
+                        Point2D::new(1.2 * a.cos(), 1.2 * a.sin())
+                    })
+                    .collect(),
+            );
+            let control = dwa.try_plan_step().expect("plan");
+            assert_eq!(dwa.get_best_trajectory().cost, f64::MAX, "gain {gain}");
+            assert_eq!(control[0], 0.0, "gain {gain}: drove at {}", control[0]);
+        }
     }
 
     #[test]

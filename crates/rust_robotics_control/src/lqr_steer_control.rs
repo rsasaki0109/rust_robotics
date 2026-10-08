@@ -205,6 +205,9 @@ impl LQRSteerController {
 
     /// Find target index and cross-track error
     fn calc_target_index(&self, state: &LQRVehicleState) -> (usize, f64) {
+        if self.path.is_empty() || self.path_yaw.is_empty() {
+            return (0, 0.0);
+        }
         let query = Point2D::new(state.x, state.y);
         let min_idx = self.path.nearest_point_index(query).unwrap_or(0);
         let target = &self.path.points[min_idx];
@@ -358,6 +361,10 @@ impl LQRSteerController {
         let ax: Vec<f64> = waypoints.iter().map(|p| p.0).collect();
         let ay: Vec<f64> = waypoints.iter().map(|p| p.1).collect();
         let (cx, cy, cyaw, ck, _) = calc_spline_course(&ax, &ay, ds);
+        // Waypoints closer together than `ds` give an empty course.
+        if cx.is_empty() {
+            return None;
+        }
 
         // Set path
         let path = Path2D::from_points(
@@ -422,6 +429,10 @@ impl PathTracker for LQRSteerController {
             self.config.max_steer,
         );
 
+        if self.path.is_empty() {
+            // Nothing to track: stop.
+            return ControlInput::new(0.0, 0.0);
+        }
         let delta = self.compute_steering(&vehicle_state);
         let (target_idx, _) = self.calc_target_index(&vehicle_state);
         let target_v = self.get_target_speed(target_idx);
@@ -635,6 +646,17 @@ impl CubicSpline2D {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_empty_or_too_short_path_does_not_panic() {
+        let mut controller = LQRSteerController::new(LQRSteerConfig::default());
+        let command = controller.compute_control(&State2D::new(0.0, 0.0, 0.0, 1.0), &Path2D::new());
+        assert_eq!((command.v, command.omega), (0.0, 0.0));
+        let mut controller = LQRSteerController::new(LQRSteerConfig::default());
+        assert!(controller
+            .planning(vec![(0.0, 0.0), (0.3, 0.0)], 1.0, 0.5)
+            .is_none());
+    }
 
     #[test]
     fn test_lqr_creation() {

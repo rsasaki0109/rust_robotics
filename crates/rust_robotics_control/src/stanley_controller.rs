@@ -61,6 +61,9 @@ impl From<State2D> for VehicleState {
     }
 }
 
+/// Largest steering angle the controller commands \[rad\] (about 84°).
+const MAX_STEER: f64 = 0.5 * PI - 0.1;
+
 /// Configuration for Stanley Controller
 #[derive(Debug, Clone)]
 pub struct StanleyConfig {
@@ -155,7 +158,7 @@ impl StanleyController {
         let query = Point2D::new(fx, fy);
         let min_idx = self
             .path
-            .nearest_point_index_from(query, self.last_target_idx)
+            .nearest_point_index_forward(query, self.last_target_idx)
             .unwrap_or(0);
 
         // Calculate cross-track error
@@ -187,8 +190,9 @@ impl StanleyController {
         // Cross-track error correction
         let theta_d = (self.config.k * error_front_axle).atan2(state.v.max(0.1));
 
-        // Total steering angle
-        theta_e + theta_d
+        // Total steering angle, kept short of ±90°: beyond it tan(δ) (and so
+        // the turn rate) flips sign and the vehicle turns away from the path.
+        (theta_e + theta_d).clamp(-MAX_STEER, MAX_STEER)
     }
 
     /// Proportional speed control
@@ -488,6 +492,22 @@ impl CubicSpline2D {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_large_heading_error_still_steers_back_toward_the_path() {
+        // Path along +x; the vehicle points almost straight up or down.
+        // Past ±90° of steering tan() flipped sign and it turned away.
+        let path = Path2D::from_points((0..=40).map(|i| Point2D::new(i as f64, 0.0)).collect());
+        for (yaw, expected_sign) in [(1.6, -1.0), (1.8, -1.0), (-1.6, 1.0), (-1.8, 1.0)] {
+            let mut controller = StanleyController::new(StanleyConfig::default());
+            let command = controller.compute_control(&State2D::new(5.0, 0.0, yaw, 2.0), &path);
+            assert!(
+                command.omega * expected_sign > 0.0,
+                "yaw {yaw}: omega {}",
+                command.omega
+            );
+        }
+    }
 
     #[test]
     fn test_stanley_creation() {

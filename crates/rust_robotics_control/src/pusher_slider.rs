@@ -352,7 +352,31 @@ impl PusherSliderParams {
             }
         }
 
-        chosen.unwrap_or(([0.0; 3], [ContactMode::Separated, ContactMode::Separated]))
+        if let Some(found) = chosen {
+            return found;
+        }
+
+        // No combination keeps both contacts: one pusher may lose contact
+        // (the slider moves away from it faster than it pushes). Try each
+        // contact alone and keep it if the other one really separates.
+        let alone = |(push, other): (PusherCommand, PusherCommand)| {
+            let (twist, mode) = self.twist(push);
+            if mode == ContactMode::Separated {
+                return None;
+            }
+            let (p, d, _) = self.contact_frame(other.face, other.contact);
+            let [vx, vy, omega] = twist;
+            let contact_velocity = [vx - omega * p[1], vy + omega * p[0]];
+            let away = contact_velocity[0] * d[0] + contact_velocity[1] * d[1];
+            (away >= other.push_speed.max(0.0) - 1e-12).then_some((twist, mode))
+        };
+        if let Some((twist, mode)) = alone((c1, c2)) {
+            return (twist, [mode, ContactMode::Separated]);
+        }
+        if let Some((twist, mode)) = alone((c2, c1)) {
+            return (twist, [ContactMode::Separated, mode]);
+        }
+        ([0.0; 3], [ContactMode::Separated, ContactMode::Separated])
     }
 
     /// Advance the slider one quasi-static step under two simultaneous contacts.
@@ -937,6 +961,29 @@ fn wrap_angle(a: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_contact_the_slider_pulls_away_from_separates() {
+        // Two pushers on the back face; only one pushes. The pushed contact
+        // drives the slider and the idle one loses contact.
+        let params = PusherSliderParams::new(0.05, 0.05 / 3.0_f64.sqrt(), 0.3).unwrap();
+        let b = params.half_extent;
+        let pushing = PusherCommand::on_face(0, 0.6 * b, 0.05, 0.0);
+        let idle = PusherCommand::on_face(0, -0.6 * b, 0.0, 0.0);
+        let (twist, modes) = params.two_contact_twist(pushing, idle);
+        assert_ne!(twist, [0.0; 3], "nothing moved");
+        assert_ne!(modes[0], ContactMode::Separated);
+        assert_eq!(modes[1], ContactMode::Separated);
+        // Same as pushing with the first contact alone.
+        let (single, _) = params.twist(pushing);
+        for (a, b) in twist.iter().zip(single) {
+            assert!((a - b).abs() < 1e-12);
+        }
+        // Swapped order gives the mirrored assignment.
+        let (_, modes) = params.two_contact_twist(idle, pushing);
+        assert_eq!(modes[0], ContactMode::Separated);
+        assert_ne!(modes[1], ContactMode::Separated);
+    }
 
     #[test]
     fn straight_centered_push_translates_without_rotation() {

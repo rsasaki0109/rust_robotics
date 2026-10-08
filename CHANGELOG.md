@@ -233,6 +233,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- Stanley: the steering angle was not limited, so beyond ±90° of heading
+  error tan(δ) flipped sign and the vehicle turned away from the path; it
+  is now kept within ±84°.
+- Pure Pursuit: near the end, a target closer than the look-ahead distance
+  still steered for the full look-ahead, so the vehicle circled the goal;
+  the nearest-point search jumped to whatever part of a loop or crossing
+  course was closest. It now walks forward along the path (new
+  `Path2D::nearest_point_index_forward`), as Stanley does too.
+- LQR Steer panicked on an empty path (and in `planning` when waypoints
+  were closer than `ds`).
+- Controller Arena: a run that passed the end more than the goal tolerance
+  away drove on until `max_steps`; it now also ends when crossing the line
+  through the goal within 5 m of it.
+- DWA: a colliding arc's cost (f64::MAX) was scaled by the obstacle gain, so
+  with a gain below 1 a colliding arc could win, and when every arc
+  collided the fastest one was returned. Colliding arcs are now skipped; an
+  all-colliding window stops with cost f64::MAX.
+- Particle filter: each update replaced the weights instead of multiplying
+  the new likelihood into them, so evidence was lost whenever resampling
+  was skipped; resampling is now truly systematic (one offset, one pass)
+  and never falls back to particle 0 when the weights sum just below 1.
+- EKF: the motion Jacobian was evaluated at the predicted state instead of
+  the prior estimate.
+- Pusher-slider `two_contact_twist`: when the slider pulls away from one
+  pusher, the other alone now drives it (with that contact separated)
+  instead of nothing moving.
 - JPS planned at a resolution other than 1 m compared path length (meters)
   with search cost (cells), so every query was flagged as an invalid jump
   path and re-planned with A*.

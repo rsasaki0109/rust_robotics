@@ -311,6 +311,25 @@ impl Path2D {
             })
             .map(|(index, _)| index)
     }
+
+    /// The nearest point found by walking forward from `start_index` while
+    /// the next point is no farther from `query`. Unlike
+    /// [`nearest_point_index_from`](Self::nearest_point_index_from), this
+    /// follows the path: on a loop or a self-crossing course a tracker does
+    /// not jump to a later part of the path that happens to pass close by.
+    pub fn nearest_point_index_forward(&self, query: Point2D, start_index: usize) -> Option<usize> {
+        if self.points.is_empty() {
+            return None;
+        }
+        let mut index = start_index.min(self.points.len() - 1);
+        while index + 1 < self.points.len()
+            && squared_distance(&query, &self.points[index + 1])
+                <= squared_distance(&query, &self.points[index])
+        {
+            index += 1;
+        }
+        Some(index)
+    }
 }
 
 fn squared_distance(a: &Point2D, b: &Point2D) -> f64 {

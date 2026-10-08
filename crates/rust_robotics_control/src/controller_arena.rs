@@ -20,6 +20,9 @@ const DEFAULT_MAX_ANGULAR_SPEED: f64 = 1.4;
 const DEFAULT_GOAL_TOLERANCE: f64 = 1.0;
 const SPEED_RESPONSE_PER_SECOND: f64 = 1.8;
 const MIN_CURVATURE_SPEED: f64 = 1e-6;
+/// A run that crosses the line through the goal this close to it \[m\] is
+/// over, even outside the goal tolerance.
+const END_LINE_RADIUS: f64 = 5.0;
 
 /// Controller implementations supported by Controller Arena version 1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -263,6 +266,15 @@ fn run_one(scenario: &ArenaScenario, kind: ArenaControllerKind) -> RoboticsResul
         .points
         .last()
         .expect("validated path has at least two points");
+    // The run also ends when the vehicle crosses the line through the goal,
+    // perpendicular to the last segment, close to the goal: a controller that
+    // passes the end off to the side (or circles it) would otherwise drive on
+    // until max_steps. "Close" keeps a loop course, whose end line the
+    // vehicle may cross elsewhere on the way round, from ending early.
+    let points = &scenario.path.points;
+    let before_goal = points[points.len() - 2];
+    let end_direction = (goal.x - before_goal.x, goal.y - before_goal.y);
+    let past_end = |s: State2D| (s.x - goal.x) * end_direction.0 + (s.y - goal.y) * end_direction.1;
     let mut state = scenario.initial_state;
     let mut samples = Vec::with_capacity(scenario.max_steps + 1);
     samples.push(ArenaSample {
@@ -297,9 +309,14 @@ fn run_one(scenario: &ArenaScenario, kind: ArenaControllerKind) -> RoboticsResul
                 kind.label()
             )));
         }
+        let previous = samples.last().expect("initial sample").state;
         samples.push(sample);
 
-        if state.position().distance(&goal) <= scenario.goal_tolerance {
+        let to_goal = state.position().distance(&goal);
+        if to_goal <= scenario.goal_tolerance {
+            break;
+        }
+        if past_end(previous) <= 0.0 && past_end(state) > 0.0 && to_goal < END_LINE_RADIUS {
             break;
         }
     }
@@ -451,6 +468,81 @@ pub(crate) fn invalid(message: &str) -> RoboticsError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn straight(target_speed: f64) -> ArenaScenario {
+        ArenaPreset::StraightRecovery.scenario(target_speed, 0.85)
+    }
+
+    #[test]
+    fn pure_pursuit_finishes_when_the_goal_is_inside_its_look_ahead() {
+        // Starting near the end: the last point is closer than the look-ahead
+        // distance, and Pure Pursuit used to circle it until max_steps.
+        let mut scenario = straight(3.0);
+        scenario.initial_state = State2D::new(45.0, 2.5, 0.0, 0.5);
+        let run = run_controller_arena(&scenario, &[ArenaControllerKind::PurePursuit])
+            .unwrap()
+            .remove(0);
+        assert!(
+            run.samples.len() < scenario.max_steps / 2,
+            "{} steps",
+            run.samples.len()
+        );
+        assert!(run.metrics.final_goal_distance < 1.5);
+    }
+
+    #[test]
+    fn trackers_follow_a_loop_whose_end_is_next_to_its_start() {
+        // 340° of a circle: the end passes 1.4 m from where the car starts.
+        let radius = 10.0;
+        let path = Path2D::from_points(
+            (0..=340)
+                .map(|deg| {
+                    let a = (deg as f64).to_radians() - std::f64::consts::FRAC_PI_2;
+                    Point2D::new(radius * a.cos(), radius + radius * a.sin())
+                })
+                .collect(),
+        );
+        let length: f64 = path.points.windows(2).map(|w| w[0].distance(&w[1])).sum();
+        let mut scenario = straight(3.0);
+        scenario.initial_state = State2D::new(-1.0, 0.0, 0.0, 0.5);
+        scenario.max_steps = 600;
+        scenario.path = path;
+        for run in run_controller_arena(&scenario, &ArenaControllerKind::ALL).unwrap() {
+            let duration = run.samples.last().unwrap().time;
+            assert!(
+                duration > 0.8 * length / 3.0,
+                "{} skipped the loop: done after {duration:.1} s",
+                run.controller.label()
+            );
+            assert!(
+                run.metrics.final_goal_distance < 1.5,
+                "{}",
+                run.controller.label()
+            );
+            assert!(
+                run.metrics.max_cross_track_error < 2.0,
+                "{}",
+                run.controller.label()
+            );
+        }
+    }
+
+    #[test]
+    fn a_run_that_overshoots_the_end_stops_there() {
+        // Starting close to the end and off to the side, Stanley and LQR pass
+        // the goal more than the tolerance away; they used to drive on for
+        // the whole step budget.
+        let mut scenario = straight(3.0);
+        scenario.initial_state = State2D::new(47.0, 1.8, 0.0, 0.5);
+        for run in run_controller_arena(&scenario, &ArenaControllerKind::ALL).unwrap() {
+            assert!(
+                run.metrics.final_goal_distance < 5.0,
+                "{} ended {:.1} m away",
+                run.controller.label(),
+                run.metrics.final_goal_distance
+            );
+        }
+    }
 
     const TOLERANCE: f64 = 1e-12;
 
