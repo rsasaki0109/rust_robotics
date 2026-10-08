@@ -862,17 +862,18 @@ impl SlamDriveDemo {
         if let Some(mcl) = &self.mcl {
             let (estimate, spread) = mcl.estimate();
             ui.label(format!(
-                "Localizing on the frozen map (kidnapped {}×) · {} particles · MCL error {:.2} m, \
-                 spread {:.2} m{}",
+                "Localizing on the frozen map (kidnapped {}×) · {} particles · spread {:.2} m · \
+                 scan fit {:.2} · {} · true error {:.2} m",
                 self.kidnappings,
                 mcl.particles().len(),
-                error(estimate),
                 spread,
+                mcl.fit(),
                 if spread < MCL_CONFIDENT_SPREAD {
-                    " · localized"
+                    "converged"
                 } else {
-                    " · drive around to disambiguate"
+                    "drive around to disambiguate"
                 },
+                error(estimate),
             ));
         } else {
             let wrong = self
@@ -918,7 +919,9 @@ impl SlamDriveDemo {
              send the robot to a goal: A* plans on the occupancy grid built from the SLAM map and \
              Pure Pursuit follows it. Drive a full lap — or tick Auto-drive on the corridor loop — \
              to close the loop. Kidnap robot freezes the map, teleports the robot and localizes it \
-             with MCL (yellow particles, gray robot = truth). Purple: wheel odometry · orange: \
+             with MCL (yellow particles, gray robot = truth); in long, similar-looking corridors \
+             it can converge on a look-alike spot until a distinctive feature comes into view. \
+             Purple: wheel odometry · orange: \
              scan-to-map · green: pose graph · magenta: loop edges · red: current scan.",
         );
         match self.preset {
@@ -1436,6 +1439,17 @@ mod tests {
         wall_clearance(&demo.walls, Vector2::new(demo.truth.x, demo.truth.y))
     }
 
+    /// Drives straight, turning left whenever a wall is close ahead.
+    fn wander(demo: &SlamDriveDemo) -> (f64, f64) {
+        let pose = demo.truth;
+        let ahead = Vector2::new(pose.x + 0.8 * pose.yaw.cos(), pose.y + 0.8 * pose.yaw.sin());
+        if wall_clearance(&demo.walls, ahead) < 0.6 {
+            (0.0, TURN_RATE)
+        } else {
+            (DRIVE_SPEED * 0.6, 0.0)
+        }
+    }
+
     #[test]
     fn the_occupancy_grid_follows_the_slam_map() {
         let demo = mapped_demo(300);
@@ -1483,14 +1497,10 @@ mod tests {
         let nodes = demo.slam.node_poses().len();
         assert!(demo.kidnap());
         assert!(demo.localizing());
-        // Drive around the new spot by bouncing off walls.
+        // Drive on from the new spot, turning away from walls.
         let mut localized_at = None;
-        for tick in 0..900 {
-            let (speed, omega) = if clearance(&demo) < 0.9 {
-                (0.0, TURN_RATE)
-            } else {
-                (DRIVE_SPEED * 0.6, 0.2)
-            };
+        for tick in 0..1_200 {
+            let (speed, omega) = wander(&demo);
             demo.tick(speed, omega);
             let (estimate, confident) = demo.believed_pose();
             let error = relative_pose(demo.truth, estimate);

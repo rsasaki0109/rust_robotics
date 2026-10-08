@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rust_robotics_slam::lidar_mcl`: `LidarMcl`, Monte Carlo localization on an
   `OccupancyGrid` with a likelihood-field LiDAR model, an odometry motion
   model, weights that accumulate until the effective sample size halves
-  (low-variance resampling), and augmented-MCL plus sensor-resetting recovery
-  whose injected particles are the best of several free-space draws — global
-  localization and kidnapped-robot recovery are tested.
+  (low-variance resampling), global initialization that scores 10× as many
+  poses against the first scan, and augmented-MCL / sensor-resetting / a
+  small constant injection whose particles are the best of several
+  free-space draws — global localization and kidnapped-robot recovery are
+  tested.
 - `LidarGraphSlamConfig::deferred_optimization` with
   `LidarGraphSlam::optimize_step` / `optimization_pending`: interactive
   callers spread a loop-closure re-optimization over frames.

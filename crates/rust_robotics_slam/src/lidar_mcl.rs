@@ -5,12 +5,17 @@
 //! - **Measurement:** the likelihood-field model scores a subsampled scan by
 //!   the distance from each beam end point to the nearest occupied cell,
 //!   mixed with a uniform term for unexplained returns.
+//! - **Global initialization:** the first scan after
+//!   [`LidarMcl::initialize_global`] scores `global_oversampling` times as
+//!   many uniform poses as there are particles and keeps the best by weight.
 //! - **Recovery:** augmented MCL tracks short- and long-term averages of the
 //!   measurement likelihood and injects new particles when the short-term
 //!   average drops; sensor resetting also injects while the scan fit at the
 //!   particles stays poor. Each injected particle is the best-scoring of a few
 //!   uniform free-space draws, so the filter recovers from a kidnapping
-//!   without needing a lucky sample.
+//!   without needing a lucky sample. A small fraction of scored particles is
+//!   injected on every update, so a filter that converged on a look-alike
+//!   place (long uniform corridors) keeps probing for the true one.
 //! - **Resampling:** weights accumulate across updates and the particles are
 //!   resampled (low variance) only when the effective sample size halves.
 
@@ -53,6 +58,13 @@ pub struct LidarMclConfig {
     /// A re-drawn particle is the best-scoring of this many uniform free
     /// poses, so recovery does not need a lucky draw.
     pub reset_candidates: usize,
+    /// Fraction of particles replaced by scored free poses on every update,
+    /// so a filter confidently locked onto a look-alike place keeps probing
+    /// for the true one.
+    pub min_injection: f64,
+    /// Global (re)initialization scores this many times `particles` uniform
+    /// poses against the first scan and keeps `particles` of them.
+    pub global_oversampling: usize,
     /// Smoothing factors of the long- and short-term likelihood averages
     /// (augmented MCL, `alpha_slow < alpha_fast`).
     pub alpha_slow: f64,
@@ -76,6 +88,8 @@ impl Default for LidarMclConfig {
             poor_fit: 0.6,
             reset_fraction: 0.1,
             reset_candidates: 20,
+            min_injection: 0.01,
+            global_oversampling: 10,
             alpha_slow: 0.01,
             alpha_fast: 0.3,
             seed: 3,
@@ -101,6 +115,9 @@ pub struct LidarMcl {
     rng: StdRng,
     w_slow: f64,
     w_fast: f64,
+    fit: f64,
+    /// Particles are uniform and the next scan should seed them.
+    global_pending: bool,
 }
 
 impl LidarMcl {
@@ -122,6 +139,8 @@ impl LidarMcl {
             rng: StdRng::seed_from_u64(config.seed),
             w_slow: 0.0,
             w_fast: 0.0,
+            fit: 0.0,
+            global_pending: false,
         };
         mcl.initialize_global();
         mcl
@@ -164,6 +183,7 @@ impl LidarMcl {
             .collect();
         self.w_slow = 0.0;
         self.w_fast = 0.0;
+        self.global_pending = true;
     }
 
     /// Spreads the particles around `pose` (position σ `xy`, heading σ `yaw`).
@@ -181,6 +201,7 @@ impl LidarMcl {
                 weight: 1.0 / count as f64,
             })
             .collect();
+        self.global_pending = false;
     }
 
     /// Motion update with a body-frame odometry step.
@@ -240,6 +261,17 @@ impl LidarMcl {
         if beams.is_empty() || self.particles.is_empty() {
             return;
         }
+        if self.global_pending {
+            self.seed_from_scan(&beams);
+            return;
+        }
+        let probes =
+            (self.particles.len() as f64 * self.config.min_injection.clamp(0.0, 1.0)) as usize;
+        for _ in 0..probes {
+            let slot = self.rng.random_range(0..self.particles.len());
+            let pose = self.scored_free_pose(&beams);
+            self.particles[slot].pose = pose;
+        }
         // Sharpen the per-beam geometric mean back to a scan likelihood. A
         // particle standing outside the mapped free space is implausible.
         let exponent = self.config.independent_beams.max(1.0);
@@ -293,6 +325,7 @@ impl LidarMcl {
             .zip(&likelihoods)
             .map(|(particle, likelihood)| particle.weight * likelihood)
             .sum();
+        self.fit = fit;
         let reset = if fit < self.config.poor_fit {
             self.config.reset_fraction
         } else {
@@ -308,6 +341,40 @@ impl LidarMcl {
         if inject > 0.0 || effective < 0.5 * self.particles.len() as f64 {
             self.resample(inject, &beams);
         }
+    }
+
+    /// Global initialization from a scan: scores `global_oversampling ×
+    /// particles` uniform free poses and resamples `particles` of them.
+    fn seed_from_scan(&mut self, beams: &[Vector2<f64>]) {
+        let count = self.config.particles.max(1);
+        let exponent = self.config.independent_beams.max(1.0);
+        let candidates: Vec<(Pose2D, f64)> = (0..count * self.config.global_oversampling.max(1))
+            .map(|_| {
+                let pose = self.random_free_pose();
+                (pose, self.beam_likelihood(pose, beams))
+            })
+            .collect();
+        let best = candidates
+            .iter()
+            .map(|(_, likelihood)| *likelihood)
+            .fold(1.0e-300, f64::max);
+        let total: f64 = candidates
+            .iter()
+            .map(|(_, likelihood)| (likelihood / best).powf(exponent))
+            .sum();
+        self.particles = candidates
+            .iter()
+            .map(|(pose, likelihood)| Particle {
+                pose: *pose,
+                weight: (likelihood / best).powf(exponent) / total,
+            })
+            .collect();
+        self.resample_to(count, 0.0, beams);
+        let average = candidates.iter().map(|(_, l)| l).sum::<f64>() / candidates.len() as f64;
+        self.w_slow = average;
+        self.w_fast = average;
+        self.fit = best;
+        self.global_pending = false;
     }
 
     /// The best-scoring of `reset_candidates` uniform free poses.
@@ -326,14 +393,19 @@ impl LidarMcl {
     /// Low-variance resampling; each slot is replaced by a scored free pose
     /// with probability `inject`.
     fn resample(&mut self, inject: f64, beams: &[Vector2<f64>]) {
-        let count = self.particles.len();
+        self.resample_to(self.particles.len(), inject, beams);
+    }
+
+    /// Low-variance resampling of the current weighted particles into
+    /// `count` equally weighted ones.
+    fn resample_to(&mut self, count: usize, inject: f64, beams: &[Vector2<f64>]) {
         let step = 1.0 / count as f64;
         let mut target = self.rng.random_range(0.0..step);
         let mut cumulative = self.particles[0].weight;
         let mut index = 0;
         let mut next = Vec::with_capacity(count);
         for _ in 0..count {
-            while target > cumulative && index + 1 < count {
+            while target > cumulative && index + 1 < self.particles.len() {
                 index += 1;
                 cumulative += self.particles[index].weight;
             }
@@ -346,6 +418,12 @@ impl LidarMcl {
             target += step;
         }
         self.particles = next;
+    }
+
+    /// Posterior-weighted per-beam likelihood of the last scan, in (0, 1]:
+    /// how well the particles explain what the LiDAR sees.
+    pub fn fit(&self) -> f64 {
+        self.fit
     }
 
     /// Weighted mean pose and the RMS distance of particles from it \[m\].
