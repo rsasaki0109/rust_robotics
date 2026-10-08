@@ -8,6 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::frontier_exploration`: frontier clusters on an
+  `OccupancyGrid`, wavefront reachability with clearance,
+  `next_frontier_goal` (distance vs. cluster size, skips cells near failed
+  goals) and `is_frontier_near`.
+- `OccupancyGrid::insert_ranges`: integrates a raw 360° range scan, clearing
+  free space along beams without a return and filling the angular gaps
+  between beams with free-only sub-rays.
+- `LidarMcl::scan_match_candidates` (correlative scan matching over the whole
+  map: coarse lattice × headings on a wide likelihood field, local
+  refinement, distinct candidates) and `LidarMcl::candidates`; candidates seed
+  global localization and recovery particles, refreshed in the background a
+  slice of the map per update.
+- `LidarGraphSlam::background_step` / `background_pending`: with
+  `deferred_optimization`, loop verification (registration and the ambiguity
+  re-registrations) is queued too and done a small step per call.
+- `pose_graph_optimization::optimize_pose_graph_warm` and
+  `SolverSummary::final_damping`: continue a Levenberg-Marquardt solve that
+  was cut into short calls without restarting its damping.
+- `scan_to_map::beam_angle` is public.
+- Playground Drive LiDAR SLAM: **Explore (frontiers)** maps the world
+  autonomously; **moving people** (0-8, `people=` in share links) that only the
+  LiDAR sees, avoided by DWA whenever the Pure Pursuit arc would hit
+  something; goals in unexplored space plan, and goals on a wall snap to free
+  space; a phone layout (compact header, scrolling content, stacked sliders).
 - `rust_robotics_slam::lidar_occupancy`: log-odds `OccupancyGrid` built from
   LiDAR scans at known poses (Bresenham ray tracing), cell / point occupancy
   queries, occupied-cell export for planners, and a chamfer distance field.
@@ -108,6 +132,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- `OccupancyGrid` updates each cell at most once per scan with a hit winning
+  over a miss (grazing beams no longer erase walls), and one miss now marks
+  a cell free (`free_threshold` −0.6 → −0.3).
+- `LidarMcl`: the estimate is the heaviest particle mode (the spread is still
+  over all particles); continuously injected probes start from a small prior
+  weight and use scan-matching candidates only while another place explains
+  the scan clearly better than the refined estimate; only occupied cells
+  penalize a particle.
+- `LidarGraphSlamConfig::deferred_optimization` now also defers loop
+  detection (drive it with `background_step`); `update` then reports no loop
+  closures itself.
+- Playground Drive mode frame time (native release, three laps): worst frame
+  163 ms (before deferral) → 18 ms, five frames over 16 ms; MCL mode worst
+  frame 9 ms. Navigation plans with the live scan near the robot added to the
+  map's obstacles and replans once before a stalled goal fails.
 - `AStarConfig::heuristic_weight` accepts `0.0` (uniform-cost search).
 - Grid-planner obstacle inflation (`GridMap`, used by A\*, Dijkstra, JPS,
   Theta\*, …) stamps each obstacle's neighborhood instead of testing every cell
@@ -125,6 +164,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- The web playground crashed on load: it timed planner and filter runs with
+  `std::time::Instant`, which panics on `wasm32-unknown-unknown`; it now uses
+  `web-time`. Found by running the WASM build in headless Chromium.
 - `PathTracker` impls of Pure Pursuit, Stanley, LQR Steer, LQR Speed-Steer, and
   Rear Wheel Feedback ignored a new path with the same number of points as the
   old one; they now compare path contents.

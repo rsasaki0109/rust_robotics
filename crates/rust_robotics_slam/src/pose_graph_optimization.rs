@@ -75,12 +75,29 @@ pub fn optimize_pose_graph(
     edges: &[Edge2D],
     config: &PoseGraphConfig,
 ) -> PoseGraphResult {
+    let damping = SolverConfig::default().initial_damping;
+    optimize_pose_graph_warm(initial_poses, edges, config, damping).0
+}
+
+/// Like [`optimize_pose_graph`], but starts Levenberg-Marquardt from
+/// `initial_damping` and also returns the damping it ended with, so a solve
+/// spread over several short calls (a few iterations per frame) continues
+/// where the last call stopped instead of restarting its damping.
+pub fn optimize_pose_graph_warm(
+    initial_poses: &[Pose2DNode],
+    edges: &[Edge2D],
+    config: &PoseGraphConfig,
+    initial_damping: f64,
+) -> (PoseGraphResult, f64) {
     if initial_poses.len() <= 1 || edges.is_empty() {
-        return PoseGraphResult {
-            poses: initial_poses.to_vec(),
-            iterations: 0,
-            converged: true,
-        };
+        return (
+            PoseGraphResult {
+                poses: initial_poses.to_vec(),
+                iterations: 0,
+                converged: true,
+            },
+            initial_damping,
+        );
     }
 
     let mut problem = Problem::new();
@@ -117,8 +134,8 @@ pub fn optimize_pose_graph(
         gradient_tolerance: config.tolerance,
         step_tolerance: config.tolerance,
         cost_tolerance: config.tolerance * config.tolerance,
+        initial_damping: initial_damping.clamp(1.0e-15, 1.0e15),
         linear_solver: config.linear_solver,
-        ..SolverConfig::default()
     };
     let summary = solve(&mut problem, &solver_config).ok();
     let poses = variable_ids
@@ -129,12 +146,18 @@ pub fn optimize_pose_graph(
         })
         .collect();
 
-    PoseGraphResult {
-        poses,
-        iterations: summary.as_ref().map_or(0, |result| result.iterations),
-        converged: summary
-            .is_some_and(|result| result.termination != TerminationReason::MaxIterations),
-    }
+    let final_damping = summary
+        .as_ref()
+        .map_or(initial_damping, |result| result.final_damping);
+    (
+        PoseGraphResult {
+            poses,
+            iterations: summary.as_ref().map_or(0, |result| result.iterations),
+            converged: summary
+                .is_some_and(|result| result.termination != TerminationReason::MaxIterations),
+        },
+        final_damping,
+    )
 }
 
 struct PoseGraphFactor2D {

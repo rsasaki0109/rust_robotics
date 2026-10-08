@@ -101,7 +101,7 @@ impl Default for LidarMclConfig {
             min_injection: 0.01,
             global_oversampling: 10,
             scan_match_candidates: 8,
-            scan_match_interval: 10,
+            scan_match_interval: 20,
             scan_match_share: 0.5,
             alpha_slow: 0.01,
             alpha_fast: 0.3,
@@ -136,6 +136,8 @@ pub struct LidarMcl {
     log_coarse: Vec<f32>,
     candidates: Vec<(Pose2D, f64)>,
     updates_since_candidates: usize,
+    /// A candidate refresh in progress.
+    match_job: Option<MatchJob>,
     /// A candidate away from the current estimate explains the scan clearly
     /// better than the (equally refined) estimate does.
     alternative_better: bool,
@@ -147,6 +149,23 @@ const BETTER_FIT_MARGIN: f64 = 0.03;
 
 /// Relative prior weight of a continuously injected probe particle.
 const PROBE_PRIOR: f64 = 0.05;
+
+/// Lattice cells scored per update while candidates refresh in the
+/// background.
+const MATCH_CELLS_PER_UPDATE: usize = 250;
+
+/// A correlative search in progress, spread over updates.
+#[derive(Debug, Clone)]
+struct MatchJob {
+    fine: Vec<Vector2<f64>>,
+    coarse: Vec<Vector2<f64>>,
+    cells: Vec<(usize, usize)>,
+    cursor: usize,
+    scored: Vec<(Pose2D, f64)>,
+    count: usize,
+    /// Odometry since the scan the search uses.
+    motion: Pose2D,
+}
 
 /// Coarse lattice spacing of the correlative search \[m\].
 const MATCH_STEP: f64 = 0.3;
@@ -195,6 +214,7 @@ impl LidarMcl {
             log_coarse,
             candidates: Vec::new(),
             updates_since_candidates: 0,
+            match_job: None,
             alternative_better: false,
         };
         mcl.initialize_global();
@@ -276,6 +296,9 @@ impl LidarMcl {
             );
             particle.pose = compose_pose(particle.pose, noisy);
         }
+        if let Some(job) = &mut self.match_job {
+            job.motion = compose_pose(job.motion, odom_delta);
+        }
     }
 
     /// Mean per-beam log-likelihood of `beams` from `pose` under `table`.
@@ -321,40 +344,78 @@ impl LidarMcl {
         scan_body: &[Vector2<f64>],
         count: usize,
     ) -> Vec<(Pose2D, f64)> {
+        let Some(mut job) = self.start_match(scan_body, count) else {
+            return Vec::new();
+        };
+        while !self.advance_match(&mut job, usize::MAX) {}
+        self.finish_match(job)
+    }
+
+    /// Sets up a correlative search; `None` without beams or candidates.
+    fn start_match(&self, scan_body: &[Vector2<f64>], count: usize) -> Option<MatchJob> {
         let stride = self.config.beam_stride.max(1);
         let fine: Vec<Vector2<f64>> = scan_body.iter().step_by(stride).copied().collect();
         let coarse: Vec<Vector2<f64>> = scan_body.iter().step_by(stride * 2).copied().collect();
         if fine.is_empty() || count == 0 {
-            return Vec::new();
+            return None;
         }
         let lattice = ((MATCH_STEP / self.grid.resolution()).round() as usize).max(1);
-        let headings: Vec<f64> = (0..MATCH_HEADINGS)
-            .map(|i| {
-                -std::f64::consts::PI + std::f64::consts::TAU * i as f64 / MATCH_HEADINGS as f64
-            })
-            .collect();
-        let mut scored: Vec<(Pose2D, f64)> = self
+        let cells = self
             .free_cells
             .iter()
             .filter(|(x, y)| x % lattice == 0 && y % lattice == 0)
-            .flat_map(|&(x, y)| {
-                let center = self.grid.cell_center(x, y);
-                headings
-                    .iter()
-                    .map(move |&yaw| Pose2D::new(center.x, center.y, yaw))
-            })
-            .map(|pose| (pose, self.mean_log(&self.log_coarse, pose, &coarse)))
+            .copied()
             .collect();
-        let keep = (count * 6).min(scored.len());
-        if keep == 0 {
-            return Vec::new();
-        }
-        scored.select_nth_unstable_by(keep - 1, |a, b| b.1.total_cmp(&a.1));
-        scored.truncate(keep);
+        Some(MatchJob {
+            fine,
+            coarse,
+            cells,
+            cursor: 0,
+            scored: Vec::new(),
+            count,
+            motion: Pose2D::origin(),
+        })
+    }
 
+    /// Scores up to `max_cells` more lattice cells (all headings); returns
+    /// whether the coarse search is complete.
+    fn advance_match(&self, job: &mut MatchJob, max_cells: usize) -> bool {
+        let end = job.cursor.saturating_add(max_cells).min(job.cells.len());
+        for &(x, y) in &job.cells[job.cursor..end] {
+            let center = self.grid.cell_center(x, y);
+            for i in 0..MATCH_HEADINGS {
+                let yaw = -std::f64::consts::PI
+                    + std::f64::consts::TAU * i as f64 / MATCH_HEADINGS as f64;
+                let pose = Pose2D::new(center.x, center.y, yaw);
+                job.scored
+                    .push((pose, self.mean_log(&self.log_coarse, pose, &job.coarse)));
+            }
+        }
+        job.cursor = end;
+        // Keep only the best few between chunks.
+        let keep = (job.count * 6).min(job.scored.len());
+        if keep > 0 && job.scored.len() > keep {
+            job.scored
+                .select_nth_unstable_by(keep - 1, |a, b| b.1.total_cmp(&a.1));
+            job.scored.truncate(keep);
+        }
+        job.cursor == job.cells.len()
+    }
+
+    /// Refines the coarse winners and keeps distinct ones, moved by the
+    /// odometry since the search started.
+    fn finish_match(&self, job: MatchJob) -> Vec<(Pose2D, f64)> {
+        let MatchJob {
+            fine,
+            scored,
+            count,
+            motion,
+            ..
+        } = job;
         let mut refined: Vec<(Pose2D, f64)> = scored
             .into_iter()
             .map(|(pose, _)| self.refine(pose, &fine))
+            .map(|(pose, score)| (compose_pose(pose, motion), score))
             .collect();
         refined.sort_by(|a, b| b.1.total_cmp(&a.1));
         let mut distinct: Vec<(Pose2D, f64)> = Vec::with_capacity(count);
@@ -482,14 +543,25 @@ impl LidarMcl {
             return;
         }
         self.updates_since_candidates += 1;
-        if self.config.scan_match_candidates > 0
-            && (self.global_pending
-                || self.updates_since_candidates >= self.config.scan_match_interval.max(1))
-        {
-            self.candidates =
-                self.scan_match_candidates(scan_body, self.config.scan_match_candidates);
-            self.updates_since_candidates = 0;
-            self.alternative_better = self.alternative_is_better(&beams);
+        if self.config.scan_match_candidates > 0 {
+            if self.global_pending {
+                // Seeding needs the candidates now.
+                self.match_job = None;
+                self.candidates =
+                    self.scan_match_candidates(scan_body, self.config.scan_match_candidates);
+                self.updates_since_candidates = 0;
+            } else if let Some(mut job) = self.match_job.take() {
+                // Refresh in the background, a slice of the map per update.
+                if self.advance_match(&mut job, MATCH_CELLS_PER_UPDATE) {
+                    self.candidates = self.finish_match(job);
+                    self.alternative_better = self.alternative_is_better(&beams);
+                } else {
+                    self.match_job = Some(job);
+                }
+            } else if self.updates_since_candidates >= self.config.scan_match_interval.max(1) {
+                self.match_job = self.start_match(scan_body, self.config.scan_match_candidates);
+                self.updates_since_candidates = 0;
+            }
         }
         if self.global_pending {
             self.seed_from_scan(&beams);

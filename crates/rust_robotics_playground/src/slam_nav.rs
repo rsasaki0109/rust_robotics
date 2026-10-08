@@ -34,15 +34,33 @@ const AVOID_RADIUS: f64 = 0.42;
 const ROBOT_RADIUS: f64 = 0.3;
 /// DWA's local goal is this far along the path \[m\].
 const LOCAL_GOAL: f64 = 1.5;
+/// Live scan points closer than this join the planner's obstacles \[m\].
+const LIVE_OBSTACLE_RANGE: f64 = 4.0;
 /// Give up on a goal after this long without 0.3 m of progress \[s\].
 const STUCK_TIME: f64 = 4.0;
+/// Fresh plans tried after a stall before the goal fails.
+const STALL_RETRIES: usize = 1;
 
-/// Plans a collision-free path on `grid` with A*, treating unknown cells as
-/// free so the robot explores toward goals it has not mapped yet.
+/// [`plan_with_live_obstacles`] without live obstacles.
+#[cfg(test)]
 pub(crate) fn plan_on_grid(
     grid: &OccupancyGrid,
     start: Vector2<f64>,
     goal: Vector2<f64>,
+) -> Result<Path2D, String> {
+    plan_with_live_obstacles(grid, start, goal, &[])
+}
+
+/// Plans with A* on `grid` (unknown cells count as free, so the robot can
+/// explore toward goals it has not mapped yet) with the live scan near the
+/// robot added to the map's obstacles (a costmap with sensor data): the path then avoids what the map
+/// does not show — people standing around, or walls the map has slightly
+/// wrong — instead of leaving it all to the local planner.
+pub(crate) fn plan_with_live_obstacles(
+    grid: &OccupancyGrid,
+    start: Vector2<f64>,
+    goal: Vector2<f64>,
+    live: &[Vector2<f64>],
 ) -> Result<Path2D, String> {
     let occupied = grid.occupied_points();
     if occupied.is_empty() {
@@ -58,6 +76,10 @@ pub(crate) fn plan_on_grid(
         occupied
             .iter()
             .chain(&[min, max])
+            .chain(
+                live.iter()
+                    .filter(|point| (*point - start).norm() < LIVE_OBSTACLE_RANGE),
+            )
             .map(|point| Point2D::new(point.x, point.y))
             .collect(),
     );
@@ -117,6 +139,11 @@ pub(crate) struct Navigator {
     /// Where progress was last made and how long ago.
     progress_anchor: Option<Vector2<f64>>,
     stalled_for: f64,
+    /// Stalls already answered with a fresh plan for this goal.
+    stall_retries: usize,
+    /// Direction of an in-place turn in progress (kept until the path is
+    /// ahead, so a target right behind does not make the robot dither).
+    turning: Option<f64>,
 }
 
 impl Default for Navigator {
@@ -137,6 +164,8 @@ impl Default for Navigator {
             local_plan: None,
             progress_anchor: None,
             stalled_for: 0.0,
+            stall_retries: 0,
+            turning: None,
         }
     }
 }
@@ -167,6 +196,7 @@ impl Navigator {
         self.status = NavStatus::Following;
         self.progress_anchor = None;
         self.stalled_for = 0.0;
+        self.stall_retries = 0;
     }
 
     pub(crate) fn cancel(&mut self) {
@@ -229,16 +259,23 @@ impl Navigator {
         } else {
             self.stalled_for += dt;
             if self.stalled_for > STUCK_TIME {
-                self.goal = None;
-                self.path = None;
-                self.status = NavStatus::Failed("stuck".into());
-                return None;
+                if self.stall_retries >= STALL_RETRIES {
+                    self.goal = None;
+                    self.path = None;
+                    self.status = NavStatus::Failed("stuck".into());
+                    return None;
+                }
+                // Blocked (people standing in the way, a wall the map does
+                // not show): plan afresh before giving up.
+                self.stall_retries += 1;
+                self.stalled_for = 0.0;
+                self.since_plan = REPLAN_INTERVAL;
             }
         }
         self.since_plan += dt;
         if self.path.is_none() || self.since_plan >= REPLAN_INTERVAL {
             self.since_plan = 0.0;
-            match plan_on_grid(grid, position, goal) {
+            match plan_with_live_obstacles(grid, position, goal, obstacles) {
                 Ok(path) => {
                     // The planner may have snapped the goal off a wall.
                     if let Some(end) = path.points.last() {
@@ -267,9 +304,13 @@ impl Navigator {
             .or(path.points.last())?;
         let bearing = (lookahead.y - pose.y).atan2(lookahead.x - pose.x) - pose.yaw;
         let bearing = bearing.sin().atan2(bearing.cos());
-        if bearing.abs() > TURN_IN_PLACE {
-            return Some((0.0, turn_rate.copysign(bearing)));
+        if bearing.abs() > TURN_IN_PLACE
+            || (self.turning.is_some() && bearing.abs() > 0.5 * TURN_IN_PLACE)
+        {
+            let direction = *self.turning.get_or_insert(1.0_f64.copysign(bearing));
+            return Some((0.0, turn_rate * direction));
         }
+        self.turning = None;
         let remaining = (goal - position).norm();
         let cruise = speed * (0.4 + 0.6 * (remaining / 1.5).min(1.0));
         // VehicleState's reference point is the rear axle, half a wheelbase
@@ -361,7 +402,8 @@ impl Navigator {
             // Every arc collides: turn in place toward the path.
             _ => {
                 self.local_plan = None;
-                (0.0, turn_rate.copysign(bearing))
+                let direction = *self.turning.get_or_insert(1.0_f64.copysign(bearing));
+                (0.0, turn_rate * direction)
             }
         }
     }

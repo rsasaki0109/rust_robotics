@@ -155,7 +155,9 @@ drag on the map to draw your own walls; the course is saved in the share link.
 Click the map to send the robot to a goal — A\* plans on the occupancy grid
 built from the SLAM map and Pure Pursuit follows it — or press **Kidnap robot**
 to freeze the map, teleport the robot, and watch Monte Carlo localization find
-it again. An on-screen joystick makes it drivable on phones. **ADMM Formation** shows the multi-agent
+it again. Tick **Explore** and the robot maps the world by itself, frontier
+by frontier; add **moving people** and watch DWA steer around them. An
+on-screen joystick and a compact layout make it usable on phones. **ADMM Formation** shows the multi-agent
 horizon-consensus demo. **Pushing** lets you drag the goal pose of a box that a
 face-switching MPPI controller pushes under quasi-static stick/slide contact —
 including turning it in place and routing around obstacles you click in.

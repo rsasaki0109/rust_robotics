@@ -14,7 +14,7 @@
 //! 3. **Verification**: a closure is accepted only if the inlier ratio, mean
 //!    residual, and correction size pass the gates; it then becomes a loop
 //!    edge and the whole graph is re-optimized with
-//!    [`optimize_pose_graph`].
+//!    [`optimize_pose_graph`](crate::pose_graph_optimization::optimize_pose_graph).
 //!
 //! The front end keeps running in its own (drifting) frame; only its relative
 //! motion between nodes is used, so optimized node poses never disturb the
@@ -23,7 +23,12 @@
 use nalgebra::{Matrix2, Matrix3, Vector2, Vector3};
 use rust_robotics_core::Pose2D;
 
-use crate::pose_graph_optimization::{optimize_pose_graph, Edge2D, Pose2DNode, PoseGraphConfig};
+use crate::pose_graph_optimization::{
+    optimize_pose_graph_warm, Edge2D, Pose2DNode, PoseGraphConfig,
+};
+
+/// Levenberg-Marquardt damping a fresh optimization starts from.
+const INITIAL_DAMPING: f64 = 1.0e-3;
 use crate::scan_to_map::{
     compose_pose, register_point_to_line, relative_pose, scan_points_with_normals,
     transform_scan_to_world, translational_observability, ScanRegistration, ScanToMapConfig,
@@ -87,9 +92,10 @@ pub struct LidarGraphSlamConfig {
     /// the current graph by more than `(xy [m], yaw [rad])`; consistent
     /// edges are kept and folded in by the next optimization.
     pub reoptimize_threshold: (f64, f64),
-    /// When `true`, [`LidarGraphSlam::update`] only marks the graph as needing
-    /// re-optimization and the caller spreads the work over frames with
-    /// [`LidarGraphSlam::optimize_step`] (for interactive applications).
+    /// When `true`, [`LidarGraphSlam::update`] only queues loop detection and
+    /// marks the graph as needing re-optimization; the caller spreads that
+    /// work over frames with [`LidarGraphSlam::background_step`] (for
+    /// interactive applications).
     pub deferred_optimization: bool,
     /// Back-end optimizer settings.
     pub pose_graph: PoseGraphConfig,
@@ -165,6 +171,32 @@ enum LoopVerification {
     Rejected,
 }
 
+/// Ambiguity re-registrations per [`LidarGraphSlam::background_step`].
+const AMBIGUITY_SEEDS_PER_STEP: usize = 2;
+
+/// A loop match that passed the gates, with what the ambiguity check needs.
+#[derive(Debug, Clone)]
+struct LoopCheck {
+    candidate: usize,
+    index: usize,
+    source: Vec<Vector2<f64>>,
+    target: Vec<Vector2<f64>>,
+    normals: Vec<Vector2<f64>>,
+    registration: ScanRegistration,
+    inlier_ratio: f64,
+    /// Ambiguity seeds already re-registered.
+    next_seed: usize,
+}
+
+/// Deferred loop detection for one node.
+#[derive(Debug, Clone)]
+struct LoopJob {
+    index: usize,
+    candidates: Vec<usize>,
+    next_candidate: usize,
+    check: Option<LoopCheck>,
+}
+
 #[derive(Debug, Clone)]
 struct Node {
     /// Optimized pose in the graph frame.
@@ -186,6 +218,14 @@ pub struct LidarGraphSlam {
     ambiguous_loop_rejections: usize,
     /// A loop edge disagreed with the graph and optimization has not converged.
     optimization_pending: bool,
+    /// Levenberg-Marquardt damping carried between [`Self::optimize_step`]
+    /// calls.
+    damping: f64,
+    /// Iterations spent on the pending optimization so far; it ends after
+    /// `pose_graph.max_iterations` like a one-shot [`Self::optimize`].
+    optimization_iterations: usize,
+    /// Nodes whose loop candidates still await verification (deferred mode).
+    loop_queue: std::collections::VecDeque<LoopJob>,
     /// Distance-weighted weak directions `Σ dₖ wₖ vₖ vₖᵀ` (front-end world
     /// frame) travelled since the last node without scan constraints.
     unobserved_translation: Matrix2<f64>,
@@ -204,6 +244,9 @@ impl LidarGraphSlam {
             loop_closures: Vec::new(),
             ambiguous_loop_rejections: 0,
             optimization_pending: false,
+            damping: INITIAL_DAMPING,
+            optimization_iterations: 0,
+            loop_queue: std::collections::VecDeque::new(),
             unobserved_translation: Matrix2::zeros(),
             unobserved_yaw_distance: 0.0,
         }
@@ -283,22 +326,21 @@ impl LidarGraphSlam {
         if self.is_new_node() {
             let index = self.add_node(scan_body);
             new_node = Some(index);
-            loop_closure = self.detect_loop(index);
-            if let Some(closure) = loop_closure {
-                let current =
-                    relative_pose(self.nodes[closure.from].pose, self.nodes[closure.to].pose);
-                let innovation = relative_pose(current, closure.relative);
-                let information = diagonal_information(self.config.loop_sigma);
-                self.add_edge(closure.from, closure.to, closure.relative, information);
-                self.loop_closures.push(closure);
-                let (xy, yaw) = self.config.reoptimize_threshold;
-                if innovation.x.hypot(innovation.y) > xy || innovation.yaw.abs() > yaw {
-                    if self.config.deferred_optimization {
-                        self.optimization_pending = true;
-                    } else {
-                        self.optimize();
-                        optimized = true;
-                    }
+            if self.config.deferred_optimization {
+                // Verified a little per frame by `background_step`.
+                let candidates = self.loop_candidates(index);
+                if !candidates.is_empty() {
+                    self.loop_queue.push_back(LoopJob {
+                        index,
+                        candidates,
+                        next_candidate: 0,
+                        check: None,
+                    });
+                }
+            } else {
+                loop_closure = self.detect_loop(index);
+                if let Some(closure) = loop_closure {
+                    optimized = self.accept_loop(closure);
                 }
             }
         }
@@ -394,8 +436,20 @@ impl LidarGraphSlam {
     }
 
     fn detect_loop(&mut self, index: usize) -> Option<LoopClosure> {
+        for candidate in self.loop_candidates(index) {
+            match self.verify_loop(candidate, index) {
+                LoopVerification::Accepted(closure) => return Some(closure),
+                LoopVerification::Ambiguous => self.ambiguous_loop_rejections += 1,
+                LoopVerification::Rejected => {}
+            }
+        }
+        None
+    }
+
+    /// Older nodes near node `index`, closest first.
+    fn loop_candidates(&self, index: usize) -> Vec<usize> {
         if index < self.config.loop_min_node_gap {
-            return None;
+            return Vec::new();
         }
         let current = self.nodes[index].pose;
         let radius_sq = self.config.loop_search_radius * self.config.loop_search_radius;
@@ -410,15 +464,11 @@ impl LidarGraphSlam {
             })
             .collect();
         candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
-
-        for (_, candidate) in candidates.into_iter().take(self.config.loop_max_candidates) {
-            match self.verify_loop(candidate, index) {
-                LoopVerification::Accepted(closure) => return Some(closure),
-                LoopVerification::Ambiguous => self.ambiguous_loop_rejections += 1,
-                LoopVerification::Rejected => {}
-            }
-        }
-        None
+        candidates
+            .into_iter()
+            .take(self.config.loop_max_candidates)
+            .map(|(_, candidate)| candidate)
+            .collect()
     }
 
     /// Coarse-to-fine point-to-line registration for loop verification.
@@ -445,32 +495,48 @@ impl LidarGraphSlam {
         registration.expect("correspondence schedule is non-empty")
     }
 
-    /// Whether a distinct alternative alignment scores nearly as well as `best`.
-    fn is_ambiguous(
-        &self,
-        source: &[Vector2<f64>],
-        target: &[Vector2<f64>],
-        normals: &[Vector2<f64>],
-        best: &ScanRegistration,
-    ) -> bool {
-        let best_inliers = best.correspondences as f64;
+    /// Seeds around the accepted alignment for the ambiguity check.
+    fn ambiguity_seeds(&self, best: &ScanRegistration) -> Vec<Pose2D> {
         self.config
             .loop_ambiguity_shifts
             .iter()
             .flat_map(|shift| [(*shift, 0.0), (-shift, 0.0), (0.0, *shift), (0.0, -shift)])
-            .any(|(dx, dy)| {
-                let seed = Pose2D::new(best.pose.x + dx, best.pose.y + dy, best.pose.yaw);
-                let alternative = self.register_loop(source, target, normals, seed);
-                let separation =
-                    (alternative.pose.x - best.pose.x).hypot(alternative.pose.y - best.pose.y);
-                separation > self.config.loop_ambiguity_separation
-                    && alternative.mean_residual <= self.config.loop_max_mean_residual
-                    && alternative.correspondences as f64
-                        >= self.config.loop_ambiguity_ratio * best_inliers
-            })
+            .map(|(dx, dy)| Pose2D::new(best.pose.x + dx, best.pose.y + dy, best.pose.yaw))
+            .collect()
+    }
+
+    /// Whether re-registering from any of `seeds` finds a distinct
+    /// alternative alignment that scores nearly as well as the accepted one.
+    fn is_ambiguous(&self, check: &LoopCheck, seeds: &[Pose2D]) -> bool {
+        let best = &check.registration;
+        let best_inliers = best.correspondences as f64;
+        seeds.iter().any(|seed| {
+            let alternative =
+                self.register_loop(&check.source, &check.target, &check.normals, *seed);
+            let separation =
+                (alternative.pose.x - best.pose.x).hypot(alternative.pose.y - best.pose.y);
+            separation > self.config.loop_ambiguity_separation
+                && alternative.mean_residual <= self.config.loop_max_mean_residual
+                && alternative.correspondences as f64
+                    >= self.config.loop_ambiguity_ratio * best_inliers
+        })
     }
 
     fn verify_loop(&self, candidate: usize, index: usize) -> LoopVerification {
+        let Some(check) = self.register_candidate(candidate, index) else {
+            return LoopVerification::Rejected;
+        };
+        if self.config.loop_ambiguity_check
+            && self.is_ambiguous(&check, &self.ambiguity_seeds(&check.registration))
+        {
+            return LoopVerification::Ambiguous;
+        }
+        LoopVerification::Accepted(self.closure(&check))
+    }
+
+    /// Registers node `index` against the submap around `candidate`;
+    /// `None` when there is too little data or the match fails the gates.
+    fn register_candidate(&self, candidate: usize, index: usize) -> Option<LoopCheck> {
         let front = &self.config.front_end;
         let first = candidate.saturating_sub(self.config.loop_map_neighbors);
         let last = (candidate + self.config.loop_map_neighbors).min(index - 1);
@@ -494,7 +560,7 @@ impl LidarGraphSlam {
         )
         .0;
         if source.len() < front.min_correspondences || target.len() < front.min_correspondences {
-            return LoopVerification::Rejected;
+            return None;
         }
 
         let seed = self.nodes[index].pose;
@@ -505,21 +571,113 @@ impl LidarGraphSlam {
             && registration.mean_residual <= self.config.loop_max_mean_residual
             && correction.x.hypot(correction.y) <= self.config.loop_max_correction_translation
             && correction.yaw.abs() <= self.config.loop_max_correction_yaw;
-        if !accepted {
-            return LoopVerification::Rejected;
-        }
-        if self.config.loop_ambiguity_check
-            && self.is_ambiguous(&source, &target, &normals, &registration)
-        {
-            return LoopVerification::Ambiguous;
-        }
-        LoopVerification::Accepted(LoopClosure {
-            from: candidate,
-            to: index,
-            relative: relative_pose(self.nodes[candidate].pose, registration.pose),
+        accepted.then_some(LoopCheck {
+            candidate,
+            index,
+            source,
+            target,
+            normals,
+            registration,
             inlier_ratio,
-            mean_residual: registration.mean_residual,
+            next_seed: 0,
         })
+    }
+
+    fn closure(&self, check: &LoopCheck) -> LoopClosure {
+        LoopClosure {
+            from: check.candidate,
+            to: check.index,
+            relative: relative_pose(self.nodes[check.candidate].pose, check.registration.pose),
+            inlier_ratio: check.inlier_ratio,
+            mean_residual: check.registration.mean_residual,
+        }
+    }
+
+    /// Adds an accepted loop edge and re-optimizes (now, or later when
+    /// deferred) if it disagrees with the graph. Returns whether it
+    /// optimized now.
+    fn accept_loop(&mut self, closure: LoopClosure) -> bool {
+        let current = relative_pose(self.nodes[closure.from].pose, self.nodes[closure.to].pose);
+        let innovation = relative_pose(current, closure.relative);
+        let information = diagonal_information(self.config.loop_sigma);
+        self.add_edge(closure.from, closure.to, closure.relative, information);
+        self.loop_closures.push(closure);
+        let (xy, yaw) = self.config.reoptimize_threshold;
+        if innovation.x.hypot(innovation.y) <= xy && innovation.yaw.abs() <= yaw {
+            return false;
+        }
+        if self.config.deferred_optimization {
+            if !self.optimization_pending {
+                self.damping = INITIAL_DAMPING;
+            }
+            // A new edge restarts the iteration budget.
+            self.optimization_iterations = 0;
+            self.optimization_pending = true;
+            false
+        } else {
+            self.optimize();
+            true
+        }
+    }
+
+    /// Runs one bounded unit of queued loop-detection work: one candidate
+    /// registration, or one batch of ambiguity re-registrations.
+    fn loop_step(&mut self) {
+        let Some(mut job) = self.loop_queue.pop_front() else {
+            return;
+        };
+        if let Some(mut check) = job.check.take() {
+            let seeds = self.ambiguity_seeds(&check.registration);
+            let end = (check.next_seed + AMBIGUITY_SEEDS_PER_STEP).min(seeds.len());
+            if self.is_ambiguous(&check, &seeds[check.next_seed..end]) {
+                self.ambiguous_loop_rejections += 1;
+            } else if end == seeds.len() {
+                let closure = self.closure(&check);
+                self.accept_loop(closure);
+                return; // This node is done: one closure per node.
+            } else {
+                check.next_seed = end;
+                job.check = Some(check);
+            }
+            self.loop_queue.push_front(job);
+            return;
+        }
+        let Some(&candidate) = job.candidates.get(job.next_candidate) else {
+            return; // No candidate left for this node.
+        };
+        job.next_candidate += 1;
+        if let Some(check) = self.register_candidate(candidate, job.index) {
+            if self.config.loop_ambiguity_check {
+                job.check = Some(check);
+            } else {
+                let closure = self.closure(&check);
+                self.accept_loop(closure);
+                return;
+            }
+        }
+        self.loop_queue.push_front(job);
+    }
+
+    /// Spreads deferred work over frames: each call either takes one small
+    /// step of queued loop verification (one registration, or two ambiguity
+    /// re-registrations) or, once no loop check is queued, runs at most
+    /// `max_iterations` optimizer iterations if a loop edge left the graph
+    /// inconsistent. Call once per frame; returns whether work remains.
+    pub fn background_step(&mut self, max_iterations: usize) -> bool {
+        // One kind of work per call keeps every call short; loop checks go
+        // first so new edges join the next optimization.
+        if self.loop_queue.is_empty() {
+            self.optimize_step(max_iterations);
+        } else {
+            self.loop_step();
+        }
+        self.background_pending()
+    }
+
+    /// Whether [`Self::background_step`] still has queued loop checks or a
+    /// pending optimization.
+    pub fn background_pending(&self) -> bool {
+        !self.loop_queue.is_empty() || self.optimization_pending
     }
 
     /// Re-optimizes the pose graph over all odometry and loop edges.
@@ -529,7 +687,7 @@ impl LidarGraphSlam {
     /// before reading the final trajectory.
     pub fn optimize(&mut self) {
         let config = self.config.pose_graph;
-        self.run_optimizer(&config);
+        self.run_optimizer(&config, INITIAL_DAMPING);
         self.optimization_pending = false;
     }
 
@@ -548,23 +706,30 @@ impl LidarGraphSlam {
                 max_iterations: max_iterations.max(1),
                 ..self.config.pose_graph
             };
-            self.optimization_pending = !self.run_optimizer(&config);
+            let (converged, damping) = self.run_optimizer(&config, self.damping);
+            self.damping = damping;
+            self.optimization_iterations += config.max_iterations;
+            // Inexact inner solves may never meet the convergence test;
+            // stop after the same budget a one-shot optimization gets.
+            self.optimization_pending =
+                !converged && self.optimization_iterations < self.config.pose_graph.max_iterations;
         }
         self.optimization_pending
     }
 
-    /// Optimizes the node poses in place; returns whether it converged.
-    fn run_optimizer(&mut self, config: &PoseGraphConfig) -> bool {
+    /// Optimizes the node poses in place from `damping`; returns whether it
+    /// converged and the damping it ended with.
+    fn run_optimizer(&mut self, config: &PoseGraphConfig, damping: f64) -> (bool, f64) {
         let initial: Vec<Pose2DNode> = self
             .nodes
             .iter()
             .map(|node| Pose2DNode::new(node.pose.x, node.pose.y, node.pose.yaw))
             .collect();
-        let result = optimize_pose_graph(&initial, &self.edges, config);
+        let (result, damping) = optimize_pose_graph_warm(&initial, &self.edges, config, damping);
         for (node, pose) in self.nodes.iter_mut().zip(result.poses) {
             node.pose = Pose2D::new(pose.x, pose.y, pose.yaw);
         }
-        result.converged
+        (result.converged, damping)
     }
 }
 
@@ -686,23 +851,28 @@ mod tests {
     }
 
     #[test]
-    fn deferred_optimization_spreads_the_work_over_frames() {
+    fn deferred_mode_spreads_loop_checks_and_optimization_over_frames() {
         let config = LidarGraphSlamConfig {
             deferred_optimization: true,
             ..loop_config()
         };
         let start = Pose2D::new(-1.0, -2.5, 0.0);
         let mut slam = LidarGraphSlam::new(config, start);
-        let (mut pending_frames, mut optimized_in_update) = (0, false);
-        let (truth, closures) = blind_loop(&mut slam, start, |slam, update| {
+        let (mut busy_frames, mut optimized_in_update, mut closures_in_update) = (0, false, 0);
+        let (truth, _) = blind_loop(&mut slam, start, |slam, update| {
             optimized_in_update |= update.optimized;
-            pending_frames += usize::from(slam.optimize_step(2));
+            closures_in_update += usize::from(update.loop_closure.is_some());
+            busy_frames += usize::from(slam.background_step(2));
         });
-        while slam.optimize_step(2) {}
+        while slam.background_step(2) {}
 
-        assert!(closures >= 1, "no loop closure accepted");
         assert!(!optimized_in_update, "update optimized despite deferral");
-        assert!(pending_frames >= 1, "optimization finished in one step");
+        assert_eq!(
+            closures_in_update, 0,
+            "update verified loops despite deferral"
+        );
+        assert!(!slam.loop_closures().is_empty(), "no loop closure accepted");
+        assert!(busy_frames >= 2, "the work did not spread over frames");
         let corrected = relative_pose(truth, slam.pose());
         assert!(
             corrected.x.hypot(corrected.y) < 0.05,
