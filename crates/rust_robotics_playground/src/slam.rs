@@ -1,14 +1,19 @@
-//! Interactive SLAM timeline demo: EKF-SLAM, FastSLAM, and ICP scan matching.
+//! Interactive SLAM timeline demo: EKF-SLAM, FastSLAM, ICP scan matching, and
+//! LiDAR graph SLAM with loop closure.
 
 use std::f64::consts::PI;
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::{DMatrix, Vector2, Vector3};
 use rand::{Rng, SeedableRng};
+use rust_robotics_core::Pose2D;
 use rust_robotics_slam::{
     ekf_slam::{ekf_slam_known_correspondences, EKFSLAMState},
     fastslam1::{create_particles, fastslam_update, get_best_particle},
     icp_matching::icp_matching,
+    lidar_graph_slam::LidarGraphSlamConfig,
+    lidar_loop_scenario::{run_corridor_loop, CorridorLoopConfig, CorridorLoopRun},
+    scan_to_map::{relative_pose, transform_scan_to_world},
 };
 
 const DT: f64 = 0.1;
@@ -16,6 +21,11 @@ const MAX_RANGE: f64 = 18.0;
 const WORLD_MIN: f64 = -1.0;
 const WORLD_MAX: f64 = 14.0;
 const STEPS: usize = 72;
+
+const LOOP_WORLD_X: (f64, f64) = (-16.0, 16.0);
+const LOOP_WORLD_Y: (f64, f64) = (-11.0, 11.0);
+const LOOP_FRAMES_PER_TICK: usize = 2;
+const LOOP_MAP_STRIDE: usize = 3;
 
 const LANDMARKS: [[f64; 2]; 6] = [
     [2.5, 1.5],
@@ -34,6 +44,7 @@ enum SlamKind {
     EkfSlam,
     FastSlam,
     Icp,
+    LoopClosure,
 }
 
 impl SlamKind {
@@ -42,6 +53,7 @@ impl SlamKind {
             Self::EkfSlam => "EKF-SLAM",
             Self::FastSlam => "FastSLAM 1.0",
             Self::Icp => "ICP Scan Matching",
+            Self::LoopClosure => "LiDAR Loop Closure",
         }
     }
 
@@ -50,6 +62,7 @@ impl SlamKind {
             Self::EkfSlam => "ekf",
             Self::FastSlam => "fastslam",
             Self::Icp => "icp",
+            Self::LoopClosure => "loop",
         }
     }
 
@@ -58,6 +71,7 @@ impl SlamKind {
             "ekf" => Some(Self::EkfSlam),
             "fastslam" => Some(Self::FastSlam),
             "icp" => Some(Self::Icp),
+            "loop" => Some(Self::LoopClosure),
             _ => None,
         }
     }
@@ -83,6 +97,10 @@ pub struct SlamDemo {
     ekf_frames: Vec<SlamFrame>,
     fastslam_frames: Vec<SlamFrame>,
     icp_frames: Vec<SlamFrame>,
+    /// Corridor-loop graph SLAM run, computed the first time the mode opens.
+    loop_run: Option<CorridorLoopRun>,
+    /// Render the loop-closure map at front-end poses (before correction).
+    show_front_end_map: bool,
 }
 
 fn normalize_angle(angle: f64) -> f64 {
@@ -316,6 +334,8 @@ impl Default for SlamDemo {
             ekf_frames,
             fastslam_frames,
             icp_frames,
+            loop_run: None,
+            show_front_end_map: false,
         }
     }
 }
@@ -325,37 +345,69 @@ impl SlamDemo {
         if let Some(kind) = crate::share::value(query, "algorithm").and_then(SlamKind::from_slug) {
             self.kind = kind;
         }
-        let max_idx = self.active_frames().len().saturating_sub(1);
+        // The loop-closure run is computed lazily, so its frame index is
+        // clamped when the mode is first drawn.
+        let max_idx = match self.kind {
+            SlamKind::LoopClosure => usize::MAX,
+            _ => self.active_frames().len().saturating_sub(1),
+        };
         if let Some(frame) = crate::share::bounded_usize(query, "frame", max_idx) {
             self.frame_idx = frame;
         }
         if let Some(playing) = crate::share::boolean(query, "playing") {
             self.playing = playing;
         }
+        if let Some(front_end) = crate::share::boolean(query, "frontend_map") {
+            self.show_front_end_map = front_end;
+        }
     }
 
     pub fn share_query(&self) -> String {
-        format!(
+        let mut query = format!(
             "tab=slam&algorithm={}&frame={}&playing={}",
             self.kind.slug(),
             self.frame_idx,
             u8::from(self.playing)
-        )
+        );
+        if self.kind == SlamKind::LoopClosure {
+            query.push_str(&format!(
+                "&frontend_map={}",
+                u8::from(self.show_front_end_map)
+            ));
+        }
+        query
     }
 
     fn active_frames(&self) -> &[SlamFrame] {
         match self.kind {
             SlamKind::EkfSlam => &self.ekf_frames,
             SlamKind::FastSlam => &self.fastslam_frames,
-            SlamKind::Icp => &self.icp_frames,
+            SlamKind::Icp | SlamKind::LoopClosure => &self.icp_frames,
+        }
+    }
+
+    fn loop_run(&mut self) -> &CorridorLoopRun {
+        self.loop_run.get_or_insert_with(|| {
+            run_corridor_loop(
+                &CorridorLoopConfig::default(),
+                LidarGraphSlamConfig::default(),
+            )
+        })
+    }
+
+    fn frame_count(&mut self) -> usize {
+        match self.kind {
+            SlamKind::LoopClosure => self.loop_run().frames.len(),
+            _ => self.active_frames().len(),
         }
     }
 
     fn reset(&mut self) {
         let kind = self.kind;
-        let fresh = Self::default();
-        *self = fresh;
+        let loop_run = self.loop_run.take();
+        *self = Self::default();
         self.kind = kind;
+        self.loop_run = loop_run;
     }
 
     fn world_rect(&self, ui: &egui::Ui) -> (Rect, f32) {
@@ -459,18 +511,170 @@ impl SlamDemo {
         }
     }
 
+    fn loop_world_rect(ui: &egui::Ui) -> Rect {
+        let (x_span, y_span) = (
+            LOOP_WORLD_X.1 - LOOP_WORLD_X.0,
+            LOOP_WORLD_Y.1 - LOOP_WORLD_Y.0,
+        );
+        let aspect = (y_span / x_span) as f32;
+        let width = ui
+            .available_width()
+            .min((ui.available_height() - 72.0).max(120.0) / aspect);
+        Rect::from_min_size(ui.cursor().min, Vec2::new(width, width * aspect))
+    }
+
+    fn loop_to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
+        let u = ((x - LOOP_WORLD_X.0) / (LOOP_WORLD_X.1 - LOOP_WORLD_X.0)) as f32;
+        let v = 1.0 - ((y - LOOP_WORLD_Y.0) / (LOOP_WORLD_Y.1 - LOOP_WORLD_Y.0)) as f32;
+        rect.min + Vec2::new(u * rect.width(), v * rect.height())
+    }
+
+    fn draw_trail(painter: &egui::Painter, rect: Rect, poses: &[Pose2D], stroke: Stroke) {
+        let points: Vec<Pos2> = poses
+            .iter()
+            .map(|pose| Self::loop_to_screen(rect, pose.x, pose.y))
+            .collect();
+        painter.add(egui::Shape::line(points, stroke));
+    }
+
+    fn draw_loop_scene(&mut self, ui: &mut egui::Ui) {
+        let frame_idx = self.frame_idx;
+        let show_front_end_map = self.show_front_end_map;
+        let rect = Self::loop_world_rect(ui);
+        let run = self.loop_run();
+        let frame = &run.frames[frame_idx];
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 0.0, Color32::from_rgb(18, 22, 28));
+
+        for wall in &run.walls {
+            painter.line_segment(
+                [
+                    Self::loop_to_screen(rect, wall.start.x, wall.start.y),
+                    Self::loop_to_screen(rect, wall.end.x, wall.end.y),
+                ],
+                Stroke::new(1.0_f32, Color32::from_rgb(90, 95, 105)),
+            );
+        }
+
+        let node_count = frame.node_poses.len();
+        let map_poses = if show_front_end_map {
+            &run.node_front_end[..node_count]
+        } else {
+            &frame.node_poses[..]
+        };
+        let map_color = if show_front_end_map {
+            Color32::from_rgba_unmultiplied(240, 150, 70, 120)
+        } else {
+            Color32::from_rgba_unmultiplied(100, 160, 255, 120)
+        };
+        for (pose, scan) in map_poses.iter().zip(&run.node_scans) {
+            for point in transform_scan_to_world(scan, *pose)
+                .iter()
+                .step_by(LOOP_MAP_STRIDE)
+            {
+                painter.circle_filled(Self::loop_to_screen(rect, point.x, point.y), 1.0, map_color);
+            }
+        }
+
+        let history = &run.frames[..=frame_idx];
+        let truth: Vec<Pose2D> = history.iter().map(|f| f.truth).collect();
+        let front_end: Vec<Pose2D> = history.iter().map(|f| f.front_end).collect();
+        Self::draw_trail(
+            &painter,
+            rect,
+            &truth,
+            Stroke::new(1.0_f32, Color32::from_rgba_unmultiplied(200, 200, 200, 110)),
+        );
+        Self::draw_trail(
+            &painter,
+            rect,
+            &front_end,
+            Stroke::new(1.5_f32, Color32::from_rgb(240, 150, 70)),
+        );
+        Self::draw_trail(
+            &painter,
+            rect,
+            &frame.node_poses,
+            Stroke::new(2.0_f32, Color32::from_rgb(90, 210, 140)),
+        );
+        for closure in run
+            .loop_closures
+            .iter()
+            .filter(|closure| closure.to < node_count)
+        {
+            let (a, b) = (frame.node_poses[closure.from], frame.node_poses[closure.to]);
+            painter.line_segment(
+                [
+                    Self::loop_to_screen(rect, a.x, a.y),
+                    Self::loop_to_screen(rect, b.x, b.y),
+                ],
+                Stroke::new(1.5_f32, Color32::from_rgb(230, 90, 220)),
+            );
+        }
+        for point in transform_scan_to_world(&frame.scan, frame.estimate) {
+            painter.circle_filled(
+                Self::loop_to_screen(rect, point.x, point.y),
+                1.4,
+                Color32::from_rgb(255, 90, 100),
+            );
+        }
+        for (pose, color) in [
+            (frame.front_end, Color32::from_rgb(240, 150, 70)),
+            (frame.estimate, Color32::from_rgb(90, 210, 140)),
+        ] {
+            Self::draw_robot(
+                &painter,
+                Self::loop_to_screen(rect, pose.x, pose.y),
+                pose.yaw,
+                color,
+                5.0,
+            );
+        }
+        ui.allocate_rect(rect, egui::Sense::hover());
+    }
+
+    fn loop_status(&mut self, ui: &mut egui::Ui) {
+        let frame_idx = self.frame_idx;
+        let run = self.loop_run();
+        let frame = &run.frames[frame_idx];
+        let error = |pose: Pose2D| {
+            let delta = relative_pose(frame.truth, pose);
+            delta.x.hypot(delta.y)
+        };
+        let closures = run
+            .loop_closures
+            .iter()
+            .filter(|closure| closure.to < frame.node_poses.len())
+            .count();
+        ui.label(format!(
+            "Nodes {} · loop closures {} · position error: scan-to-map {:.3} m, \
+             graph SLAM {:.3} m",
+            frame.node_poses.len(),
+            closures,
+            error(frame.front_end),
+            error(frame.estimate),
+        ));
+        ui.label(
+            "Gray: truth · orange: scan-to-map front end · green: pose graph · \
+             magenta: loop edges · red: current scan. The top corridor has no \
+             pillars, so the front end drifts there until the loop closes.",
+        );
+    }
+
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.label("Algorithm:");
-            for kind in [SlamKind::EkfSlam, SlamKind::FastSlam, SlamKind::Icp] {
+            for kind in [
+                SlamKind::EkfSlam,
+                SlamKind::FastSlam,
+                SlamKind::Icp,
+                SlamKind::LoopClosure,
+            ] {
                 if ui
                     .selectable_label(self.kind == kind, kind.label())
                     .clicked()
                 {
                     self.kind = kind;
-                    self.frame_idx = self
-                        .frame_idx
-                        .min(self.active_frames().len().saturating_sub(1));
                 }
             }
             ui.separator();
@@ -482,36 +686,64 @@ impl SlamDemo {
             }
         });
 
-        let max_idx = self.active_frames().len().saturating_sub(1);
+        let max_idx = self.frame_count().saturating_sub(1);
+        self.frame_idx = self.frame_idx.min(max_idx);
         ui.horizontal(|ui| {
             ui.label(format!("Step {}/{}", self.frame_idx, max_idx));
             ui.add(egui::Slider::new(&mut self.frame_idx, 0..=max_idx).text("timeline"));
         });
 
-        let frame = self.active_frames()[self.frame_idx].clone();
-        let (rect, side) = self.world_rect(ui);
-        self.draw_scene(ui, rect, side, &frame);
+        if self.kind == SlamKind::LoopClosure {
+            ui.horizontal(|ui| {
+                let first_loop = self.loop_run().first_loop_frame();
+                if let Some(first_loop) = first_loop {
+                    if ui.button("Jump to first loop closure").clicked() {
+                        self.frame_idx = first_loop;
+                        self.playing = false;
+                    }
+                    if ui.button("Just before it").clicked() {
+                        self.frame_idx = first_loop.saturating_sub(1);
+                        self.playing = false;
+                    }
+                }
+                ui.checkbox(
+                    &mut self.show_front_end_map,
+                    "Map at front-end poses (no loop closure)",
+                );
+            });
+            self.draw_loop_scene(ui);
+            ui.separator();
+            self.loop_status(ui);
+        } else {
+            let frame = self.active_frames()[self.frame_idx].clone();
+            let (rect, side) = self.world_rect(ui);
+            self.draw_scene(ui, rect, side, &frame);
 
-        ui.separator();
-        ui.horizontal(|ui| match self.kind {
-            SlamKind::EkfSlam | SlamKind::FastSlam => {
-                ui.label(format!(
-                    "Landmarks: {} true, {} estimated",
-                    frame.true_landmarks.len(),
-                    frame.est_landmarks.len()
-                ));
-            }
-            SlamKind::Icp => {
-                ui.label(format!(
-                    "ICP mean error: {:.4} m/point  (prev=blue, curr=red, aligned=green)",
-                    frame.icp_error
-                ));
-            }
-        });
+            ui.separator();
+            ui.horizontal(|ui| match self.kind {
+                SlamKind::EkfSlam | SlamKind::FastSlam => {
+                    ui.label(format!(
+                        "Landmarks: {} true, {} estimated",
+                        frame.true_landmarks.len(),
+                        frame.est_landmarks.len()
+                    ));
+                }
+                SlamKind::Icp | SlamKind::LoopClosure => {
+                    ui.label(format!(
+                        "ICP mean error: {:.4} m/point  (prev=blue, curr=red, aligned=green)",
+                        frame.icp_error
+                    ));
+                }
+            });
+        }
 
+        let (advance, delay_ms) = match self.kind {
+            SlamKind::LoopClosure => (LOOP_FRAMES_PER_TICK, 50),
+            _ => (1, 120),
+        };
         if self.playing && self.frame_idx < max_idx {
-            self.frame_idx += 1;
-            ctx.request_repaint_after(std::time::Duration::from_millis(120));
+            self.frame_idx = (self.frame_idx + advance).min(max_idx);
+            ctx.request_repaint_after(std::time::Duration::from_millis(delay_ms));
         } else if self.frame_idx >= max_idx {
             self.playing = false;
         }
@@ -536,5 +768,24 @@ mod tests {
         assert_eq!(restored.kind, SlamKind::Icp);
         assert_eq!(restored.frame_idx, 17);
         assert!(restored.playing);
+    }
+
+    #[test]
+    fn loop_closure_share_query_restores_without_running_the_scenario() {
+        let demo = SlamDemo {
+            kind: SlamKind::LoopClosure,
+            frame_idx: 321,
+            show_front_end_map: true,
+            ..SlamDemo::default()
+        };
+        let query = demo.share_query();
+        assert!(query.contains("algorithm=loop"));
+        assert!(query.contains("frontend_map=1"));
+        let mut restored = SlamDemo::default();
+        restored.apply_share_query(&query);
+        assert_eq!(restored.kind, SlamKind::LoopClosure);
+        assert_eq!(restored.frame_idx, 321);
+        assert!(restored.show_front_end_map);
+        assert!(restored.loop_run.is_none());
     }
 }

@@ -1317,10 +1317,13 @@ below is library work that does not depend on them.
    re-optimization, degeneracy-aware odometry edges, and front-end
    degeneracy projection. `headless_lidar_loop_closure` (CI-gated): node RMSE
    10.90 m raw odometry / 0.302 m scan-to-map / 0.012 m with loop closure on a
-   98 m corridor loop with a pillar-free 24 m corridor. Remaining: playground
-   SLAM-tab mode that scrubs before/after the closure.
-6. **Scan-to-map gallery GIF** — submap growth + three trajectories, via the
-   `gif` feature, added to `scripts/generate_gallery_gifs.sh`.
+   98 m corridor loop with a pillar-free 24 m corridor. Playground SLAM-tab
+   **LiDAR Loop Closure** mode landed 2026-10-08 (lazy-computed run, jump to
+   first closure, front-end vs loop-closed map toggle, share links).
+6. ~~**Loop-closure gallery GIF**~~ **Done (2026-10-08).**
+   `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
+   added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via
+   `rust_robotics_slam::lidar_loop_scenario`.
 7. **0.3.0 API coherence, continued** — migrate remaining Tier 1 planners /
    trackers / estimators onto `PathPlanner` / `PathTracker` /
    `StateEstimator` per `docs/api_traits.md`.

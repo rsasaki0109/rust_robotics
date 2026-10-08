@@ -168,7 +168,7 @@ impl PlaygroundApp {
                 "Arrow keys drive the robot; compare Particle Filter vs EKF under sensor noise"
             }
             PlaygroundTab::Slam => {
-                "Scrub the timeline to replay EKF-SLAM, FastSLAM, or ICP scan matching on a canned loop"
+                "Scrub the timeline to replay EKF-SLAM, FastSLAM, ICP, or LiDAR graph SLAM loop closure"
             }
             PlaygroundTab::AdmmFormation => {
                 "Receding-horizon ADMM formation: four agents track a noisy moving goal past an L-corner"

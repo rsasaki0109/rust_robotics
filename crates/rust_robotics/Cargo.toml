@@ -411,6 +411,11 @@ path = "examples/render_gif_rrt.rs"
 required-features = ["planning", "gif"]
 
 [[example]]
+name = "render_gif_lidar_loop_closure"
+path = "examples/render_gif_lidar_loop_closure.rs"
+required-features = ["slam", "gif"]
+
+[[example]]
 name = "render_gif_slam"
 path = "examples/render_gif_slam.rs"
 required-features = ["slam", "gif"]

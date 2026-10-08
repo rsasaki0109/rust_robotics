@@ -207,6 +207,11 @@ impl LidarGraphSlam {
         self.nodes.iter().map(|node| node.front_end_pose).collect()
     }
 
+    /// Body-frame scan stored with node `index`, if it exists.
+    pub fn node_scan(&self, index: usize) -> Option<&[Vector2<f64>]> {
+        self.nodes.get(index).map(|node| node.scan.as_slice())
+    }
+
     /// Accepted loop closures, oldest first.
     pub fn loop_closures(&self) -> &[LoopClosure] {
         &self.loop_closures

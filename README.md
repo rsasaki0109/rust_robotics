@@ -41,6 +41,9 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
   <tr>
     <td colspan="3" align="center"><a href="#pose-graph-optimization"><img src="./media/gallery/factor_graph_optimization.gif" width="540" alt="Block-sparse factor graph optimization"/></a><br/><b>Block-sparse Factor Graph Optimization</b></td>
   </tr>
+  <tr>
+    <td colspan="3" align="center"><a href="#loop-closure-lidar-graph-slam"><img src="./media/gallery/lidar_loop_closure.gif" width="540" alt="LiDAR graph SLAM loop closure on a corridor loop"/></a><br/><b>LiDAR Loop Closure (scan-to-map + pose graph)</b></td>
+  </tr>
 </table>
 
 Every animation above is rendered by the library itself — regenerate them all with
@@ -143,10 +146,11 @@ cargo run -p rust_robotics_playground
 ```
 
 Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
-Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP timelines, or **ADMM Formation**
-for the multi-agent horizon-consensus demo. **Controller Arena** replays Pure
-Pursuit, Stanley, and LQR Steer under an identical path, initial state, clock,
-and actuation model, with shareable speed and turn-response settings.
+Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
+timelines, or **ADMM Formation** for the multi-agent horizon-consensus demo.
+**Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
+identical path, initial state, clock, and actuation model, with shareable speed
+and turn-response settings.
 
 <img src="./docs/assets/controller-arena.png" width="900" alt="Controller Arena comparing Pure Pursuit, Stanley, and LQR Steer">
 
@@ -706,6 +710,14 @@ cargo run -p rust_robotics --example headless_scan_to_map --no-default-features 
 ```
 
 ### Loop Closure (LiDAR Graph SLAM)
+
+<img src="./media/gallery/lidar_loop_closure.gif" width="640px">
+
+Gray: ground truth, orange: scan-to-map front end, green: pose-graph nodes,
+magenta: loop edges, blue: map from node scans, red: current scan. The front
+end drifts in the pillar-free top corridor; the animation pauses on each
+re-optimization so the correction is visible. Also available as the
+**LiDAR Loop Closure** mode of the playground's SLAM tab.
 
 `LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
 end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
