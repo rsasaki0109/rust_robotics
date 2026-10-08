@@ -52,6 +52,7 @@ All tabs encode their important configuration in share links:
 
 - Grid Planners: planner, endpoints, and obstacle map
 - Sampling Planners: planner, start, goal, and circular obstacles
+- Parking: the car's start pose and the goal pose
 - Localization: filter and measurement-noise scale
 - SLAM: algorithm, timeline frame, and playback state
 - ADMM Formation: noise, visible runs, timeline frame, and playback state

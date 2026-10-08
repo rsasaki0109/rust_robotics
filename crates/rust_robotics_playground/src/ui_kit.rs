@@ -219,6 +219,7 @@ mod tests {
             include_str!("controller_arena.rs"),
             include_str!("grid_planners.rs"),
             include_str!("localization.rs"),
+            include_str!("parking.rs"),
             include_str!("pushing.rs"),
             include_str!("sampling.rs"),
             include_str!("slam.rs"),

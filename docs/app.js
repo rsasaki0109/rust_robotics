@@ -665,8 +665,7 @@ const playTiles = [
     title: "Drive LiDAR SLAM",
     text: "Map a world live, close loops, navigate, explore, get kidnapped.",
     image: "assets/playground/drive.png",
-    link: "playground/?tab=slam&algorithm=drive",
-    featured: true
+    link: "playground/?tab=slam&algorithm=drive"
   },
   {
     title: "Grid planners",
@@ -679,6 +678,12 @@ const playTiles = [
     text: "Watch RRT, RRT*, Informed RRT*, and PRM explore.",
     image: "assets/playground/sampling.png",
     link: "playground/?tab=sampling"
+  },
+  {
+    title: "Parking",
+    text: "Hybrid A* parks a car, reversing where it has to.",
+    image: "assets/playground/parking.png",
+    link: "playground/?tab=parking"
   },
   {
     title: "Localization",
@@ -748,7 +753,7 @@ function renderTiles() {
   const root = document.getElementById("play-tiles");
   root.replaceChildren(
     ...playTiles.map((tile) => {
-      const link = element("a", tile.featured ? "tile featured" : "tile");
+      const link = element("a", "tile");
       link.href = tile.link;
       const body = element("div", "tile-body");
       body.append(element("h3", "", tile.title), element("p", "", tile.text));

@@ -166,15 +166,6 @@ h2 {
   gap: 16px;
 }
 
-.tile.featured {
-  grid-column: span 2;
-}
-
-/* Twice as wide, same height as its neighbors. */
-.tile.featured img {
-  aspect-ratio: 33 / 10;
-  object-position: center;
-}
 
 .tile {
   border: 1px solid var(--line);
@@ -193,7 +184,7 @@ h2 {
   width: 100%;
   aspect-ratio: 16 / 10;
   object-fit: cover;
-  object-position: top;
+  object-position: center;
   background: #0a0d12;
 }
 
@@ -335,14 +326,6 @@ h2 {
 
   .tiles {
     grid-template-columns: 1fr;
-  }
-
-  .tile.featured {
-    grid-column: auto;
-  }
-
-  .tile.featured img {
-    aspect-ratio: 16 / 10;
   }
 
   .cards {

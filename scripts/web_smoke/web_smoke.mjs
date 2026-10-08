@@ -45,6 +45,7 @@ const browser = await chromium.launch({
 const cases = [
   { name: 'grid', query: 'tab=grid' },
   { name: 'sampling', query: 'tab=sampling&planner=informed', clickScene: true },
+  { name: 'parking', query: 'tab=parking', clickScene: true },
   { name: 'localization', query: 'tab=localization' },
   { name: 'slam-replay', query: 'tab=slam&algorithm=loop' },
   { name: 'drive', query: 'tab=slam&algorithm=drive&world=hall&people=3', clickScene: true },

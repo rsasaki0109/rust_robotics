@@ -1477,6 +1477,9 @@ impl SlamDriveDemo {
             if (factor - 1.0).abs() > 1e-4 {
                 let anchor = response.hover_pos().unwrap_or(rect.center());
                 view.zoom_at(rect, anchor, factor);
+                // Zooming toward a spot means looking there, not at the robot
+                // (the Follow button turns following back on).
+                view.follow = false;
                 // The scene used the wheel: do not also scroll the page.
                 ui.input_mut(|input| input.smooth_scroll_delta = Vec2::ZERO);
             }
@@ -2275,9 +2278,14 @@ mod tests {
         let map = demo.last_map_rect.expect("map drawn");
         assert!(map.width() > full.width() * 1.2, "{map:?} vs {full:?}");
 
+        // The spot under the wheel stayed put (no jump to the robot).
+        let spot = to_world(full, over);
+        let now = to_screen(map, spot.x, spot.y);
+        assert!((now - over).length() < 2.0, "{spot:?} moved to {now:?}");
+        assert!(!demo.map_view.follow);
+
         // A tap on the zoomed map sets the goal under the finger.
-        let target = to_screen(map, -12.0, -8.5);
-        assert!(full.contains(target), "goal off screen at {target:?}");
+        let target = over + Vec2::new(40.0, -30.0);
         let button = |pos, pressed| egui::Event::PointerButton {
             pos,
             button: egui::PointerButton::Primary,

@@ -175,10 +175,66 @@ impl HybridAStarPath {
     }
 }
 
+/// Rectangular footprint of a car, measured from the rear axle (the point
+/// the planner's poses refer to).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VehicleFootprint {
+    /// Rear axle to front bumper \[m\].
+    pub front: f64,
+    /// Rear axle to rear bumper \[m\].
+    pub rear: f64,
+    /// Overall width \[m\].
+    pub width: f64,
+}
+
+impl VehicleFootprint {
+    /// Circles `(offset along the heading from the rear axle, radius)` that
+    /// together cover the rectangle: one per width-sized slice of its length.
+    ///
+    /// At most 16 circles; a degenerate footprint (non-positive width or
+    /// length) gets a single circle.
+    pub fn covering_circles(&self) -> Vec<(f64, f64)> {
+        let length = (self.front + self.rear).max(0.0);
+        let n = if self.width > 0.0 && length > 0.0 {
+            ((length / self.width).ceil() as usize).clamp(1, 16)
+        } else {
+            1
+        };
+        let slice = length / n as f64;
+        let radius = (slice / 2.0).hypot(self.width / 2.0);
+        (0..n)
+            .map(|i| (-self.rear + (i as f64 + 0.5) * slice, radius))
+            .collect()
+    }
+
+    fn validate(&self) -> RoboticsResult<()> {
+        let ok = |v: f64| v.is_finite() && v >= 0.0;
+        if !ok(self.front) || !ok(self.rear) || !(self.width.is_finite() && self.width > 0.0) {
+            return Err(RoboticsError::InvalidParameter(format!(
+                "invalid vehicle footprint {self:?}"
+            )));
+        }
+        if self.front + self.rear <= 0.0 {
+            return Err(RoboticsError::InvalidParameter(
+                "vehicle footprint must have a positive length".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Hybrid A* path planner
 pub struct HybridAStarPlanner {
     config: HybridAStarConfig,
     grid_map: GridMap,
+    /// Offsets along the heading of the collision circles' centers; just
+    /// the rear axle (`[0.0]`) for a round robot.
+    circle_offsets: Vec<f64>,
+    /// Finer grid for collision checks of a vehicle footprint (the search
+    /// grid is too coarse to place a car's corners).
+    collision_map: Option<GridMap>,
+    /// Search budget: node expansions before giving up.
+    max_expansions: usize,
     /// Precomputed holonomic heuristic (cost from each grid cell to goal)
     h_map: Vec<Vec<f64>>,
     goal_x: i32,
@@ -194,10 +250,55 @@ impl HybridAStarPlanner {
         Ok(Self {
             config,
             grid_map,
+            circle_offsets: vec![0.0],
+            collision_map: None,
+            max_expansions: usize::MAX,
             h_map: Vec::new(),
             goal_x: 0,
             goal_y: 0,
         })
+    }
+
+    /// A planner for a car with a rectangular `footprint`: every pose is
+    /// checked with circles covering the car instead of one circle of
+    /// `config.robot_radius` at the rear axle (which is ignored).
+    pub fn with_vehicle(
+        ox: &[f64],
+        oy: &[f64],
+        config: HybridAStarConfig,
+        footprint: VehicleFootprint,
+    ) -> RoboticsResult<Self> {
+        footprint.validate()?;
+        let circles = footprint.covering_circles();
+        let radius = circles[0].1;
+        let mut planner = Self::new(
+            ox,
+            oy,
+            HybridAStarConfig {
+                robot_radius: radius,
+                ..config
+            },
+        )?;
+        // Circle centers are looked up in the cell they round to, up to half
+        // a cell diagonal away: check them on a finer grid inflated by that
+        // much more, so the car's corners never reach an obstacle.
+        let resolution = (planner.config.xy_resolution / 5.0).max(0.05);
+        planner.collision_map = Some(GridMap::try_new(
+            ox,
+            oy,
+            resolution,
+            radius + resolution * std::f64::consts::SQRT_2 / 2.0,
+        )?);
+        planner.circle_offsets = circles.into_iter().map(|(offset, _)| offset).collect();
+        Ok(planner)
+    }
+
+    /// Gives up (with an error) after `max_expansions` node expansions, so an
+    /// unreachable goal fails fast instead of searching the whole state
+    /// space.
+    pub fn with_max_expansions(mut self, max_expansions: usize) -> Self {
+        self.max_expansions = max_expansions.max(1);
+        self
     }
 
     /// Plan a path from start pose to goal pose
@@ -210,6 +311,19 @@ impl HybridAStarPlanner {
         gy: f64,
         gyaw: f64,
     ) -> RoboticsResult<HybridAStarPath> {
+        // The start and goal themselves must be free, or nothing can be
+        // planned (checked before the costly heuristic map).
+        if !self.verify_path(&[sx], &[sy], &[syaw]) {
+            return Err(RoboticsError::PlanningError(
+                "Hybrid A*: the start pose collides".to_string(),
+            ));
+        }
+        if !self.verify_path(&[gx], &[gy], &[gyaw]) {
+            return Err(RoboticsError::PlanningError(
+                "Hybrid A*: the goal pose collides".to_string(),
+            ));
+        }
+
         // Compute grid indices for goal
         self.goal_x = self.grid_map.calc_x_index(gx);
         self.goal_y = self.grid_map.calc_y_index(gy);
@@ -267,6 +381,11 @@ impl HybridAStarPlanner {
         let mut iteration = 0;
 
         while let Some(current_priority) = open_set.pop() {
+            if iteration >= self.max_expansions {
+                return Err(RoboticsError::PlanningError(
+                    "Hybrid A*: search budget exhausted".to_string(),
+                ));
+            }
             let current_idx = current_priority.index;
             let current_key = self.calc_hybrid_index(&node_storage[current_idx]);
 
@@ -434,7 +553,7 @@ impl HybridAStarPlanner {
         }
 
         // Collision check
-        if !self.verify_path(&x_list, &y_list) {
+        if !self.verify_path(&x_list, &y_list, &yaw_list) {
             return None;
         }
 
@@ -478,13 +597,18 @@ impl HybridAStarPlanner {
         })
     }
 
-    /// Verify that all points in a path are collision-free
-    fn verify_path(&self, x_list: &[f64], y_list: &[f64]) -> bool {
-        for (&x, &y) in x_list.iter().zip(y_list.iter()) {
-            let ix = self.grid_map.calc_x_index(x);
-            let iy = self.grid_map.calc_y_index(y);
-            if !self.grid_map.is_valid(ix, iy) {
-                return false;
+    /// Verify that all poses in a path are collision-free (every collision
+    /// circle of the vehicle at every pose).
+    fn verify_path(&self, x_list: &[f64], y_list: &[f64], yaw_list: &[f64]) -> bool {
+        let map = self.collision_map.as_ref().unwrap_or(&self.grid_map);
+        for ((&x, &y), &yaw) in x_list.iter().zip(y_list).zip(yaw_list) {
+            let (s, c) = yaw.sin_cos();
+            for &offset in &self.circle_offsets {
+                let ix = map.calc_x_index(x + offset * c);
+                let iy = map.calc_y_index(y + offset * s);
+                if !map.is_valid(ix, iy) {
+                    return false;
+                }
             }
         }
         true
@@ -500,7 +624,9 @@ impl HybridAStarPlanner {
         let gy = *goal.y_list.last().unwrap();
         let gyaw = *goal.yaw_list.last().unwrap();
 
-        let result = reeds_shepp_path::reeds_shepp_path_planning(
+        // Cheapest collision-free Reeds-Shepp path, counting each gear
+        // change like the search does.
+        let mut candidates = reeds_shepp_path::reeds_shepp_paths(
             sx,
             sy,
             syaw,
@@ -510,31 +636,17 @@ impl HybridAStarPlanner {
             self.config.max_curvature,
             self.config.step_size,
         );
-
-        let (path_x, path_y, path_yaw, _ctypes, _lengths) = result?;
-
-        if path_x.is_empty() {
-            return None;
-        }
-
-        // Collision check along the Reeds-Shepp path
-        if !self.verify_path(&path_x, &path_y) {
-            return None;
-        }
-
-        // Build directions from consecutive positions
-        let directions: Vec<i32> = path_yaw
-            .windows(2)
-            .map(|w| {
-                let diff = pi_2_pi(w[1] - w[0]);
-                if diff < -1e-6 {
-                    -1
-                } else {
-                    1
-                }
-            })
-            .chain(std::iter::once(1))
-            .collect();
+        let arriving = if current.direction { 1 } else { -1 };
+        let cost = |path: &reeds_shepp_path::Path| {
+            let switches = path.directions.windows(2).filter(|w| w[0] != w[1]).count()
+                + usize::from(path.directions.first().is_some_and(|&d| d != arriving));
+            path.l + self.config.switch_back_cost * switches as f64
+        };
+        candidates.sort_by(|a, b| cost(a).total_cmp(&cost(b)));
+        let path = candidates
+            .into_iter()
+            .find(|path| !path.x.is_empty() && self.verify_path(&path.x, &path.y, &path.yaw))?;
+        let (path_x, path_y, path_yaw, directions) = (path.x, path.y, path.yaw, path.directions);
 
         let last_x = *path_x.last().unwrap();
         let last_y = *path_y.last().unwrap();
@@ -848,6 +960,171 @@ mod tests {
             "Path end too far from goal: dist={}",
             goal_dist
         );
+    }
+
+    /// A narrow parking street: walls, a row of parked cars with one gap.
+    fn parking_street() -> (Vec<f64>, Vec<f64>) {
+        let (mut ox, mut oy) = create_boundary_obstacles(0.0, 30.0, 0.0, 14.0, 0.25);
+        // Parked cars 4.6 m long along the bottom curb, a 7 m gap at x 12..19.
+        for x0 in [1.0, 6.0, 20.0, 25.0] {
+            let mut x = x0;
+            while x <= x0 + 4.6 {
+                let mut y = 0.5;
+                while y <= 2.4 {
+                    ox.push(x);
+                    oy.push(y);
+                    y += 0.25;
+                }
+                x += 0.25;
+            }
+        }
+        (ox, oy)
+    }
+
+    fn car() -> VehicleFootprint {
+        VehicleFootprint {
+            front: 3.6,
+            rear: 1.0,
+            width: 1.9,
+        }
+    }
+
+    fn parking_config() -> HybridAStarConfig {
+        HybridAStarConfig {
+            xy_resolution: 0.5,
+            yaw_resolution: PI / 36.0,
+            wheelbase: 2.7,
+            max_steer: 0.6,
+            n_steer: 6,
+            step_size: 0.25,
+            max_curvature: 0.6_f64.tan() / 2.7,
+            switch_back_cost: 5.0,
+            analytic_expansion_interval: 3,
+            ..HybridAStarConfig::default()
+        }
+    }
+
+    /// Distance from `p` to the nearest obstacle point.
+    fn clearance(ox: &[f64], oy: &[f64], p: (f64, f64)) -> f64 {
+        ox.iter()
+            .zip(oy)
+            .map(|(x, y)| (x - p.0).hypot(y - p.1))
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    #[test]
+    fn degenerate_footprints_do_not_blow_up() {
+        let flat = VehicleFootprint {
+            front: 3.6,
+            rear: 1.0,
+            width: 0.0,
+        };
+        assert_eq!(flat.covering_circles().len(), 1);
+        let thin = VehicleFootprint {
+            width: 1e-6,
+            ..flat
+        };
+        assert!(thin.covering_circles().len() <= 16);
+        let (ox, oy) = parking_street();
+        assert!(HybridAStarPlanner::with_vehicle(&ox, &oy, parking_config(), flat).is_err());
+    }
+
+    #[test]
+    fn covering_circles_cover_the_car() {
+        let car = car();
+        let circles = car.covering_circles();
+        // Every corner and edge point of the rectangle is inside a circle.
+        for k in 0..=40 {
+            let along = -car.rear + (car.front + car.rear) * k as f64 / 40.0;
+            for side in [-car.width / 2.0, car.width / 2.0] {
+                assert!(
+                    circles
+                        .iter()
+                        .any(|&(c, r)| (along - c).hypot(side) <= r + 1e-9),
+                    "({along}, {side}) uncovered"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn parallel_parks_into_the_gap_without_touching_parked_cars() {
+        let (ox, oy) = parking_street();
+        let mut planner = HybridAStarPlanner::with_vehicle(&ox, &oy, parking_config(), car())
+            .unwrap()
+            .with_max_expansions(20_000);
+        // Driving along the street, then into the gap between parked cars.
+        let path = planner.plan(5.0, 7.0, 0.0, 14.0, 1.5, 0.0).expect("path");
+        let end = path.len() - 1;
+        assert!((path.x[end] - 14.0).abs() < 0.6 && (path.y[end] - 1.5).abs() < 0.6);
+        // The car's corners stay clear of every obstacle point.
+        let car = car();
+        for i in 0..path.len() {
+            let (s, c) = path.yaw[i].sin_cos();
+            for (along, side) in [
+                (car.front, car.width / 2.0),
+                (car.front, -car.width / 2.0),
+                (-car.rear, car.width / 2.0),
+                (-car.rear, -car.width / 2.0),
+            ] {
+                let corner = (
+                    path.x[i] + along * c - side * s,
+                    path.y[i] + along * s + side * c,
+                );
+                assert!(
+                    clearance(&ox, &oy, corner) > 0.05,
+                    "corner {corner:?} hits at pose {i}"
+                );
+            }
+        }
+        // Directions agree with the motion: every step goes along the
+        // heading for +1 and against it for -1.
+        for i in 0..end {
+            let along = (path.x[i + 1] - path.x[i]) * path.yaw[i].cos()
+                + (path.y[i + 1] - path.y[i]) * path.yaw[i].sin();
+            if along.abs() > 1e-6 {
+                assert_eq!(
+                    along.signum() as i32,
+                    path.directions[i],
+                    "direction at {i}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_straight_goal_ahead_needs_no_reversing() {
+        let (ox, oy) = parking_street();
+        let mut planner = HybridAStarPlanner::with_vehicle(&ox, &oy, parking_config(), car())
+            .unwrap()
+            .with_max_expansions(20_000);
+        let path = planner.plan(3.0, 8.0, 0.0, 25.0, 8.0, 0.0).expect("path");
+        assert!(
+            path.directions.iter().all(|&d| d == 1),
+            "{:?}",
+            path.directions
+        );
+    }
+
+    #[test]
+    fn an_unreachable_goal_fails_within_the_budget() {
+        let (ox, oy) = parking_street();
+        let mut planner = HybridAStarPlanner::with_vehicle(&ox, &oy, parking_config(), car())
+            .unwrap()
+            .with_max_expansions(500);
+        // Inside a parked car.
+        assert!(planner.plan(5.0, 7.0, 0.0, 3.0, 1.5, 0.0).is_err());
+        // Free but walled-in pose: a gap far too short for the car.
+        let mut too_tight = parking_street();
+        for y in [1.0, 2.0] {
+            too_tight.0.push(16.0);
+            too_tight.1.push(y);
+        }
+        let mut planner =
+            HybridAStarPlanner::with_vehicle(&too_tight.0, &too_tight.1, parking_config(), car())
+                .unwrap()
+                .with_max_expansions(500);
+        assert!(planner.plan(5.0, 7.0, 0.0, 14.0, 1.5, 0.0).is_err());
     }
 
     #[test]

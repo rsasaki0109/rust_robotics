@@ -5,6 +5,7 @@ use crate::controller_arena::ControllerArenaDemo;
 use crate::engagement::Experiment;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
+use crate::parking::ParkingDemo;
 use crate::pushing::PushingDemo;
 use crate::sampling::SamplingDemo;
 use crate::slam::SlamDemo;
@@ -13,6 +14,7 @@ use crate::slam::SlamDemo;
 enum PlaygroundTab {
     GridPlanners,
     Sampling,
+    Parking,
     Localization,
     Slam,
     AdmmFormation,
@@ -24,6 +26,7 @@ pub struct PlaygroundApp {
     tab: PlaygroundTab,
     grid_demo: GridPlannerDemo,
     sampling_demo: SamplingDemo,
+    parking_demo: ParkingDemo,
     localization_demo: LocalizationDemo,
     slam_demo: SlamDemo,
     admm_demo: AdmmFormationDemo,
@@ -46,6 +49,8 @@ impl PlaygroundApp {
         grid_demo.apply_share_query(&query);
         let mut sampling_demo = SamplingDemo::default();
         sampling_demo.apply_share_query(&query);
+        let mut parking_demo = ParkingDemo::default();
+        parking_demo.apply_share_query(&query);
         let mut controller_arena_demo = ControllerArenaDemo::default();
         controller_arena_demo.apply_share_query(&query);
         let mut localization_demo = LocalizationDemo::default();
@@ -66,6 +71,7 @@ impl PlaygroundApp {
             tab,
             grid_demo,
             sampling_demo,
+            parking_demo,
             localization_demo,
             slam_demo,
             admm_demo,
@@ -86,6 +92,7 @@ impl PlaygroundApp {
         match tab {
             PlaygroundTab::GridPlanners => "Grid Planners",
             PlaygroundTab::Sampling => "Sampling Planners",
+            PlaygroundTab::Parking => "Parking",
             PlaygroundTab::Localization => "Localization",
             PlaygroundTab::Slam => "SLAM",
             PlaygroundTab::AdmmFormation => "ADMM Formation",
@@ -98,6 +105,7 @@ impl PlaygroundApp {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.share_query(),
             PlaygroundTab::Sampling => self.sampling_demo.share_query(),
+            PlaygroundTab::Parking => self.parking_demo.share_query(),
             PlaygroundTab::Localization => self.localization_demo.share_query(),
             PlaygroundTab::Slam => self.slam_demo.share_query(),
             PlaygroundTab::AdmmFormation => self.admm_demo.share_query(),
@@ -116,6 +124,7 @@ impl PlaygroundApp {
         }
         self.grid_demo.apply_share_query(query);
         self.sampling_demo.apply_share_query(query);
+        self.parking_demo.apply_share_query(query);
         self.localization_demo.apply_share_query(query);
         self.slam_demo.apply_share_query(query);
         self.admm_demo.apply_share_query(query);
@@ -215,6 +224,7 @@ impl PlaygroundApp {
             PlaygroundTab::Sampling => {
                 "Watch RRT, RRT*, Informed RRT*, and PRM explore around obstacles."
             }
+            PlaygroundTab::Parking => "Hybrid A* parks a car, reversing where it has to.",
             PlaygroundTab::Localization => {
                 "Particle filter vs EKF: steer the robot and watch the estimate."
             }
@@ -237,6 +247,7 @@ impl PlaygroundTab {
         match value {
             "grid" => Some(Self::GridPlanners),
             "sampling" => Some(Self::Sampling),
+            "parking" => Some(Self::Parking),
             "localization" => Some(Self::Localization),
             "slam" => Some(Self::Slam),
             "admm" => Some(Self::AdmmFormation),
@@ -247,9 +258,10 @@ impl PlaygroundTab {
     }
 }
 
-const TABS: [PlaygroundTab; 7] = [
+const TABS: [PlaygroundTab; 8] = [
     PlaygroundTab::GridPlanners,
     PlaygroundTab::Sampling,
+    PlaygroundTab::Parking,
     PlaygroundTab::Localization,
     PlaygroundTab::Slam,
     PlaygroundTab::AdmmFormation,
@@ -268,6 +280,7 @@ impl PlaygroundApp {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.controls(ctx, ui),
             PlaygroundTab::Sampling => self.sampling_demo.controls(ctx, ui),
+            PlaygroundTab::Parking => self.parking_demo.controls(ctx, ui),
             PlaygroundTab::Localization => self.localization_demo.controls(ctx, ui),
             PlaygroundTab::Slam => self.slam_demo.controls(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.controls(ctx, ui),
@@ -280,6 +293,7 @@ impl PlaygroundApp {
         match self.tab {
             PlaygroundTab::GridPlanners => self.grid_demo.scene(ctx, ui),
             PlaygroundTab::Sampling => self.sampling_demo.scene(ctx, ui),
+            PlaygroundTab::Parking => self.parking_demo.scene(ctx, ui),
             PlaygroundTab::Localization => self.localization_demo.scene(ctx, ui),
             PlaygroundTab::Slam => self.slam_demo.scene(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.scene(ctx, ui),

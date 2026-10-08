@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground **Parking** tab: drag out a goal pose in a parking lot and
+  Hybrid A* plans a path with forward and reverse segments that the car
+  then drives (reverse in orange). Presets: parallel park, back into a slot,
+  turn around; the next plan starts where the car stopped; share links keep
+  the car and goal poses (`tab=parking&car=x,y,deg&goal=x,y,deg`).
+- `HybridAStarPlanner::with_vehicle` + `VehicleFootprint`: collision checks
+  with circles covering a rectangular car (on a grid 5x finer than the
+  search grid, so corners do not clip obstacles) instead of one circle at
+  the rear axle; `HybridAStarPlanner::with_max_expansions` bounds the search (an
+  unreachable goal fails fast), and a start or goal pose in collision is
+  rejected up front.
+- `reeds_shepp_path::reeds_shepp_paths`: every Reeds-Shepp candidate, not
+  just the shortest.
+- Playground: the Sampling and Parking tabs plan on the first frame they
+  are shown instead of at page load.
 - Playground **Sampling Planners** tab: RRT, RRT*, Informed RRT* (with its
   sampling ellipse), and PRM on a field of circular obstacles. Click to add
   or remove obstacles, drag the start and goal, watch the tree (or roadmap)
@@ -155,6 +170,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- Hybrid A* analytic expansion takes the cheapest collision-free
+  Reeds-Shepp candidate, counting `switch_back_cost` per gear change (it
+  used to take the shortest candidate if it was free and give up
+  otherwise). Parking presets: back-in 5 -> 1 gear changes, parallel 4 -> 2.
 - Lighter web playground: the WASM that Pages serves goes from 3.47 MB
   (1.61 MB gzipped) to 2.79 MB (1.12 MB gzipped). Most of it is fonts: the
   web build embeds only Ubuntu-Light and egui's icon font instead of all
@@ -209,6 +228,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- Hybrid A*: the direction (+1 forward / -1 reverse) of the final
+  Reeds-Shepp segment's points was guessed from the sign of the yaw change,
+  so reversing segments were often marked forward; it now uses the
+  Reeds-Shepp path's own directions.
+- Reeds-Shepp: one candidate with a segment too short to sample discarded
+  every candidate (no path at all, which also disabled Hybrid A*'s
+  analytic expansion near the goal); now only that candidate is skipped.
+  Zero-length segments no longer add a sample marked as reverse.
 - The web playground crashed on load: it timed planner and filter runs with
   `std::time::Instant`, which panics on `wasm32-unknown-unknown`; it now uses
   `web-time`. Found by running the WASM build in headless Chromium.
