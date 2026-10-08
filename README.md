@@ -152,7 +152,9 @@ with the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
 run live — crank up the odometry error and watch the map snap back when you
 return to the start. Switch worlds (corridor loop, pillar hall, empty box) or
 drag on the map to draw your own walls; the course is saved in the share link. **ADMM Formation** shows the multi-agent
-horizon-consensus demo.
+horizon-consensus demo. **Pushing** lets you drag the goal pose of a box that a
+face-switching MPPI controller pushes under quasi-static stick/slide contact —
+including turning it in place and routing around obstacles you click in.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
 identical path, initial state, clock, and actuation model, with shareable speed
 and turn-response settings.

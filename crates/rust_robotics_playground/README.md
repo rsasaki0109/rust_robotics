@@ -75,6 +75,11 @@ preserve the selected tab.
   Pick a world preset (corridor loop / pillar hall / empty box) and drag on the
   map to add walls; presets and drawn walls round-trip through share links.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
+- **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
+  the goal pose, click obstacles in or out, change the pusher friction, and watch
+  the contact stick (yellow) or slide (orange). Presets for translation, a pure
+  90° turn, and sideways motion; goal, friction, and obstacles round-trip
+  through share links.
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
   LQR Steer traces under identical paths and dynamics. Compare cross-track
   RMSE, final and maximum error, and angular-command smoothness; replay, pause,

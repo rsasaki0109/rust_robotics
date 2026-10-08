@@ -6,6 +6,7 @@ mod controller_arena;
 mod engagement;
 mod grid_planners;
 mod localization;
+mod pushing;
 mod share;
 mod slam;
 mod slam_drive;

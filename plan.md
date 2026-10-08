@@ -1337,14 +1337,22 @@ below is library work that does not depend on them.
    `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
    added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via
    `rust_robotics_slam::lidar_loop_scenario`.
-6b. **Real-data evaluation (in progress).** CARMEN reader, Kümmerle
+6b. **Real-data evaluation (on hold — no data path).** CARMEN reader, Kümmerle
    relative-pose metric, and `carmen_lidar_slam` landed (synthetic log in CI:
    relation error 2.58 m odometry / 0.057 m scan-to-map / 0.015 m graph SLAM).
    Blocked: `ais.informatik.uni-freiburg.de` is not reachable from the
    development environment; run the example on intel.clf / fr079 / MIT CSAIL
    with their relations and record results in `docs/datasets.md`, then tune
-   the real-data defaults.
+   the real-data defaults. The HTTPS proxy of the development environment cannot
+   relay the (HTTP-only) benchmark host even when allowed; maintainer decision
+   2026-10-08: skip until the data is available another way.
 7. **0.3.0 API coherence, continued** — migrate remaining Tier 1 planners /
    trackers / estimators onto `PathPlanner` / `PathTracker` /
    `StateEstimator` per `docs/api_traits.md`.
-8. **Playground pusher-slider tab** (v3 P3 #10, still open).
+8. ~~**Playground pusher-slider tab**~~ **Done (2026-10-08).** `Pushing` tab:
+   drag/turn the goal, click obstacles, friction slider, presets (translate,
+   90° in-place turn, sideways), stick/slide coloring, share links. Obstacle
+   keep-out weight raised to 1e5 so the slider never overlaps an obstacle on
+   its straight path (400 let it push through); ~0.6 ms per MPPI step native.
+   Drive LiDAR SLAM re-measured with the ambiguity check: 1.1 ms mean tick,
+   163 ms (corridor) / 241 ms (aliased) worst after three laps.

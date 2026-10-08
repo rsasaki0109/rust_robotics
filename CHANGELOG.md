@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground **Pushing** tab: interactive pusher-slider with face-switching
+  MPPI (`rust_robotics_control::pusher_slider`) — drag/turn the goal, add
+  obstacles, tune pusher friction, presets, contact-mode coloring, and share
+  links (`tab=pushing&goal_x=…&mu=…&obstacles=…`).
 - `rust_robotics_slam::carmen`: CARMEN log reader (`FLASER`, `ROBOTLASER1`)
   and `FLASER` writer; `rust_robotics_slam::slam_benchmark`: relations parser /
   writer and the Kümmerle et al. relative-pose metric. The
