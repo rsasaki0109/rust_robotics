@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground Controller Arena: **Draw a course**. Drag a stroke on a
+  60 x 30 m canvas; it is resampled every 0.5 m and smoothed, and Pure
+  Pursuit, Stanley, and LQR Steer race it ("Your course" in the course
+  list). Share links carry the course (`course=x,y;...`, 1.5 m key points)
+  and replay exactly the same race.
 - Playground **Parking** tab: drag out a goal pose in a parking lot and
   Hybrid A* plans a path with forward and reverse segments that the car
   then drives (reverse in orange). Presets: parallel park, back into a slot,
@@ -228,6 +233,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- JPS planned at a resolution other than 1 m compared path length (meters)
+  with search cost (cells), so every query was flagged as an invalid jump
+  path and re-planned with A*.
+- Dijkstra (`dijkstra_plan`) returned no path when start and goal are the
+  same cell.
+- Informed RRT*: start equal to goal (or a best path rounding below the
+  start-goal distance) produced NaN samples that entered the tree; a
+  rewire did not lower its descendants' costs, so later parent choices
+  used stale costs.
+- PRM: a robot radius of 0 hung the roadmap build; obstacles on one line,
+  or none, panicked in sampling; a radius no sample can satisfy looped
+  forever; `get_edges` dropped one-way roadmap links, so drawn paths could
+  leave the start along an edge that was not shown.
+- RRT and RRT* checked only the sample points of an edge, not the segments
+  between them, so an edge could cross a thin obstacle.
 - Hybrid A*: the direction (+1 forward / -1 reverse) of the final
   Reeds-Shepp segment's points was guessed from the sign of the yaw change,
   so reversing segments were often marked forward; it now uses the

@@ -235,7 +235,7 @@ impl PlaygroundApp {
                 "Four agents agree on a formation via ADMM while tracking a noisy goal."
             }
             PlaygroundTab::ControllerArena => {
-                "Pure Pursuit, Stanley, and LQR on the same course and vehicle."
+                "Pure Pursuit, Stanley, and LQR on the same course, preset or drawn by you."
             }
             PlaygroundTab::Pushing => "Push a box to a goal pose with face-switching MPPI.",
         }

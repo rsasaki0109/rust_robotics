@@ -203,16 +203,15 @@ impl RRTStar {
             return true;
         }
 
-        for &(ox, oy, size) in &self.obstacle_list {
-            for (&px, &py) in node.path_x.iter().zip(node.path_y.iter()) {
-                let d = (px - ox).powi(2) + (py - oy).powi(2);
-                if d <= (size + self.robot_radius).powi(2) {
-                    return false;
-                }
-            }
-        }
-
-        true
+        // Every segment between the path points, not only the points.
+        !self.obstacle_list.iter().any(|&(ox, oy, size)| {
+            crate::rrt::polyline_within(
+                &node.path_x,
+                &node.path_y,
+                [ox, oy],
+                size + self.robot_radius,
+            )
+        })
     }
 
     fn find_near_nodes(&self, new_node: &Node) -> Vec<usize> {

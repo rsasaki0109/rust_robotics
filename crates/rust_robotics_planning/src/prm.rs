@@ -116,10 +116,25 @@ impl PRMPlanner {
     ) -> Self {
         let obstacle_tree = KDTree::new(ox.iter().zip(oy.iter()).map(|(&x, &y)| (x, y)).collect());
 
-        let min_x = ox.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_x = ox.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let min_y = oy.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_y = oy.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        // Sample over the obstacles' bounding box, grown to include the start
+        // and goal and to at least 1 m on each side (a line of obstacles, or
+        // none, would otherwise give an empty range).
+        let xs = ox.iter().copied().chain([start.0, goal.0]);
+        let ys = oy.iter().copied().chain([start.1, goal.1]);
+        let (mut min_x, mut max_x) = xs.fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+            (lo.min(v), hi.max(v))
+        });
+        let (mut min_y, mut max_y) = ys.fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+            (lo.min(v), hi.max(v))
+        });
+        if max_x - min_x < 1.0 {
+            min_x -= 0.5;
+            max_x += 0.5;
+        }
+        if max_y - min_y < 1.0 {
+            min_y -= 0.5;
+            max_y += 0.5;
+        }
 
         let (sample_x, sample_y) = Self::sample_points(
             start,
@@ -155,7 +170,11 @@ impl PRMPlanner {
         let mut sample_x = Vec::new();
         let mut sample_y = Vec::new();
 
-        while sample_x.len() < N_SAMPLE {
+        // Bounded attempts: if hardly anything is free (huge robot radius),
+        // plan with the samples found instead of looping forever.
+        let mut attempts = 0;
+        while sample_x.len() < N_SAMPLE && attempts < N_SAMPLE * 200 {
+            attempts += 1;
             let x = rng.random_range(min_x..max_x);
             let y = rng.random_range(min_y..max_y);
 
@@ -228,7 +247,9 @@ impl PRMPlanner {
             return false;
         }
 
-        let step = robot_radius;
+        // Check at least every 5 cm: a zero (or tiny) radius would otherwise
+        // give an unbounded number of steps.
+        let step = robot_radius.max(0.05);
         let n_steps = (d / step).ceil() as usize;
 
         for i in 0..=n_steps {
@@ -330,9 +351,11 @@ impl PRMPlanner {
     pub fn get_edges(&self) -> Vec<((f64, f64), (f64, f64))> {
         let mut edges = Vec::new();
 
+        // The roadmap is directed (each sample lists its nearest neighbors);
+        // report every link once, including one-way ones.
         for (i, neighbors) in self.road_map.iter().enumerate() {
             for &j in neighbors {
-                if i < j {
+                if i < j || !self.road_map[j].contains(&i) {
                     edges.push((
                         (self.sample_x[i], self.sample_y[i]),
                         (self.sample_x[j], self.sample_y[j]),
@@ -348,6 +371,57 @@ impl PRMPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn walls() -> (Vec<f64>, Vec<f64>) {
+        let (mut ox, mut oy) = (Vec::new(), Vec::new());
+        for i in 0..=20 {
+            let t = i as f64;
+            for (x, y) in [(t, 0.0), (t, 20.0), (0.0, t), (20.0, t)] {
+                ox.push(x);
+                oy.push(y);
+            }
+        }
+        (ox, oy)
+    }
+
+    #[test]
+    fn a_zero_radius_robot_still_builds_a_roadmap() {
+        let (ox, oy) = walls();
+        let prm = PRMPlanner::new(&ox, &oy, (2.0, 2.0), (18.0, 18.0), 0.0);
+        assert!(prm.plan().is_some());
+    }
+
+    #[test]
+    fn degenerate_obstacle_sets_do_not_panic_or_hang() {
+        // All obstacles on one line, and none at all.
+        let ox: Vec<f64> = (0..10).map(f64::from).collect();
+        let oy = vec![0.0; 10];
+        let prm = PRMPlanner::new(&ox, &oy, (1.0, 3.0), (8.0, 3.0), 0.5);
+        assert!(!prm.get_samples().0.is_empty());
+        let prm = PRMPlanner::new(&[], &[], (1.0, 1.0), (5.0, 4.0), 0.5);
+        assert!(!prm.get_samples().0.is_empty());
+        // A radius no sample can satisfy gives up instead of looping.
+        let (ox, oy) = walls();
+        let prm = PRMPlanner::new(&ox, &oy, (10.0, 10.0), (11.0, 10.0), 50.0);
+        assert_eq!(prm.get_samples().0.len(), 2, "only start and goal");
+    }
+
+    #[test]
+    fn every_edge_of_the_planned_path_is_in_the_roadmap() {
+        let (ox, oy) = walls();
+        let prm = PRMPlanner::new(&ox, &oy, (2.0, 2.0), (18.0, 18.0), 1.0);
+        let (px, py) = prm.plan().expect("path");
+        let edges = prm.get_edges();
+        for i in 0..px.len() - 1 {
+            let (a, b) = ((px[i], py[i]), (px[i + 1], py[i + 1]));
+            assert!(
+                edges
+                    .iter()
+                    .any(|&(u, v)| (u == a && v == b) || (u == b && v == a)),
+                "path edge {a:?} -> {b:?} is not drawn"
+            );
+        }
+    }
 
     #[test]
     fn test_prm_creation() {

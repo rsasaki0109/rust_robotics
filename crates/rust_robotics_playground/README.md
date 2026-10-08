@@ -56,7 +56,8 @@ All tabs encode their important configuration in share links:
 - Localization: filter and measurement-noise scale
 - SLAM: algorithm, timeline frame, and playback state
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
-- Controller Arena: path preset, target speed, and turn response
+- Controller Arena: path preset (or the course you drew), target speed, and
+  turn response
 
 ## Engagement event hooks
 

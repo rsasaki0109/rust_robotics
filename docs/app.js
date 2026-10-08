@@ -693,7 +693,7 @@ const playTiles = [
   },
   {
     title: "Controller arena",
-    text: "Pure Pursuit, Stanley, and LQR on the same course.",
+    text: "Draw a course and race Pure Pursuit, Stanley, and LQR on it.",
     image: "assets/playground/arena.png",
     link: "playground/?tab=arena"
   },

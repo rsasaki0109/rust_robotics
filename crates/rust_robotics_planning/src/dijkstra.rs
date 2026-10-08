@@ -138,6 +138,9 @@ pub fn dijkstra_plan(
 
     while let Some((distance, current)) = pq.pop() {
         if current == goal {
+            if current == start {
+                return Some(vec![start]);
+            }
             // Reconstruct path
             let mut path = vec![current];
             while let Some(previous) = prev.get(path.last().unwrap()).unwrap_or(&None) {
@@ -175,6 +178,13 @@ pub fn dijkstra_plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn start_on_the_goal_is_a_one_cell_path() {
+        let matrix = nalgebra::DMatrix::from_element(3, 3, 0);
+        let map = grid_nalgebra::Map::new(matrix, 1).unwrap();
+        assert_eq!(dijkstra_plan(&map, (1, 1), (1, 1)), Some(vec![(1, 1)]));
+    }
 
     #[test]
     fn test_dijkstra_simple() {
