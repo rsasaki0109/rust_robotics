@@ -52,6 +52,7 @@ const shots = [
   { name: 'parking', query: 'tab=parking', wait: 3500 },
   { name: 'localization', query: 'tab=localization', wait: 9000 },
   { name: 'arena', query: 'tab=arena', wait: 9000 },
+  { name: 'mppi', query: 'tab=mppi', wait: 1200 },
   { name: 'pushing', query: 'tab=pushing', wait: 600 },
   { name: 'admm', query: 'tab=admm', wait: 2600 },
 ];

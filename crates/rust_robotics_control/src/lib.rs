@@ -119,7 +119,7 @@ pub use move_to_pose::{MoveToPoseConfig, MoveToPoseController};
 #[cfg(feature = "std")]
 pub use mppi::{
     MppiCircularObstacle2D, MppiConfig, MppiControl2D, MppiController2D, MppiGateRace2D,
-    MppiGateRaceReport2D, MppiMovingObstacle2D, MppiPlan2D, MppiRacingGate2D,
+    MppiGateRaceReport2D, MppiMovingObstacle2D, MppiPlan2D, MppiRacingGate2D, MppiSampledPlan2D,
     MppiSamplingDiagnostics2D, MppiState2D, MppiTerminalValueGrid2D,
     MppiTerminalValueReplayBuffer2D, MppiTerminalValueReplayUpdateReport2D,
     MppiTerminalValueUpdateConfig2D, MppiTerminalValueUpdateReport2D, MppiTerminalValueUpdater2D,

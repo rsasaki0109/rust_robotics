@@ -5,6 +5,7 @@ use crate::controller_arena::ControllerArenaDemo;
 use crate::engagement::Experiment;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
+use crate::mppi::MppiDemo;
 use crate::parking::ParkingDemo;
 use crate::pushing::PushingDemo;
 use crate::sampling::SamplingDemo;
@@ -19,6 +20,7 @@ enum PlaygroundTab {
     Slam,
     AdmmFormation,
     ControllerArena,
+    Mppi,
     Pushing,
 }
 
@@ -31,6 +33,7 @@ pub struct PlaygroundApp {
     slam_demo: SlamDemo,
     admm_demo: AdmmFormationDemo,
     controller_arena_demo: ControllerArenaDemo,
+    mppi_demo: MppiDemo,
     pushing_demo: PushingDemo,
     share_status: Option<&'static str>,
     onboarding_step: Option<u8>,
@@ -61,6 +64,8 @@ impl PlaygroundApp {
         slam_demo.apply_share_query(&query);
         let mut admm_demo = AdmmFormationDemo::default();
         admm_demo.apply_share_query(&query);
+        let mut mppi_demo = MppiDemo::default();
+        mppi_demo.apply_share_query(&query);
         let mut pushing_demo = PushingDemo::default();
         if query.contains("tab=pushing") {
             pushing_demo.apply_share_query(&query);
@@ -78,6 +83,7 @@ impl PlaygroundApp {
             slam_demo,
             admm_demo,
             controller_arena_demo,
+            mppi_demo,
             pushing_demo,
             share_status: None,
             onboarding_step: (!crate::engagement::onboarding_complete() && query.is_empty())
@@ -100,6 +106,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => "SLAM",
             PlaygroundTab::AdmmFormation => "ADMM Formation",
             PlaygroundTab::ControllerArena => "Controller Arena",
+            PlaygroundTab::Mppi => "MPPI",
             PlaygroundTab::Pushing => "Pushing",
         }
     }
@@ -113,6 +120,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => self.slam_demo.share_query(),
             PlaygroundTab::AdmmFormation => self.admm_demo.share_query(),
             PlaygroundTab::ControllerArena => self.controller_arena_demo.share_query(),
+            PlaygroundTab::Mppi => self.mppi_demo.share_query(),
             PlaygroundTab::Pushing => self.pushing_demo.share_query(),
         }
     }
@@ -132,6 +140,7 @@ impl PlaygroundApp {
         self.slam_demo.apply_share_query(query);
         self.admm_demo.apply_share_query(query);
         self.controller_arena_demo.apply_share_query(query);
+        self.mppi_demo.apply_share_query(query);
         if self.tab == PlaygroundTab::Pushing {
             self.pushing_demo.apply_share_query(query);
         }
@@ -240,6 +249,9 @@ impl PlaygroundApp {
             PlaygroundTab::ControllerArena => {
                 "Pure Pursuit, Stanley, and LQR on the same course, preset or drawn by you."
             }
+            PlaygroundTab::Mppi => {
+                "See every sampled rollout as MPPI steers a robot through moving obstacles."
+            }
             PlaygroundTab::Pushing => "Push a box to a goal pose with face-switching MPPI.",
         }
     }
@@ -255,13 +267,14 @@ impl PlaygroundTab {
             "slam" => Some(Self::Slam),
             "admm" => Some(Self::AdmmFormation),
             "arena" => Some(Self::ControllerArena),
+            "mppi" => Some(Self::Mppi),
             "pushing" => Some(Self::Pushing),
             _ => None,
         }
     }
 }
 
-const TABS: [PlaygroundTab; 8] = [
+const TABS: [PlaygroundTab; 9] = [
     PlaygroundTab::GridPlanners,
     PlaygroundTab::Sampling,
     PlaygroundTab::Parking,
@@ -269,6 +282,7 @@ const TABS: [PlaygroundTab; 8] = [
     PlaygroundTab::Slam,
     PlaygroundTab::AdmmFormation,
     PlaygroundTab::ControllerArena,
+    PlaygroundTab::Mppi,
     PlaygroundTab::Pushing,
 ];
 
@@ -288,6 +302,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => self.slam_demo.controls(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.controls(ctx, ui),
             PlaygroundTab::ControllerArena => self.controller_arena_demo.controls(ctx, ui),
+            PlaygroundTab::Mppi => self.mppi_demo.controls(ctx, ui),
             PlaygroundTab::Pushing => self.pushing_demo.controls(ctx, ui),
         }
     }
@@ -301,6 +316,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => self.slam_demo.scene(ctx, ui),
             PlaygroundTab::AdmmFormation => self.admm_demo.scene(ctx, ui),
             PlaygroundTab::ControllerArena => self.controller_arena_demo.scene(ctx, ui),
+            PlaygroundTab::Mppi => self.mppi_demo.scene(ctx, ui),
             PlaygroundTab::Pushing => self.pushing_demo.scene(ctx, ui),
         }
     }

@@ -888,6 +888,17 @@ pub struct MppiPlan2D {
     pub sampling_diagnostics: MppiSamplingDiagnostics2D,
 }
 
+/// One MPPI step with its whole sample cloud
+/// ([`MppiController2D::plan_with_samples`]).
+#[derive(Debug, Clone, PartialEq)]
+pub struct MppiSampledPlan2D {
+    pub plan: MppiPlan2D,
+    /// Every rollout of the step; rollout 0 replays the previous nominal.
+    pub rollouts: Vec<MppiRollout2D>,
+    /// Path-integral weight of each rollout, normalized to sum to 1.
+    pub weights: Vec<f64>,
+}
+
 /// Vanilla MPPI controller.
 pub struct MppiController2D {
     config: MppiConfig,
@@ -906,6 +917,33 @@ impl MppiController2D {
     }
 
     pub fn plan(&mut self, start: MppiState2D, goal: (f64, f64)) -> RoboticsResult<MppiPlan2D> {
+        self.plan_step(start, goal, false).map(|(plan, _)| plan)
+    }
+
+    /// [`plan`](Self::plan), also returning every sampled rollout with its
+    /// normalized path-integral weight (for visualizing the sample cloud).
+    /// Rollout 0 replays the previous nominal controls.
+    pub fn plan_with_samples(
+        &mut self,
+        start: MppiState2D,
+        goal: (f64, f64),
+    ) -> RoboticsResult<MppiSampledPlan2D> {
+        let (plan, samples) = self.plan_step(start, goal, true)?;
+        let (rollouts, weights) = samples.expect("samples were requested");
+        Ok(MppiSampledPlan2D {
+            plan,
+            rollouts,
+            weights,
+        })
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn plan_step(
+        &mut self,
+        start: MppiState2D,
+        goal: (f64, f64),
+        keep_samples: bool,
+    ) -> RoboticsResult<(MppiPlan2D, Option<(Vec<MppiRollout2D>, Vec<f64>)>)> {
         validate_state(start)?;
         validate_goal(goal)?;
         if let Some(gate_race) = &mut self.config.gate_race {
@@ -935,9 +973,13 @@ impl MppiController2D {
         let beta = sampling_diagnostics.min_cost;
         let mut weight_sum = 0.0;
         let mut next_nominal = vec![MppiControl2D::new(0.0, 0.0); self.config.horizon];
+        let mut weights = Vec::with_capacity(if keep_samples { candidates.len() } else { 0 });
         for rollout in &candidates {
             let weight = sampling_weight(rollout.cost, beta, sampling_lambda);
             weight_sum += weight;
+            if keep_samples {
+                weights.push(weight);
+            }
             for (accumulator, control) in next_nominal.iter_mut().zip(&rollout.controls) {
                 accumulator.ax += weight * control.ax;
                 accumulator.ay += weight * control.ay;
@@ -956,16 +998,24 @@ impl MppiController2D {
         let first_control = next_nominal[0];
         self.nominal_controls = shift_controls(&next_nominal);
         let best_rollout = candidates
-            .into_iter()
+            .iter()
             .min_by(|a, b| a.cost.total_cmp(&b.cost))
-            .expect("at least one candidate rollout");
+            .expect("at least one candidate rollout")
+            .clone();
+        let samples = keep_samples.then(|| {
+            weights.iter_mut().for_each(|weight| *weight /= weight_sum);
+            (candidates, weights)
+        });
 
-        Ok(MppiPlan2D {
-            first_control,
-            nominal_controls: next_nominal,
-            best_rollout,
-            sampling_diagnostics,
-        })
+        Ok((
+            MppiPlan2D {
+                first_control,
+                nominal_controls: next_nominal,
+                best_rollout,
+                sampling_diagnostics,
+            },
+            samples,
+        ))
     }
 
     pub fn terminal_value_grid(&self) -> Option<&MppiTerminalValueGrid2D> {
@@ -1641,6 +1691,35 @@ mod tests {
         assert!(selected_lambda > config.min_lambda);
         assert!(adaptive.effective_sample_size > fixed.effective_sample_size);
         assert!(adaptive.normalized_effective_sample_size >= 0.55);
+    }
+
+    #[test]
+    fn plan_with_samples_is_plan_plus_the_sample_cloud() {
+        let config = MppiConfig {
+            samples: 64,
+            obstacles: vec![MppiCircularObstacle2D::new(2.0, 0.2, 0.6)],
+            ..MppiConfig::default()
+        };
+        let mut plain = MppiController2D::new(config.clone()).unwrap();
+        let mut sampled = MppiController2D::new(config).unwrap();
+        let mut start = MppiState2D::new(0.0, 0.0, 0.0, 0.0);
+        for _ in 0..3 {
+            let plan = plain.plan(start, (4.0, 0.0)).unwrap();
+            let cloud = sampled.plan_with_samples(start, (4.0, 0.0)).unwrap();
+            assert_eq!(plan, cloud.plan);
+            assert_eq!(cloud.rollouts.len(), 65);
+            assert_eq!(cloud.weights.len(), 65);
+            assert!((cloud.weights.iter().sum::<f64>() - 1.0).abs() < 1e-9);
+            let heaviest = cloud
+                .weights
+                .iter()
+                .enumerate()
+                .max_by(|a, b| a.1.total_cmp(b.1))
+                .unwrap()
+                .0;
+            assert_eq!(cloud.rollouts[heaviest], cloud.plan.best_rollout);
+            start = start.step(plan.first_control, 0.1);
+        }
     }
 
     #[test]

@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground **MPPI** tab: a point-mass robot drives to a goal you drag
+  among circular obstacles (click to add or remove) and two moving ones,
+  with every sampled rollout of every control step drawn and shaded by its
+  path-integral weight, plus the weighted plan. Sliders for samples,
+  horizon, temperature λ, and noise σ show how each shapes the sample
+  cloud; the status line reports the effective sample count. Share links
+  keep the settings and the field (`tab=mppi&samples=&horizon=&lambda=&
+  sigma=&moving=&start=&goal=&obstacles=`). Landing page tile; the play
+  tiles are now a 3 x 3 grid.
+- `MppiController2D::plan_with_samples` / `MppiSampledPlan2D`: one MPPI
+  step plus every rollout and its normalized weight (same plan as `plan`).
 - Playground Controller Arena: **Draw a course**. Drag a stroke on a
   60 x 30 m canvas; it is resampled every 0.5 m and smoothed, and Pure
   Pursuit, Stanley, and LQR Steer race it ("Your course" in the course
