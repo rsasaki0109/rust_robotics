@@ -263,24 +263,25 @@ impl RearWheelFeedbackController {
         let v = state.v;
         let v_abs = v.abs().max(0.1); // Avoid division by zero
 
-        // Handle small heading errors to avoid numerical issues
-        let th_e_safe = if th_e.abs() < 1e-6 {
-            1e-6 * th_e.signum().max(1.0)
+        // sin(th_e) / th_e tends to 1 as th_e -> 0; evaluating it naively there
+        // would drop the lateral-error term exactly when the heading is aligned.
+        let sinc = if th_e.abs() < 1e-6 {
+            1.0
         } else {
-            th_e
+            th_e.sin() / th_e
         };
 
         // Rear wheel feedback control formula
         let denom = 1.0 - k * e;
         let denom_safe = if denom.abs() < 0.01 {
-            0.01 * denom.signum().max(1.0)
+            0.01_f64.copysign(denom)
         } else {
             denom
         };
 
         let omega = v * k * th_e.cos() / denom_safe
             - self.config.kth * v_abs * th_e
-            - self.config.ke * v * th_e.sin() * e / th_e_safe;
+            - self.config.ke * v * sinc * e;
 
         // Compute steering angle
         let delta = if v.abs() > 0.01 {
@@ -367,8 +368,8 @@ impl RearWheelFeedbackController {
 
 impl PathTracker for RearWheelFeedbackController {
     fn compute_control(&mut self, current_state: &State2D, path: &Path2D) -> ControlInput {
-        // Set path if different
-        if self.path.len() != path.len() {
+        // Adopt a new reference path (comparing contents, not just length)
+        if self.path != *path {
             self.set_path(path.clone());
         }
 

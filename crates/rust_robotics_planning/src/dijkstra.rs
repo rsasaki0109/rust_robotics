@@ -9,7 +9,75 @@ use ordered_float::NotNan;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 
+use crate::a_star::{AStarConfig, AStarPlanner};
 use crate::grid_nalgebra;
+use rust_robotics_core::{Obstacles, Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
+
+/// Configuration for [`DijkstraPlanner`].
+#[derive(Debug, Clone)]
+pub struct DijkstraConfig {
+    /// Grid resolution \[m\]
+    pub resolution: f64,
+    /// Robot radius for obstacle inflation \[m\]
+    pub robot_radius: f64,
+}
+
+impl Default for DijkstraConfig {
+    fn default() -> Self {
+        Self {
+            resolution: 1.0,
+            robot_radius: 0.5,
+        }
+    }
+}
+
+/// World-coordinate Dijkstra planner implementing [`PathPlanner`].
+///
+/// Dijkstra is uniform-cost search: A* with a zero heuristic. This planner
+/// shares the A* grid, obstacle inflation, and 8-connected motion model, so
+/// its paths are optimal on the same grid that [`AStarPlanner`] searches.
+/// The legacy matrix API ([`dijkstra_plan`]) is kept unchanged.
+pub struct DijkstraPlanner {
+    inner: AStarPlanner,
+}
+
+impl DijkstraPlanner {
+    fn a_star_config(config: &DijkstraConfig) -> AStarConfig {
+        AStarConfig {
+            resolution: config.resolution,
+            robot_radius: config.robot_radius,
+            heuristic_weight: 0.0,
+        }
+    }
+
+    /// Builds the planner from obstacle coordinates.
+    pub fn try_new(ox: &[f64], oy: &[f64], config: DijkstraConfig) -> RoboticsResult<Self> {
+        Ok(Self {
+            inner: AStarPlanner::try_new(ox, oy, Self::a_star_config(&config))?,
+        })
+    }
+
+    /// Builds the planner from obstacle points.
+    pub fn from_obstacle_points(
+        obstacles: &Obstacles,
+        config: DijkstraConfig,
+    ) -> RoboticsResult<Self> {
+        Ok(Self {
+            inner: AStarPlanner::from_obstacle_points(obstacles, Self::a_star_config(&config))?,
+        })
+    }
+
+    /// Plans a shortest path from `start` to `goal`.
+    pub fn plan(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
+        PathPlanner::plan(&self.inner, start, goal)
+    }
+}
+
+impl PathPlanner for DijkstraPlanner {
+    fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
+        DijkstraPlanner::plan(self, start, goal)
+    }
+}
 
 /// Returns a closure that computes adjacent cell coordinates for a given cell
 /// while excluding out-of-bound cells and the cell itself.

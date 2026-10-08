@@ -38,6 +38,56 @@ the path-tracking specialization used by Pure Pursuit / Stanley / LQR Steer.
 three coexist deliberately; unifying them into one trait is deferred until
 external demand (see Deprioritize in `plan.md`).
 
+### Tier 1 trait conformance (0.3.0)
+
+Every Tier 1 algorithm is reachable through its role trait, and contract tests
+exercise them uniformly through trait objects:
+
+| Algorithm | Type | Trait |
+| --- | --- | --- |
+| A\* | `AStarPlanner` | `PathPlanner` |
+| Dijkstra | `DijkstraPlanner` (new: A\* grid with a zero heuristic) | `PathPlanner` |
+| JPS | `JPSPlanner` | `PathPlanner` |
+| Theta\* | `ThetaStarPlanner` | `PathPlanner` |
+| RRT | `RRTPlanner` | `PathPlanner` |
+| RRT\* | `RRTStar` (new impl; plans on a clone, `plan_from` keeps the tree) | `PathPlanner` |
+| DWA | `DWAPlanner` | none: a velocity-space local planner with its own step API |
+| PID | `PIDController` | `Controller` |
+| Pure Pursuit / Stanley / LQR Steer / Rear Wheel Feedback | `*Controller` | `PathTracker` (unicycle `(v, ω)` output) |
+| EKF / UKF / PF family | `*Localizer` | `StateEstimator` |
+
+Contract tests:
+
+- `crates/rust_robotics_planning/tests/tier1_path_planner_contract.rs` — the
+  six planners as `Box<dyn PathPlanner>` on one map: endpoints, ≥ 0.3 m
+  clearance along every segment, a detour around the wall, and Dijkstra
+  matching A\*'s optimal length.
+- `crates/rust_robotics_control/tests/tier1_path_tracker_contract.rs` — the
+  four trackers as `Box<dyn PathTracker>` under one unicycle model:
+  convergence from a 1 m offset, following a replaced path, goal check.
+
+They found two Tier 1 bugs, fixed in 0.3.0:
+
+- All `PathTracker` impls adopted a new path only when its *length* differed
+  (`self.path.len() != path.len()`), silently tracking the old path when a
+  different path with the same point count was passed. They now compare
+  contents (`Path2D: PartialEq`).
+- Rear Wheel Feedback evaluated `sin(θe)·e/θe` as `0` at `θe = 0`, so a
+  vehicle parallel to but offset from the path never corrected the offset.
+  It now uses `sinc(θe) → 1`.
+
+### Deprecated traits (0.3.0, removal in 0.4.0)
+
+`GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` have no
+implementation anywhere in the workspace and duplicate roles covered by
+`PathPlanner` / `PathTracker` / `Controller`. `SamplingBasedPlanner` cannot
+be implemented coherently: `PathPlanner::plan(&self)` cannot record a tree and
+each sampler has its own node type behind an inherent `get_tree()`. Following
+the `Estimator2D` precedent they are dead surface, but they shipped in 0.1.0,
+so 0.3.0 marks them `#[deprecated]` and 0.4.0 removes them. `MotionModel` and
+`ObservationModel` stay as extension points for user-defined filters; the
+built-in filters do not use them.
+
 ## Stability tiers
 
 Tier 1 is semver-checked: a breaking change requires a minor version bump and

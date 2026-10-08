@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `DijkstraPlanner` / `DijkstraConfig` (`rust_robotics_planning::dijkstra`): a
+  world-coordinate Dijkstra implementing `PathPlanner` (A\* grid with a zero
+  heuristic); `RRTStar` implements `PathPlanner` (and derives `Clone`, `Debug`);
+  `Path2D` derives `PartialEq`.
+- Tier 1 contract tests driving the planners as `Box<dyn PathPlanner>` and the
+  path trackers as `Box<dyn PathTracker>` (see `docs/api_traits.md`).
 - Playground **Pushing** tab: interactive pusher-slider with face-switching
   MPPI (`rust_robotics_control::pusher_slider`) — drag/turn the goal, add
   obstacles, tune pusher friction, presets, contact-mode coloring, and share
@@ -80,11 +86,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- `AStarConfig::heuristic_weight` accepts `0.0` (uniform-cost search).
 - Dev/test builds compile `rust_robotics_slam` and `rust_robotics_optimization`
   with `opt-level = 2`; the SLAM headless examples run 20–50× faster in CI
   (e.g. `headless_lidar_loop_closure` 21 s → 0.6 s) with identical output.
 
+### Deprecated
+- `GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` (never
+  implemented; removal planned for 0.4.0).
+
 ### Fixed
+- `PathTracker` impls of Pure Pursuit, Stanley, LQR Steer, LQR Speed-Steer, and
+  Rear Wheel Feedback ignored a new path with the same number of points as the
+  old one; they now compare path contents.
+- Rear Wheel Feedback dropped its lateral-error term whenever the heading error
+  was exactly zero (`sin(θe)/θe` evaluated as 0), so a parallel offset was never
+  corrected; small-signal denominators also lost their sign.
 - `RobustIcp2D::estimate` applied the current transform twice and mixed a
   right-perturbation Jacobian with a left-composed update; non-identity seeds
   did not converge and identity-seeded results were off by up to ~0.2 m.

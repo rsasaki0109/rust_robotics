@@ -245,8 +245,8 @@ impl PurePursuitController {
 
 impl PathTracker for PurePursuitController {
     fn compute_control(&mut self, current_state: &State2D, path: &Path2D) -> ControlInput {
-        // Set path if different
-        if self.path.len() != path.len() {
+        // Adopt a new reference path (comparing contents, not just length)
+        if self.path != *path {
             self.set_path(path.clone());
         }
 

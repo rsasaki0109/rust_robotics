@@ -10,6 +10,11 @@ pub trait PathPlanner {
 }
 
 /// Trait for grid-based path planning algorithms
+#[deprecated(
+    since = "0.3.0",
+    note = "never implemented by any planner; grid planners implement `PathPlanner` in world \
+            coordinates. Scheduled for removal in 0.4.0."
+)]
 pub trait GridPathPlanner {
     /// Plan a path on a grid from start to goal
     fn plan(&self, start: GridNode, goal: GridNode) -> Result<Path2D, RoboticsError>;
@@ -19,6 +24,12 @@ pub trait GridPathPlanner {
 }
 
 /// Trait for sampling-based path planning algorithms (RRT, PRM, etc.)
+#[deprecated(
+    since = "0.3.0",
+    note = "never implemented: `PathPlanner::plan(&self)` cannot record a tree, and each \
+            sampler exposes its own node type through an inherent `get_tree()`. Scheduled \
+            for removal in 0.4.0."
+)]
 pub trait SamplingBasedPlanner: PathPlanner {
     /// Get the tree/graph built during planning
     fn get_tree(&self) -> &[(Point2D, Option<usize>)];
@@ -61,6 +72,11 @@ pub trait PathTracker {
 }
 
 /// Trait for trajectory tracking with time-parameterized paths
+#[deprecated(
+    since = "0.3.0",
+    note = "never implemented; path trackers implement `PathTracker` and generic \
+            controllers implement `Controller`. Scheduled for removal in 0.4.0."
+)]
 pub trait TrajectoryTracker {
     /// Trajectory point with time
     type TrajectoryPoint;
