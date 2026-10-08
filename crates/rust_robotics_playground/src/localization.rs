@@ -457,7 +457,7 @@ impl LocalizationDemo {
         });
         crate::ui_kit::hint(
             ui,
-            "Hold the pointer on the map to drive there, or use the arrow keys.",
+            "Touch and hold (or click and hold) the map to drive there, or use the arrow keys.",
         );
         crate::ui_kit::legend(
             ui,

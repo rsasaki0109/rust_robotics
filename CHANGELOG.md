@@ -175,6 +175,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- Playground on phones (narrow layout): buttons, chips, checkboxes and
+  slider handles are finger-sized (36 px tall, more spacing), including
+  the Drive map's zoom buttons; Localization's hint mentions touch.
 - Hybrid A* analytic expansion takes the cheapest collision-free
   Reeds-Shepp candidate, counting `switch_back_cost` per gear change (it
   used to take the shortest candidate if it was free and give up
