@@ -49,6 +49,7 @@ const shots = [
   { name: 'drive', query: 'tab=slam&algorithm=drive&world=hall&people=3', wait: 9000, goal: [930, 160] },
   { name: 'grid', query: `tab=grid&planner=astar&start=2,12&goal=29,12&map=${gridMap()}`, wait: 1500 },
   { name: 'sampling', query: 'tab=sampling', wait: 6000 },
+  { name: 'parking', query: 'tab=parking', wait: 3500 },
   { name: 'localization', query: 'tab=localization', wait: 9000 },
   { name: 'arena', query: 'tab=arena', wait: 9000 },
   { name: 'pushing', query: 'tab=pushing', wait: 600 },

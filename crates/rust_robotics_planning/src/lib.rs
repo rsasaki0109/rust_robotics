@@ -147,7 +147,7 @@ pub use hierarchical_mapf::{
     HierarchicalMapfPlanner2D, HierarchicalMapfRegion2D, HierarchicalMapfRegionConflict2D,
     HierarchicalMapfRegionRoute2D, HierarchicalMapfReplannedGroup2D,
 };
-pub use hybrid_a_star::{HybridAStarConfig, HybridAStarPath, HybridAStarPlanner};
+pub use hybrid_a_star::{HybridAStarConfig, HybridAStarPath, HybridAStarPlanner, VehicleFootprint};
 pub use ida_star::{IDAStarConfig, IDAStarPlanner};
 pub use informed_rrt_star::InformedRRTStar;
 pub use jps::{JPSConfig, JPSPlanner};

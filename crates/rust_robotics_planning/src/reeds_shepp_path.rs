@@ -510,6 +510,25 @@ fn calc_paths(
     paths
 }
 
+/// Every Reeds-Shepp path from `(sx, sy, syaw)` to `(gx, gy, gyaw)` (not
+/// just the shortest), sampled every `step_size` \[m\], with the direction
+/// of travel (+1 forward, -1 reverse) at each sample. Lets a caller pick
+/// by its own cost, e.g. the shortest collision-free path or one with
+/// fewer gear changes.
+#[allow(clippy::too_many_arguments)]
+pub fn reeds_shepp_paths(
+    sx: f64,
+    sy: f64,
+    syaw: f64,
+    gx: f64,
+    gy: f64,
+    gyaw: f64,
+    maxc: f64,
+    step_size: f64,
+) -> Vec<Path> {
+    calc_paths(sx, sy, syaw, gx, gy, gyaw, maxc, step_size)
+}
+
 pub fn reeds_shepp_path_planning(
     sx: f64,
     sy: f64,

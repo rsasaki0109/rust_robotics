@@ -6,6 +6,7 @@ mod controller_arena;
 mod engagement;
 mod grid_planners;
 mod localization;
+mod parking;
 mod pushing;
 mod sampling;
 mod share;
