@@ -1,6 +1,8 @@
 //! Navigation on a LiDAR-built occupancy grid for the Drive mode: A* plans on
-//! the grid, Pure Pursuit follows the plan from the estimated pose, plus the
-//! on-screen joystick and the grid renderer.
+//! the grid, Pure Pursuit follows the plan from the estimated pose, and DWA
+//! takes over whenever the live scan says the next second of the Pure Pursuit
+//! arc would hit something (map drift, people walking by). Plus the on-screen
+//! joystick and the grid renderer.
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::Vector2;
@@ -8,6 +10,7 @@ use rust_robotics_control::pure_pursuit::VehicleState;
 use rust_robotics_control::{PurePursuitConfig, PurePursuitController};
 use rust_robotics_core::{Obstacles, Path2D, Point2D, Pose2D};
 use rust_robotics_planning::a_star::{AStarConfig, AStarPlanner};
+use rust_robotics_planning::dwa::{DWAConfig, DWAPlanner, DWARobotType, DWAState};
 use rust_robotics_slam::lidar_occupancy::{CellState, OccupancyGrid};
 
 /// Planner grid cell \[m\].
@@ -23,6 +26,16 @@ const TURN_IN_PLACE: f64 = 1.0;
 /// Pure Pursuit's virtual wheelbase \[m\]; with ω = v tan δ / L the
 /// curvature is the classic 2 sin α / lookahead regardless of L.
 const WHEELBASE: f64 = 0.4;
+/// The Pure Pursuit arc is checked against the live scan this far ahead \[s\].
+const AVOID_HORIZON: f64 = 1.0;
+/// Robot radius plus a safety margin for live-scan checks \[m\].
+const AVOID_RADIUS: f64 = 0.42;
+/// The physical robot radius: the safety radius never shrinks below it.
+const ROBOT_RADIUS: f64 = 0.3;
+/// DWA's local goal is this far along the path \[m\].
+const LOCAL_GOAL: f64 = 1.5;
+/// Give up on a goal after this long without 0.3 m of progress \[s\].
+const STUCK_TIME: f64 = 4.0;
 
 /// Plans a collision-free path on `grid` with A*, treating unknown cells as
 /// free so the robot explores toward goals it has not mapped yet.
@@ -97,6 +110,13 @@ pub(crate) struct Navigator {
     tracker: PurePursuitController,
     since_plan: f64,
     pub(crate) status: NavStatus,
+    /// Last command, the starting velocity of DWA's dynamic window.
+    last_command: (f64, f64),
+    /// DWA's chosen trajectory while it overrides Pure Pursuit.
+    local_plan: Option<Path2D>,
+    /// Where progress was last made and how long ago.
+    progress_anchor: Option<Vector2<f64>>,
+    stalled_for: f64,
 }
 
 impl Default for Navigator {
@@ -113,6 +133,10 @@ impl Default for Navigator {
             }),
             since_plan: 0.0,
             status: NavStatus::Idle,
+            last_command: (0.0, 0.0),
+            local_plan: None,
+            progress_anchor: None,
+            stalled_for: 0.0,
         }
     }
 }
@@ -126,6 +150,11 @@ impl Navigator {
         self.path.as_ref()
     }
 
+    /// DWA's trajectory while it is avoiding something.
+    pub(crate) fn local_plan(&self) -> Option<&Path2D> {
+        self.local_plan.as_ref()
+    }
+
     pub(crate) fn is_active(&self) -> bool {
         self.goal.is_some()
     }
@@ -136,6 +165,8 @@ impl Navigator {
         // Plan on the next control call.
         self.since_plan = REPLAN_INTERVAL;
         self.status = NavStatus::Following;
+        self.progress_anchor = None;
+        self.stalled_for = 0.0;
     }
 
     pub(crate) fn cancel(&mut self) {
@@ -144,12 +175,34 @@ impl Navigator {
 
     /// Unicycle command `(v, ω)` toward the goal from the estimated `pose`,
     /// or `None` when there is nothing to do. `confident` is false while the
-    /// estimate is too uncertain to plan from.
+    /// estimate is too uncertain to plan from; `obstacles` are the live scan
+    /// points in the same (estimated) world frame.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn control(
         &mut self,
         grid: &OccupancyGrid,
         pose: Pose2D,
         confident: bool,
+        obstacles: &[Vector2<f64>],
+        speed: f64,
+        turn_rate: f64,
+        dt: f64,
+    ) -> Option<(f64, f64)> {
+        let command = self.plan_command(grid, pose, confident, obstacles, speed, turn_rate, dt);
+        self.last_command = command.unwrap_or((0.0, 0.0));
+        if command.is_none() {
+            self.local_plan = None;
+        }
+        command
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn plan_command(
+        &mut self,
+        grid: &OccupancyGrid,
+        pose: Pose2D,
+        confident: bool,
+        obstacles: &[Vector2<f64>],
         speed: f64,
         turn_rate: f64,
         dt: f64,
@@ -166,6 +219,21 @@ impl Navigator {
             self.status = NavStatus::WaitingForLocalization;
             self.path = None;
             return None;
+        }
+        // Watchdog: a robot pushing against something it cannot see in the
+        // map (or boxed in by people) gives up instead of pushing forever.
+        let anchor = *self.progress_anchor.get_or_insert(position);
+        if (position - anchor).norm() > 0.3 {
+            self.progress_anchor = Some(position);
+            self.stalled_for = 0.0;
+        } else {
+            self.stalled_for += dt;
+            if self.stalled_for > STUCK_TIME {
+                self.goal = None;
+                self.path = None;
+                self.status = NavStatus::Failed("stuck".into());
+                return None;
+            }
         }
         self.since_plan += dt;
         if self.path.is_none() || self.since_plan >= REPLAN_INTERVAL {
@@ -212,8 +280,110 @@ impl Navigator {
         // which would cut the corner.
         let v = cruise.min(turn_rate / curvature.abs().max(1.0e-9));
         let omega = (v * curvature).clamp(-turn_rate, turn_rate);
-        Some((v, omega))
+
+        let nearby: Vec<Vector2<f64>> = obstacles
+            .iter()
+            .filter(|point| (*point - position).norm() < speed * AVOID_HORIZON + 1.0)
+            .copied()
+            .collect();
+        // Already closer than the margin (hugging a wall): only arcs that
+        // get closer still count as collisions, so the robot can back off.
+        let clearance = nearby
+            .iter()
+            .map(|point| (point - position).norm())
+            .fold(f64::INFINITY, f64::min);
+        let radius = AVOID_RADIUS.min(clearance - 0.02).max(ROBOT_RADIUS);
+        if arc_is_clear(pose, v, omega, &nearby, radius) {
+            self.local_plan = None;
+            return Some((v, omega));
+        }
+        // Something the map does not show is in the way: let DWA pick a
+        // collision-free (v, ω) toward a point further along the path.
+        let local_goal = path.points[nearest..]
+            .iter()
+            .find(|point| point.distance(&here) >= LOCAL_GOAL)
+            .or(path.points.last())?;
+        // DWA scores every arc against every point: keep the ones it can
+        // reach within its horizon.
+        let reach = speed * 0.6 * 1.5 + radius;
+        let close: Vec<Vector2<f64>> = nearby
+            .into_iter()
+            .filter(|point| (point - position).norm() < reach)
+            .collect();
+        Some(self.dwa_command(pose, *local_goal, &close, radius, speed, turn_rate, bearing))
     }
+
+    #[allow(clippy::too_many_arguments)]
+    fn dwa_command(
+        &mut self,
+        pose: Pose2D,
+        local_goal: Point2D,
+        obstacles: &[Vector2<f64>],
+        radius: f64,
+        speed: f64,
+        turn_rate: f64,
+        bearing: f64,
+    ) -> (f64, f64) {
+        let config = DWAConfig {
+            max_speed: speed * 0.6,
+            min_speed: 0.0,
+            max_yaw_rate: turn_rate,
+            // No dynamics in this simulation: let the window span every
+            // command (v from 0, ω from -max to max).
+            max_accel: 20.0,
+            max_delta_yaw_rate: 30.0,
+            v_resolution: 0.1,
+            yaw_rate_resolution: 0.1,
+            dt: 0.1,
+            predict_time: 1.5,
+            to_goal_cost_gain: 1.0,
+            speed_cost_gain: 0.3,
+            obstacle_cost_gain: 0.3,
+            robot_type: DWARobotType::Circle,
+            robot_radius: radius,
+            robot_width: 0.6,
+            robot_length: 0.6,
+            goal_threshold: GOAL_TOLERANCE,
+        };
+        let mut dwa = DWAPlanner::new(config);
+        let (v, omega) = self.last_command;
+        dwa.set_state(DWAState::new(pose.x, pose.y, pose.yaw, v, omega));
+        dwa.set_goal(local_goal);
+        dwa.set_obstacles(obstacles.iter().map(|p| Point2D::new(p.x, p.y)).collect());
+        match dwa.try_plan_input() {
+            // A standing DWA result means "no good arc": the library then
+            // spins at its yaw-acceleration limit, so turn toward the path
+            // at the normal rate instead.
+            Ok(input) if dwa.get_best_trajectory().cost < f64::MAX && input.v > 0.05 => {
+                self.local_plan = Some(dwa.best_path());
+                (input.v, input.omega.clamp(-turn_rate, turn_rate))
+            }
+            // Every arc collides: turn in place toward the path.
+            _ => {
+                self.local_plan = None;
+                (0.0, turn_rate.copysign(bearing))
+            }
+        }
+    }
+}
+
+/// Whether a unicycle at `pose` driving `(v, ω)` for [`AVOID_HORIZON`] keeps
+/// `radius` from every point of `obstacles`.
+fn arc_is_clear(pose: Pose2D, v: f64, omega: f64, obstacles: &[Vector2<f64>], radius: f64) -> bool {
+    let dt = 0.1;
+    let (mut x, mut y, mut yaw) = (pose.x, pose.y, pose.yaw);
+    let mut t = 0.0;
+    while t < AVOID_HORIZON {
+        yaw += omega * dt;
+        x += v * yaw.cos() * dt;
+        y += v * yaw.sin() * dt;
+        t += dt;
+        let here = Vector2::new(x, y);
+        if obstacles.iter().any(|point| (point - here).norm() < radius) {
+            return false;
+        }
+    }
+    true
 }
 
 /// An on-screen joystick for touch screens, anchored to the lower right of
@@ -348,7 +518,7 @@ mod tests {
         let mut pose = Pose2D::new(-2.5, -2.0, std::f64::consts::PI);
         let dt = 1.0 / 30.0;
         for _ in 0..1_500 {
-            let Some((v, omega)) = navigator.control(&grid, pose, true, 1.6, 1.4, dt) else {
+            let Some((v, omega)) = navigator.control(&grid, pose, true, &[], 1.6, 1.4, dt) else {
                 break;
             };
             pose = Pose2D::new(
@@ -402,7 +572,15 @@ mod tests {
     fn unreachable_goals_fail_cleanly() {
         let mut navigator = Navigator::default();
         navigator.set_goal(Vector2::new(50.0, 0.0));
-        let command = navigator.control(&grid(), Pose2D::new(-2.5, 0.0, 0.0), true, 1.6, 1.4, 0.1);
+        let command = navigator.control(
+            &grid(),
+            Pose2D::new(-2.5, 0.0, 0.0),
+            true,
+            &[],
+            1.6,
+            1.4,
+            0.1,
+        );
         assert!(command.is_none());
         assert!(matches!(navigator.status, NavStatus::Failed(_)));
         assert!(!navigator.is_active());

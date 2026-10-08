@@ -137,6 +137,19 @@ pub fn find_frontiers(grid: &OccupancyGrid, config: &FrontierConfig) -> Vec<Fron
     frontiers
 }
 
+/// Whether any frontier cell lies within `radius` of `point` — a cheap check
+/// that a chosen goal is still worth driving to as the map grows.
+pub fn is_frontier_near(grid: &OccupancyGrid, point: Vector2<f64>, radius: f64) -> bool {
+    let Some((cx, cy)) = grid.cell_of(point) else {
+        return false;
+    };
+    let reach = (radius / grid.resolution()).ceil() as i64;
+    (-reach..=reach)
+        .flat_map(|dx| (-reach..=reach).map(move |dy| (dx, dy)))
+        .filter_map(|delta| offset(grid, (cx, cy), delta))
+        .any(|cell| is_frontier_cell(grid, cell))
+}
+
 /// Wavefront distances \[m\] from `start` through free cells with clearance
 /// (`f64::INFINITY` where unreachable). The start cell is always seeded so a
 /// robot hugging a wall can still leave it.
@@ -185,9 +198,12 @@ fn wavefront(grid: &OccupancyGrid, start: Vector2<f64>, clearance: f64) -> Vec<f
     distance
 }
 
-/// The best reachable frontier from `robot`, skipping clusters whose
-/// centroid lies within 1 m of a point in `excluded` (e.g. goals the
-/// planner already failed to reach). `None` when exploration is complete.
+/// Frontier cells within this distance of an excluded point are skipped \[m\].
+const EXCLUSION_RADIUS: f64 = 1.5;
+
+/// The best reachable frontier from `robot`, skipping frontier cells within
+/// 1.5 m of a point in `excluded` (e.g. goals the robot already failed to
+/// reach). `None` when exploration is complete.
 pub fn next_frontier_goal(
     grid: &OccupancyGrid,
     robot: Vector2<f64>,
@@ -198,15 +214,19 @@ pub fn next_frontier_goal(
     let distance = wavefront(grid, robot, config.clearance);
     find_frontiers(grid, config)
         .into_iter()
-        .filter(|frontier| {
-            excluded
-                .iter()
-                .all(|point| (point - frontier.centroid).norm() > 1.0)
-        })
         .filter_map(|frontier| {
-            let &(x, y) = frontier.cells.iter().min_by(|a, b| {
-                distance[a.1 * width + a.0].total_cmp(&distance[b.1 * width + b.0])
-            })?;
+            let &(x, y) = frontier
+                .cells
+                .iter()
+                .filter(|&&(x, y)| {
+                    let center = grid.cell_center(x, y);
+                    excluded
+                        .iter()
+                        .all(|point| (point - center).norm() > EXCLUSION_RADIUS)
+                })
+                .min_by(|a, b| {
+                    distance[a.1 * width + a.0].total_cmp(&distance[b.1 * width + b.0])
+                })?;
             let reach = distance[y * width + x];
             reach.is_finite().then(|| FrontierGoal {
                 target: grid.cell_center(x, y),
@@ -275,14 +295,30 @@ mod tests {
     }
 
     #[test]
+    fn a_seen_frontier_stops_being_one() {
+        let robot = Pose2D::new(-3.0, 0.0, 0.0);
+        let grid = grid_after(&[robot]);
+        let goal = next_frontier_goal(
+            &grid,
+            Vector2::new(robot.x, robot.y),
+            &[],
+            &FrontierConfig::default(),
+        )
+        .expect("goal");
+        assert!(is_frontier_near(&grid, goal.target, 0.3));
+        // Look through the door from the doorway.
+        let grid = grid_after(&[robot, Pose2D::new(goal.target.x, goal.target.y, 0.0)]);
+        assert!(!is_frontier_near(&grid, goal.target, 0.3));
+    }
+
+    #[test]
     fn excluded_goals_are_skipped() {
         let robot = Vector2::new(-4.0, 0.0);
         let grid = grid_after(&[Pose2D::new(robot.x, robot.y, 0.0)]);
         let config = FrontierConfig::default();
         let first = next_frontier_goal(&grid, robot, &[], &config).expect("goal");
-        let second = next_frontier_goal(&grid, robot, &[first.frontier.centroid], &config);
-        assert!(second.map_or(true, |goal| goal.frontier.centroid
-            != first.frontier.centroid));
+        let second = next_frontier_goal(&grid, robot, &[first.target], &config);
+        assert!(second.map_or(true, |goal| (goal.target - first.target).norm() > 1.5));
     }
 
     #[test]
