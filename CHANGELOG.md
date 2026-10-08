@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Playground Controller Arena: **Draw a course**. Drag a stroke on a
+  60 x 30 m canvas; it is resampled every 0.5 m and smoothed, and Pure
+  Pursuit, Stanley, and LQR Steer race it ("Your course" in the course
+  list). Share links carry the course (`course=x,y;...`, 1.5 m key points)
+  and replay exactly the same race.
 - Playground **Parking** tab: drag out a goal pose in a parking lot and
   Hybrid A* plans a path with forward and reverse segments that the car
   then drives (reverse in orange). Presets: parallel park, back into a slot,

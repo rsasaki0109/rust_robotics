@@ -51,6 +51,7 @@ const cases = [
   { name: 'drive', query: 'tab=slam&algorithm=drive&world=hall&people=3', clickScene: true },
   { name: 'admm', query: 'tab=admm' },
   { name: 'arena', query: 'tab=arena' },
+  { name: 'arena-course', query: 'tab=arena&course=5.0,5.0;20.0,5.0;30.0,15.0;45.0,15.0;50.0,25.0' },
   { name: 'pushing', query: 'tab=pushing' },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },

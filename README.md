@@ -165,7 +165,7 @@ face-switching MPPI controller pushes under quasi-static stick/slide contact —
 including turning it in place and routing around obstacles you click in.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
 identical path, initial state, clock, and actuation model, with shareable speed
-and turn-response settings.
+and turn-response settings — on a preset course or one you draw yourself.
 
 <img src="./docs/assets/controller-arena.png" width="900" alt="Controller Arena comparing Pure Pursuit, Stanley, and LQR Steer">
 
