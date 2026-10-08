@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   world-coordinate Dijkstra implementing `PathPlanner` (A\* grid with a zero
   heuristic); `RRTStar` implements `PathPlanner` (and derives `Clone`, `Debug`);
   `Path2D` derives `PartialEq`.
-- Tier 1 contract tests driving the planners as `Box<dyn PathPlanner>` and the
-  path trackers as `Box<dyn PathTracker>` (see `docs/api_traits.md`).
+- Tier 1 contract tests driving the planners as `Box<dyn PathPlanner>`, the
+  path trackers as `Box<dyn PathTracker>`, and DWA through its inherent API
+  (see `docs/api_traits.md`).
 - Playground **Pushing** tab: interactive pusher-slider with face-switching
   MPPI (`rust_robotics_control::pusher_slider`) — drag/turn the goal, add
   obstacles, tune pusher friction, presets, contact-mode coloring, and share
@@ -91,9 +92,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `opt-level = 2`; the SLAM headless examples run 20–50× faster in CI
   (e.g. `headless_lidar_loop_closure` 21 s → 0.6 s) with identical output.
 
-### Deprecated
-- `GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` (never
-  implemented; removal planned for 0.4.0).
+### Removed
+- `GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` from
+  `rust_robotics_core::traits`: never implemented, and their roles are covered
+  by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
 - `PathTracker` impls of Pure Pursuit, Stanley, LQR Steer, LQR Speed-Steer, and

@@ -12,10 +12,9 @@ are inherent methods on the concrete types, not separate traits.
 
 | Role | Trait | Notes |
 | --- | --- | --- |
-| Path planning | `PathPlanner`, `GridPathPlanner`, `SamplingBasedPlanner` | `SamplingBasedPlanner: PathPlanner` |
+| Path planning | `PathPlanner` | world coordinates; samplers expose their trees through inherent `get_tree()` |
 | Estimation | `StateEstimator` | GAT (`State` / `Measurement` / `Control`). **The only estimation trait.** |
 | Path tracking | `PathTracker` | `compute_control(state, path)` specialization |
-| Trajectory tracking | `TrajectoryTracker` | time-parameterized `compute_control(state, time)` |
 | Generic control | `Controller` | GAT (`State` / `Reference` / `Output`), `compute` / `reset` |
 | Models | `MotionModel`, `ObservationModel` | EKF/UKF building blocks |
 
@@ -51,7 +50,7 @@ exercise them uniformly through trait objects:
 | Theta\* | `ThetaStarPlanner` | `PathPlanner` |
 | RRT | `RRTPlanner` | `PathPlanner` |
 | RRT\* | `RRTStar` (new impl; plans on a clone, `plan_from` keeps the tree) | `PathPlanner` |
-| DWA | `DWAPlanner` | none: a velocity-space local planner with its own step API |
+| DWA | `DWAPlanner` | none (inherent `try_plan_input` / `try_step` API, see below) |
 | PID | `PIDController` | `Controller` |
 | Pure Pursuit / Stanley / LQR Steer / Rear Wheel Feedback | `*Controller` | `PathTracker` (unicycle `(v, ω)` output) |
 | EKF / UKF / PF family | `*Localizer` | `StateEstimator` |
@@ -76,17 +75,36 @@ They found two Tier 1 bugs, fixed in 0.3.0:
   vehicle parallel to but offset from the path never corrected the offset.
   It now uses `sinc(θe) → 1`.
 
-### Deprecated traits (0.3.0, removal in 0.4.0)
+### Removed traits (0.3.0)
 
-`GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` have no
-implementation anywhere in the workspace and duplicate roles covered by
-`PathPlanner` / `PathTracker` / `Controller`. `SamplingBasedPlanner` cannot
+`GridPathPlanner`, `SamplingBasedPlanner`, and `TrajectoryTracker` had no
+implementation anywhere in the workspace and duplicated roles covered by
+`PathPlanner` / `PathTracker` / `Controller`. `SamplingBasedPlanner` could not
 be implemented coherently: `PathPlanner::plan(&self)` cannot record a tree and
-each sampler has its own node type behind an inherent `get_tree()`. Following
-the `Estimator2D` precedent they are dead surface, but they shipped in 0.1.0,
-so 0.3.0 marks them `#[deprecated]` and 0.4.0 removes them. `MotionModel` and
-`ObservationModel` stay as extension points for user-defined filters; the
-built-in filters do not use them.
+each sampler has its own node type behind an inherent `get_tree()`. They
+shipped in 0.1.0, but 0.3.0 is a breaking minor release for `0.x`, nothing
+implemented them, and the crates had double-digit downloads, so they were
+removed outright — the `Estimator2D` precedent — instead of spending a release
+on deprecation. `MotionModel` and `ObservationModel` stay as extension points
+for user-defined filters; the built-in filters do not use them.
+
+### Local planning: no trait yet (decision)
+
+DWA is the only obstacle-aware local planner in the workspace that turns
+(state, goal, obstacles) into a velocity command; `move_to_pose` and the
+tracking controllers ignore obstacles, and the potential-field / elastic-band
+modules produce paths. A `LocalPlanner` trait with a single implementer would
+be speculative surface, so DWA keeps its inherent API as its Tier 1 contract:
+
+- `try_new` / `try_set_state` / `try_set_goal` / `set_obstacles_from_obstacles`
+  configure it; `try_plan_input() -> ControlInput` returns the unicycle
+  command without moving; `try_step()` plans and advances the internal state;
+  `is_goal_reached()` / `distance_to_goal()` report progress.
+
+`crates/rust_robotics_planning/tests/tier1_dwa_contract.rs` pins that
+contract. Introduce a `LocalPlanner` trait when a second implementer (e.g. a
+velocity-obstacle or MPPI local planner with obstacles) lands, shaped after
+`try_plan_input`.
 
 ## Stability tiers
 

@@ -1350,9 +1350,13 @@ below is library work that does not depend on them.
    2026-10-08*: `DijkstraPlanner`, `RRTStar: PathPlanner`, planner / tracker
    contract tests through trait objects, three never-implemented traits
    deprecated, and two Tier 1 tracker bugs fixed (stale same-length paths,
-   Rear Wheel Feedback sinc). Remaining: flip `cargo-semver-checks` to a hard
-   gate when 0.3.0 is cut, remove the deprecated traits in 0.4.0, decide
-   whether DWA gets a local-planner trait.
+   Rear Wheel Feedback sinc). Follow-up the same day: the three dead traits
+   were removed outright for 0.3.0 instead of deprecated (unreleased breaking
+   minor; `Estimator2D` precedent), and DWA keeps an inherent API pinned by
+   `tests/tier1_dwa_contract.rs` (no `LocalPlanner` trait until a second
+   implementer exists). Only remaining item is release-bound: flip
+   `cargo-semver-checks` to a hard gate when 0.3.0 is cut (maintainer
+   decision 2026-10-08: not cutting yet).
 8. ~~**Playground pusher-slider tab**~~ **Done (2026-10-08).** `Pushing` tab:
    drag/turn the goal, click obstacles, friction slider, presets (translate,
    90° in-place turn, sideways), stick/slide coloring, share links. Obstacle

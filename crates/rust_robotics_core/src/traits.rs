@@ -9,35 +9,6 @@ pub trait PathPlanner {
     fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError>;
 }
 
-/// Trait for grid-based path planning algorithms
-#[deprecated(
-    since = "0.3.0",
-    note = "never implemented by any planner; grid planners implement `PathPlanner` in world \
-            coordinates. Scheduled for removal in 0.4.0."
-)]
-pub trait GridPathPlanner {
-    /// Plan a path on a grid from start to goal
-    fn plan(&self, start: GridNode, goal: GridNode) -> Result<Path2D, RoboticsError>;
-
-    /// Set obstacles for the planner
-    fn set_obstacles(&mut self, obstacles: &Obstacles);
-}
-
-/// Trait for sampling-based path planning algorithms (RRT, PRM, etc.)
-#[deprecated(
-    since = "0.3.0",
-    note = "never implemented: `PathPlanner::plan(&self)` cannot record a tree, and each \
-            sampler exposes its own node type through an inherent `get_tree()`. Scheduled \
-            for removal in 0.4.0."
-)]
-pub trait SamplingBasedPlanner: PathPlanner {
-    /// Get the tree/graph built during planning
-    fn get_tree(&self) -> &[(Point2D, Option<usize>)];
-
-    /// Set maximum iterations for planning
-    fn set_max_iterations(&mut self, max_iter: usize);
-}
-
 /// Trait for state estimation algorithms (EKF, UKF, Particle Filter, etc.)
 pub trait StateEstimator {
     /// State type used by this estimator
@@ -69,20 +40,6 @@ pub trait PathTracker {
 
     /// Check if the goal has been reached
     fn is_goal_reached(&self, current_state: &State2D, goal: Point2D) -> bool;
-}
-
-/// Trait for trajectory tracking with time-parameterized paths
-#[deprecated(
-    since = "0.3.0",
-    note = "never implemented; path trackers implement `PathTracker` and generic \
-            controllers implement `Controller`. Scheduled for removal in 0.4.0."
-)]
-pub trait TrajectoryTracker {
-    /// Trajectory point with time
-    type TrajectoryPoint;
-
-    /// Compute control input to follow the trajectory at given time
-    fn compute_control(&mut self, current_state: &State2D, time: f64) -> ControlInput;
 }
 
 /// Trait for vehicle/robot motion models
