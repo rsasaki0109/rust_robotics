@@ -1,5 +1,5 @@
-//! Interactive SLAM timeline demo: EKF-SLAM, FastSLAM, ICP scan matching, and
-//! LiDAR graph SLAM with loop closure.
+//! Interactive SLAM demos: EKF-SLAM, FastSLAM, ICP scan matching, a LiDAR
+//! graph SLAM loop-closure replay, and live LiDAR SLAM driving.
 
 use std::f64::consts::PI;
 
@@ -13,8 +13,10 @@ use rust_robotics_slam::{
     icp_matching::icp_matching,
     lidar_graph_slam::LidarGraphSlamConfig,
     lidar_loop_scenario::{run_corridor_loop, CorridorLoopConfig, CorridorLoopRun},
-    scan_to_map::{relative_pose, transform_scan_to_world},
+    scan_to_map::relative_pose,
 };
+
+use crate::slam_drive::{draw_lidar_scene, LidarSceneView, SlamDriveDemo};
 
 const DT: f64 = 0.1;
 const MAX_RANGE: f64 = 18.0;
@@ -22,10 +24,7 @@ const WORLD_MIN: f64 = -1.0;
 const WORLD_MAX: f64 = 14.0;
 const STEPS: usize = 72;
 
-const LOOP_WORLD_X: (f64, f64) = (-16.0, 16.0);
-const LOOP_WORLD_Y: (f64, f64) = (-11.0, 11.0);
 const LOOP_FRAMES_PER_TICK: usize = 2;
-const LOOP_MAP_STRIDE: usize = 3;
 
 const LANDMARKS: [[f64; 2]; 6] = [
     [2.5, 1.5],
@@ -45,6 +44,7 @@ enum SlamKind {
     FastSlam,
     Icp,
     LoopClosure,
+    Drive,
 }
 
 impl SlamKind {
@@ -54,6 +54,7 @@ impl SlamKind {
             Self::FastSlam => "FastSLAM 1.0",
             Self::Icp => "ICP Scan Matching",
             Self::LoopClosure => "LiDAR Loop Closure",
+            Self::Drive => "Drive LiDAR SLAM",
         }
     }
 
@@ -63,6 +64,7 @@ impl SlamKind {
             Self::FastSlam => "fastslam",
             Self::Icp => "icp",
             Self::LoopClosure => "loop",
+            Self::Drive => "drive",
         }
     }
 
@@ -72,6 +74,7 @@ impl SlamKind {
             "fastslam" => Some(Self::FastSlam),
             "icp" => Some(Self::Icp),
             "loop" => Some(Self::LoopClosure),
+            "drive" => Some(Self::Drive),
             _ => None,
         }
     }
@@ -101,6 +104,8 @@ pub struct SlamDemo {
     loop_run: Option<CorridorLoopRun>,
     /// Render the loop-closure map at front-end poses (before correction).
     show_front_end_map: bool,
+    /// Live, keyboard-driven LiDAR graph SLAM.
+    drive: SlamDriveDemo,
 }
 
 fn normalize_angle(angle: f64) -> f64 {
@@ -336,6 +341,7 @@ impl Default for SlamDemo {
             icp_frames,
             loop_run: None,
             show_front_end_map: false,
+            drive: SlamDriveDemo::default(),
         }
     }
 }
@@ -348,7 +354,7 @@ impl SlamDemo {
         // The loop-closure run is computed lazily, so its frame index is
         // clamped when the mode is first drawn.
         let max_idx = match self.kind {
-            SlamKind::LoopClosure => usize::MAX,
+            SlamKind::LoopClosure | SlamKind::Drive => usize::MAX,
             _ => self.active_frames().len().saturating_sub(1),
         };
         if let Some(frame) = crate::share::bounded_usize(query, "frame", max_idx) {
@@ -360,9 +366,18 @@ impl SlamDemo {
         if let Some(front_end) = crate::share::boolean(query, "frontend_map") {
             self.show_front_end_map = front_end;
         }
+        if self.kind == SlamKind::Drive {
+            self.drive.apply_share_query(query);
+        }
     }
 
     pub fn share_query(&self) -> String {
+        if self.kind == SlamKind::Drive {
+            return format!(
+                "tab=slam&algorithm=drive&{}",
+                self.drive.share_query_suffix()
+            );
+        }
         let mut query = format!(
             "tab=slam&algorithm={}&frame={}&playing={}",
             self.kind.slug(),
@@ -382,7 +397,7 @@ impl SlamDemo {
         match self.kind {
             SlamKind::EkfSlam => &self.ekf_frames,
             SlamKind::FastSlam => &self.fastslam_frames,
-            SlamKind::Icp | SlamKind::LoopClosure => &self.icp_frames,
+            SlamKind::Icp | SlamKind::LoopClosure | SlamKind::Drive => &self.icp_frames,
         }
     }
 
@@ -405,9 +420,11 @@ impl SlamDemo {
     fn reset(&mut self) {
         let kind = self.kind;
         let loop_run = self.loop_run.take();
+        let drive = std::mem::take(&mut self.drive);
         *self = Self::default();
         self.kind = kind;
         self.loop_run = loop_run;
+        self.drive = drive;
     }
 
     fn world_rect(&self, ui: &egui::Ui) -> (Rect, f32) {
@@ -511,126 +528,44 @@ impl SlamDemo {
         }
     }
 
-    fn loop_world_rect(ui: &egui::Ui) -> Rect {
-        let (x_span, y_span) = (
-            LOOP_WORLD_X.1 - LOOP_WORLD_X.0,
-            LOOP_WORLD_Y.1 - LOOP_WORLD_Y.0,
-        );
-        let aspect = (y_span / x_span) as f32;
-        let width = ui
-            .available_width()
-            .min((ui.available_height() - 72.0).max(120.0) / aspect);
-        Rect::from_min_size(ui.cursor().min, Vec2::new(width, width * aspect))
-    }
-
-    fn loop_to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
-        let u = ((x - LOOP_WORLD_X.0) / (LOOP_WORLD_X.1 - LOOP_WORLD_X.0)) as f32;
-        let v = 1.0 - ((y - LOOP_WORLD_Y.0) / (LOOP_WORLD_Y.1 - LOOP_WORLD_Y.0)) as f32;
-        rect.min + Vec2::new(u * rect.width(), v * rect.height())
-    }
-
-    fn draw_trail(painter: &egui::Painter, rect: Rect, poses: &[Pose2D], stroke: Stroke) {
-        let points: Vec<Pos2> = poses
-            .iter()
-            .map(|pose| Self::loop_to_screen(rect, pose.x, pose.y))
-            .collect();
-        painter.add(egui::Shape::line(points, stroke));
-    }
-
     fn draw_loop_scene(&mut self, ui: &mut egui::Ui) {
         let frame_idx = self.frame_idx;
         let show_front_end_map = self.show_front_end_map;
-        let rect = Self::loop_world_rect(ui);
         let run = self.loop_run();
         let frame = &run.frames[frame_idx];
-        let painter = ui.painter_at(rect);
-        painter.rect_filled(rect, 0.0, Color32::from_rgb(18, 22, 28));
-
-        for wall in &run.walls {
-            painter.line_segment(
-                [
-                    Self::loop_to_screen(rect, wall.start.x, wall.start.y),
-                    Self::loop_to_screen(rect, wall.end.x, wall.end.y),
-                ],
-                Stroke::new(1.0_f32, Color32::from_rgb(90, 95, 105)),
-            );
-        }
-
         let node_count = frame.node_poses.len();
         let map_poses = if show_front_end_map {
             &run.node_front_end[..node_count]
         } else {
             &frame.node_poses[..]
         };
-        let map_color = if show_front_end_map {
-            Color32::from_rgba_unmultiplied(240, 150, 70, 120)
-        } else {
-            Color32::from_rgba_unmultiplied(100, 160, 255, 120)
-        };
-        for (pose, scan) in map_poses.iter().zip(&run.node_scans) {
-            for point in transform_scan_to_world(scan, *pose)
-                .iter()
-                .step_by(LOOP_MAP_STRIDE)
-            {
-                painter.circle_filled(Self::loop_to_screen(rect, point.x, point.y), 1.0, map_color);
-            }
-        }
-
         let history = &run.frames[..=frame_idx];
         let truth: Vec<Pose2D> = history.iter().map(|f| f.truth).collect();
+        let odometry: Vec<Pose2D> = history.iter().map(|f| f.odometry).collect();
         let front_end: Vec<Pose2D> = history.iter().map(|f| f.front_end).collect();
-        Self::draw_trail(
-            &painter,
-            rect,
-            &truth,
-            Stroke::new(1.0_f32, Color32::from_rgba_unmultiplied(200, 200, 200, 110)),
-        );
-        Self::draw_trail(
-            &painter,
-            rect,
-            &front_end,
-            Stroke::new(1.5_f32, Color32::from_rgb(240, 150, 70)),
-        );
-        Self::draw_trail(
-            &painter,
-            rect,
-            &frame.node_poses,
-            Stroke::new(2.0_f32, Color32::from_rgb(90, 210, 140)),
-        );
-        for closure in run
-            .loop_closures
-            .iter()
-            .filter(|closure| closure.to < node_count)
-        {
-            let (a, b) = (frame.node_poses[closure.from], frame.node_poses[closure.to]);
-            painter.line_segment(
-                [
-                    Self::loop_to_screen(rect, a.x, a.y),
-                    Self::loop_to_screen(rect, b.x, b.y),
-                ],
-                Stroke::new(1.5_f32, Color32::from_rgb(230, 90, 220)),
-            );
-        }
-        for point in transform_scan_to_world(&frame.scan, frame.estimate) {
-            painter.circle_filled(
-                Self::loop_to_screen(rect, point.x, point.y),
-                1.4,
-                Color32::from_rgb(255, 90, 100),
-            );
-        }
-        for (pose, color) in [
-            (frame.front_end, Color32::from_rgb(240, 150, 70)),
-            (frame.estimate, Color32::from_rgb(90, 210, 140)),
-        ] {
-            Self::draw_robot(
-                &painter,
-                Self::loop_to_screen(rect, pose.x, pose.y),
-                pose.yaw,
-                color,
-                5.0,
-            );
-        }
-        ui.allocate_rect(rect, egui::Sense::hover());
+        let view = LidarSceneView {
+            walls: &run.walls,
+            map: map_poses
+                .iter()
+                .zip(&run.node_scans)
+                .map(|(pose, scan)| (*pose, scan.as_slice()))
+                .collect(),
+            map_at_front_end: show_front_end_map,
+            truth: &truth,
+            odometry: &odometry,
+            front_end: &front_end,
+            nodes: &frame.node_poses,
+            loop_edges: run
+                .loop_closures
+                .iter()
+                .filter(|closure| closure.to < node_count)
+                .map(|closure| (frame.node_poses[closure.from], frame.node_poses[closure.to]))
+                .collect(),
+            scan: &frame.scan,
+            estimate: frame.estimate,
+            front_end_pose: frame.front_end,
+        };
+        draw_lidar_scene(ui, &view, 72.0);
     }
 
     fn loop_status(&mut self, ui: &mut egui::Ui) {
@@ -655,9 +590,10 @@ impl SlamDemo {
             error(frame.estimate),
         ));
         ui.label(
-            "Gray: truth · orange: scan-to-map front end · green: pose graph · \
-             magenta: loop edges · red: current scan. The top corridor has no \
-             pillars, so the front end drifts there until the loop closes.",
+            "Gray: truth · purple: wheel odometry · orange: scan-to-map front end · \
+             green: pose graph · magenta: loop edges · red: current scan. The top \
+             corridor has no pillars, so the front end drifts there until the loop \
+             closes.",
         );
     }
 
@@ -669,6 +605,7 @@ impl SlamDemo {
                 SlamKind::FastSlam,
                 SlamKind::Icp,
                 SlamKind::LoopClosure,
+                SlamKind::Drive,
             ] {
                 if ui
                     .selectable_label(self.kind == kind, kind.label())
@@ -676,6 +613,9 @@ impl SlamDemo {
                 {
                     self.kind = kind;
                 }
+            }
+            if self.kind == SlamKind::Drive {
+                return;
             }
             ui.separator();
             if ui.button("Reset").clicked() {
@@ -685,6 +625,11 @@ impl SlamDemo {
                 ctx.request_repaint();
             }
         });
+
+        if self.kind == SlamKind::Drive {
+            self.drive.ui(ctx, ui);
+            return;
+        }
 
         let max_idx = self.frame_count().saturating_sub(1);
         self.frame_idx = self.frame_idx.min(max_idx);
@@ -728,7 +673,7 @@ impl SlamDemo {
                         frame.est_landmarks.len()
                     ));
                 }
-                SlamKind::Icp | SlamKind::LoopClosure => {
+                SlamKind::Icp | SlamKind::LoopClosure | SlamKind::Drive => {
                     ui.label(format!(
                         "ICP mean error: {:.4} m/point  (prev=blue, curr=red, aligned=green)",
                         frame.icp_error

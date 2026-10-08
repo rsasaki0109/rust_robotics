@@ -1319,7 +1319,12 @@ below is library work that does not depend on them.
    10.90 m raw odometry / 0.302 m scan-to-map / 0.012 m with loop closure on a
    98 m corridor loop with a pillar-free 24 m corridor. Playground SLAM-tab
    **LiDAR Loop Closure** mode landed 2026-10-08 (lazy-computed run, jump to
-   first closure, front-end vs loop-closed map toggle, share links).
+   first closure, front-end vs loop-closed map toggle, share links), plus a
+   live **Drive LiDAR SLAM** mode (arrow keys / auto-drive, odometry-error
+   sliders). Native release: 1.2 ms mean per tick, ~170 ms worst on the
+   largest re-optimization after three laps (245 nodes, block-sparse PCG);
+   graph SLAM error 9 mm vs 1.22 m scan-to-map only. Goes live on Pages once
+   merged to `main`.
 6. ~~**Loop-closure gallery GIF**~~ **Done (2026-10-08).**
    `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
    added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via

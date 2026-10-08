@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Playground SLAM tab **LiDAR Loop Closure** mode: timeline over the corridor
   loop, jump to the first closure, toggle the map between front-end and
   loop-closed poses, shareable links (`algorithm=loop&frontend_map=…`).
+- Playground SLAM tab **Drive LiDAR SLAM** mode: drive the corridor loop with
+  the arrow keys or auto-drive while `LidarGraphSlam` runs live (block-sparse
+  PCG back end), with odometry scale-error / yaw-drift / range-noise sliders,
+  wall collisions, and share links (`algorithm=drive&odom_scale=…&auto=…`).
 - Gallery GIF `media/gallery/lidar_loop_closure.gif`
   (`render_gif_lidar_loop_closure`).
 - `rust_robotics_slam::lidar_graph_slam`: `LidarGraphSlam` adds pose-graph

@@ -69,7 +69,9 @@ preserve the selected tab.
 - **Localization** — PF / EKF with arrow-key driving and noise slider.
 - **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop, and
   **LiDAR loop closure** (scan-to-map + pose graph on a corridor loop; toggle the
-  map between front-end and loop-closed poses) with a timeline scrubber.
+  map between front-end and loop-closed poses) with a timeline scrubber, plus
+  **Drive LiDAR SLAM**: arrow-key (or auto) driving with live scan-to-map and
+  loop closure, and sliders for odometry scale error, yaw drift, and range noise.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
   LQR Steer traces under identical paths and dynamics. Compare cross-track

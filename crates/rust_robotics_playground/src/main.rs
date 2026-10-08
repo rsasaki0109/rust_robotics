@@ -8,6 +8,7 @@ mod grid_planners;
 mod localization;
 mod share;
 mod slam;
+mod slam_drive;
 
 use app::PlaygroundApp;
 

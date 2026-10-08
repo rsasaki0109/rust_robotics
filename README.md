@@ -147,7 +147,11 @@ cargo run -p rust_robotics_playground
 
 Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
 Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
-timelines, or **ADMM Formation** for the multi-agent horizon-consensus demo.
+timelines, or pick **Drive LiDAR SLAM** to drive a robot around a corridor loop
+with the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
+run live — crank up the odometry error and watch the map snap back when you
+return to the start. **ADMM Formation** shows the multi-agent
+horizon-consensus demo.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
 identical path, initial state, clock, and actuation model, with shareable speed
 and turn-response settings.
@@ -716,8 +720,10 @@ cargo run -p rust_robotics --example headless_scan_to_map --no-default-features 
 Gray: ground truth, orange: scan-to-map front end, green: pose-graph nodes,
 magenta: loop edges, blue: map from node scans, red: current scan. The front
 end drifts in the pillar-free top corridor; the animation pauses on each
-re-optimization so the correction is visible. Also available as the
-**LiDAR Loop Closure** mode of the playground's SLAM tab.
+re-optimization so the correction is visible. In the playground's SLAM tab,
+**LiDAR Loop Closure** replays this run and **Drive LiDAR SLAM** lets you
+drive it yourself:
+<https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&algorithm=drive&auto=1>
 
 `LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
 end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
