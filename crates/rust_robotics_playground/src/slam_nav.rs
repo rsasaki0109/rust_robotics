@@ -35,9 +35,16 @@ pub(crate) fn plan_on_grid(
     if occupied.is_empty() {
         return Err("the map is empty".into());
     }
+    // The planner grid spans its obstacles' bounding box; the grid's own
+    // corners stretch it over the whole map so goals in unexplored space
+    // can still be planned to.
+    let (width, height) = grid.size();
+    let min = grid.origin();
+    let max = min + Vector2::new(width as f64, height as f64) * grid.resolution();
     let obstacles = Obstacles::from_points(
         occupied
             .iter()
+            .chain(&[min, max])
             .map(|point| Point2D::new(point.x, point.y))
             .collect(),
     );
@@ -50,19 +57,23 @@ pub(crate) fn plan_on_grid(
         },
     )
     .map_err(|error| error.to_string())?;
-    // A robot hugging a wall stands inside the inflated obstacles; start
-    // from the nearest free planner cell instead.
+    // A robot hugging a wall stands inside the inflated obstacles, and a
+    // tapped goal often lands on or next to a wall: use the nearest free
+    // planner cells instead.
     let map = planner.grid_map();
-    let (sx, sy) = (map.calc_x_index(start.x), map.calc_y_index(start.y));
-    let free_start = (0..=3)
-        .flat_map(|ring: i32| {
-            (-ring..=ring).flat_map(move |dx| (-ring..=ring).map(move |dy| (dx, dy)))
-        })
-        .find(|&(dx, dy)| map.is_valid(sx + dx, sy + dy))
-        .map(|(dx, dy)| Point2D::new(map.calc_x_position(sx + dx), map.calc_y_position(sy + dy)))
-        .ok_or("the robot is boxed in")?;
+    let nearest_free = |point: Vector2<f64>, max_rings: i32| {
+        let (x, y) = (map.calc_x_index(point.x), map.calc_y_index(point.y));
+        (0..=max_rings)
+            .flat_map(|ring| {
+                (-ring..=ring).flat_map(move |dx| (-ring..=ring).map(move |dy| (dx, dy)))
+            })
+            .find(|&(dx, dy)| map.is_valid(x + dx, y + dy))
+            .map(|(dx, dy)| Point2D::new(map.calc_x_position(x + dx), map.calc_y_position(y + dy)))
+    };
+    let free_start = nearest_free(start, 3).ok_or("the robot is boxed in")?;
+    let free_goal = nearest_free(goal, 5).ok_or("the goal is inside an obstacle")?;
     let mut path = planner
-        .plan(free_start, Point2D::new(goal.x, goal.y))
+        .plan(free_start, free_goal)
         .map_err(|_| "no path to the goal".to_string())?;
     path.points.insert(0, Point2D::new(start.x, start.y));
     Ok(path)
@@ -161,6 +172,10 @@ impl Navigator {
             self.since_plan = 0.0;
             match plan_on_grid(grid, position, goal) {
                 Ok(path) => {
+                    // The planner may have snapped the goal off a wall.
+                    if let Some(end) = path.points.last() {
+                        self.goal = Some(Vector2::new(end.x, end.y));
+                    }
                     self.tracker.set_path(path.clone());
                     self.path = Some(path);
                     self.status = NavStatus::Following;
@@ -353,6 +368,34 @@ mod tests {
             assert!(clearance > 0.3, "touched a wall at {pose:?}");
         }
         assert_eq!(navigator.status, NavStatus::Reached);
+    }
+
+    #[test]
+    fn plans_into_unexplored_space() {
+        // A corridor open to the east; everything past x = 4 is unknown.
+        let v = Vector2::new;
+        let corridor = [
+            LineSegment::new(v(-4.0, -1.5), v(4.0, -1.5)),
+            LineSegment::new(v(-4.0, 1.5), v(4.0, 1.5)),
+            LineSegment::new(v(-4.0, -1.5), v(-4.0, 1.5)),
+        ];
+        let pose = Pose2D::new(-2.0, 0.0, 0.0);
+        let mut grid = OccupancyGrid::new(v(-6.0, -6.0), v(12.0, 6.0), OccupancyConfig::default());
+        grid.insert_ranges(pose, &ray_cast_ranges(pose, &corridor, 360, 6.0), 6.0);
+        let goal = v(10.0, 3.0);
+        assert_eq!(grid.state_at(goal), CellState::Unknown);
+        let path = plan_on_grid(&grid, v(pose.x, pose.y), goal).expect("path into the unknown");
+        let end = path.points.last().expect("points");
+        assert!((v(end.x, end.y) - goal).norm() < 0.5, "ends at {end:?}");
+    }
+
+    #[test]
+    fn goals_on_a_wall_snap_to_free_space() {
+        // The divider wall at x = 0: a tap right on it still plans.
+        let path = plan_on_grid(&grid(), Vector2::new(-2.5, -2.0), Vector2::new(0.0, -1.0))
+            .expect("snapped goal");
+        let end = path.points.last().expect("points");
+        assert!(end.x.abs() > 0.4 && end.x.abs() < 1.3, "ends at {end:?}");
     }
 
     #[test]

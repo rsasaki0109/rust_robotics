@@ -718,7 +718,9 @@ pub fn ranges_to_points(ranges: &[f64]) -> Vec<Vector2<f64>> {
         .collect()
 }
 
-fn beam_angle(beam: usize, beam_count: usize) -> f64 {
+/// Body-frame bearing \[rad\] of beam `beam` in a full 360° scan of
+/// `beam_count` beams, as used by [`ray_cast_ranges`] and [`ranges_to_points`].
+pub fn beam_angle(beam: usize, beam_count: usize) -> f64 {
     -PI + 2.0 * PI * beam as f64 / beam_count.max(1) as f64
 }
 

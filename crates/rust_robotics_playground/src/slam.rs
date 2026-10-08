@@ -689,7 +689,7 @@ impl SlamDemo {
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label("Algorithm:");
             for kind in [
                 SlamKind::EkfSlam,
@@ -724,7 +724,7 @@ impl SlamDemo {
 
         let max_idx = self.frame_count().saturating_sub(1);
         self.frame_idx = self.frame_idx.min(max_idx);
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label(format!("Step {}/{}", self.frame_idx, max_idx));
             ui.add(egui::Slider::new(&mut self.frame_idx, 0..=max_idx).text("timeline"));
         });
@@ -744,7 +744,7 @@ impl SlamDemo {
             });
             let max_idx = self.frame_count().saturating_sub(1);
             self.frame_idx = self.frame_idx.min(max_idx);
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 let first_loop = self.loop_run().first_loop_frame();
                 if let Some(first_loop) = first_loop {
                     if ui.button("Jump to first loop closure").clicked() {
@@ -840,5 +840,33 @@ mod tests {
         assert!(restored.show_front_end_map);
         assert_eq!(restored.loop_scenario, LoopScenario::AliasedNoCheck);
         assert!(restored.loop_runs.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn drive_scene_fits_a_phone_screen() {
+        // Inside the narrow-layout scroll area, the scene (and the joystick
+        // in its corner) must not overflow a 390 px wide screen.
+        let ctx = egui::Context::default();
+        let mut demo = SlamDemo::default();
+        demo.apply_share_query("algorithm=drive");
+        for _ in 0..3 {
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(390.0, 844.0),
+                )),
+                ..Default::default()
+            };
+            let _ = ctx.run(input, |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| demo.ui(ctx, ui));
+                });
+            });
+        }
+        let map = demo.drive.last_map_rect().expect("scene drawn");
+        assert!(map.right() <= 390.0, "scene overflows: {map:?}");
+        assert!(map.width() > 300.0, "scene too small: {map:?}");
     }
 }

@@ -8,6 +8,7 @@ pub mod dataset;
 pub mod ekf_slam;
 pub mod fastslam1;
 pub mod fastslam2;
+pub mod frontier_exploration;
 pub mod g2o;
 pub mod geometric_icp;
 pub mod graph_based_slam;

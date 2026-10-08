@@ -10,7 +10,35 @@
 use nalgebra::Vector2;
 use rust_robotics_core::Pose2D;
 
-use crate::scan_to_map::transform_scan_to_world;
+use crate::scan_to_map::{beam_angle, transform_scan_to_world};
+
+const MISS: u8 = 1;
+const HIT: u8 = 2;
+
+/// The cells one scan observed; a hit overrides a miss.
+struct ScanUpdate {
+    width: usize,
+    marks: Vec<u8>,
+    touched: Vec<usize>,
+}
+
+impl ScanUpdate {
+    fn new(width: usize, height: usize) -> Self {
+        Self {
+            width,
+            marks: vec![0; width * height],
+            touched: Vec::new(),
+        }
+    }
+
+    fn mark(&mut self, (x, y): (usize, usize), mark: u8) {
+        let index = y * self.width + x;
+        if self.marks[index] == 0 {
+            self.touched.push(index);
+        }
+        self.marks[index] = self.marks[index].max(mark);
+    }
+}
 
 /// Log-odds increments and thresholds.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -37,7 +65,7 @@ impl Default for OccupancyConfig {
             miss: -0.4,
             clamp: 5.0,
             occupied_threshold: 0.6,
-            free_threshold: -0.6,
+            free_threshold: -0.3,
         }
     }
 }
@@ -167,34 +195,116 @@ impl OccupancyGrid {
             .collect()
     }
 
-    /// Integrates one body-frame scan taken at `pose`.
+    /// Integrates one body-frame scan taken at `pose`. Each cell is updated
+    /// at most once per scan, and a hit wins over a miss, so a wall cell is
+    /// not erased by neighboring beams that graze it.
     pub fn insert_scan(&mut self, pose: Pose2D, scan_body: &[Vector2<f64>]) {
         let Some(start) = self.cell_of(Vector2::new(pose.x, pose.y)) else {
             return;
         };
+        let mut update = ScanUpdate::new(self.width, self.height);
         for point in transform_scan_to_world(scan_body, pose) {
             let Some(end) = self.cell_of(point) else {
                 continue;
             };
-            self.trace(start, end);
+            self.walk(&mut update, start, end);
+            update.mark(end, HIT);
+        }
+        self.apply(update);
+    }
+
+    /// Integrates a full 360° range scan taken at `pose` (beam order of
+    /// [`crate::scan_to_map::ray_cast_ranges`]). Beams without a return
+    /// (non-finite or beyond `max_range`) still clear the cells out to
+    /// `max_range`, so open space becomes known free instead of unknown, and
+    /// free-only sub-rays fill the angular gaps between beams so far cells are
+    /// not left as unknown speckles (which would look like frontiers).
+    pub fn insert_ranges(&mut self, pose: Pose2D, ranges: &[f64], max_range: f64) {
+        let Some(start) = self.cell_of(Vector2::new(pose.x, pose.y)) else {
+            return;
+        };
+        let count = ranges.len();
+        let spacing = std::f64::consts::TAU / count.max(1) as f64;
+        // Half-cell ray spacing at max range: 8-connected lines one cell
+        // apart can leave moiré gaps between them.
+        let sub_rays =
+            ((2.0 * max_range * spacing / self.config.resolution).ceil() as usize).max(1);
+        let mut update = ScanUpdate::new(self.width, self.height);
+        for (beam, &range) in ranges.iter().enumerate() {
+            let hit = range.is_finite() && range <= max_range;
+            let reach = if hit { range } else { max_range };
+            let center = pose.yaw + beam_angle(beam, count);
+            for sub in 0..sub_rays {
+                // Sub-rays span the half-open sector around the beam.
+                let angle = center + spacing * ((sub as f64 + 0.5) / sub_rays as f64 - 0.5);
+                let main = sub == sub_rays / 2;
+                // Off-center sub-rays stop a cell short of a wall they may
+                // not actually reach, and never mark it occupied.
+                let length = if hit && !main {
+                    (reach - self.config.resolution).max(0.0)
+                } else {
+                    reach
+                };
+                let Some(end) = self.last_cell_along(pose, angle, length) else {
+                    continue;
+                };
+                let ends_inside = self.cell_of(Vector2::new(
+                    pose.x + length * angle.cos(),
+                    pose.y + length * angle.sin(),
+                )) == Some(end);
+                self.walk(&mut update, start, end);
+                update.mark(
+                    end,
+                    if hit && main && ends_inside {
+                        HIT
+                    } else {
+                        MISS
+                    },
+                );
+            }
+        }
+        self.apply(update);
+    }
+
+    /// The last grid cell along a ray of `length` from `pose` at `angle`.
+    fn last_cell_along(&self, pose: Pose2D, angle: f64, length: f64) -> Option<(usize, usize)> {
+        let end = Vector2::new(pose.x + length * angle.cos(), pose.y + length * angle.sin());
+        if let Some(cell) = self.cell_of(end) {
+            return Some(cell);
+        }
+        let steps = (length / self.config.resolution).ceil() as usize;
+        (0..=steps).rev().find_map(|step| {
+            let t = length * step as f64 / steps.max(1) as f64;
+            self.cell_of(Vector2::new(
+                pose.x + t * angle.cos(),
+                pose.y + t * angle.sin(),
+            ))
+        })
+    }
+
+    /// Applies one scan's marks: +hit on hit cells, +miss on the others.
+    fn apply(&mut self, update: ScanUpdate) {
+        let clamp = self.config.clamp;
+        for index in update.touched {
+            let delta = if update.marks[index] == HIT {
+                self.config.hit
+            } else {
+                self.config.miss
+            };
+            let cell = &mut self.log_odds[index];
+            *cell = (*cell + delta).clamp(-clamp, clamp);
         }
     }
 
-    fn add(&mut self, (x, y): (usize, usize), delta: f32) {
-        let clamp = self.config.clamp;
-        let cell = &mut self.log_odds[y * self.width + x];
-        *cell = (*cell + delta).clamp(-clamp, clamp);
-    }
-
-    /// Bresenham from `start` to `end`: free along the way, occupied at the end.
-    fn trace(&mut self, start: (usize, usize), end: (usize, usize)) {
+    /// Marks every cell from `start` up to (not including) `end` as free.
+    fn walk(&self, update: &mut ScanUpdate, start: (usize, usize), end: (usize, usize)) {
         let (mut x, mut y) = (start.0 as i64, start.1 as i64);
         let (x1, y1) = (end.0 as i64, end.1 as i64);
         let (dx, dy) = ((x1 - x).abs(), -(y1 - y).abs());
         let (sx, sy) = (if x < x1 { 1 } else { -1 }, if y < y1 { 1 } else { -1 });
         let mut error = dx + dy;
         while (x, y) != (x1, y1) {
-            self.add((x as usize, y as usize), self.config.miss);
+            update.mark((x as usize, y as usize), MISS);
             let doubled = 2 * error;
             if doubled >= dy {
                 error += dy;
@@ -205,7 +315,6 @@ impl OccupancyGrid {
                 y += sy;
             }
         }
-        self.add(end, self.config.hit);
     }
 
     /// Distance \[m\] from every cell center to the nearest occupied cell
@@ -311,6 +420,32 @@ mod tests {
             let to_wall = (3.0 - point.x.abs()).min(2.0 - point.y.abs()).abs();
             assert!(to_wall < 0.15, "{point:?}");
         }
+    }
+
+    #[test]
+    fn beams_without_a_return_clear_open_space() {
+        // Only the wall at x = 3 is in range; every other beam has no return.
+        let wall = [LineSegment::new(
+            Vector2::new(3.0, -1.0),
+            Vector2::new(3.0, 1.0),
+        )];
+        let pose = Pose2D::new(0.0, 0.0, 0.0);
+        let ranges = ray_cast_ranges(pose, &wall, 360, 5.0);
+        let mut grid = OccupancyGrid::new(
+            Vector2::new(-6.0, -6.0),
+            Vector2::new(6.0, 6.0),
+            OccupancyConfig::default(),
+        );
+        grid.insert_ranges(pose, &ranges, 5.0);
+        // The wall lies on a cell boundary; its hits land on either side.
+        let wall_cells = [Vector2::new(2.95, 0.35), Vector2::new(3.05, 0.35)];
+        assert!(wall_cells
+            .iter()
+            .any(|point| grid.state_at(*point) == CellState::Occupied));
+        assert_eq!(grid.state_at(Vector2::new(-4.0, 0.0)), CellState::Free);
+        assert_eq!(grid.state_at(Vector2::new(0.0, 4.5)), CellState::Free);
+        assert_eq!(grid.state_at(Vector2::new(-5.5, 0.0)), CellState::Unknown);
+        assert_eq!(grid.state_at(Vector2::new(4.0, 0.0)), CellState::Unknown);
     }
 
     #[test]

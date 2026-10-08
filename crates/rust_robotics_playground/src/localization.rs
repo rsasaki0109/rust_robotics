@@ -1,7 +1,7 @@
 //! Interactive localization demo: Particle Filter and EKF with keyboard driving.
 
 use std::f64::consts::PI;
-use std::time::Instant;
+use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::{Matrix2, Matrix4, Vector2};

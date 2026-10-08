@@ -497,6 +497,12 @@ impl SlamDriveDemo {
         self.slam_update(Pose2D::origin());
     }
 
+    /// Screen rect of the scene in the last frame.
+    #[cfg(test)]
+    pub(crate) fn last_map_rect(&self) -> Option<Rect> {
+        self.last_map_rect
+    }
+
     /// Whether SLAM is paused for localization on the frozen map.
     fn localizing(&self) -> bool {
         self.mcl.is_some()
@@ -1134,16 +1140,23 @@ impl SlamDriveDemo {
                 self.navigator.cancel();
             }
         });
-        ui.horizontal_wrapped(|ui| {
+        // Sliders are composite widgets that a wrapping row cannot break,
+        // so stack them on narrow (phone) screens instead of overflowing.
+        let sliders = |ui: &mut egui::Ui, demo: &mut Self| {
             ui.add(
-                egui::Slider::new(&mut self.odometry_scale_error_pct, 0.0..=10.0)
+                egui::Slider::new(&mut demo.odometry_scale_error_pct, 0.0..=10.0)
                     .text("odometry scale error %"),
             );
             ui.add(
-                egui::Slider::new(&mut self.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"),
+                egui::Slider::new(&mut demo.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"),
             );
-            ui.add(egui::Slider::new(&mut self.range_noise_cm, 0.0..=5.0).text("range noise cm"));
-        });
+            ui.add(egui::Slider::new(&mut demo.range_noise_cm, 0.0..=5.0).text("range noise cm"));
+        };
+        if ui.available_width() < 800.0 {
+            ui.vertical(|ui| sliders(ui, self));
+        } else {
+            ui.horizontal(|ui| sliders(ui, self));
+        }
 
         let (speed, omega) = self.control(ctx);
         let moving = self.tick(speed, omega);
