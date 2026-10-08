@@ -85,6 +85,8 @@ preserve the selected tab.
   and unknown space (orange) until the map is complete. **Moving people**
   are seen by the LiDAR but not in the map; when the next second of the Pure
   Pursuit arc would hit something, DWA picks a collision-free arc (yellow).
+  **Ignore moving objects** keeps their scan points (purple) out of scan
+  matching and the map; untick it to watch them drag the SLAM estimate.
   Loop checks and re-optimization are spread over frames so driving stays
   smooth. On phones the header collapses to a tab menu and the page scrolls.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.

@@ -107,6 +107,60 @@ jobs:
       env:
         RUSTFLAGS: '--cfg getrandom_backend="unsupported"'
 
+  web-smoke:
+    # Builds the playground exactly like Pages does and loads every tab in
+    # headless Chromium: a Rust panic in the browser (e.g. std::time::Instant
+    # on wasm32-unknown-unknown) fails the build instead of the live site.
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache cargo
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-web-smoke-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+
+    - name: Install trunk
+      run: command -v trunk || cargo install trunk --locked
+
+    - name: Build playground WASM
+      working-directory: crates/rust_robotics_playground
+      run: trunk build index.html --release
+      env:
+        RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
+        NO_COLOR: "false"
+
+    - name: Install Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Install Playwright Chromium
+      working-directory: scripts/web_smoke
+      run: npm install && npx playwright install --with-deps chromium
+
+    - name: Load every playground tab in headless Chromium
+      working-directory: scripts/web_smoke
+      run: node web_smoke.mjs ../../crates/rust_robotics_playground/dist screenshots
+
+    - name: Upload screenshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-smoke-screenshots
+        path: scripts/web_smoke/screenshots
+
   embedded-check:
     runs-on: ubuntu-latest
     steps:

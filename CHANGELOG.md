@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::dynamic_filter::DynamicPointFilter`: a short-term
+  free-space grid that flags LiDAR points landing where recent scans saw free
+  space (people walking by), so they stay out of scan matching and the map;
+  `OccupancyGrid::log_odds`, and `insert_ranges` skips NaN beams. Playground
+  Drive mode uses it by default ("Ignore moving objects", `ignore_moving=` in
+  share links): pillar hall with 6 people, worst SLAM error over 6 seeds
+  1.18 m → 0.37 m (0.18 m without people).
+- CI `web-smoke` job: builds the playground with trunk like Pages does and
+  loads every tab (and a phone viewport) in headless Chromium via
+  `scripts/web_smoke`, failing on any page error or Rust panic.
 - `rust_robotics_slam::frontier_exploration`: frontier clusters on an
   `OccupancyGrid`, wavefront reachability with clearance,
   `next_frontier_goal` (distance vs. cluster size, skips cells near failed

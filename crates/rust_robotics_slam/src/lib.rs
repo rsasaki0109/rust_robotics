@@ -5,6 +5,7 @@ pub mod bundle_adjustment;
 pub mod carmen;
 pub mod correlative_scan_matching;
 pub mod dataset;
+pub mod dynamic_filter;
 pub mod ekf_slam;
 pub mod fastslam1;
 pub mod fastslam2;

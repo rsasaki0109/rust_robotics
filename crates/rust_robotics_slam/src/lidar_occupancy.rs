@@ -168,6 +168,11 @@ impl OccupancyGrid {
             )
     }
 
+    /// Log-odds of cell `(x, y)` being occupied (0 = unknown).
+    pub fn log_odds(&self, x: usize, y: usize) -> f32 {
+        self.log_odds[y * self.width + x]
+    }
+
     /// State of cell `(x, y)`.
     pub fn state(&self, x: usize, y: usize) -> CellState {
         let value = self.log_odds[y * self.width + x];
@@ -216,7 +221,8 @@ impl OccupancyGrid {
     /// Integrates a full 360° range scan taken at `pose` (beam order of
     /// [`crate::scan_to_map::ray_cast_ranges`]). Beams without a return
     /// (non-finite or beyond `max_range`) still clear the cells out to
-    /// `max_range`, so open space becomes known free instead of unknown, and
+    /// `max_range`, so open space becomes known free instead of unknown (NaN
+    /// beams are skipped entirely, e.g. ones that hit a moving object), and
     /// free-only sub-rays fill the angular gaps between beams so far cells are
     /// not left as unknown speckles (which would look like frontiers).
     pub fn insert_ranges(&mut self, pose: Pose2D, ranges: &[f64], max_range: f64) {
@@ -231,6 +237,9 @@ impl OccupancyGrid {
             ((2.0 * max_range * spacing / self.config.resolution).ceil() as usize).max(1);
         let mut update = ScanUpdate::new(self.width, self.height);
         for (beam, &range) in ranges.iter().enumerate() {
+            if range.is_nan() {
+                continue;
+            }
             let hit = range.is_finite() && range <= max_range;
             let reach = if hit { range } else { max_range };
             let center = pose.yaw + beam_angle(beam, count);

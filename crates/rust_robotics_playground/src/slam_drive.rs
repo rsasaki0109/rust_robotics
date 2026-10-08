@@ -12,6 +12,7 @@ use rand_distr::{Distribution, Normal};
 use rust_robotics_core::Pose2D;
 use rust_robotics_optimization::LinearSolver;
 use rust_robotics_slam::{
+    dynamic_filter::{DynamicFilterConfig, DynamicPointFilter},
     frontier_exploration::{is_frontier_near, next_frontier_goal, FrontierConfig},
     lidar_graph_slam::{LidarGraphSlam, LidarGraphSlamConfig},
     lidar_loop_scenario::{
@@ -441,6 +442,13 @@ pub struct SlamDriveDemo {
     /// People walking around: seen by the LiDAR, not in the map.
     pub(crate) people_count: usize,
     people: Vec<Pose2D>,
+    /// Keep LiDAR points on moving objects out of SLAM and the map.
+    pub(crate) ignore_moving: bool,
+    dynamic_filter: DynamicPointFilter,
+    /// Scan points the filter has kept out of SLAM so far, and the last
+    /// scan's (body frame) for drawing.
+    dynamic_points: usize,
+    last_dynamic: Vec<Vector2<f64>>,
     /// Ticks the robot was blocked by a person.
     person_bumps: usize,
 }
@@ -456,6 +464,14 @@ struct ExploreState {
     since_check: f64,
     complete: bool,
     goals: usize,
+}
+
+fn new_dynamic_filter() -> DynamicPointFilter {
+    DynamicPointFilter::new(
+        Vector2::new(WORLD_X.0, WORLD_Y.0),
+        Vector2::new(WORLD_X.1, WORLD_Y.1),
+        DynamicFilterConfig::default(),
+    )
 }
 
 fn empty_grid() -> OccupancyGrid {
@@ -530,6 +546,10 @@ impl SlamDriveDemo {
             exploration: ExploreState::default(),
             people_count: 0,
             people: Vec::new(),
+            ignore_moving: true,
+            dynamic_filter: new_dynamic_filter(),
+            dynamic_points: 0,
+            last_dynamic: Vec::new(),
             person_bumps: 0,
         }
     }
@@ -735,6 +755,7 @@ impl SlamDriveDemo {
             show_front_end_map: self.show_front_end_map,
             show_grid: self.show_grid,
             people_count: self.people_count,
+            ignore_moving: self.ignore_moving,
             ..Self::blank()
         };
         fresh.start();
@@ -763,6 +784,9 @@ impl SlamDriveDemo {
         if let Some(value) = crate::share::bounded_f32(query, "people", 0.0, MAX_PEOPLE as f32) {
             self.people_count = value as usize;
         }
+        if let Some(value) = crate::share::boolean(query, "ignore_moving") {
+            self.ignore_moving = value;
+        }
         let preset = crate::share::value(query, "world").and_then(WorldPreset::from_slug);
         let custom = crate::share::value(query, "walls").map(decode_walls);
         let ambiguity_check = crate::share::boolean(query, "alias_check");
@@ -779,7 +803,7 @@ impl SlamDriveDemo {
 
     pub fn share_query_suffix(&self) -> String {
         let mut query = format!(
-            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&grid={}&people={}&world={}&alias_check={}",
+            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&grid={}&people={}&ignore_moving={}&world={}&alias_check={}",
             self.odometry_scale_error_pct,
             self.yaw_drift_deg_per_m,
             self.range_noise_cm,
@@ -787,6 +811,7 @@ impl SlamDriveDemo {
             u8::from(self.show_front_end_map),
             u8::from(self.show_grid),
             self.people_count,
+            u8::from(self.ignore_moving),
             self.preset.slug(),
             u8::from(self.ambiguity_check),
         );
@@ -817,7 +842,37 @@ impl SlamDriveDemo {
             self.truth_trail.push(self.truth);
             return;
         }
-        let update = self.slam.update(odom_delta, &scan);
+        // Keep people out of scan matching and the map: points in space the
+        // last scans saw as free are moving (judged at the predicted pose).
+        let predicted = compose_pose(self.slam.front_end_pose(), odom_delta);
+        let mut ranges = ranges;
+        self.last_dynamic.clear();
+        let static_scan = if self.ignore_moving {
+            let world = transform_scan_to_world(&scan, predicted);
+            let mut kept = Vec::with_capacity(scan.len());
+            let mut points = scan.iter().zip(world);
+            for range in &mut ranges {
+                if !range.is_finite() {
+                    continue;
+                }
+                let Some((body, world)) = points.next() else {
+                    break;
+                };
+                if self.dynamic_filter.is_dynamic(world) {
+                    *range = f64::NAN;
+                    self.dynamic_points += 1;
+                    self.last_dynamic.push(*body);
+                } else {
+                    kept.push(*body);
+                }
+            }
+            kept
+        } else {
+            scan.clone()
+        };
+        let update = self.slam.update(odom_delta, &static_scan);
+        self.dynamic_filter
+            .observe(self.slam.front_end_pose(), &scan);
         if update.new_node.is_some() {
             self.node_truth.push(self.truth);
             self.node_ranges.push(ranges);
@@ -1096,6 +1151,17 @@ impl SlamDriveDemo {
                 error(self.slam.front_end_pose()),
                 error(self.slam.pose()),
             ));
+        }
+        if !self.people.is_empty() && self.mcl.is_none() {
+            ui.label(if self.ignore_moving {
+                format!(
+                    "{} scan points on moving objects kept out of SLAM so far (purple).",
+                    self.dynamic_points
+                )
+            } else {
+                "Moving people go into scan matching and the map: watch the SLAM error grow."
+                    .to_string()
+            });
         }
         if self.explore {
             ui.label(format!(
@@ -1384,6 +1450,11 @@ impl SlamDriveDemo {
                 "Map at front-end poses (no loop closure)",
             );
             ui.checkbox(&mut self.show_grid, "Occupancy grid");
+            ui.checkbox(&mut self.ignore_moving, "Ignore moving objects")
+                .on_hover_text(
+                    "Keep LiDAR points that land in space recent scans saw as free (people \
+                     walking) out of scan matching and the map. They are drawn purple.",
+                );
         });
         ui.horizontal_wrapped(|ui| {
             let kidnap_label = if self.localizing() {
@@ -1507,6 +1578,11 @@ impl SlamDriveDemo {
                 }
                 draw_robot(&painter, rect, self.truth, TRUTH_ROBOT);
                 draw_robot(&painter, rect, estimate, GRAPH);
+            }
+            if self.mcl.is_none() {
+                for point in transform_scan_to_world(&self.last_dynamic, self.slam.pose()) {
+                    painter.circle_filled(to_screen(rect, point.x, point.y), 2.2, PERSON);
+                }
             }
             for person in &self.people {
                 painter.rect_filled(
@@ -1861,6 +1937,42 @@ mod tests {
         );
         // SLAM is paused while localizing.
         assert_eq!(demo.slam.node_poses().len(), nodes);
+    }
+
+    #[test]
+    fn moving_people_stay_out_of_slam() {
+        // Six people who do not yield, across the hall and back; this seed
+        // drifts by more than a meter when people go into scan matching.
+        let run = |ignore_moving: bool| {
+            let mut demo = SlamDriveDemo {
+                preset: WorldPreset::PillarHall,
+                rng: StdRng::seed_from_u64(3),
+                people_count: 6,
+                ignore_moving,
+                ..SlamDriveDemo::blank()
+            };
+            demo.start();
+            let mut worst = 0.0_f64;
+            for goal in [Vector2::new(10.0, 7.5), Vector2::new(-12.0, -7.5)] {
+                demo.navigator.set_goal(goal);
+                for _ in 0..1_500 {
+                    let Some((speed, omega)) = demo.navigation_control() else {
+                        break;
+                    };
+                    demo.tick(speed, omega);
+                    let error = relative_pose(demo.truth, demo.slam.pose());
+                    worst = worst.max(error.x.hypot(error.y));
+                }
+            }
+            (worst, demo.dynamic_points)
+        };
+        let (unfiltered, _) = run(false);
+        let (filtered, flagged) = run(true);
+        assert!(flagged > 100, "only {flagged} points flagged");
+        assert!(
+            filtered < 0.5 && filtered < 0.5 * unfiltered,
+            "worst SLAM error {filtered:.2} m filtered vs {unfiltered:.2} m unfiltered"
+        );
     }
 
     #[test]

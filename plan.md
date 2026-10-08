@@ -1421,3 +1421,10 @@ below is library work that does not depend on them.
      frame 77 → 18 ms (163 ms before any deferral), 5 frames over 16 ms;
      MCL worst frame 62 → 9 ms. A supercover ray walk was tried for cheaper
      grids but eroded walls for MCL (pillar hall 8/8 → 5/8) and was dropped.
+11. ~~**Web smoke test in CI; moving objects out of SLAM**~~ **Done
+   (2026-10-08).** `scripts/web_smoke` + CI `web-smoke` job (trunk build,
+   every tab and a phone viewport in headless Chromium; verified to fail on
+   the `std::time::Instant` crash). `dynamic_filter::DynamicPointFilter`
+   (weak-hit free-space grid: a point in recently-free space is moving):
+   pillar hall, 6 people, 6 seeds, worst SLAM error 1.18 → 0.37 m (no
+   people: 0.18 m), all goals reached either way.
