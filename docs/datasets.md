@@ -100,3 +100,42 @@ float32 tuples.
 
 Checked-in fixtures contain only original synthetic numeric rows in the
 official layouts; they do not copy dataset imagery or measurements.
+
+## CARMEN 2D laser logs (SLAM benchmark)
+
+`rust_robotics_slam::carmen` reads the `FLASER` and `ROBOTLASER1` lines of
+CARMEN logs, the format of the classic 2D laser datasets (Intel Research Lab,
+Freiburg 079 / campus, MIT Killian Court, ACES). `FLASER` has no beam
+geometry, so the CARMEN front-laser convention is used (`-π/2`, `π / n`).
+
+`rust_robotics_slam::slam_benchmark` implements the relative-pose metric of
+Kümmerle et al., "On measuring the accuracy of SLAM algorithms" (2009): each
+relation `t_i t_j x y z roll pitch yaw` is a verified relative pose, and the
+error of an estimate is `(x_i⁻¹ ⊕ x_j) ⊖ δ*_ij`, averaged separately for
+translation and rotation (absolute and squared). It is frame-independent, so
+any trajectory can be scored.
+
+```bash
+# Real data: download a log and its relations from the benchmark page
+# (http://ais.informatik.uni-freiburg.de/slamevaluation/datasets.php), then
+cargo run --release -p rust_robotics --example carmen_lidar_slam \
+  --no-default-features --features slam -- intel.clf intel.relations --map intel_map.png
+
+# No arguments: a synthetic 180° front-laser corridor-loop log is generated,
+# written as CARMEN text, parsed back, and scored (this runs in CI).
+cargo run -p rust_robotics --example carmen_lidar_slam --no-default-features --features slam
+```
+
+Synthetic run (978 scans, 61 relations: local 2 m relations plus loop
+relations):
+
+| estimator | translation error \[m\] | rotation error \[deg\] |
+| --- | ---: | ---: |
+| odometry | 2.58 ± 5.05 | 19.9 ± 34.4 |
+| scan-to-map | 0.057 ± 0.091 | 0.45 ± 0.64 |
+| graph SLAM | 0.015 ± 0.017 | 0.14 ± 0.12 |
+
+Real-data results are not recorded yet: the benchmark host was not reachable
+from the development environment. The defaults (0.1–25 m usable range, a scan
+processed every 0.1 m / 0.05 rad) are starting points, not tuned values.
+

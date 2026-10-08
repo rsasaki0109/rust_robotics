@@ -1337,6 +1337,13 @@ below is library work that does not depend on them.
    `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
    added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via
    `rust_robotics_slam::lidar_loop_scenario`.
+6b. **Real-data evaluation (in progress).** CARMEN reader, Kümmerle
+   relative-pose metric, and `carmen_lidar_slam` landed (synthetic log in CI:
+   relation error 2.58 m odometry / 0.057 m scan-to-map / 0.015 m graph SLAM).
+   Blocked: `ais.informatik.uni-freiburg.de` is not reachable from the
+   development environment; run the example on intel.clf / fr079 / MIT CSAIL
+   with their relations and record results in `docs/datasets.md`, then tune
+   the real-data defaults.
 7. **0.3.0 API coherence, continued** — migrate remaining Tier 1 planners /
    trackers / estimators onto `PathPlanner` / `PathTracker` /
    `StateEstimator` per `docs/api_traits.md`.

@@ -746,6 +746,13 @@ cargo run -p rust_robotics --example headless_lidar_aliasing --no-default-featur
 The playground replays both runs (false loop edges in yellow) and offers an
 **Aliased corridor** world in Drive LiDAR SLAM with the check switchable.
 
+#### Real logs and the SLAM benchmark metric
+
+`carmen_lidar_slam` runs `LidarGraphSlam` on CARMEN laser logs (Intel Research
+Lab, Freiburg, …) and scores it with the relative-pose metric of the Kümmerle
+et al. SLAM benchmark; without arguments it uses a synthetic log. See
+[docs/datasets.md](./docs/datasets.md#carmen-2d-laser-logs-slam-benchmark).
+
 `LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
 end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
 **degeneracy-aware odometry edges** — the front end discards Gauss-Newton

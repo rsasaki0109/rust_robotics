@@ -55,6 +55,7 @@ jobs:
         cargo run -p rust_robotics --example headless_scan_to_map --no-default-features --features slam
         cargo run -p rust_robotics --example headless_lidar_loop_closure --no-default-features --features slam
         cargo run -p rust_robotics --example headless_lidar_aliasing --no-default-features --features slam
+        cargo run -p rust_robotics --example carmen_lidar_slam --no-default-features --features slam
         cargo test -p rust_robotics --example generate_euroc_feature_tracks --no-default-features --features slam
 
   package-check:

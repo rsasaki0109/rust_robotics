@@ -669,10 +669,32 @@ pub fn ray_cast_ranges(
     beam_count: usize,
     max_range: f64,
 ) -> Vec<f64> {
+    ray_cast_ranges_fov(
+        pose,
+        segments,
+        -PI,
+        2.0 * PI / beam_count.max(1) as f64,
+        beam_count,
+        max_range,
+    )
+}
+
+/// Ranges of `beam_count` beams at body-frame angles
+/// `angle_min + i * angle_increment` from `pose`, e.g. a 180° front laser.
+///
+/// Beams that hit nothing within `max_range` return `f64::INFINITY`.
+pub fn ray_cast_ranges_fov(
+    pose: Pose2D,
+    segments: &[LineSegment],
+    angle_min: f64,
+    angle_increment: f64,
+    beam_count: usize,
+    max_range: f64,
+) -> Vec<f64> {
     let origin = Vector2::new(pose.x, pose.y);
     (0..beam_count)
         .map(|beam| {
-            let angle = pose.yaw + beam_angle(beam, beam_count);
+            let angle = pose.yaw + angle_min + angle_increment * beam as f64;
             let direction = Vector2::new(angle.cos(), angle.sin());
             segments
                 .iter()

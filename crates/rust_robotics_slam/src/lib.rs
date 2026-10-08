@@ -2,6 +2,7 @@
 //! SLAM algorithms for the RustRobotics workspace.
 
 pub mod bundle_adjustment;
+pub mod carmen;
 pub mod correlative_scan_matching;
 pub mod dataset;
 pub mod ekf_slam;
@@ -18,6 +19,7 @@ pub mod pose_graph_optimization;
 pub mod pose_graph_optimization_3d;
 pub mod robust_icp;
 pub mod scan_to_map;
+pub mod slam_benchmark;
 pub mod vio_pipeline;
 pub mod visual_frontend;
 

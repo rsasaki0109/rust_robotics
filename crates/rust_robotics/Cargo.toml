@@ -252,6 +252,11 @@ path = "examples/headless_lidar_aliasing.rs"
 required-features = ["slam"]
 
 [[example]]
+name = "carmen_lidar_slam"
+path = "examples/carmen_lidar_slam.rs"
+required-features = ["slam"]
+
+[[example]]
 name = "headless_euroc_vio"
 path = "examples/headless_euroc_vio.rs"
 required-features = ["slam"]

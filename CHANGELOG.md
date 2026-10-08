@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::carmen`: CARMEN log reader (`FLASER`, `ROBOTLASER1`)
+  and `FLASER` writer; `rust_robotics_slam::slam_benchmark`: relations parser /
+  writer and the Kümmerle et al. relative-pose metric. The
+  `carmen_lidar_slam` example runs LiDAR graph SLAM on a log (real or a
+  generated 180° front-laser log, CI-gated), scores odometry / scan-to-map /
+  graph SLAM against relations, and can write a PNG map.
+- `scan_to_map::ray_cast_ranges_fov` for limited field-of-view lasers.
 - Perceptual-aliasing guard: `LidarGraphSlamConfig::loop_ambiguity_check`
   (default on) re-registers accepted loop matches from shifted seeds and
   rejects ambiguous ones; `LidarGraphSlam::ambiguous_loop_rejections`.
