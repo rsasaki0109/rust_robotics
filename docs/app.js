@@ -1,50 +1,5 @@
 const galleryItems = [
   {
-    title: "Interactive Grid Planners",
-    category: "Path Planning",
-    image: "img/path_planning/dijkstra_planner.svg",
-    command: "cargo run -p rust_robotics_playground",
-    description: "Click obstacles, drag start/goal, and compare A*, Dijkstra, JPS, and Theta* with live timing — runs in the browser via Rust/WASM.",
-    playLink: "playground/",
-    size: "wide"
-  },
-  {
-    title: "Interactive Localization",
-    category: "Localization",
-    image: "img/localization/particle_filter_result.png",
-    command: "cargo run -p rust_robotics_playground",
-    description: "Drive a robot with arrow keys; watch Particle Filter particles or EKF covariance ellipses under adjustable sensor noise.",
-    playLink: "playground/",
-    size: "wide"
-  },
-  {
-    title: "Interactive SLAM Timeline",
-    category: "SLAM",
-    image: "img/slam/ekf_slam.svg",
-    command: "cargo run -p rust_robotics_playground",
-    description: "Scrub a timeline to replay EKF-SLAM, FastSLAM 1.0, or ICP scan matching on a canned loop — landmarks, particles, and aligned scans.",
-    playLink: "playground/",
-    size: "wide"
-  },
-  {
-    title: "Interactive ADMM Formation",
-    category: "Control",
-    image: "assets/admm-horizon-consensus.svg",
-    command: "cargo run -p rust_robotics_playground",
-    description: "Four agents agree on a shared formation center via receding-horizon ADMM past an L-corner; compare stiff vs smoothed consensus under noisy goals.",
-    playLink: "playground/",
-    size: "wide"
-  },
-  {
-    title: "Interactive Controller Arena",
-    category: "Control",
-    image: "assets/controller-arena.png",
-    command: "cargo run -p rust_robotics_playground",
-    description: "Replay Pure Pursuit, Stanley, and LQR Steer under the same path, initial state, clock, and actuation response; compare error and command smoothness.",
-    playLink: "playground/?tab=arena&preset=slalom&speed=3.00&response=0.85",
-    size: "wide"
-  },
-  {
     title: "Extended Kalman Filter",
     category: "Localization",
     image: "img/localization/ekf.svg",
@@ -705,150 +660,145 @@ const galleryItems = [
   }
 ];
 
-const galleryGrid = document.getElementById("gallery-grid");
-const filtersRoot = document.getElementById("category-filters");
-const marqueeRoot = document.getElementById("hero-marquee");
-const template = document.getElementById("card-template");
-const galleryCount = document.getElementById("gallery-count");
-const visualCount = document.getElementById("visual-count");
-const moduleCount = document.getElementById("module-count");
-
-const stats = {
-  visuals: 101,
-  modules: 12
-};
-
-const docsByCategory = {
-  Localization: "api/rust_robotics_localization/",
-  Mapping: "api/rust_robotics_mapping/",
-  SLAM: "api/rust_robotics_slam/",
-  "Path Planning": "api/rust_robotics_planning/",
-  "Path Tracking": "api/rust_robotics_control/",
-  Control: "api/rust_robotics_control/",
-  "Arm Navigation": "api/rust_robotics_control/",
-  "Mission Planning": "api/rust_robotics_control/",
-  "Aerial Navigation": "api/rust_robotics_planning/"
-};
+const playTiles = [
+  {
+    title: "Drive LiDAR SLAM",
+    text: "Map a world live, close loops, navigate, explore, get kidnapped.",
+    image: "assets/playground/drive.png",
+    link: "playground/?tab=slam&algorithm=drive"
+  },
+  {
+    title: "Grid planners",
+    text: "Draw walls and race A*, Dijkstra, JPS, and Theta*.",
+    image: "assets/playground/grid.png",
+    link: "playground/?tab=grid"
+  },
+  {
+    title: "Localization",
+    text: "Particle filter vs EKF under adjustable sensor noise.",
+    image: "assets/playground/localization.png",
+    link: "playground/?tab=localization"
+  },
+  {
+    title: "Controller arena",
+    text: "Pure Pursuit, Stanley, and LQR on the same course.",
+    image: "assets/playground/arena.png",
+    link: "playground/?tab=arena"
+  },
+  {
+    title: "Pushing",
+    text: "Face-switching MPPI pushes a box to the goal you drag.",
+    image: "assets/playground/pushing.png",
+    link: "playground/?tab=pushing"
+  },
+  {
+    title: "ADMM formation",
+    text: "Four agents agree on a formation while tracking a noisy goal.",
+    image: "assets/playground/admm.png",
+    link: "playground/?tab=admm"
+  }
+];
 
 const sourceByCategory = {
-  Localization: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_localization/src",
-  Mapping: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_mapping/src",
-  SLAM: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_slam/src",
-  "Path Planning": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_planning/src",
-  "Path Tracking": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
-  Control: "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
-  "Arm Navigation": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
-  "Mission Planning": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_control/src",
-  "Aerial Navigation": "https://github.com/rsasaki0109/rust_robotics/tree/main/crates/rust_robotics_planning/src"
+  Localization: "crates/rust_robotics_localization/src",
+  Mapping: "crates/rust_robotics_mapping/src",
+  SLAM: "crates/rust_robotics_slam/src",
+  "Path Planning": "crates/rust_robotics_planning/src",
+  "Path Tracking": "crates/rust_robotics_control/src",
+  Control: "crates/rust_robotics_control/src",
+  "Arm Navigation": "crates/rust_robotics_control/src",
+  "Mission Planning": "crates/rust_robotics_control/src",
+  "Aerial Navigation": "crates/rust_robotics_planning/src"
 };
+const repo = "https://github.com/rsasaki0109/rust_robotics";
 
-visualCount.textContent = stats.visuals.toString();
-moduleCount.textContent = stats.modules.toString();
+// Cards shown before "Show all".
+const PREVIEW_COUNT = 12;
 
-function createCard(item, index) {
-  const fragment = template.content.cloneNode(true);
-  const card = fragment.querySelector(".gallery-card");
-  const image = fragment.querySelector("img");
-  const category = fragment.querySelector(".category-pill");
-  const command = fragment.querySelector(".command-chip");
-  const title = fragment.querySelector("h3");
-  const description = fragment.querySelector(".card-description");
-  const sourceLink = fragment.querySelector(".source-link");
-  const docsLink = fragment.querySelector(".docs-link");
-  const playLink = fragment.querySelector(".play-link");
+const galleryGrid = document.getElementById("gallery-grid");
+const filtersRoot = document.getElementById("category-filters");
+const showAll = document.getElementById("show-all");
+let category = "All";
+let expanded = false;
 
-  card.dataset.category = item.category;
-  card.style.animationDelay = `${Math.min(index * 45, 540)}ms`;
-
-  if (item.size === "wide") {
-    card.classList.add("card-wide");
-  }
-
-  if (item.size === "tall") {
-    card.classList.add("card-tall");
-  }
-
-  image.src = item.image;
-  image.alt = `${item.title} showcase image`;
-  category.textContent = item.category;
-  command.textContent = item.command.replace("cargo run --", "");
-  title.textContent = item.title;
-  description.textContent = item.description;
-  sourceLink.href = sourceByCategory[item.category] || "https://github.com/rsasaki0109/rust_robotics";
-  docsLink.href = docsByCategory[item.category] || "api/rust_robotics/";
-  if (item.playLink) {
-    playLink.href = item.playLink;
-    playLink.classList.remove("hidden");
-  } else {
-    playLink.remove();
-  }
-
-  return fragment;
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text) node.textContent = text;
+  return node;
 }
 
-function renderGallery(items) {
-  galleryGrid.replaceChildren();
-  items.forEach((item, index) => {
-    galleryGrid.appendChild(createCard(item, index));
-  });
-  galleryCount.textContent = items.length.toString();
+function image(src, alt) {
+  const img = element("img");
+  img.src = src;
+  img.alt = alt;
+  img.loading = "lazy";
+  img.decoding = "async";
+  return img;
 }
 
-function renderFilters(items) {
-  const categories = ["All", ...new Set(items.map((item) => item.category))];
-  const buttons = categories.map((category) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "filter-chip";
-    button.textContent = category;
-    button.dataset.category = category;
-    if (category === "All") {
-      button.classList.add("is-active");
-      button.setAttribute("aria-pressed", "true");
-    } else {
-      button.setAttribute("aria-pressed", "false");
-    }
+function renderTiles() {
+  const root = document.getElementById("play-tiles");
+  root.replaceChildren(
+    ...playTiles.map((tile) => {
+      const link = element("a", "tile");
+      link.href = tile.link;
+      const body = element("div", "tile-body");
+      body.append(element("h3", "", tile.title), element("p", "", tile.text));
+      link.append(image(tile.image, `${tile.title} in the playground`), body);
+      return link;
+    })
+  );
+}
 
-    button.addEventListener("click", () => {
-      filtersRoot.querySelectorAll(".filter-chip").forEach((chip) => {
-        const isActive = chip === button;
-        chip.classList.toggle("is-active", isActive);
-        chip.setAttribute("aria-pressed", isActive ? "true" : "false");
+function card(item) {
+  const link = element("a", "card");
+  link.href = `${repo}/tree/main/${sourceByCategory[item.category] || ""}`;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.title = `${item.description}\n\n${item.command}`;
+  const media = element("div", "card-media");
+  media.append(image(item.image, item.title));
+  const body = element("div", "card-body");
+  body.append(element("span", "card-category", item.category), element("h3", "", item.title));
+  link.append(media, body);
+  return link;
+}
+
+function renderGallery() {
+  const items =
+    category === "All" ? galleryItems : galleryItems.filter((item) => item.category === category);
+  const visible = expanded ? items : items.slice(0, PREVIEW_COUNT);
+  galleryGrid.replaceChildren(...visible.map(card));
+  showAll.hidden = visible.length === items.length;
+  showAll.textContent = `Show all ${items.length}`;
+}
+
+function renderFilters() {
+  const categories = ["All", ...new Set(galleryItems.map((item) => item.category))];
+  filtersRoot.replaceChildren(
+    ...categories.map((name) => {
+      const button = element("button", "chip", name);
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(name === category));
+      button.addEventListener("click", () => {
+        category = name;
+        expanded = false;
+        filtersRoot
+          .querySelectorAll(".chip")
+          .forEach((chip) => chip.setAttribute("aria-pressed", String(chip === button)));
+        renderGallery();
       });
-
-      const filtered =
-        category === "All" ? galleryItems : galleryItems.filter((item) => item.category === category);
-      renderGallery(filtered);
-    });
-
-    return button;
-  });
-
-  filtersRoot.replaceChildren(...buttons);
+      return button;
+    })
+  );
 }
 
-function renderMarquee(items) {
-  const featured = items.slice(0, 10);
-  const cards = [...featured, ...featured].map((item) => {
-    const figure = document.createElement("figure");
-    figure.className = "marquee-card";
+showAll.addEventListener("click", () => {
+  expanded = true;
+  renderGallery();
+});
 
-    const image = document.createElement("img");
-    image.src = item.image;
-    image.alt = `${item.title} featured frame`;
-    image.loading = "lazy";
-    image.decoding = "async";
-
-    const caption = document.createElement("figcaption");
-    caption.textContent = `${item.title} / ${item.category}`;
-
-    figure.append(image, caption);
-    return figure;
-  });
-
-  marqueeRoot.replaceChildren(...cards);
-}
-
-renderMarquee(galleryItems);
-renderFilters(galleryItems);
-renderGallery(galleryItems);
+renderTiles();
+renderFilters();
+renderGallery();

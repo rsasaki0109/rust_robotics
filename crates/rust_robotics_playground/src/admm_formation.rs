@@ -32,6 +32,8 @@ pub struct AdmmFormationDemo {
     stiff_run: AdmmRun,
     smooth_run: AdmmRun,
     dirty: bool,
+    /// Input time of the last replay step \[s\].
+    last_advance: f64,
 }
 
 fn offsets() -> Vec<[f64; 2]> {
@@ -157,10 +159,11 @@ impl Default for AdmmFormationDemo {
             show_stiff: true,
             show_smooth: true,
             frame_idx: 0,
-            playing: false,
+            playing: true,
             stiff_run,
             smooth_run,
             dirty: false,
+            last_advance: 0.0,
         }
     }
 }
@@ -207,10 +210,9 @@ impl AdmmFormationDemo {
         }
     }
 
-    fn world_rect(&self, ui: &egui::Ui) -> (Rect, f32) {
-        let side = ui.available_width().min(ui.available_height() - 8.0);
-        let origin = ui.cursor().min;
-        (Rect::from_min_size(origin, Vec2::splat(side)), side)
+    fn world_rect(ui: &egui::Ui) -> (Rect, f32) {
+        let rect = crate::ui_kit::fit_rect(ui, 1.0, 72.0);
+        (rect, rect.width())
     }
 
     fn world_to_screen(&self, rect: Rect, side: f32, x: f64, y: f64) -> Pos2 {
@@ -319,58 +321,67 @@ impl AdmmFormationDemo {
         painter.circle_filled(gc, 6.0, Color32::from_rgb(220, 220, 230));
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        self.rebuild_if_needed();
-
-        ui.horizontal(|ui| {
-            ui.label("Per-agent goal noise:");
-            if ui
-                .add(egui::Slider::new(&mut self.noise_amp, 0.0..=0.5).text("amp"))
-                .changed()
-            {
-                self.dirty = true;
-            }
-            ui.separator();
-            ui.checkbox(&mut self.show_stiff, "Stiff (λ=0)");
-            ui.checkbox(&mut self.show_smooth, "Smoothed (λ=8)");
-            ui.separator();
-            if ui.button("Reset").clicked() {
-                *self = Self::default();
-            }
-            if ui.checkbox(&mut self.playing, "Play").changed() && self.playing {
-                ctx.request_repaint();
-            }
-        });
-
-        let max_idx = self.stiff_run.frames.len().saturating_sub(1);
-        ui.horizontal(|ui| {
-            ui.label(format!("Cycle {}/{}", self.frame_idx, max_idx));
-            ui.add(egui::Slider::new(&mut self.frame_idx, 0..=max_idx).text("timeline"));
-        });
-
-        let (rect, side) = self.world_rect(ui);
-        self.draw_scene(ui, rect, side);
-
-        ui.separator();
-        ui.horizontal(|ui| {
-            ui.label(format!(
-                "Stiff: RMS accel {:.3}, mean tracking {:.3} m",
-                self.stiff_run.rms_accel, self.stiff_run.mean_tracking
-            ));
-            ui.separator();
-            ui.label(format!(
-                "Smooth: RMS accel {:.3}, mean tracking {:.3} m",
-                self.smooth_run.rms_accel, self.smooth_run.mean_tracking
-            ));
-        });
-        ui.label(
-            "Four agents agree on a shared formation center via receding-horizon ADMM. \
-             Smoothing rejects noisy per-agent goals and cuts jerk at the L-corner.",
+    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Goal noise per agent");
+        if ui
+            .add(egui::Slider::new(&mut self.noise_amp, 0.0..=0.5).suffix(" m"))
+            .changed()
+        {
+            self.dirty = true;
+        }
+        crate::ui_kit::section(ui, "Show");
+        ui.checkbox(&mut self.show_stiff, "Stiff (λ = 0)");
+        ui.checkbox(&mut self.show_smooth, "Smoothed (λ = 8)");
+        crate::ui_kit::legend(
+            ui,
+            &[
+                (self.stiff_run.color, "stiff"),
+                (self.smooth_run.color, "smoothed"),
+                (Color32::from_rgb(220, 220, 230), "moving goal"),
+            ],
         );
 
+        crate::ui_kit::section(ui, "Result");
+        egui::Grid::new("admm_metrics")
+            .num_columns(3)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("");
+                ui.small("RMS accel");
+                ui.small("tracking");
+                ui.end_row();
+                for (name, run) in [("Stiff", &self.stiff_run), ("Smoothed", &self.smooth_run)] {
+                    ui.strong(name);
+                    ui.label(format!("{:.3}", run.rms_accel));
+                    ui.label(format!("{:.3} m", run.mean_tracking));
+                    ui.end_row();
+                }
+            });
+        if ui.button("Reset").clicked() {
+            *self = Self::default();
+        }
+        crate::ui_kit::how_it_works(
+            ui,
+            "admm_help",
+            "Four agents agree on a shared formation center via receding-horizon ADMM \
+             while each one sees its own noisy copy of the goal. Smoothing rejects the \
+             noise and cuts the jerk at the L-corner, at a small cost in tracking.",
+        );
+    }
+
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.rebuild_if_needed();
+        let (rect, side) = Self::world_rect(ui);
+        let _ = ui.allocate_rect(rect, egui::Sense::hover());
+        self.draw_scene(ui, rect, side);
+
+        let max_idx = self.stiff_run.frames.len().saturating_sub(1);
+        crate::ui_kit::playback(ui, &mut self.playing, &mut self.frame_idx, max_idx);
+
         if self.playing && self.frame_idx < max_idx {
-            self.frame_idx += 1;
-            ctx.request_repaint_after(std::time::Duration::from_millis(100));
+            if crate::ui_kit::every(ctx, &mut self.last_advance, 0.1) {
+                self.frame_idx += 1;
+            }
         } else if self.frame_idx >= max_idx {
             self.playing = false;
         }

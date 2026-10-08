@@ -111,10 +111,7 @@ pub(crate) struct LidarSceneView<'a> {
 
 fn world_rect(ui: &egui::Ui, reserved_height: f32) -> Rect {
     let aspect = ((WORLD_Y.1 - WORLD_Y.0) / (WORLD_X.1 - WORLD_X.0)) as f32;
-    let width = ui
-        .available_width()
-        .min((ui.available_height() - reserved_height).max(120.0) / aspect);
-    Rect::from_min_size(ui.cursor().min, Vec2::new(width, width * aspect))
+    crate::ui_kit::fit_rect(ui, aspect, reserved_height)
 }
 
 fn to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
@@ -1107,119 +1104,119 @@ impl SlamDriveDemo {
         (self.slam.node_poses(), self.slam.node_front_end_poses())
     }
 
-    fn status(&self, ui: &mut egui::Ui) {
+    /// One short line under the map: what the robot is doing right now.
+    fn status_line(&self) -> String {
         let error = |pose: Pose2D| {
             let delta = relative_pose(self.truth, pose);
             delta.x.hypot(delta.y)
         };
+        let mut parts = Vec::new();
         if let Some(mcl) = &self.mcl {
             let (estimate, spread) = mcl.estimate();
-            ui.label(format!(
-                "Localizing on the frozen map (kidnapped {}×) · {} particles · spread {:.2} m · \
-                 scan fit {:.2} · {} · true error {:.2} m",
-                self.kidnappings,
-                mcl.particles().len(),
-                spread,
-                mcl.fit(),
-                if spread < MCL_CONFIDENT_SPREAD {
-                    "converged"
-                } else {
-                    "drive around to disambiguate"
-                },
-                error(estimate),
-            ));
+            parts.push(if spread < MCL_CONFIDENT_SPREAD {
+                format!("Localized (MCL) · error {:.2} m", error(estimate))
+            } else {
+                format!("Localizing (MCL) · spread {spread:.2} m · drive around")
+            });
         } else {
-            let wrong = self
-                .loop_is_wrong()
-                .into_iter()
-                .filter(|wrong| *wrong)
-                .count();
-            ui.label(format!(
-                "Driven {:.1} m · nodes {} · loop closures {} ({} wrong, {} ambiguous rejected){} · \
-                 position error: odometry {:.2} m, scan-to-map {:.3} m, graph SLAM {:.3} m",
+            parts.push(format!(
+                "Driven {:.1} m · {} loop closures · SLAM error {:.2} m",
                 self.driven,
-                self.slam.node_poses().len(),
                 self.slam.loop_closures().len(),
-                wrong,
-                self.slam.ambiguous_loop_rejections(),
-                if self.slam.optimization_pending() {
-                    " · optimizing…"
-                } else {
-                    ""
-                },
-                error(self.odometry),
-                error(self.slam.front_end_pose()),
                 error(self.slam.pose()),
             ));
-        }
-        if !self.people.is_empty() && self.mcl.is_none() {
-            ui.label(if self.ignore_moving {
-                format!(
-                    "{} scan points on moving objects kept out of SLAM so far (purple).",
-                    self.dynamic_points
-                )
-            } else {
-                "Moving people go into scan matching and the map: watch the SLAM error grow."
-                    .to_string()
-            });
+            if self.slam.optimization_pending() {
+                parts.push("optimizing…".to_string());
+            }
         }
         if self.explore {
-            ui.label(format!(
-                "Exploring: frontier {} (orange), {} unreachable skipped.",
-                self.exploration.goals,
-                self.exploration.failed.len()
-            ));
+            parts.push(format!("exploring (frontier {})", self.exploration.goals));
         } else if self.exploration.complete {
-            ui.label(format!(
-                "Exploration complete: no reachable frontier left after {} goals and {:.0} m.",
-                self.exploration.goals, self.driven
-            ));
+            parts.push("exploration complete".to_string());
         }
         match &self.navigator.status {
             NavStatus::Idle => {}
-            NavStatus::Following => {
-                ui.label("Navigating: A* on the occupancy grid, Pure Pursuit on the estimate.");
-            }
-            NavStatus::Reached => {
-                ui.label("Goal reached.");
-            }
-            NavStatus::Failed(reason) => {
-                ui.label(format!("Navigation stopped: {reason}."));
-            }
+            NavStatus::Following if !self.explore => parts.push("navigating".to_string()),
+            NavStatus::Following => {}
+            NavStatus::Reached if !self.explore => parts.push("goal reached".to_string()),
+            NavStatus::Reached => {}
+            NavStatus::Failed(reason) => parts.push(format!("navigation stopped: {reason}")),
             NavStatus::WaitingForLocalization => {
-                ui.label("Waiting for MCL to converge before navigating — drive a little.");
+                parts.push("waiting for MCL to converge".to_string());
             }
         }
-        ui.label(
-            "Arrow keys or the joystick drive (click the map first for keys). Click the map to \
-             send the robot to a goal: A* plans on the occupancy grid built from the SLAM map and \
-             Pure Pursuit follows it; tick Explore and it maps the world by itself, frontier by \
-             frontier. Drive a full lap — or tick Auto-drive on the corridor loop — \
-             to close the loop. Kidnap robot freezes the map, teleports the robot and localizes it \
-             with MCL (yellow particles, gray robot = truth); in long, similar-looking corridors \
-             it can converge on a look-alike spot until a distinctive feature comes into view. \
-             Purple: wheel odometry · orange: \
-             scan-to-map · green: pose graph · magenta: loop edges · red: current scan.",
-        );
-        match self.preset {
-            WorldPreset::CorridorLoop => {
-                ui.label("The top corridor has no pillars, so scan matching drifts there.");
-            }
-            WorldPreset::AliasedCorridor => {
-                ui.label(
-                    "Pillars repeat every 2 m, so neighboring places look identical. Untick \
-                     Reject ambiguous loops and watch loop closures lock onto the wrong pillar \
-                     (yellow) and bend the map. Kidnap the robot here and MCL may settle on a \
-                     look-alike spot, too.",
-                );
-            }
-            _ => {}
-        }
+        parts.join("  ·  ")
+    }
+
+    /// The full numbers, for the control panel.
+    fn details(&self, ui: &mut egui::Ui) {
+        let error = |pose: Pose2D| {
+            let delta = relative_pose(self.truth, pose);
+            delta.x.hypot(delta.y)
+        };
+        let row = |ui: &mut egui::Ui, name: &str, value: String| {
+            ui.label(egui::RichText::new(name).weak());
+            ui.monospace(value);
+            ui.end_row();
+        };
+        egui::Grid::new("slam_drive_details")
+            .num_columns(2)
+            .spacing([12.0, 2.0])
+            .show(ui, |ui| {
+                if let Some(mcl) = &self.mcl {
+                    let (estimate, spread) = mcl.estimate();
+                    row(ui, "kidnapped", format!("{}×", self.kidnappings));
+                    row(ui, "particles", mcl.particles().len().to_string());
+                    row(ui, "spread", format!("{spread:.2} m"));
+                    row(ui, "scan fit", format!("{:.2}", mcl.fit()));
+                    row(ui, "MCL error", format!("{:.2} m", error(estimate)));
+                } else {
+                    let wrong = self
+                        .loop_is_wrong()
+                        .into_iter()
+                        .filter(|wrong| *wrong)
+                        .count();
+                    row(ui, "driven", format!("{:.1} m", self.driven));
+                    row(ui, "nodes", self.slam.node_poses().len().to_string());
+                    row(
+                        ui,
+                        "loop closures",
+                        format!("{} ({wrong} wrong)", self.slam.loop_closures().len()),
+                    );
+                    row(
+                        ui,
+                        "ambiguous rejected",
+                        self.slam.ambiguous_loop_rejections().to_string(),
+                    );
+                    row(
+                        ui,
+                        "error: odometry",
+                        format!("{:.2} m", error(self.odometry)),
+                    );
+                    row(
+                        ui,
+                        "error: scan-to-map",
+                        format!("{:.3} m", error(self.slam.front_end_pose())),
+                    );
+                    row(
+                        ui,
+                        "error: graph SLAM",
+                        format!("{:.3} m", error(self.slam.pose())),
+                    );
+                    if !self.people.is_empty() {
+                        row(ui, "moving points", self.dynamic_points.to_string());
+                    }
+                }
+                if self.explore || self.exploration.complete {
+                    row(ui, "frontier goals", self.exploration.goals.to_string());
+                    row(ui, "unreachable", self.exploration.failed.len().to_string());
+                }
+            });
     }
 
     fn world_controls(&mut self, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "World");
         ui.horizontal_wrapped(|ui| {
-            ui.label("World:");
             for preset in WorldPreset::ALL {
                 if ui
                     .selectable_label(self.preset == preset, preset.label())
@@ -1229,23 +1226,19 @@ impl SlamDriveDemo {
                     self.set_preset(preset);
                 }
             }
-            ui.separator();
-            ui.checkbox(&mut self.edit_walls, "Edit walls (drag on the map)");
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut self.edit_walls, "Draw walls")
+                .on_hover_text("Drag on the map to add a wall");
             if ui
-                .add_enabled(
-                    !self.custom_walls.is_empty(),
-                    egui::Button::new("Undo wall"),
-                )
+                .add_enabled(!self.custom_walls.is_empty(), egui::Button::new("Undo"))
                 .clicked()
             {
                 self.custom_walls.pop();
                 self.rebuild_walls();
             }
             if ui
-                .add_enabled(
-                    !self.custom_walls.is_empty(),
-                    egui::Button::new("Clear walls"),
-                )
+                .add_enabled(!self.custom_walls.is_empty(), egui::Button::new("Clear"))
                 .clicked()
             {
                 self.custom_walls.clear();
@@ -1410,8 +1403,8 @@ impl SlamDriveDemo {
             .map(|(_, handle)| (handle.id(), min, max))
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        self.world_controls(ui);
+    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Robot");
         ui.horizontal_wrapped(|ui| {
             let auto_available = self.preset.has_centerline() && !self.localizing();
             if !auto_available {
@@ -1422,45 +1415,33 @@ impl SlamDriveDemo {
                     auto_available,
                     egui::Checkbox::new(&mut self.auto_drive, "Auto-drive"),
                 )
+                .on_hover_text("Drive laps along the corridor centerline")
                 .changed()
                 && self.auto_drive
             {
                 self.set_explore(false);
                 self.auto_drive = true;
             }
+            let mut explore = self.explore;
             if ui
-                .button("Reset")
-                .on_hover_text("Start a new SLAM run")
-                .clicked()
-            {
-                self.reset();
-            }
-            if ui
-                .checkbox(&mut self.ambiguity_check, "Reject ambiguous loops")
+                .add_enabled(
+                    !self.localizing(),
+                    egui::Checkbox::new(&mut explore, "Explore"),
+                )
                 .on_hover_text(
-                    "Re-register each loop match from shifted seeds and reject it when another \
-                     alignment fits nearly as well (perceptual aliasing). Restarts the run.",
+                    "Drive autonomously to the nearest frontier between known free and unknown \
+                     space (A* + Pure Pursuit) until no reachable frontier is left.",
                 )
                 .changed()
             {
-                self.reset();
+                self.set_explore(explore);
             }
-            ui.checkbox(
-                &mut self.show_front_end_map,
-                "Map at front-end poses (no loop closure)",
-            );
-            ui.checkbox(&mut self.show_grid, "Occupancy grid");
-            ui.checkbox(&mut self.ignore_moving, "Ignore moving objects")
-                .on_hover_text(
-                    "Keep LiDAR points that land in space recent scans saw as free (people \
-                     walking) out of scan matching and the map. They are drawn purple.",
-                );
         });
         ui.horizontal_wrapped(|ui| {
             let kidnap_label = if self.localizing() {
                 "Kidnap again"
             } else {
-                "Kidnap robot (freeze map, localize with MCL)"
+                "Kidnap robot"
             };
             if ui
                 .add_enabled(
@@ -1468,8 +1449,8 @@ impl SlamDriveDemo {
                     egui::Button::new(kidnap_label),
                 )
                 .on_hover_text(
-                    "Teleport the robot to a random free spot of the map. SLAM stops; Monte \
-                     Carlo localization has to find the robot again on the frozen map.",
+                    "Freeze the map and teleport the robot to a random free spot. Monte \
+                     Carlo localization has to find it again on the frozen map.",
                 )
                 .clicked()
             {
@@ -1480,48 +1461,94 @@ impl SlamDriveDemo {
                     mcl.initialize_global();
                 }
             }
-            let mut explore = self.explore;
-            if ui
-                .add_enabled(
-                    !self.localizing(),
-                    egui::Checkbox::new(&mut explore, "Explore (frontiers)"),
-                )
-                .on_hover_text(
-                    "Drive autonomously to the nearest frontier between known free and unknown \
-                     space (A* + Pure Pursuit) until no reachable frontier is left.",
-                )
-                .changed()
-            {
-                self.set_explore(explore);
-            }
             if self.navigator.is_active() && ui.button("Cancel goal").clicked() {
                 self.navigator.cancel();
             }
+            if ui
+                .button("Reset")
+                .on_hover_text("Start a new SLAM run")
+                .clicked()
+            {
+                self.reset();
+            }
         });
-        // Sliders are composite widgets that a wrapping row cannot break,
-        // so stack them on narrow (phone) screens instead of overflowing.
-        let sliders = |ui: &mut egui::Ui, demo: &mut Self| {
-            ui.add(
-                egui::Slider::new(&mut demo.odometry_scale_error_pct, 0.0..=10.0)
-                    .text("odometry scale error %"),
-            );
-            ui.add(
-                egui::Slider::new(&mut demo.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"),
-            );
-            ui.add(egui::Slider::new(&mut demo.range_noise_cm, 0.0..=5.0).text("range noise cm"));
-            ui.add(egui::Slider::new(&mut demo.people_count, 0..=MAX_PEOPLE).text("moving people"))
-                .on_hover_text(
-                    "People walk around: the LiDAR sees them but the map does not. While \
-                 navigating, DWA steers around them (yellow arc) when the Pure Pursuit arc \
-                 would hit one.",
-                );
-        };
-        if ui.available_width() < 800.0 {
-            ui.vertical(|ui| sliders(ui, self));
-        } else {
-            ui.horizontal(|ui| sliders(ui, self));
-        }
 
+        self.world_controls(ui);
+
+        crate::ui_kit::section(ui, "Map display");
+        ui.checkbox(&mut self.show_grid, "Occupancy grid");
+        ui.checkbox(&mut self.show_front_end_map, "Without loop closure")
+            .on_hover_text("Draw the map at the scan-to-map front-end poses");
+
+        crate::ui_kit::section(ui, "SLAM");
+        if ui
+            .checkbox(&mut self.ambiguity_check, "Reject ambiguous loops")
+            .on_hover_text(
+                "Re-register each loop match from shifted seeds and reject it when another \
+                 alignment fits nearly as well (perceptual aliasing). Restarts the run.",
+            )
+            .changed()
+        {
+            self.reset();
+        }
+        ui.checkbox(&mut self.ignore_moving, "Ignore moving objects")
+            .on_hover_text(
+                "Keep LiDAR points that land in space recent scans saw as free (people \
+                 walking) out of scan matching and the map. They are drawn purple.",
+            );
+
+        crate::ui_kit::section(ui, "Disturbances");
+        ui.add(egui::Slider::new(&mut self.people_count, 0..=MAX_PEOPLE).text("people"))
+            .on_hover_text(
+                "People walk around: the LiDAR sees them but the map does not. While \
+                 navigating, DWA steers around them (yellow arc).",
+            );
+        ui.add(
+            egui::Slider::new(&mut self.odometry_scale_error_pct, 0.0..=10.0).text("odom scale %"),
+        );
+        ui.add(egui::Slider::new(&mut self.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"));
+        ui.add(egui::Slider::new(&mut self.range_noise_cm, 0.0..=5.0).text("range noise cm"));
+
+        crate::ui_kit::section(ui, "Numbers");
+        self.details(ui);
+        crate::ui_kit::legend(
+            ui,
+            &[
+                (ODOMETRY, "odometry"),
+                (FRONT_END, "scan-to-map"),
+                (GRAPH, "pose graph"),
+                (LOOP_EDGE, "loop edge"),
+                (SCAN, "scan"),
+                (PERSON, "moving"),
+            ],
+        );
+        let preset_note = match self.preset {
+            WorldPreset::CorridorLoop => {
+                " On the corridor loop, the top corridor has no pillars, so scan matching \
+                 drifts there until the loop closes."
+            }
+            WorldPreset::AliasedCorridor => {
+                " In the aliased corridor, pillars repeat every 2 m: untick Reject ambiguous \
+                 loops and watch loop closures lock onto the wrong pillar (yellow) and bend \
+                 the map."
+            }
+            _ => "",
+        };
+        crate::ui_kit::how_it_works(
+            ui,
+            "slam_drive_help",
+            &format!(
+                "Every LiDAR scan is matched against the local map (scan-to-map); keyframes \
+                 become pose-graph nodes, and revisiting a place adds a loop edge that pulls \
+                 the whole graph straight. Tap the map to send the robot to a goal: A* plans \
+                 on the occupancy grid and Pure Pursuit follows it. Explore picks frontiers by \
+                 itself. Kidnap robot freezes the map and localizes with MCL (yellow \
+                 particles, gray robot = truth).{preset_note}"
+            ),
+        );
+    }
+
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let (speed, omega) = self.control(ctx);
         let moving = self.tick(speed, omega);
 
@@ -1563,7 +1590,7 @@ impl SlamDriveDemo {
             front_end_pose: (!self.localizing()).then(|| self.slam.front_end_pose()),
             grid,
         };
-        let response = draw_lidar_scene(ui, &view, 96.0);
+        let response = draw_lidar_scene(ui, &view, 40.0);
         let rect = response.rect;
         self.last_map_rect = Some(rect);
         {
@@ -1645,9 +1672,15 @@ impl SlamDriveDemo {
                 Stroke::new(3.0_f32, Color32::from_rgb(250, 220, 90)),
             );
         }
+        if self.driven < 0.05 && !self.navigator.is_active() && !self.explore && !self.auto_drive {
+            crate::ui_kit::overlay_text(
+                ui,
+                rect,
+                "Tap the map to send the robot there, or drive with the joystick / arrow keys",
+            );
+        }
         self.joystick = joystick(ui, rect);
-        ui.separator();
-        self.status(ui);
+        ui.label(self.status_line());
 
         let keys_held = ctx.input(|input| {
             [
@@ -1789,7 +1822,7 @@ mod tests {
                 ..Default::default()
             };
             let _ = ctx.run(input, |ctx| {
-                egui::CentralPanel::default().show(ctx, |ui| demo.ui(ctx, ui));
+                egui::CentralPanel::default().show(ctx, |ui| demo.scene(ctx, ui));
             });
         };
         run(Vec::new(), &mut demo);
@@ -1987,7 +2020,7 @@ mod tests {
                 ..Default::default()
             };
             let _ = ctx.run(input, |ctx| {
-                egui::CentralPanel::default().show(ctx, |ui| demo.ui(ctx, ui));
+                egui::CentralPanel::default().show(ctx, |ui| demo.scene(ctx, ui));
             });
         };
         let button = |pos, pressed| egui::Event::PointerButton {

@@ -20,6 +20,8 @@ pub struct ControllerArenaDemo {
     playing: bool,
     dirty: bool,
     error: Option<String>,
+    /// Input time of the last replay step \[s\].
+    last_advance: f64,
 }
 
 impl Default for ControllerArenaDemo {
@@ -43,9 +45,10 @@ impl ControllerArenaDemo {
             scenario,
             runs,
             frame_idx: 0,
-            playing: false,
+            playing: true,
             dirty: false,
             error,
+            last_advance: 0.0,
         }
     }
 
@@ -101,100 +104,93 @@ impl ControllerArenaDemo {
             .unwrap_or(0)
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Path:");
-            egui::ComboBox::from_id_salt("arena_preset")
-                .selected_text(self.preset.label())
-                .show_ui(ui, |ui| {
-                    for preset in ArenaPreset::ALL {
-                        if ui
-                            .selectable_value(&mut self.preset, preset, preset.label())
-                            .changed()
-                        {
-                            self.dirty = true;
-                        }
+    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Course");
+        egui::ComboBox::from_id_salt("arena_preset")
+            .selected_text(self.preset.label())
+            .width(ui.available_width().min(240.0))
+            .show_ui(ui, |ui| {
+                for preset in ArenaPreset::ALL {
+                    if ui
+                        .selectable_value(&mut self.preset, preset, preset.label())
+                        .changed()
+                    {
+                        self.dirty = true;
                     }
-                });
-            ui.separator();
-            if ui
-                .add(
-                    egui::Slider::new(&mut self.target_speed, MIN_SPEED..=MAX_SPEED)
-                        .text("Target speed (m/s)")
-                        .step_by(0.25),
+                }
+            });
+        crate::ui_kit::section(ui, "Target speed");
+        if ui
+            .add(
+                egui::Slider::new(&mut self.target_speed, MIN_SPEED..=MAX_SPEED)
+                    .suffix(" m/s")
+                    .step_by(0.25),
+            )
+            .changed()
+        {
+            self.dirty = true;
+        }
+        crate::ui_kit::section(ui, "Steering response");
+        if ui
+            .add(
+                egui::Slider::new(
+                    &mut self.turn_rate_response_gain,
+                    MIN_RESPONSE..=MAX_RESPONSE,
                 )
-                .changed()
-            {
-                self.dirty = true;
-            }
-            if ui
-                .add(
-                    egui::Slider::new(
-                        &mut self.turn_rate_response_gain,
-                        MIN_RESPONSE..=MAX_RESPONSE,
-                    )
-                    .text("Turn response")
-                    .step_by(0.05),
-                )
-                .changed()
-            {
-                self.dirty = true;
-            }
-            ui.separator();
-            if ui.button("Run").clicked() {
-                self.rebuild();
-                self.playing = true;
-            }
-            if ui
-                .add_enabled(
-                    !self.dirty,
-                    egui::Button::new(if self.playing { "Pause" } else { "Play" }),
-                )
-                .clicked()
-            {
-                self.playing = !self.playing;
-            }
-            if ui
-                .add_enabled(!self.dirty, egui::Button::new("Step"))
-                .clicked()
-            {
-                self.playing = false;
-                self.frame_idx = (self.frame_idx + 1).min(self.max_frame());
-            }
-            if ui.button("Reset").clicked() {
-                *self = Self::default();
-            }
-            if self.dirty {
-                ui.colored_label(Color32::YELLOW, "settings changed — press Run");
-            }
-        });
+                .step_by(0.05),
+            )
+            .changed()
+        {
+            self.dirty = true;
+        }
+        if ui.button("Reset").clicked() {
+            *self = Self::default();
+        }
 
-        let max_frame = self.max_frame();
-        ui.horizontal(|ui| {
-            ui.label(format!("Frame {}/{}", self.frame_idx, max_frame));
-            ui.add(egui::Slider::new(&mut self.frame_idx, 0..=max_frame).text("timeline"));
-        });
+        crate::ui_kit::section(ui, "Result");
+        self.draw_metrics(ui);
+        crate::ui_kit::how_it_works(
+            ui,
+            "arena_help",
+            "All three controllers follow the same path with the same vehicle model. \
+             RMSE summarizes path error, final is the distance left to the goal, max is \
+             the worst excursion, and Δω is the RMS change of the turn command (lower is \
+             smoother). These compare traces under one model; they are not a universal \
+             ranking.",
+        );
+    }
 
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.dirty {
+            // Settings changed: rerun all controllers and replay from the start.
+            self.rebuild();
+            self.playing = true;
+        }
         if let Some(error) = &self.error {
             ui.colored_label(Color32::LIGHT_RED, format!("Arena error: {error}"));
         }
-
-        let width = ui.available_width().max(320.0);
-        let height = (ui.available_height() - 155.0).clamp(260.0, 520.0);
-        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), egui::Sense::hover());
+        let aspect = self
+            .world_bounds()
+            .map(|b| ((b.max_y - b.min_y) / (b.max_x - b.min_x)) as f32)
+            .unwrap_or(0.6)
+            .clamp(0.35, 1.2);
+        let rect = crate::ui_kit::fit_rect(ui, aspect, 72.0);
+        let _ = ui.allocate_rect(rect, egui::Sense::hover());
         self.draw_scene(ui, rect);
 
-        ui.add_space(6.0);
-        self.draw_metrics(ui);
-        ui.label(
-            "RMSE summarizes path error; final error measures goal accuracy; max error exposes \
-             the worst excursion; Δω RMS measures command smoothness. These are comparative \
-             traces under one model—not a universal controller ranking.",
-        );
+        let max_frame = self.max_frame();
+        crate::ui_kit::playback(ui, &mut self.playing, &mut self.frame_idx, max_frame);
+        let legend: Vec<_> = self
+            .runs
+            .iter()
+            .map(|run| (controller_color(run.controller), run.controller.label()))
+            .collect();
+        crate::ui_kit::legend(ui, &legend);
 
         if self.playing && self.frame_idx < max_frame {
-            self.frame_idx += 1;
-            ctx.request_repaint_after(std::time::Duration::from_millis(50));
+            if crate::ui_kit::every(ctx, &mut self.last_advance, 0.05) {
+                self.frame_idx += 1;
+            }
         } else if self.frame_idx >= max_frame {
             self.playing = false;
         }
@@ -249,20 +245,20 @@ impl ControllerArenaDemo {
     fn draw_metrics(&self, ui: &mut egui::Ui) {
         egui::Grid::new("controller_arena_metrics")
             .striped(true)
-            .spacing([16.0, 3.0])
+            .spacing([10.0, 3.0])
             .show(ui, |ui| {
-                ui.strong("Controller");
-                ui.strong("RMSE (m)");
-                ui.strong("Final (m)");
-                ui.strong("Max (m)");
-                ui.strong("Δω RMS (rad/s)");
+                ui.label("");
+                ui.small("RMSE");
+                ui.small("final");
+                ui.small("max");
+                ui.small("Δω");
                 ui.end_row();
                 for run in &self.runs {
                     ui.colored_label(controller_color(run.controller), run.controller.label());
-                    ui.monospace(format!("{:.3}", run.metrics.cross_track_rmse));
-                    ui.monospace(format!("{:.3}", run.metrics.final_goal_distance));
-                    ui.monospace(format!("{:.3}", run.metrics.max_cross_track_error));
-                    ui.monospace(format!("{:.3}", run.metrics.angular_command_smoothness));
+                    ui.monospace(format!("{:.2}", run.metrics.cross_track_rmse));
+                    ui.monospace(format!("{:.2}", run.metrics.final_goal_distance));
+                    ui.monospace(format!("{:.2}", run.metrics.max_cross_track_error));
+                    ui.monospace(format!("{:.2}", run.metrics.angular_command_smoothness));
                     ui.end_row();
                 }
             });

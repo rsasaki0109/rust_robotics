@@ -59,6 +59,8 @@ pub struct PushingDemo {
     pub(crate) running: bool,
     pub(crate) friction: f32,
     tool: DragTool,
+    /// Input time of the last control step \[s\].
+    last_step: f64,
 }
 
 impl Default for PushingDemo {
@@ -80,6 +82,7 @@ impl Default for PushingDemo {
             running: true,
             friction: params.pusher_friction as f32,
             tool: DragTool::MoveGoal,
+            last_step: 0.0,
         };
         demo.trail.push([demo.slider.x(), demo.slider.y()]);
         demo
@@ -226,10 +229,7 @@ impl PushingDemo {
 
     fn table_rect(ui: &egui::Ui) -> Rect {
         let aspect = ((TABLE_Y.1 - TABLE_Y.0) / (TABLE_X.1 - TABLE_X.0)) as f32;
-        let width = ui
-            .available_width()
-            .min((ui.available_height() - 64.0).max(120.0) / aspect);
-        Rect::from_min_size(ui.cursor().min, Vec2::new(width, width * aspect))
+        crate::ui_kit::fit_rect(ui, aspect, 60.0)
     }
 
     fn to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
@@ -356,19 +356,26 @@ impl PushingDemo {
         }
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
             ui.checkbox(&mut self.running, "Run");
-            if ui.button("Reset slider").clicked() {
+            if ui.button("Reset box").clicked() {
                 self.reset_slider();
             }
-            ui.separator();
-            ui.label("Drag on the table to:");
-            ui.selectable_value(&mut self.tool, DragTool::MoveGoal, "move goal");
-            ui.selectable_value(&mut self.tool, DragTool::RotateGoal, "turn goal");
-            ui.selectable_value(&mut self.tool, DragTool::Obstacles, "add/remove obstacles");
-            ui.separator();
-            ui.label("Presets:");
+        });
+
+        crate::ui_kit::section(ui, "Drag on the table to");
+        ui.horizontal_wrapped(|ui| {
+            ui.selectable_value(&mut self.tool, DragTool::MoveGoal, "Move goal");
+            ui.selectable_value(&mut self.tool, DragTool::RotateGoal, "Turn goal");
+            ui.selectable_value(&mut self.tool, DragTool::Obstacles, "Obstacles");
+        });
+        if self.tool == DragTool::Obstacles {
+            crate::ui_kit::hint(ui, "Click to add an obstacle, click one to remove it.");
+        }
+
+        crate::ui_kit::section(ui, "Try");
+        ui.horizontal_wrapped(|ui| {
             if ui.button("Translate").clicked() {
                 self.set_goal(0.3, 0.0, 0.0);
             }
@@ -381,68 +388,86 @@ impl PushingDemo {
                 self.reset_slider();
             }
         });
-        ui.horizontal(|ui| {
-            let mut heading = self.goal.theta().to_degrees() as f32;
-            if ui
-                .add(egui::Slider::new(&mut heading, -180.0..=180.0).text("goal heading °"))
-                .changed()
-            {
-                self.set_goal(
-                    self.goal.x(),
-                    self.goal.y(),
-                    f64::from(heading).to_radians(),
-                );
-            }
-            if ui
-                .add(egui::Slider::new(&mut self.friction, 0.05..=1.0).text("pusher friction μ"))
-                .changed()
-            {
-                self.rebuild_controller();
-            }
-        });
 
-        let pushed = self.running && self.step();
+        crate::ui_kit::section(ui, "Goal heading");
+        let mut heading = self.goal.theta().to_degrees() as f32;
+        if ui
+            .add(egui::Slider::new(&mut heading, -180.0..=180.0).suffix("°"))
+            .changed()
+        {
+            self.set_goal(
+                self.goal.x(),
+                self.goal.y(),
+                f64::from(heading).to_radians(),
+            );
+        }
+        crate::ui_kit::section(ui, "Pusher friction μ");
+        if ui
+            .add(egui::Slider::new(&mut self.friction, 0.05..=1.0))
+            .changed()
+        {
+            self.rebuild_controller();
+        }
+
+        crate::ui_kit::section(ui, "Counters");
+        crate::ui_kit::hint(
+            ui,
+            &format!(
+                "{} steps (stick {}, slide {}) · {} face switches",
+                self.steps, self.stick_steps, self.slide_steps, self.face_switches
+            ),
+        );
+        crate::ui_kit::legend(
+            ui,
+            &[
+                (SLIDER, "box"),
+                (GOAL, "goal"),
+                (STICK, "sticking"),
+                (SLIDE, "sliding"),
+            ],
+        );
+        crate::ui_kit::how_it_works(
+            ui,
+            "pushing_help",
+            "Quasi-static pushing: the box moves only while pushed, and the contact sticks \
+             or slides along the face when the push leaves the friction cone. MPPI plans \
+             on all four faces and switches faces to turn the box in place.",
+        );
+    }
+
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.running
+            && !self.goal_reached()
+            && crate::ui_kit::every(ctx, &mut self.last_step, FRAME_MS as f64 / 1000.0)
+        {
+            self.step();
+        }
 
         let rect = Self::table_rect(ui);
         self.draw(&ui.painter_at(rect), rect);
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
         self.handle_input(&response);
 
-        ui.separator();
         let (position, heading) = self.errors();
         let contact = if self.goal_reached() {
             "Goal reached".to_string()
         } else {
             let mode = match self.last_mode {
-                ContactMode::Stick => "stick",
-                ContactMode::SlideUp => "slide ↑",
-                ContactMode::SlideDown => "slide ↓",
+                ContactMode::Stick => "sticking",
+                ContactMode::SlideUp => "sliding ↑",
+                ContactMode::SlideDown => "sliding ↓",
                 ContactMode::Separated => "no contact",
             };
             let face = self.last_command.map_or("-", |command| {
                 ["back", "+y side", "front", "-y side"][command.face % 4]
             });
-            format!("Contact: {mode} on the {face} face")
+            format!("{mode} on the {face} face")
         };
         ui.label(format!(
-            "{contact} · steps {} (stick {}, slide {}) · face switches {} · error {:.1} mm, \
-             {:.1}°",
-            self.steps,
-            self.stick_steps,
-            self.slide_steps,
-            self.face_switches,
+            "{contact}  ·  error {:.1} mm, {:.1}°",
             position * 1000.0,
             heading.to_degrees(),
         ));
-        ui.label(
-            "Quasi-static pushing: the slider moves only while pushed, and the contact sticks \
-             (yellow) or slides along the face (orange) when the push leaves the friction cone. \
-             MPPI plans on all four faces and switches faces to turn the slider in place.",
-        );
-
-        if (self.running && pushed) || response.dragged() {
-            ctx.request_repaint_after(std::time::Duration::from_millis(FRAME_MS));
-        }
     }
 }
 

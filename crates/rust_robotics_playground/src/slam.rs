@@ -169,6 +169,8 @@ pub struct SlamDemo {
     show_front_end_map: bool,
     /// Live, keyboard-driven LiDAR graph SLAM.
     drive: SlamDriveDemo,
+    /// Input time of the last replay step \[s\].
+    last_advance: f64,
 }
 
 fn normalize_angle(angle: f64) -> f64 {
@@ -396,9 +398,9 @@ impl Default for SlamDemo {
     fn default() -> Self {
         let (ekf_frames, fastslam_frames, icp_frames) = build_timelines();
         Self {
-            kind: SlamKind::EkfSlam,
+            kind: SlamKind::Drive,
             frame_idx: 0,
-            playing: false,
+            playing: true,
             ekf_frames,
             fastslam_frames,
             icp_frames,
@@ -406,6 +408,7 @@ impl Default for SlamDemo {
             loop_runs: [None, None, None],
             show_front_end_map: false,
             drive: SlamDriveDemo::default(),
+            last_advance: 0.0,
         }
     }
 }
@@ -495,10 +498,9 @@ impl SlamDemo {
         self.drive = drive;
     }
 
-    fn world_rect(&self, ui: &egui::Ui) -> (Rect, f32) {
-        let side = ui.available_width().min(ui.available_height() - 8.0);
-        let origin = ui.cursor().min;
-        (Rect::from_min_size(origin, Vec2::splat(side)), side)
+    fn world_rect(ui: &egui::Ui) -> (Rect, f32) {
+        let rect = crate::ui_kit::fit_rect(ui, 1.0, 72.0);
+        (rect, rect.width())
     }
 
     fn world_to_screen(&self, rect: Rect, side: f32, x: f64, y: f64) -> Pos2 {
@@ -643,7 +645,7 @@ impl SlamDemo {
                 view.loop_edges.push(edge);
             }
         }
-        draw_lidar_scene(ui, &view, 110.0);
+        draw_lidar_scene(ui, &view, 72.0);
     }
 
     fn loop_status(&mut self, ui: &mut egui::Ui) {
@@ -664,136 +666,157 @@ impl SlamDemo {
             .filter(|closure| run.is_wrong_loop(closure, WRONG_LOOP_TOLERANCE))
             .count();
         ui.label(format!(
-            "Nodes {} · loop closures {} ({} wrong) · position error: scan-to-map {:.3} m, \
-             graph SLAM {:.3} m",
-            frame.node_poses.len(),
+            "{} loop closures ({} wrong)  ·  error: scan-to-map {:.2} m, graph SLAM {:.2} m",
             closures.len(),
             wrong,
             error(frame.front_end),
             error(frame.estimate),
         ));
-        ui.label(
-            "Gray: truth · purple: wheel odometry · orange: scan-to-map front end · \
-             green: pose graph · magenta: loop edges · yellow: false loop edges · red: \
-             current scan. The top corridor has no pillars, so the front end drifts there \
-             until the loop closes.",
-        );
-        if self.loop_scenario != LoopScenario::Corridor {
-            ui.label(
-                "Aliased corridor: identical pillars every 2.5 m and a start mid-corridor. \
-                 Without the ambiguity check, loop matches lock onto the pillar next door \
-                 and bend the map; with it, those matches are rejected until a unique \
-                 view (a corner) closes the loop.",
-            );
-        }
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Mode");
         ui.horizontal_wrapped(|ui| {
-            ui.label("Algorithm:");
+            if ui
+                .selectable_label(self.kind == SlamKind::Drive, "Drive (live)")
+                .clicked()
+            {
+                self.kind = SlamKind::Drive;
+            }
+        });
+        crate::ui_kit::section(ui, "Replays");
+        ui.horizontal_wrapped(|ui| {
             for kind in [
                 SlamKind::EkfSlam,
                 SlamKind::FastSlam,
                 SlamKind::Icp,
                 SlamKind::LoopClosure,
-                SlamKind::Drive,
             ] {
                 if ui
                     .selectable_label(self.kind == kind, kind.label())
                     .clicked()
                 {
                     self.kind = kind;
+                    self.frame_idx = 0;
+                    self.playing = true;
                 }
-            }
-            if self.kind == SlamKind::Drive {
-                return;
-            }
-            ui.separator();
-            if ui.button("Reset").clicked() {
-                self.reset();
-            }
-            if ui.checkbox(&mut self.playing, "Play").changed() && self.playing {
-                ctx.request_repaint();
             }
         });
 
         if self.kind == SlamKind::Drive {
-            self.drive.ui(ctx, ui);
+            self.drive.controls(ctx, ui);
+            return;
+        }
+
+        if self.kind == SlamKind::LoopClosure {
+            crate::ui_kit::section(ui, "Scenario");
+            for scenario in LoopScenario::ALL {
+                if ui
+                    .selectable_label(self.loop_scenario == scenario, scenario.label())
+                    .clicked()
+                {
+                    self.loop_scenario = scenario;
+                    self.playing = false;
+                }
+            }
+            let max_idx = self.frame_count().saturating_sub(1);
+            self.frame_idx = self.frame_idx.min(max_idx);
+            crate::ui_kit::section(ui, "Jump");
+            ui.horizontal_wrapped(|ui| {
+                if let Some(first_loop) = self.loop_run().first_loop_frame() {
+                    if ui.button("Just before the loop").clicked() {
+                        self.frame_idx = first_loop.saturating_sub(1);
+                        self.playing = false;
+                    }
+                    if ui.button("First loop closure").clicked() {
+                        self.frame_idx = first_loop;
+                        self.playing = false;
+                    }
+                }
+            });
+            ui.checkbox(&mut self.show_front_end_map, "Map without loop closure");
+            crate::ui_kit::legend(
+                ui,
+                &[
+                    (Color32::from_rgb(170, 120, 230), "odometry"),
+                    (Color32::from_rgb(240, 150, 70), "scan-to-map"),
+                    (Color32::from_rgb(90, 210, 140), "pose graph"),
+                    (Color32::from_rgb(230, 90, 220), "loop edge"),
+                    (Color32::from_rgb(250, 220, 90), "false loop"),
+                ],
+            );
+            let note = if self.loop_scenario == LoopScenario::Corridor {
+                "The top corridor has no pillars, so the scan-to-map front end drifts there \
+                 until the loop closes and the pose graph pulls everything straight."
+            } else {
+                "Aliased corridor: identical pillars every 2.5 m and a start mid-corridor. \
+                 Without the ambiguity check, loop matches lock onto the pillar next door \
+                 and bend the map; with it, those matches are rejected until a unique view \
+                 (a corner) closes the loop."
+            };
+            crate::ui_kit::how_it_works(ui, "loop_help", note);
+        } else {
+            let note = match self.kind {
+                SlamKind::EkfSlam => {
+                    "EKF-SLAM keeps the robot pose and every landmark in one Gaussian; each \
+                     range-bearing observation corrects them all together."
+                }
+                SlamKind::FastSlam => {
+                    "FastSLAM 1.0: each particle is a pose hypothesis with its own small \
+                     landmark EKFs; particles that explain the observations survive."
+                }
+                _ => {
+                    "ICP aligns the current scan (red) to the previous one (blue) by \
+                     alternating nearest-neighbor matching and a rigid fit (green = aligned)."
+                }
+            };
+            crate::ui_kit::how_it_works(ui, "replay_help", note);
+        }
+        if ui.button("Reset").clicked() {
+            self.reset();
+        }
+    }
+
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.kind == SlamKind::Drive {
+            self.drive.scene(ctx, ui);
             return;
         }
 
         let max_idx = self.frame_count().saturating_sub(1);
         self.frame_idx = self.frame_idx.min(max_idx);
-        ui.horizontal_wrapped(|ui| {
-            ui.label(format!("Step {}/{}", self.frame_idx, max_idx));
-            ui.add(egui::Slider::new(&mut self.frame_idx, 0..=max_idx).text("timeline"));
-        });
-
         if self.kind == SlamKind::LoopClosure {
-            ui.horizontal_wrapped(|ui| {
-                ui.label("Scenario:");
-                for scenario in LoopScenario::ALL {
-                    if ui
-                        .selectable_label(self.loop_scenario == scenario, scenario.label())
-                        .clicked()
-                    {
-                        self.loop_scenario = scenario;
-                        self.playing = false;
-                    }
-                }
-            });
-            let max_idx = self.frame_count().saturating_sub(1);
-            self.frame_idx = self.frame_idx.min(max_idx);
-            ui.horizontal_wrapped(|ui| {
-                let first_loop = self.loop_run().first_loop_frame();
-                if let Some(first_loop) = first_loop {
-                    if ui.button("Jump to first loop closure").clicked() {
-                        self.frame_idx = first_loop;
-                        self.playing = false;
-                    }
-                    if ui.button("Just before it").clicked() {
-                        self.frame_idx = first_loop.saturating_sub(1);
-                        self.playing = false;
-                    }
-                }
-                ui.checkbox(
-                    &mut self.show_front_end_map,
-                    "Map at front-end poses (no loop closure)",
-                );
-            });
             self.draw_loop_scene(ui);
-            ui.separator();
+            crate::ui_kit::playback(ui, &mut self.playing, &mut self.frame_idx, max_idx);
             self.loop_status(ui);
         } else {
             let frame = self.active_frames()[self.frame_idx].clone();
-            let (rect, side) = self.world_rect(ui);
+            let (rect, side) = Self::world_rect(ui);
             self.draw_scene(ui, rect, side, &frame);
-
-            ui.separator();
-            ui.horizontal(|ui| match self.kind {
+            let _ = ui.allocate_rect(rect, egui::Sense::hover());
+            crate::ui_kit::playback(ui, &mut self.playing, &mut self.frame_idx, max_idx);
+            match self.kind {
                 SlamKind::EkfSlam | SlamKind::FastSlam => {
                     ui.label(format!(
-                        "Landmarks: {} true, {} estimated",
+                        "{} landmarks, {} estimated",
                         frame.true_landmarks.len(),
                         frame.est_landmarks.len()
                     ));
                 }
-                SlamKind::Icp | SlamKind::LoopClosure | SlamKind::Drive => {
-                    ui.label(format!(
-                        "ICP mean error: {:.4} m/point  (prev=blue, curr=red, aligned=green)",
-                        frame.icp_error
-                    ));
+                _ => {
+                    ui.label(format!("ICP mean error {:.4} m per point", frame.icp_error));
                 }
-            });
+            }
         }
 
-        let (advance, delay_ms) = match self.kind {
-            SlamKind::LoopClosure => (LOOP_FRAMES_PER_TICK, 50),
-            _ => (1, 120),
+        let (advance, period) = match self.kind {
+            SlamKind::LoopClosure => (LOOP_FRAMES_PER_TICK, 0.05),
+            _ => (1, 0.12),
         };
         if self.playing && self.frame_idx < max_idx {
-            self.frame_idx = (self.frame_idx + advance).min(max_idx);
-            ctx.request_repaint_after(std::time::Duration::from_millis(delay_ms));
+            if crate::ui_kit::every(ctx, &mut self.last_advance, period) {
+                self.frame_idx = (self.frame_idx + advance).min(max_idx);
+            }
         } else if self.frame_idx >= max_idx {
             self.playing = false;
         }
@@ -861,7 +884,7 @@ mod tests {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     egui::ScrollArea::vertical()
                         .auto_shrink([false, false])
-                        .show(ui, |ui| demo.ui(ctx, ui));
+                        .show(ui, |ui| demo.scene(ctx, ui));
                 });
             });
         }
