@@ -31,6 +31,7 @@ use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
 
 use nalgebra::{Matrix2, Matrix3, Vector2, Vector3};
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::Pose2D;
 
 /// Tuning parameters for [`ScanToMapMatcher`].
@@ -393,24 +394,88 @@ pub fn register_point_to_line(
     config: &ScanToMapConfig,
 ) -> ScanRegistration {
     let grid = NeighborGrid::new(target, config.max_correspondence_distance);
+    let evaluate = |pose: Pose2D| {
+        PointToLineTerms::evaluate(source, target, target_normals, &grid, pose, config)
+    };
 
     let mut pose = seed;
     let mut iterations = 0;
-    let mut correspondences = 0;
-    let mut mean_residual = f64::INFINITY;
-    let mut final_hessian = Matrix3::zeros();
+    let mut terms = PointToLineTerms::default();
+    // Whether `terms` were measured at `pose` (false right after a step).
+    let mut terms_at_pose = false;
 
     for _ in 0..config.max_iterations.max(1) {
         iterations += 1;
+        terms = evaluate(pose);
+        terms_at_pose = true;
+        if terms.correspondences < 3 {
+            break;
+        }
+        let hessian = terms.hessian;
+        // Light Levenberg damping keeps degenerate geometry (corridors) bounded.
+        let damping = 1.0e-6 * hessian.trace().max(1.0e-9);
+        let Some(inverse) = (hessian + Matrix3::identity() * damping).try_inverse() else {
+            break;
+        };
+        let mut step = -inverse * terms.gradient;
+        if let Some(weak) = degenerate_direction(&hessian, config.degeneracy_ratio) {
+            let along = weak.dot(&step.xy());
+            step.x -= along * weak.x;
+            step.y -= along * weak.y;
+        }
+        pose = Pose2D::new(
+            pose.x + step.x,
+            pose.y + step.y,
+            normalize_angle(pose.yaw + step.z),
+        );
+        terms_at_pose = false;
+        if step.x.hypot(step.y) < 1.0e-5 && step.z.abs() < 1.0e-5 {
+            break;
+        }
+    }
+    // The iteration cap stopped it mid-descent: report statistics for the
+    // pose returned, which is what callers gate on, not the one before it.
+    // (A converged step is too small to change them.)
+    if !terms_at_pose && iterations == config.max_iterations.max(1) {
+        terms = evaluate(pose);
+    }
+
+    ScanRegistration {
+        pose,
+        iterations,
+        correspondences: terms.correspondences,
+        mean_residual: if terms.correspondences == 0 {
+            f64::INFINITY
+        } else {
+            terms.residual_sum / terms.correspondences as f64
+        },
+        hessian: terms.hessian,
+    }
+}
+
+/// Point-to-line Gauss-Newton terms of one registration iterate.
+#[derive(Default)]
+struct PointToLineTerms {
+    hessian: Matrix3<f64>,
+    gradient: Vector3<f64>,
+    residual_sum: f64,
+    correspondences: usize,
+}
+
+impl PointToLineTerms {
+    fn evaluate(
+        source: &[Vector2<f64>],
+        target: &[Vector2<f64>],
+        target_normals: &[Vector2<f64>],
+        grid: &NeighborGrid,
+        pose: Pose2D,
+        config: &ScanToMapConfig,
+    ) -> Self {
         let (sin, cos) = pose.yaw.sin_cos();
         let rot = Matrix2::new(cos, -sin, sin, cos);
         let rot_derivative = Matrix2::new(-sin, -cos, cos, -sin);
         let translation = Vector2::new(pose.x, pose.y);
-
-        let mut hessian = Matrix3::zeros();
-        let mut gradient = Vector3::zeros();
-        let mut residual_sum = 0.0;
-        correspondences = 0;
+        let mut terms = Self::default();
         for point in source {
             let world = rot * point + translation;
             let Some(index) = grid.nearest_within(&world) else {
@@ -420,46 +485,12 @@ pub fn register_point_to_line(
             let residual = normal.dot(&(world - target[index]));
             let jacobian = Vector3::new(normal.x, normal.y, normal.dot(&(rot_derivative * point)));
             let weight = huber_weight(residual, config.huber_delta);
-            hessian += weight * jacobian * jacobian.transpose();
-            gradient += weight * jacobian * residual;
-            residual_sum += residual.abs();
-            correspondences += 1;
+            terms.hessian += weight * jacobian * jacobian.transpose();
+            terms.gradient += weight * jacobian * residual;
+            terms.residual_sum += residual.abs();
+            terms.correspondences += 1;
         }
-        if correspondences == 0 {
-            break;
-        }
-        mean_residual = residual_sum / correspondences as f64;
-        final_hessian = hessian;
-        if correspondences < 3 {
-            break;
-        }
-        // Light Levenberg damping keeps degenerate geometry (corridors) bounded.
-        let damping = 1.0e-6 * hessian.trace().max(1.0e-9);
-        let Some(inverse) = (hessian + Matrix3::identity() * damping).try_inverse() else {
-            break;
-        };
-        let mut step = -inverse * gradient;
-        if let Some(weak) = degenerate_direction(&hessian, config.degeneracy_ratio) {
-            let along = weak.dot(&step.xy());
-            step.x -= along * weak.x;
-            step.y -= along * weak.y;
-        }
-        pose = Pose2D::new(
-            pose.x + step.x,
-            pose.y + step.y,
-            wrap_angle(pose.yaw + step.z),
-        );
-        if step.x.hypot(step.y) < 1.0e-5 && step.z.abs() < 1.0e-5 {
-            break;
-        }
-    }
-
-    ScanRegistration {
-        pose,
-        iterations,
-        correspondences,
-        mean_residual,
-        hessian: final_hessian,
+        terms
     }
 }
 
@@ -634,7 +665,7 @@ pub fn compose_pose(pose: Pose2D, delta: Pose2D) -> Pose2D {
     Pose2D::new(
         pose.x + cos * delta.x - sin * delta.y,
         pose.y + sin * delta.x + cos * delta.y,
-        wrap_angle(pose.yaw + delta.yaw),
+        normalize_angle(pose.yaw + delta.yaw),
     )
 }
 
@@ -646,7 +677,7 @@ pub fn relative_pose(from: Pose2D, to: Pose2D) -> Pose2D {
     Pose2D::new(
         cos * dx + sin * dy,
         -sin * dx + cos * dy,
-        wrap_angle(to.yaw - from.yaw),
+        normalize_angle(to.yaw - from.yaw),
     )
 }
 
@@ -764,15 +795,6 @@ fn rotation(yaw: f64) -> Matrix2<f64> {
     Matrix2::new(cos, -sin, sin, cos)
 }
 
-fn wrap_angle(angle: f64) -> f64 {
-    let wrapped = (angle + PI).rem_euclid(2.0 * PI) - PI;
-    if wrapped <= -PI {
-        wrapped + 2.0 * PI
-    } else {
-        wrapped
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -809,6 +831,41 @@ mod tests {
     fn pose_error(a: Pose2D, b: Pose2D) -> (f64, f64) {
         let delta = relative_pose(a, b);
         (delta.x.hypot(delta.y), delta.yaw.abs())
+    }
+
+    #[test]
+    fn a_capped_registration_reports_statistics_for_the_pose_it_returns() {
+        let config = ScanToMapConfig {
+            max_iterations: 1,
+            ..ScanToMapConfig::default()
+        };
+        let (target, normals) = scan_points_with_normals(
+            &scan_at(Pose2D::origin()),
+            Pose2D::origin(),
+            config.normal_neighbor_distance,
+            config.voxel_size,
+        );
+        let truth = Pose2D::new(0.3, 0.05, 0.04);
+        let seed = Pose2D::new(0.42, -0.03, 0.0);
+        let result = register_point_to_line(&scan_at(truth), &target, &normals, seed, &config);
+        assert!(
+            pose_error(result.pose, seed).0 > 0.01,
+            "the step moved the pose"
+        );
+
+        let grid = NeighborGrid::new(&target, config.max_correspondence_distance);
+        let at_result = PointToLineTerms::evaluate(
+            &scan_at(truth),
+            &target,
+            &normals,
+            &grid,
+            result.pose,
+            &config,
+        );
+        assert_eq!(result.correspondences, at_result.correspondences);
+        let mean = at_result.residual_sum / at_result.correspondences as f64;
+        assert!((result.mean_residual - mean).abs() < 1e-12);
+        assert_eq!(result.hessian, at_result.hessian);
     }
 
     #[test]

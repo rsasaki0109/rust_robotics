@@ -9,6 +9,7 @@
 //!   <https://homes.cs.washington.edu/~todorov/papers/LiICINCO04.pdf>
 
 use nalgebra::{Matrix2, Matrix2x3, Matrix3, Matrix3x2, Vector2, Vector3};
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 const MAX_LINEAR_SPEED: f64 = 5.0;
@@ -324,16 +325,6 @@ fn symmetrize_2x2(matrix: Matrix2<f64>) -> Matrix2<f64> {
 
 fn symmetrize_3x3(matrix: Matrix3<f64>) -> Matrix3<f64> {
     0.5 * (matrix + matrix.transpose())
-}
-
-fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
 }
 
 fn dynamics(state: &Vector3<f64>, control: &Vector2<f64>, dt: f64) -> Vector3<f64> {

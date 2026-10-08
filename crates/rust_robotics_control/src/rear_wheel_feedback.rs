@@ -8,8 +8,9 @@
 //!     - B. Paden, M. Cap, S. Z. Yong, D. Yershov and E. Frazzoli,
 //!       "A Survey of Motion Planning and Control Techniques Adopted in Self-Driving Vehicles"
 
+use crate::spline_course::calc_spline_course;
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
-use std::f64::consts::PI;
 
 /// Vehicle state for Rear Wheel Feedback Controller
 #[derive(Debug, Clone, Copy)]
@@ -173,7 +174,7 @@ impl RearWheelFeedbackController {
             if ds1 > 1e-6 && ds2 > 1e-6 {
                 let yaw1 = dy1.atan2(dx1);
                 let yaw2 = dy2.atan2(dx2);
-                let dyaw = Self::normalize_angle(yaw2 - yaw1);
+                let dyaw = normalize_angle(yaw2 - yaw1);
                 let ds = (ds1 + ds2) / 2.0;
                 curvature.push(dyaw / ds);
             } else {
@@ -185,17 +186,6 @@ impl RearWheelFeedbackController {
         curvature.push(*curvature.last().unwrap_or(&0.0));
 
         curvature
-    }
-
-    /// Normalize angle to [-PI, PI]
-    fn normalize_angle(mut angle: f64) -> f64 {
-        while angle > PI {
-            angle -= 2.0 * PI;
-        }
-        while angle < -PI {
-            angle += 2.0 * PI;
-        }
-        angle
     }
 
     /// Find target index and compute lateral error
@@ -257,7 +247,7 @@ impl RearWheelFeedbackController {
         };
 
         // Heading error
-        let th_e = Self::normalize_angle(state.yaw - yaw_ref);
+        let th_e = normalize_angle(state.yaw - yaw_ref);
 
         // Compute angular velocity using rear wheel feedback control law
         let v = state.v;
@@ -400,196 +390,10 @@ impl PathTracker for RearWheelFeedbackController {
     }
 }
 
-// Cubic spline helper functions for path generation
-
-fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> SplineCourse {
-    let sp = CubicSpline2D::new(x, y);
-    let mut s = 0.0;
-    let mut course_x = Vec::new();
-    let mut course_y = Vec::new();
-    let mut course_yaw = Vec::new();
-    let mut course_k = Vec::new();
-    let mut course_s = Vec::new();
-
-    let s_max = *sp.s.last().unwrap() - ds;
-    while s < s_max {
-        let (ix, iy) = sp.calc_position(s);
-        let iyaw = sp.calc_yaw(s);
-        let ik = sp.calc_curvature(s);
-        course_x.push(ix);
-        course_y.push(iy);
-        course_yaw.push(iyaw);
-        course_k.push(ik);
-        course_s.push(s);
-        s += ds;
-    }
-
-    (course_x, course_y, course_yaw, course_k, course_s)
-}
-
-struct CubicSpline {
-    a: Vec<f64>,
-    b: Vec<f64>,
-    c: Vec<f64>,
-    d: Vec<f64>,
-    x: Vec<f64>,
-}
-
-type SplineCourse = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
-
-impl CubicSpline {
-    fn new(x: &[f64], y: &[f64]) -> Self {
-        let n = x.len();
-        let mut h = vec![0.0; n - 1];
-        for i in 0..n - 1 {
-            h[i] = x[i + 1] - x[i];
-        }
-
-        let mut a = vec![0.0; n];
-        let mut b = vec![0.0; n];
-        let mut c = vec![0.0; n];
-        let mut d = vec![0.0; n];
-
-        a[..n].copy_from_slice(&y[..n]);
-
-        let mut alpha = vec![0.0; n - 1];
-        for i in 1..n - 1 {
-            alpha[i] = 3.0 * (a[i + 1] - a[i]) / h[i] - 3.0 * (a[i] - a[i - 1]) / h[i - 1];
-        }
-
-        let mut l = vec![1.0; n];
-        let mut mu = vec![0.0; n];
-        let mut z = vec![0.0; n];
-
-        for i in 1..n - 1 {
-            l[i] = 2.0 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1];
-            mu[i] = h[i] / l[i];
-            z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
-        }
-
-        for j in (0..n - 1).rev() {
-            c[j] = z[j] - mu[j] * c[j + 1];
-            b[j] = (a[j + 1] - a[j]) / h[j] - h[j] * (c[j + 1] + 2.0 * c[j]) / 3.0;
-            d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
-        }
-
-        CubicSpline {
-            a,
-            b,
-            c,
-            d,
-            x: x.to_vec(),
-        }
-    }
-
-    fn calc(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return self.a[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return self.a[self.a.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        self.a[i] + self.b[i] * dx + self.c[i] * dx * dx + self.d[i] * dx * dx * dx
-    }
-
-    fn calc_d(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return self.b[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return self.b[self.b.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        self.b[i] + 2.0 * self.c[i] * dx + 3.0 * self.d[i] * dx * dx
-    }
-
-    fn calc_dd(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return 2.0 * self.c[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return 2.0 * self.c[self.c.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        2.0 * self.c[i] + 6.0 * self.d[i] * dx
-    }
-
-    fn search_index(&self, x: f64) -> usize {
-        for i in 0..self.x.len() - 1 {
-            if self.x[i] <= x && x <= self.x[i + 1] {
-                return i;
-            }
-        }
-        self.x.len() - 2
-    }
-}
-
-struct CubicSpline2D {
-    s: Vec<f64>,
-    sx: CubicSpline,
-    sy: CubicSpline,
-}
-
-impl CubicSpline2D {
-    fn new(x: &[f64], y: &[f64]) -> Self {
-        let mut s = vec![0.0];
-        for i in 1..x.len() {
-            let dx = x[i] - x[i - 1];
-            let dy = y[i] - y[i - 1];
-            s.push(s[i - 1] + (dx * dx + dy * dy).sqrt());
-        }
-
-        let sx = CubicSpline::new(&s, x);
-        let sy = CubicSpline::new(&s, y);
-
-        CubicSpline2D { s, sx, sy }
-    }
-
-    fn calc_position(&self, s: f64) -> (f64, f64) {
-        let x = self.sx.calc(s);
-        let y = self.sy.calc(s);
-        (x, y)
-    }
-
-    fn calc_curvature(&self, s: f64) -> f64 {
-        let dx = self.sx.calc_d(s);
-        let ddx = self.sx.calc_dd(s);
-        let dy = self.sy.calc_d(s);
-        let ddy = self.sy.calc_dd(s);
-        let denom = (dx * dx + dy * dy).powf(1.5);
-        if denom.abs() < 1e-10 {
-            0.0
-        } else {
-            (ddy * dx - ddx * dy) / denom
-        }
-    }
-
-    fn calc_yaw(&self, s: f64) -> f64 {
-        let dx = self.sx.calc_d(s);
-        let dy = self.sy.calc_d(s);
-        dy.atan2(dx)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_rear_wheel_feedback_creation() {
@@ -622,9 +426,9 @@ mod tests {
 
     #[test]
     fn test_rear_wheel_feedback_normalize_angle() {
-        assert!((RearWheelFeedbackController::normalize_angle(3.0 * PI) - PI).abs() < 0.01);
-        assert!((RearWheelFeedbackController::normalize_angle(-3.0 * PI) + PI).abs() < 0.01);
-        assert!((RearWheelFeedbackController::normalize_angle(0.5)).abs() - 0.5 < 0.01);
+        assert!((normalize_angle(3.0 * PI) - PI).abs() < 0.01);
+        assert!((normalize_angle(-3.0 * PI) + PI).abs() < 0.01);
+        assert!((normalize_angle(0.5)).abs() - 0.5 < 0.01);
     }
 
     #[test]

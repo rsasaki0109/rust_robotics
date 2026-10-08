@@ -19,6 +19,7 @@ use rust_robotics_slam::{
 };
 
 use crate::slam_drive::{draw_lidar_scene, LidarSceneView, MapView, SlamDriveDemo};
+use rust_robotics_core::normalize_angle;
 
 const DT: f64 = 0.1;
 const MAX_RANGE: f64 = 18.0;
@@ -171,17 +172,6 @@ pub struct SlamDemo {
     drive: SlamDriveDemo,
     /// Input time of the last replay step \[s\].
     last_advance: f64,
-}
-
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {

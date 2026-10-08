@@ -29,6 +29,7 @@ use rust_robotics_slam::{
 };
 
 use crate::slam_nav::{draw_path, grid_image, joystick, NavStatus, Navigator};
+use rust_robotics_core::normalize_angle;
 
 pub(crate) const WORLD_X: (f64, f64) = (-16.0, 16.0);
 pub(crate) const WORLD_Y: (f64, f64) = (-11.0, 11.0);
@@ -325,10 +326,6 @@ fn wall_clearance(walls: &[LineSegment], point: Vector2<f64>) -> f64 {
             (wall.start + edge * t - point).norm()
         })
         .fold(f64::INFINITY, f64::min)
-}
-
-fn wrap_angle(angle: f64) -> f64 {
-    (angle + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI
 }
 
 fn rectangle(min: (f64, f64), max: (f64, f64)) -> Vec<LineSegment> {
@@ -1013,7 +1010,7 @@ impl SlamDriveDemo {
         // The last centerline pose repeats the first, so wrap one short.
         let target = self.centerline[(nearest + AUTO_LOOKAHEAD) % (self.centerline.len() - 1)];
         let heading = (target.y - self.truth.y).atan2(target.x - self.truth.x);
-        let error = wrap_angle(heading - self.truth.yaw);
+        let error = normalize_angle(heading - self.truth.yaw);
         let omega = (2.5 * error).clamp(-TURN_RATE, TURN_RATE);
         let speed = DRIVE_SPEED * (1.0 - 0.5 * error.abs().min(1.0));
         (speed, omega)
@@ -1105,7 +1102,7 @@ impl SlamDriveDemo {
                 || crowded
             {
                 let turn = rand::Rng::random_range(&mut self.rng, 1.5..4.7);
-                self.people[index].yaw = wrap_angle(person.yaw + turn);
+                self.people[index].yaw = normalize_angle(person.yaw + turn);
             } else {
                 self.people[index] = next;
             }

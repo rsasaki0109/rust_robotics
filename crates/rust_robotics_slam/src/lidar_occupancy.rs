@@ -141,6 +141,11 @@ impl OccupancyGrid {
         self.config.resolution
     }
 
+    /// Length of the grid's diagonal \[m\].
+    fn diagonal(&self) -> f64 {
+        (self.width as f64).hypot(self.height as f64) * self.config.resolution
+    }
+
     /// `(width, height)` in cells.
     pub fn size(&self) -> (usize, usize) {
         (self.width, self.height)
@@ -229,6 +234,9 @@ impl OccupancyGrid {
         let Some(start) = self.cell_of(Vector2::new(pose.x, pose.y)) else {
             return;
         };
+        // No ray can usefully reach past the grid; this also bounds the
+        // sub-ray count for an unlimited (infinite) `max_range`.
+        let max_range = max_range.min(self.diagonal());
         let count = ranges.len();
         let spacing = std::f64::consts::TAU / count.max(1) as f64;
         // Half-cell ray spacing at max range: 8-connected lines one cell
@@ -455,6 +463,20 @@ mod tests {
         assert_eq!(grid.state_at(Vector2::new(0.0, 4.5)), CellState::Free);
         assert_eq!(grid.state_at(Vector2::new(-5.5, 0.0)), CellState::Unknown);
         assert_eq!(grid.state_at(Vector2::new(4.0, 0.0)), CellState::Unknown);
+    }
+
+    #[test]
+    fn an_unlimited_max_range_is_bounded_by_the_grid() {
+        let pose = Pose2D::new(0.0, 0.0, 0.0);
+        let mut grid = OccupancyGrid::new(
+            Vector2::new(-6.0, -6.0),
+            Vector2::new(6.0, 6.0),
+            OccupancyConfig::default(),
+        );
+        // No returns at all, no range limit: clears the whole grid, and returns.
+        grid.insert_ranges(pose, &[f64::INFINITY; 90], f64::INFINITY);
+        assert_eq!(grid.state_at(Vector2::new(-5.5, 0.0)), CellState::Free);
+        assert_eq!(grid.state_at(Vector2::new(5.5, 5.5)), CellState::Free);
     }
 
     #[test]

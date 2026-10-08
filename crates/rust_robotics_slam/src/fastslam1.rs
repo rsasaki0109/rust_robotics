@@ -7,6 +7,7 @@
 
 use nalgebra::{Matrix2, Vector2, Vector3};
 use rand_distr::{Distribution, Normal, Uniform};
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -76,18 +77,6 @@ fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
     )
 }
 
-/// Normalize angle to [-pi, pi]
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
-}
-
 /// Observation model: predict observation from particle pose and landmark
 fn observation_model(particle: &Particle, lm_id: usize) -> Vector2<f64> {
     let lm = &particle.landmarks[lm_id];
@@ -142,9 +131,15 @@ fn update_landmark(particle: &mut Particle, z: &Vector2<f64>, lm_id: usize, r: &
 
     // First observation of this landmark
     if lm.cov[(0, 0)] > 100.0 {
-        // Initialize landmark position
+        // Initialize the landmark from the observation, with the observation
+        // noise mapped into the map frame: Σ = H⁻¹ R H⁻ᵀ. Leaving the prior
+        // covariance in place would re-initialize it on every sighting.
         particle.landmarks[lm_id].x = particle.x + z[0] * (particle.yaw + z[1]).cos();
         particle.landmarks[lm_id].y = particle.y + z[0] * (particle.yaw + z[1]).sin();
+        let h = compute_jacobian(particle, lm_id);
+        if let Some(h_inv) = h.try_inverse() {
+            particle.landmarks[lm_id].cov = h_inv * r * h_inv.transpose();
+        }
         return;
     }
 
@@ -376,6 +371,30 @@ mod tests {
 
         // All particles should still exist
         assert_eq!(particles.len(), 20);
+    }
+
+    #[test]
+    fn a_landmark_is_initialized_once_and_then_filtered() {
+        let r = get_r();
+        let mut particle = Particle::new(1);
+        let z = Vector2::new(5.0, 0.0);
+
+        update_landmark(&mut particle, &z, 0, &r);
+        let first = particle.landmarks[0].cov;
+        assert!((particle.landmarks[0].x - 5.0).abs() < 1e-12);
+        assert!(
+            first[(0, 0)] < 100.0,
+            "first sighting keeps the prior: {first}"
+        );
+        let weight = particle.weight;
+
+        // A second, slightly different reading is fused, not copied, and it
+        // scores the particle.
+        update_landmark(&mut particle, &Vector2::new(5.4, 0.0), 0, &r);
+        let lm = &particle.landmarks[0];
+        assert!(lm.x > 5.0 && lm.x < 5.4, "landmark x = {}", lm.x);
+        assert!(lm.cov[(0, 0)] < first[(0, 0)]);
+        assert!(particle.weight != weight);
     }
 
     #[test]

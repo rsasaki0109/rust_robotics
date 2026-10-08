@@ -46,7 +46,8 @@ pub struct LidarGraphSlamConfig {
     pub node_yaw: f64,
     /// Older nodes within this distance of the new node are loop candidates \[m\].
     pub loop_search_radius: f64,
-    /// Candidates must be at least this many nodes older than the new node.
+    /// Candidates must be at least this many nodes older than the new node
+    /// (at least 1).
     pub loop_min_node_gap: usize,
     /// At most this many nearest candidates are verified per new node.
     pub loop_max_candidates: usize,
@@ -448,13 +449,15 @@ impl LidarGraphSlam {
 
     /// Older nodes near node `index`, closest first.
     fn loop_candidates(&self, index: usize) -> Vec<usize> {
-        if index < self.config.loop_min_node_gap {
+        // A node is never its own loop candidate (gap 0 would also break
+        // `register_candidate`'s `index - 1` on the first node).
+        let gap = self.config.loop_min_node_gap.max(1);
+        if index < gap {
             return Vec::new();
         }
         let current = self.nodes[index].pose;
         let radius_sq = self.config.loop_search_radius * self.config.loop_search_radius;
-        let mut candidates: Vec<(f64, usize)> = self.nodes
-            [..=index - self.config.loop_min_node_gap]
+        let mut candidates: Vec<(f64, usize)> = self.nodes[..=index - gap]
             .iter()
             .enumerate()
             .filter_map(|(candidate, node)| {
@@ -784,6 +787,23 @@ mod tests {
         assert!(nodes.len() >= 4, "nodes: {}", nodes.len());
         assert_eq!(slam.edges().len(), nodes.len() - 1);
         assert!(slam.loop_closures().is_empty());
+    }
+
+    #[test]
+    fn a_zero_loop_gap_does_not_match_a_node_with_itself() {
+        let config = LidarGraphSlamConfig {
+            node_translation: 0.5,
+            loop_min_node_gap: 0,
+            ..LidarGraphSlamConfig::default()
+        };
+        let mut slam = LidarGraphSlam::new(config, Pose2D::origin());
+        let mut truth = Pose2D::origin();
+        let step = Pose2D::new(0.1, 0.0, 0.0);
+        for _ in 0..=20 {
+            slam.update(step, &scan_at(truth));
+            truth = compose_pose(truth, step);
+        }
+        assert!(slam.node_poses().len() >= 4);
     }
 
     /// Drives a closed circle with a LiDAR-blind stretch of biased odometry,

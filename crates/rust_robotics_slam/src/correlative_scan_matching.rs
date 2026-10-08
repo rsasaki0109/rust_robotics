@@ -11,8 +11,8 @@
 //! reference point contributes a radially symmetric score field and the grid
 //! stores the maximum value contributed at each cell.
 
+use rust_robotics_core::normalize_angle;
 use std::collections::HashMap;
-use std::f64::consts::PI;
 
 /// Configuration for correlative scan matching.
 #[derive(Debug, Clone, Copy)]
@@ -184,16 +184,6 @@ fn cell_index(x: f64, y: f64, resolution: f64) -> (i32, i32) {
         (x / resolution).round() as i32,
         (y / resolution).round() as i32,
     )
-}
-
-fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
 }
 
 #[cfg(test)]

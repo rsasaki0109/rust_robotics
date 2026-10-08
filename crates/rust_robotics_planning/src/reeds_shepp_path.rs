@@ -12,6 +12,7 @@
 //! Computes optimal paths for a car-like robot that can move both
 //! forward and backward, using combinations of straight and arc segments.
 
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 #[derive(Debug, Clone)]
@@ -37,17 +38,6 @@ impl Path {
             directions: Vec::new(),
         }
     }
-}
-
-fn pi_2_pi(x: f64) -> f64 {
-    let mut result = x;
-    while result > PI {
-        result -= 2.0 * PI;
-    }
-    while result < -PI {
-        result += 2.0 * PI;
-    }
-    result
 }
 
 fn mod2pi(x: f64) -> f64 {
@@ -497,7 +487,10 @@ fn calc_paths(
             .map(|(&ix, &iy)| -(-q0[2]).sin() * ix + (-q0[2]).cos() * iy + q0[1])
             .collect();
 
-        path.yaw = yaws.iter().map(|&yaw| pi_2_pi(yaw + q0[2])).collect();
+        path.yaw = yaws
+            .iter()
+            .map(|&yaw| normalize_angle(yaw + q0[2]))
+            .collect();
         path.directions = directions;
         path.lengths = path.lengths.iter().map(|&length| length / maxc).collect();
         path.l = path.l / maxc;
@@ -1149,7 +1142,7 @@ mod tests {
                 1e-12
             ));
             assert!(approx_eq(
-                pi_2_pi(*best_path.yaw.last().unwrap() - scenario.goal.2),
+                normalize_angle(*best_path.yaw.last().unwrap() - scenario.goal.2),
                 0.0,
                 1e-12
             ));

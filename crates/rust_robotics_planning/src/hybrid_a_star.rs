@@ -10,6 +10,7 @@ use std::f64::consts::PI;
 
 use crate::grid::GridMap;
 use crate::reeds_shepp_path;
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::{RoboticsError, RoboticsResult};
 
 /// Configuration for Hybrid A* planner
@@ -449,7 +450,7 @@ impl HybridAStarPlanner {
 
     /// Discretize yaw to grid index
     fn calc_yaw_index(&self, yaw: f64) -> i32 {
-        let normalized = pi_2_pi(yaw);
+        let normalized = normalize_angle(yaw);
         ((normalized + PI) / self.config.yaw_resolution).round() as i32
     }
 
@@ -545,7 +546,7 @@ impl HybridAStarPlanner {
             cx += d * cyaw.cos();
             cy += d * cyaw.sin();
             cyaw += d * steer.tan() / self.config.wheelbase;
-            cyaw = pi_2_pi(cyaw);
+            cyaw = normalize_angle(cyaw);
 
             x_list.push(cx);
             y_list.push(cy);
@@ -815,18 +816,6 @@ impl PartialOrd for DijkstraNode {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
-}
-
-/// Normalize angle to [-pi, pi]
-fn pi_2_pi(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
 }
 
 #[cfg(test)]

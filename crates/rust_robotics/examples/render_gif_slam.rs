@@ -10,6 +10,7 @@
 
 use nalgebra::{DMatrix, Vector2, Vector3};
 use rand::{Rng, SeedableRng};
+use rust_robotics::core::normalize_angle;
 use rust_robotics::core::Pose2D;
 use rust_robotics::slam::{
     ekf_slam::{ekf_slam_known_correspondences, EKFSLAMState},
@@ -33,17 +34,6 @@ const LANDMARKS: [[f64; 2]; 6] = [
 
 const R_DIST: f64 = 0.3;
 const R_ANGLE: f64 = 5.0 * std::f64::consts::PI / 180.0;
-
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > std::f64::consts::PI {
-        a -= 2.0 * std::f64::consts::PI;
-    }
-    while a < -std::f64::consts::PI {
-        a += 2.0 * std::f64::consts::PI;
-    }
-    a
-}
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
     Vector3::new(

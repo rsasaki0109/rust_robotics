@@ -148,15 +148,7 @@ pub fn move_to_pose(start: Pose2D, goal: Pose2D, config: MoveToPoseConfig) -> Mo
     MoveToPoseController::new(config).simulate(start, goal)
 }
 
-pub fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
-}
+pub use rust_robotics_core::normalize_angle;
 
 fn integrate_pose(pose: Pose2D, control: ControlInput, dt: f64) -> Pose2D {
     let yaw = normalize_angle(pose.yaw + control.omega * dt);

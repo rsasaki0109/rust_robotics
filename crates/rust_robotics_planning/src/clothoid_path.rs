@@ -24,6 +24,7 @@
 use std::f64::consts::PI;
 
 use rust_robotics_core::error::{RoboticsError, RoboticsResult};
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::types::{Path2D, Pose2D};
 
 // --- Fresnel integrals -------------------------------------------------------
@@ -187,17 +188,6 @@ pub fn clothoid_sample(
 }
 
 // --- G1 Hermite interpolation (clothoid fitting) ----------------------------
-
-/// Normalize angle to [-pi, pi].
-fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
-}
 
 /// Solve the G1 Hermite interpolation problem: find a clothoid connecting
 /// two poses `(x0, y0, theta0)` and `(x1, y1, theta1)`.

@@ -23,6 +23,7 @@ use rust_robotics_core::types::Pose2D;
 
 use crate::rrt::{AreaBounds, CircleObstacle};
 use crate::rrt_star_reeds_shepp::{RRTStarRSConfig, RRTStarRSNode, RRTStarRSPlanner};
+use rust_robotics_core::normalize_angle;
 
 // ---------------------------------------------------------------------------
 // Unicycle (bicycle-kinematic) model
@@ -76,7 +77,7 @@ fn unicycle_update(
 ) -> VehicleState {
     let x = state.x + state.v * state.yaw.cos() * params.dt;
     let y = state.y + state.v * state.yaw.sin() * params.dt;
-    let yaw = pi_2_pi(state.yaw + state.v / params.wheelbase * delta.tan() * params.dt);
+    let yaw = normalize_angle(state.yaw + state.v / params.wheelbase * delta.tan() * params.dt);
     let v = state.v + accel * params.dt;
     VehicleState { x, y, yaw, v }
 }
@@ -573,7 +574,7 @@ impl ClosedLoopRRTStarPlanner {
 
         // Final yaw check
         if let Some(&final_yaw) = sim.yaw.last() {
-            if (pi_2_pi(final_yaw) - goal.yaw).abs() >= self.config.final_yaw_tolerance {
+            if (normalize_angle(final_yaw) - goal.yaw).abs() >= self.config.final_yaw_tolerance {
                 return None;
             }
         }
@@ -616,18 +617,6 @@ impl ClosedLoopRRTStarPlanner {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/// Normalize an angle to \[-pi, pi\).
-fn pi_2_pi(angle: f64) -> f64 {
-    let mut a = angle % (2.0 * PI);
-    if a > PI {
-        a -= 2.0 * PI;
-    }
-    if a < -PI {
-        a += 2.0 * PI;
-    }
-    a
-}
 
 /// Shortest signed angular difference.
 fn angle_diff(a: f64, b: f64) -> f64 {
@@ -757,11 +746,11 @@ mod tests {
 
     #[test]
     fn test_pi_2_pi() {
-        assert!(approx_eq(pi_2_pi(0.0), 0.0, 1e-12));
-        assert!(approx_eq(pi_2_pi(PI), PI, 1e-12));
-        assert!(approx_eq(pi_2_pi(-PI), -PI, 1e-12));
-        assert!(approx_eq(pi_2_pi(3.0 * PI), PI, 1e-10));
-        assert!(approx_eq(pi_2_pi(-3.0 * PI), -PI, 1e-10));
+        assert!(approx_eq(normalize_angle(0.0), 0.0, 1e-12));
+        assert!(approx_eq(normalize_angle(PI), PI, 1e-12));
+        assert!(approx_eq(normalize_angle(-PI), -PI, 1e-12));
+        assert!(approx_eq(normalize_angle(3.0 * PI), PI, 1e-10));
+        assert!(approx_eq(normalize_angle(-3.0 * PI), -PI, 1e-10));
     }
 
     #[test]

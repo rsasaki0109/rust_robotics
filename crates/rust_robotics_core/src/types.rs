@@ -116,12 +116,7 @@ impl Pose2D {
 
     /// Normalize yaw to [-pi, pi]
     pub fn normalize_yaw(&mut self) {
-        while self.yaw > core::f64::consts::PI {
-            self.yaw -= 2.0 * core::f64::consts::PI;
-        }
-        while self.yaw < -core::f64::consts::PI {
-            self.yaw += 2.0 * core::f64::consts::PI;
-        }
+        self.yaw = crate::normalize_angle(self.yaw);
     }
 }
 

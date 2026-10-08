@@ -175,6 +175,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- One angle-wrapping function, `rust_robotics_core::normalize_angle`,
+  replaces 30 private copies (`normalize_angle`, `wrap_angle`, `pi_2_pi`)
+  across planning, control, SLAM, the playground, and examples. It returns
+  the same values for ordinary angles; the loop-based copies hung on an
+  infinite angle. Public paths such as `mpc::normalize_angle` re-export it.
+- Stanley, LQR Steer, LQR Speed+Steer, and Rear Wheel Feedback share one
+  cubic spline course builder instead of four copies.
 - Playground on phones (narrow layout): buttons, chips, checkboxes and
   slider handles are finger-sized (36 px tall, more spacing), including
   the Drive map's zoom buttons; Localization's hint mentions touch.
@@ -236,6 +243,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- Spline courses of the path-tracking controllers: a repeated waypoint gave
+  a zero-length spline interval and NaN everywhere; repeats are now
+  dropped.
+- LQR Steer: the nearest-point search had no memory and could jump to
+  another leg of a hairpin or crossing course; it now walks forward from
+  the previous nearest point, like Pure Pursuit and Stanley.
+- FastSLAM 1.0: a landmark's first sighting set its position but kept the
+  1000·I prior covariance, so every later sighting re-initialized it and
+  the EKF update and particle weighting never ran (FastSLAM degenerated to
+  dead reckoning). The first sighting now sets Σ = H⁻¹ R H⁻ᵀ.
+- ICP (`icp_matching`): the accumulated transform composed steps in the
+  wrong order (`H_prev · H_step`), so the returned translation was wrong
+  whenever the steps rotated; a step that increased the error was undone
+  in the transform but not in the points the diagnostics (median, p90,
+  inlier ratio) were measured on, and still reported `converged`; and the
+  SVD step could return a reflection (det = -1). All fixed; the docs now say
+  the input is 2×N.
+- EKF-SLAM with known correspondences: a first-seen landmark got only the
+  observation noise as covariance and no correlation with the robot. It now
+  uses the same initialization as the unknown-association path,
+  `P_ll = G_r P_rr G_rᵀ + G_z R G_zᵀ` with cross terms `G_r P_r·`.
+- Scan-to-map `register_point_to_line`: when the iteration cap stopped the
+  descent, the correspondences, residual, and Hessian (which callers and
+  loop closure gate on) described the pose before the last step; they are
+  now measured at the returned pose.
+- LiDAR MCL: `initialize_global` / `initialize_at` kept the previous
+  "another place explains the scan better" verdict, which could keep
+  injecting candidate particles into a freshly seeded filter.
+- `OccupancyGrid::insert_ranges` with an infinite `max_range` looped
+  (practically) forever; rays are now bounded by the grid's diagonal.
+- `LidarGraphSlam` with `loop_min_node_gap: 0` panicked on the first node;
+  a gap below 1 is treated as 1.
 - Stanley: the steering angle was not limited, so beyond ±90° of heading
   error tan(δ) flipped sign and the vehicle turned away from the path; it
   is now kept within ±84°.

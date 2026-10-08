@@ -99,15 +99,7 @@ pub struct SimulationResult {
     pub final_state: State,
 }
 
-pub fn normalize_angle(angle: f64) -> f64 {
-    let mut value = angle % (2.0 * PI);
-    if value > PI {
-        value -= 2.0 * PI;
-    } else if value < -PI {
-        value += 2.0 * PI;
-    }
-    value
-}
+pub use rust_robotics_core::normalize_angle;
 
 fn angle_diff(a: f64, b: f64) -> f64 {
     normalize_angle(a - b)

@@ -51,45 +51,59 @@ pub struct ICPResult {
 /// Main ICP matching function
 ///
 /// # Arguments
-/// * `previous_points` - Points from the previous frame (2×N or 3×N matrix)
-/// * `current_points` - Points from the current frame (2×N or 3×N matrix)
+/// * `previous_points` - Points from the previous frame (2×N matrix)
+/// * `current_points` - Points from the current frame (2×N matrix)
 ///
 /// # Returns
 /// * `ICPResult` containing rotation matrix, translation vector, and convergence info
 pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64>) -> ICPResult {
     let mut h_matrix: Option<DMatrix<f64>> = None;
-    let mut d_error = f64::INFINITY;
     let mut pre_error = f64::INFINITY;
     let mut initial_error = f64::NAN;
     let mut count = 0;
+    let mut converged = false;
     let mut current_pts = current_points.clone();
+    // The transform and points before the last step, to undo a step that
+    // made the match worse.
+    let mut last_good: Option<(Option<DMatrix<f64>>, DMatrix<f64>)> = None;
 
-    while d_error >= EPS {
+    loop {
         count += 1;
 
         let (indexes, error) = nearest_neighbor_association(previous_points, &current_pts);
         if initial_error.is_nan() {
             initial_error = error;
         }
+        if error > pre_error + EPS {
+            // The last step diverged: return the alignment before it, so the
+            // transform, the points and the diagnostics all describe it.
+            if let Some((h, pts)) = last_good.take() {
+                h_matrix = h;
+                current_pts = pts;
+            }
+            break;
+        }
+        let d_error = pre_error - error;
+        pre_error = error;
+        if d_error.abs() <= EPS {
+            converged = true;
+            break;
+        }
+        if count >= MAX_ITER {
+            break;
+        }
+
         let previous_indexed = select_columns(previous_points, &indexes);
         let (rt, tt) = svd_motion_estimation(&previous_indexed, &current_pts);
 
         // Update current points: current_points = (Rt @ current_points) + Tt
         let rotated_pts = &rt * &current_pts;
-        current_pts = rotated_pts.add_scalar_to_each_column(&tt);
-
-        d_error = pre_error - error;
-
-        if d_error < 0.0 {
-            break;
-        }
-
-        pre_error = error;
-        h_matrix = Some(update_homogeneous_matrix(h_matrix, &rt, &tt));
-
-        if d_error <= EPS || count >= MAX_ITER {
-            break;
-        }
+        let next_pts = rotated_pts.add_scalar_to_each_column(&tt);
+        let next_h = update_homogeneous_matrix(h_matrix.clone(), &rt, &tt);
+        last_good = Some((
+            h_matrix.replace(next_h),
+            std::mem::replace(&mut current_pts, next_pts),
+        ));
     }
 
     let h = h_matrix.unwrap_or_else(|| {
@@ -133,11 +147,15 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
         inlier_ratio_5cm,
         relative_error_reduction,
         point_count,
-        converged: d_error <= EPS && count < MAX_ITER,
+        converged,
     }
 }
 
-/// Update the homogeneous transformation matrix
+/// Composes one ICP step `(r, t)` after the transform accumulated so far.
+///
+/// Each step moves the already-transformed points, `p ← r p + t`, so the
+/// total is `H_step · H_prev` (not `H_prev · H_step`, whose translation is
+/// wrong whenever the steps rotate).
 fn update_homogeneous_matrix(
     h_in: Option<DMatrix<f64>>,
     r: &DMatrix<f64>,
@@ -155,7 +173,7 @@ fn update_homogeneous_matrix(
 
     match h_in {
         None => h,
-        Some(h_prev) => &h_prev * &h,
+        Some(h_prev) => &h * &h_prev,
     }
 }
 
@@ -328,8 +346,14 @@ fn svd_motion_estimation(
     let u = svd.u.unwrap();
     let v_t = svd.v_t.unwrap();
 
-    // Calculate rotation: R = V * U^T
-    let r = &v_t.transpose() * &u.transpose();
+    // Calculate rotation: R = V * U^T, flipping the weakest axis when that
+    // would be a reflection (det = -1) rather than a rotation (Kabsch).
+    let mut v = v_t.transpose();
+    if (&v * u.transpose()).determinant() < 0.0 {
+        let last = v.ncols() - 1;
+        v.column_mut(last).neg_mut();
+    }
+    let r = &v * &u.transpose();
 
     // Calculate translation: t = pm - R * cm
     let cm_vec = DVector::from_vec(vec![cm_x, cm_y]);
@@ -380,6 +404,47 @@ mod tests {
     use super::*;
     use nalgebra::Vector2;
     use rand::{rngs::StdRng, Rng, SeedableRng};
+
+    #[test]
+    fn motion_estimation_returns_a_rotation_not_a_reflection() {
+        // `previous` is `current` mirrored across the x axis: the best
+        // least-squares fit is a reflection, which must not be returned.
+        let current = DMatrix::from_row_slice(2, 4, &[0.0, 2.0, 3.0, 0.5, 0.0, 0.5, 1.5, 2.0]);
+        let mut previous = current.clone();
+        previous.row_mut(1).neg_mut();
+        let (r, _) = svd_motion_estimation(&previous, &current);
+        assert!(
+            (r.determinant() - 1.0).abs() < 1e-9,
+            "det = {}",
+            r.determinant()
+        );
+    }
+
+    #[test]
+    fn the_reported_errors_describe_the_returned_transform() {
+        let mut rng = StdRng::seed_from_u64(7);
+        let previous = DMatrix::from_fn(2, 60, |_, _| rng.random_range(-5.0..5.0));
+        for seed in 0..20 {
+            let mut rng = StdRng::seed_from_u64(seed);
+            let yaw: f64 = rng.random_range(-0.3..0.3);
+            let (sin, cos) = yaw.sin_cos();
+            let rotation = DMatrix::from_row_slice(2, 2, &[cos, -sin, sin, cos]);
+            let shift = DVector::from_vec(vec![rng.random_range(-0.5..0.5), 0.3]);
+            let mut current = (&rotation * &previous).add_scalar_to_each_column(&shift);
+            current
+                .iter_mut()
+                .for_each(|v| *v += rng.random_range(-0.05..0.05));
+
+            let result = icp_matching(&previous, &current);
+            let aligned =
+                (&result.rotation * &current).add_scalar_to_each_column(&result.translation);
+            let distances = nearest_neighbor_distances(&previous, &aligned);
+            let mean = distances.iter().sum::<f64>() / distances.len() as f64;
+            assert!((mean - result.final_error_mean).abs() < 1e-9, "seed {seed}");
+            assert!((percentile(distances, 0.5) - result.final_error_median).abs() < 1e-9);
+            assert!((result.rotation.determinant() - 1.0).abs() < 1e-9);
+        }
+    }
 
     fn generate_seeded_2d_points(n_points: usize, field_length: f64, seed: u64) -> DMatrix<f64> {
         let mut rng = StdRng::seed_from_u64(seed);
