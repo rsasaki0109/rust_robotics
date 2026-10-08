@@ -150,7 +150,8 @@ Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
 timelines, or pick **Drive LiDAR SLAM** to drive a robot around a corridor loop
 with the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
 run live — crank up the odometry error and watch the map snap back when you
-return to the start. **ADMM Formation** shows the multi-agent
+return to the start. Switch worlds (corridor loop, pillar hall, empty box) or
+drag on the map to draw your own walls; the course is saved in the share link. **ADMM Formation** shows the multi-agent
 horizon-consensus demo.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
 identical path, initial state, clock, and actuation model, with shareable speed

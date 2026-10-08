@@ -36,6 +36,10 @@ const ODOMETRY_NOISE: f64 = 0.0015;
 const UPDATE_DISTANCE: f64 = 0.1;
 const UPDATE_YAW: f64 = 0.05;
 const AUTO_LOOKAHEAD: usize = 10;
+/// Drawn walls snap to this grid \[m\].
+const WALL_SNAP: f64 = 0.1;
+const MIN_WALL_LENGTH: f64 = 0.3;
+const MAX_CUSTOM_WALLS: usize = 64;
 
 const WALL: Color32 = Color32::from_rgb(90, 95, 105);
 const TRUTH: Color32 = Color32::from_rgba_premultiplied(60, 60, 60, 110);
@@ -75,6 +79,23 @@ fn to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
     let u = ((x - WORLD_X.0) / (WORLD_X.1 - WORLD_X.0)) as f32;
     let v = 1.0 - ((y - WORLD_Y.0) / (WORLD_Y.1 - WORLD_Y.0)) as f32;
     rect.min + Vec2::new(u * rect.width(), v * rect.height())
+}
+
+fn to_world(rect: Rect, pos: Pos2) -> Vector2<f64> {
+    let u = f64::from((pos.x - rect.min.x) / rect.width());
+    let v = f64::from((pos.y - rect.min.y) / rect.height());
+    Vector2::new(
+        WORLD_X.0 + u * (WORLD_X.1 - WORLD_X.0),
+        WORLD_Y.1 - v * (WORLD_Y.1 - WORLD_Y.0),
+    )
+}
+
+fn snap(point: Vector2<f64>) -> Vector2<f64> {
+    let grid = |value: f64| (value / WALL_SNAP).round() * WALL_SNAP;
+    Vector2::new(
+        grid(point.x).clamp(WORLD_X.0, WORLD_X.1),
+        grid(point.y).clamp(WORLD_Y.0, WORLD_Y.1),
+    )
 }
 
 fn draw_trail(painter: &egui::Painter, rect: Rect, poses: &[Pose2D], stroke: Stroke) {
@@ -153,7 +174,7 @@ pub(crate) fn draw_lidar_scene(
     }
     draw_robot(&painter, rect, view.front_end_pose, FRONT_END);
     draw_robot(&painter, rect, view.estimate, GRAPH);
-    ui.allocate_rect(rect, egui::Sense::click())
+    ui.allocate_rect(rect, egui::Sense::click_and_drag())
 }
 
 /// Distance from `point` to the closest wall segment.
@@ -172,9 +193,123 @@ fn wrap_angle(angle: f64) -> f64 {
     (angle + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI
 }
 
-/// Live, keyboard-driven LiDAR graph SLAM on the corridor loop.
+fn rectangle(min: (f64, f64), max: (f64, f64)) -> Vec<LineSegment> {
+    let corners = [
+        Vector2::new(min.0, min.1),
+        Vector2::new(max.0, min.1),
+        Vector2::new(max.0, max.1),
+        Vector2::new(min.0, max.1),
+    ];
+    (0..4)
+        .map(|i| LineSegment::new(corners[i], corners[(i + 1) % 4]))
+        .collect()
+}
+
+/// Built-in worlds; drawn walls are added on top of the preset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WorldPreset {
+    CorridorLoop,
+    PillarHall,
+    EmptyBox,
+}
+
+impl WorldPreset {
+    const ALL: [Self; 3] = [Self::CorridorLoop, Self::PillarHall, Self::EmptyBox];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::CorridorLoop => "Corridor loop",
+            Self::PillarHall => "Pillar hall",
+            Self::EmptyBox => "Empty box",
+        }
+    }
+
+    fn slug(self) -> &'static str {
+        match self {
+            Self::CorridorLoop => "corridor",
+            Self::PillarHall => "hall",
+            Self::EmptyBox => "box",
+        }
+    }
+
+    fn from_slug(value: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|preset| preset.slug() == value)
+    }
+
+    fn walls(self) -> Vec<LineSegment> {
+        match self {
+            Self::CorridorLoop => corridor_loop_walls(),
+            Self::PillarHall => {
+                let mut walls = rectangle((-15.0, -10.0), (15.0, 10.0));
+                for (x, y) in [
+                    (-8.6, -4.8),
+                    (-3.9, -5.3),
+                    (1.2, -4.6),
+                    (6.4, -5.1),
+                    (10.8, -4.4),
+                    (-9.2, 0.4),
+                    (-4.4, -0.3),
+                    (0.7, 0.6),
+                    (5.6, -0.2),
+                    (11.1, 0.5),
+                    (-8.1, 5.2),
+                    (-3.2, 4.7),
+                    (1.9, 5.4),
+                    (6.9, 4.8),
+                    (10.4, 5.6),
+                ] {
+                    walls.extend(rectangle((x - 0.3, y - 0.3), (x + 0.3, y + 0.3)));
+                }
+                walls
+            }
+            Self::EmptyBox => rectangle((-15.0, -10.0), (15.0, 10.0)),
+        }
+    }
+}
+
+fn encode_walls(walls: &[LineSegment]) -> String {
+    walls
+        .iter()
+        .map(|wall| {
+            format!(
+                "{:.1},{:.1},{:.1},{:.1}",
+                wall.start.x, wall.start.y, wall.end.x, wall.end.y
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
+fn decode_walls(value: &str) -> Vec<LineSegment> {
+    value
+        .split(';')
+        .filter_map(|wall| {
+            let numbers: Vec<f64> = wall
+                .split(',')
+                .map(|number| number.parse::<f64>().ok().filter(|n| n.is_finite()))
+                .collect::<Option<_>>()?;
+            let [x1, y1, x2, y2] = numbers.as_slice() else {
+                return None;
+            };
+            let start = snap(Vector2::new(*x1, *y1));
+            let end = snap(Vector2::new(*x2, *y2));
+            ((end - start).norm() >= MIN_WALL_LENGTH).then(|| LineSegment::new(start, end))
+        })
+        .take(MAX_CUSTOM_WALLS)
+        .collect()
+}
+
+/// Live, keyboard-driven LiDAR graph SLAM on an editable world.
 pub struct SlamDriveDemo {
+    /// Preset walls plus custom walls, as seen by the LiDAR.
     walls: Vec<LineSegment>,
+    pub(crate) preset: WorldPreset,
+    pub(crate) custom_walls: Vec<LineSegment>,
+    pub(crate) edit_walls: bool,
+    drag_start: Option<Vector2<f64>>,
+    drag_end: Option<Vector2<f64>>,
+    /// Screen rect of the map in the last frame (for tests and hit-testing).
+    last_map_rect: Option<Rect>,
     centerline: Vec<Pose2D>,
     rng: StdRng,
     slam: LidarGraphSlam,
@@ -196,6 +331,15 @@ pub struct SlamDriveDemo {
 
 impl Default for SlamDriveDemo {
     fn default() -> Self {
+        let mut demo = Self::blank();
+        demo.start();
+        demo
+    }
+}
+
+impl SlamDriveDemo {
+    /// All state at its initial value, before the first scan is taken.
+    fn blank() -> Self {
         let centerline_config = CorridorLoopConfig {
             step: 0.1,
             extra_distance: 0.0,
@@ -207,8 +351,14 @@ impl Default for SlamDriveDemo {
             pose = compose_pose(pose, delta);
             centerline.push(pose);
         }
-        let mut demo = Self {
+        Self {
             walls: corridor_loop_walls(),
+            preset: WorldPreset::CorridorLoop,
+            custom_walls: Vec::new(),
+            edit_walls: false,
+            drag_start: None,
+            drag_end: None,
+            last_map_rect: None,
             centerline,
             rng: StdRng::seed_from_u64(7),
             slam: LidarGraphSlam::new(Self::slam_config(), corridor_loop_start()),
@@ -226,13 +376,15 @@ impl Default for SlamDriveDemo {
             range_noise_cm: 2.0,
             auto_drive: false,
             show_front_end_map: false,
-        };
-        demo.slam_update(Pose2D::origin());
-        demo
+        }
     }
-}
 
-impl SlamDriveDemo {
+    /// Builds the walls for the current world and takes the first scan.
+    fn start(&mut self) {
+        self.rebuild_walls();
+        self.slam_update(Pose2D::origin());
+    }
+
     fn slam_config() -> LidarGraphSlamConfig {
         LidarGraphSlamConfig {
             // Long drives grow the graph; block-sparse PCG keeps each
@@ -249,15 +401,47 @@ impl SlamDriveDemo {
         }
     }
 
+    fn rebuild_walls(&mut self) {
+        self.walls = self.preset.walls();
+        self.walls.extend(self.custom_walls.iter().copied());
+    }
+
+    /// Adds a drawn wall unless it is degenerate or would trap the robot.
+    fn add_wall(&mut self, start: Vector2<f64>, end: Vector2<f64>) -> bool {
+        let wall = LineSegment::new(snap(start), snap(end));
+        let robot = Vector2::new(self.truth.x, self.truth.y);
+        if (wall.end - wall.start).norm() < MIN_WALL_LENGTH
+            || self.custom_walls.len() >= MAX_CUSTOM_WALLS
+            || wall_clearance(&[wall], robot) < ROBOT_RADIUS
+        {
+            return false;
+        }
+        self.custom_walls.push(wall);
+        self.rebuild_walls();
+        true
+    }
+
+    fn set_preset(&mut self, preset: WorldPreset) {
+        self.preset = preset;
+        if preset != WorldPreset::CorridorLoop {
+            self.auto_drive = false;
+        }
+        self.reset();
+    }
+
     pub fn reset(&mut self) {
-        let fresh = Self {
+        let mut fresh = Self {
+            preset: self.preset,
+            custom_walls: std::mem::take(&mut self.custom_walls),
+            edit_walls: self.edit_walls,
             odometry_scale_error_pct: self.odometry_scale_error_pct,
             yaw_drift_deg_per_m: self.yaw_drift_deg_per_m,
             range_noise_cm: self.range_noise_cm,
             auto_drive: self.auto_drive,
             show_front_end_map: self.show_front_end_map,
-            ..Self::default()
+            ..Self::blank()
         };
+        fresh.start();
         *self = fresh;
     }
 
@@ -277,17 +461,33 @@ impl SlamDriveDemo {
         if let Some(value) = crate::share::boolean(query, "frontend_map") {
             self.show_front_end_map = value;
         }
+        let preset = crate::share::value(query, "world").and_then(WorldPreset::from_slug);
+        let custom = crate::share::value(query, "walls").map(decode_walls);
+        if preset.is_some() || custom.is_some() {
+            self.preset = preset.unwrap_or(self.preset);
+            self.custom_walls = custom.unwrap_or_default();
+            if self.preset != WorldPreset::CorridorLoop {
+                self.auto_drive = false;
+            }
+            self.reset();
+        }
     }
 
     pub fn share_query_suffix(&self) -> String {
-        format!(
-            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}",
+        let mut query = format!(
+            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&world={}",
             self.odometry_scale_error_pct,
             self.yaw_drift_deg_per_m,
             self.range_noise_cm,
             u8::from(self.auto_drive),
-            u8::from(self.show_front_end_map)
-        )
+            u8::from(self.show_front_end_map),
+            self.preset.slug(),
+        );
+        if !self.custom_walls.is_empty() {
+            query.push_str("&walls=");
+            query.push_str(&encode_walls(&self.custom_walls));
+        }
+        query
     }
 
     fn scan(&mut self) -> Vec<Vector2<f64>> {
@@ -407,16 +607,96 @@ impl SlamDriveDemo {
             error(self.slam.pose()),
         ));
         ui.label(
-            "Arrow keys drive (click the map first). Drive a full lap — or tick Auto-drive — \
-             and return to the start to close the loop. Purple: wheel odometry · orange: \
-             scan-to-map · green: pose graph · magenta: loop edges · red: current scan. \
-             The top corridor has no pillars, so scan matching drifts there.",
+            "Arrow keys drive (click the map first). Drive a full lap — or tick Auto-drive on \
+             the corridor loop — and return to the start to close the loop. Tick Edit walls and \
+             drag on the map to build your own course. Purple: wheel odometry · orange: \
+             scan-to-map · green: pose graph · magenta: loop edges · red: current scan.",
         );
+        if self.preset == WorldPreset::CorridorLoop {
+            ui.label("The top corridor has no pillars, so scan matching drifts there.");
+        }
+    }
+
+    fn world_controls(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label("World:");
+            for preset in WorldPreset::ALL {
+                if ui
+                    .selectable_label(self.preset == preset, preset.label())
+                    .clicked()
+                    && self.preset != preset
+                {
+                    self.set_preset(preset);
+                }
+            }
+            ui.separator();
+            ui.checkbox(&mut self.edit_walls, "Edit walls (drag on the map)");
+            if ui
+                .add_enabled(
+                    !self.custom_walls.is_empty(),
+                    egui::Button::new("Undo wall"),
+                )
+                .clicked()
+            {
+                self.custom_walls.pop();
+                self.rebuild_walls();
+            }
+            if ui
+                .add_enabled(
+                    !self.custom_walls.is_empty(),
+                    egui::Button::new("Clear walls"),
+                )
+                .clicked()
+            {
+                self.custom_walls.clear();
+                self.rebuild_walls();
+            }
+        });
+    }
+
+    /// Handles wall drawing on the map; returns the in-progress wall, if any.
+    fn edit_walls(&mut self, response: &egui::Response) -> Option<(Vector2<f64>, Vector2<f64>)> {
+        if !self.edit_walls {
+            self.drag_start = None;
+            self.drag_end = None;
+            return None;
+        }
+        let pointer = response
+            .interact_pointer_pos()
+            .map(|pos| snap(to_world(response.rect, pos)));
+        if response.drag_started() {
+            // egui reports a drag only after the pointer moved past a
+            // threshold, so anchor the wall where the button went down.
+            let origin = response.ctx.input(|input| input.pointer.press_origin());
+            self.drag_start = origin
+                .map(|pos| snap(to_world(response.rect, pos)))
+                .or(pointer);
+        }
+        if pointer.is_some() {
+            self.drag_end = pointer;
+        }
+        let start = self.drag_start?;
+        let end = self.drag_end?;
+        if response.drag_stopped() {
+            self.drag_start = None;
+            self.drag_end = None;
+            self.add_wall(start, end);
+            return None;
+        }
+        Some((start, end))
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.world_controls(ui);
         ui.horizontal(|ui| {
-            ui.checkbox(&mut self.auto_drive, "Auto-drive");
+            let auto_available = self.preset == WorldPreset::CorridorLoop;
+            if !auto_available {
+                self.auto_drive = false;
+            }
+            ui.add_enabled(
+                auto_available,
+                egui::Checkbox::new(&mut self.auto_drive, "Auto-drive"),
+            );
             if ui.button("Reset").clicked() {
                 self.reset();
             }
@@ -473,13 +753,25 @@ impl SlamDriveDemo {
             estimate: self.slam.pose(),
             front_end_pose: self.slam.front_end_pose(),
         };
-        if draw_lidar_scene(ui, &view, 72.0).clicked() {
+        let response = draw_lidar_scene(ui, &view, 96.0);
+        self.last_map_rect = Some(response.rect);
+        if response.clicked() || response.drag_started() {
             // Give the arrow keys back to driving if a slider had focus.
             ctx.memory_mut(|memory| {
                 if let Some(id) = memory.focused() {
                     memory.surrender_focus(id);
                 }
             });
+        }
+        if let Some((start, end)) = self.edit_walls(&response) {
+            let rect = response.rect;
+            ui.painter_at(rect).line_segment(
+                [
+                    to_screen(rect, start.x, start.y),
+                    to_screen(rect, end.x, end.y),
+                ],
+                Stroke::new(3.0_f32, Color32::from_rgb(250, 220, 90)),
+            );
         }
         ui.separator();
         self.status(ui);
@@ -494,7 +786,7 @@ impl SlamDriveDemo {
             .iter()
             .any(|key| input.key_down(*key))
         });
-        if moving || self.auto_drive || keys_held {
+        if moving || self.auto_drive || keys_held || self.drag_start.is_some() {
             ctx.request_repaint_after(std::time::Duration::from_secs_f64(DT));
         }
     }
@@ -551,5 +843,118 @@ mod tests {
         assert_eq!(restored.range_noise_cm, 1.0);
         assert!(restored.auto_drive);
         assert!(restored.show_front_end_map);
+    }
+
+    #[test]
+    fn drawn_walls_snap_block_the_lidar_and_round_trip() {
+        let mut demo = SlamDriveDemo {
+            preset: WorldPreset::EmptyBox,
+            ..SlamDriveDemo::default()
+        };
+        demo.reset();
+        // A wall right in front of the robot (start pose faces +x).
+        assert!(demo.add_wall(Vector2::new(-10.04, -9.5), Vector2::new(-9.97, -7.5)));
+        assert_eq!(demo.custom_walls[0].start, Vector2::new(-10.0, -9.5));
+        let ranges = ray_cast_ranges(demo.truth, &demo.walls, 4, MAX_RANGE);
+        assert!(
+            (ranges[2] - 2.0).abs() < 1e-9,
+            "forward range {}",
+            ranges[2]
+        );
+
+        let query = demo.share_query_suffix();
+        assert!(query.contains("world=box"));
+        let mut restored = SlamDriveDemo::default();
+        restored.apply_share_query(&query);
+        assert_eq!(restored.preset, WorldPreset::EmptyBox);
+        assert_eq!(restored.custom_walls, demo.custom_walls);
+        assert_eq!(restored.walls.len(), demo.walls.len());
+    }
+
+    #[test]
+    fn walls_on_the_robot_or_too_short_are_rejected() {
+        let mut demo = SlamDriveDemo::default();
+        let robot = Vector2::new(demo.truth.x, demo.truth.y);
+        let before = demo.walls.len();
+        assert!(!demo.add_wall(
+            robot - Vector2::new(1.0, 0.0),
+            robot + Vector2::new(1.0, 0.0)
+        ));
+        assert!(!demo.add_wall(Vector2::new(0.0, -8.5), Vector2::new(0.1, -8.5)));
+        assert_eq!(demo.walls.len(), before);
+        assert!(decode_walls("1,2,3;x,1,2,3;0,0,0,0").is_empty());
+    }
+
+    #[test]
+    fn pillar_hall_start_is_clear() {
+        let walls = WorldPreset::PillarHall.walls();
+        let start = corridor_loop_start();
+        assert!(wall_clearance(&walls, Vector2::new(start.x, start.y)) > 1.0);
+    }
+
+    #[test]
+    fn dragging_on_the_map_draws_a_wall() {
+        let ctx = egui::Context::default();
+        let mut demo = SlamDriveDemo {
+            edit_walls: true,
+            ..SlamDriveDemo::default()
+        };
+        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 900.0));
+        let run = |events: Vec<egui::Event>, demo: &mut SlamDriveDemo| {
+            let input = egui::RawInput {
+                screen_rect: Some(screen),
+                events,
+                ..Default::default()
+            };
+            let _ = ctx.run(input, |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| demo.ui(ctx, ui));
+            });
+        };
+        run(Vec::new(), &mut demo);
+        let rect = demo.last_map_rect.expect("map drawn");
+        // Inside the corridor loop's central block, away from the robot.
+        let (a, b) = (to_screen(rect, -5.0, 0.0), to_screen(rect, 5.0, 0.0));
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        run(vec![egui::Event::PointerMoved(a)], &mut demo);
+        run(vec![button(a, true)], &mut demo);
+        for step in 1..=5 {
+            let t = step as f32 / 5.0;
+            run(vec![egui::Event::PointerMoved(a + (b - a) * t)], &mut demo);
+        }
+        run(vec![button(b, false)], &mut demo);
+        run(Vec::new(), &mut demo);
+
+        assert_eq!(demo.custom_walls.len(), 1, "no wall was drawn");
+        let wall = demo.custom_walls[0];
+        assert!(
+            (wall.start - Vector2::new(-5.0, 0.0)).norm() < 0.15,
+            "{:?}",
+            wall.start
+        );
+        assert!(
+            (wall.end - Vector2::new(5.0, 0.0)).norm() < 0.15,
+            "{:?}",
+            wall.end
+        );
+    }
+
+    #[test]
+    fn first_scan_sees_the_selected_world() {
+        let mut demo = SlamDriveDemo::default();
+        demo.set_preset(WorldPreset::EmptyBox);
+        let box_walls = WorldPreset::EmptyBox.walls();
+        let scan = demo.slam.node_scan(0).expect("first node");
+        assert!(!scan.is_empty());
+        for point in transform_scan_to_world(scan, demo.truth) {
+            assert!(
+                wall_clearance(&box_walls, point) < 0.15,
+                "scan point {point:?} is not on the box walls"
+            );
+        }
     }
 }

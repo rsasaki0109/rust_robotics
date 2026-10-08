@@ -1325,6 +1325,8 @@ below is library work that does not depend on them.
    largest re-optimization after three laps (245 nodes, block-sparse PCG);
    graph SLAM error 9 mm vs 1.22 m scan-to-map only. Goes live on Pages once
    merged to `main`.
+   Course editing landed the same day: world presets, drag-to-draw walls, and
+   share links carrying the course.
 6. ~~**Loop-closure gallery GIF**~~ **Done (2026-10-08).**
    `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
    added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via

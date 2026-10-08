@@ -72,6 +72,8 @@ preserve the selected tab.
   map between front-end and loop-closed poses) with a timeline scrubber, plus
   **Drive LiDAR SLAM**: arrow-key (or auto) driving with live scan-to-map and
   loop closure, and sliders for odometry scale error, yaw drift, and range noise.
+  Pick a world preset (corridor loop / pillar hall / empty box) and drag on the
+  map to add walls; presets and drawn walls round-trip through share links.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
   LQR Steer traces under identical paths and dynamics. Compare cross-track

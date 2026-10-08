@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the arrow keys or auto-drive while `LidarGraphSlam` runs live (block-sparse
   PCG back end), with odometry scale-error / yaw-drift / range-noise sliders,
   wall collisions, and share links (`algorithm=drive&odom_scale=…&auto=…`).
+- Drive LiDAR SLAM course editing: world presets (corridor loop, pillar hall,
+  empty box), drag-to-draw walls snapped to 0.1 m (undo / clear, up to 64),
+  and share links that carry the world (`world=hall&walls=x1,y1,x2,y2;…`).
 - Gallery GIF `media/gallery/lidar_loop_closure.gif`
   (`render_gif_lidar_loop_closure`).
 - `rust_robotics_slam::lidar_graph_slam`: `LidarGraphSlam` adds pose-graph
