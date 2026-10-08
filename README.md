@@ -105,7 +105,8 @@ Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
 
 ## Quick Start
 
-Try the interactive planners, localization, SLAM, multi-agent formation, and
+Try the interactive grid and sampling planners, Hybrid A\* parking,
+localization, SLAM, multi-agent formation, MPPI, box pushing, and
 path-tracking controller comparison with no installation:
 
 <https://rsasaki0109.github.io/rust_robotics/playground/>
@@ -139,7 +140,7 @@ cd rust_robotics
 cargo run -p rust_robotics --example headless_grid_planners --features planning
 ```
 
-Interactive grid-planner playground (native egui):
+Interactive playground (native egui; the same tabs as in the browser):
 
 ```bash
 cargo run -p rust_robotics_playground
@@ -160,7 +161,9 @@ to freeze the map, teleport the robot, and watch Monte Carlo localization find
 it again. Tick **Explore** and the robot maps the world by itself, frontier
 by frontier; add **moving people** and watch DWA steer around them. An
 on-screen joystick and a compact layout make it usable on phones. **ADMM Formation** shows the multi-agent
-horizon-consensus demo. **Pushing** lets you drag the goal pose of a box that a
+horizon-consensus demo. **MPPI** draws the whole cloud of sampled rollouts at
+every control step, shaded by weight, as a robot dodges static and moving
+obstacles; tune samples, horizon, temperature λ, and noise σ. **Pushing** lets you drag the goal pose of a box that a
 face-switching MPPI controller pushes under quasi-static stick/slide contact —
 including turning it in place and routing around obstacles you click in.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
@@ -507,7 +510,7 @@ cargo bench -p rust_robotics_planning --bench jps_crossover_benchmark
       * [RRT](#rapidly-exploring-random-trees-rrt), [RRT*](#rrt), [Informed RRT*](#informed-rrt), [Batch Informed RRT*](#batch-informed-rrt)
       * [RRT-Dubins](#rrt-dubins), [RRT*-Dubins](#rrt-dubins-1), [RRT*-Reeds-Shepp](#rrt-reeds-shepp)
       * [Closed-Loop RRT*](#closed-loop-rrt), [LQR-RRT*](#lqr-rrt), [BIT*](#bit)
-      * [Dubins Path](#dubins-path), [Reeds-Shepp Path](#reeds-shepp-path)
+      * [Hybrid A*](#hybrid-a), [Dubins Path](#dubins-path), [Reeds-Shepp Path](#reeds-shepp-path)
       * [Bezier Path](#bezier-path-planning), [B-Spline](#b-spline-path), [Catmull-Rom](#catmull-rom-spline), [Eta3 Spline](#eta3-spline)
       * [Cubic Spline](#cubic-spline), [Quintic Polynomials](#quintic-polynomials), [Clothoid Path](#clothoid-path)
       * [DWA](#dynamic-window-approach), [Potential Field](#potential-field-algorithm), [LQR Planner](#lqr-planner)
@@ -1076,6 +1079,18 @@ Optimized version of RRT that rewires the tree to find shorter paths. Asymptotic
 Blue: Start, Red: Goal, Green: Path, Gray: Tree
 
 - [src](./crates/rust_robotics_planning/src/rrt_star.rs)
+
+## Hybrid A*
+
+<img src="./docs/assets/playground/parking.png" width="640px" alt="Hybrid A* parking a car in the playground">
+
+Kinematic search over `(x, y, yaw)` for a car-like robot, with Reeds-Shepp
+analytic expansions to the goal, so plans can reverse. `with_vehicle` checks a
+rectangular `VehicleFootprint` (covering circles on a fine collision grid)
+instead of a single circle; `with_max_expansions` bounds the search so an
+unreachable goal fails fast. Try it in the playground's **Parking** tab.
+
+- [src](./crates/rust_robotics_planning/src/hybrid_a_star.rs)
 
 ## Reeds-Shepp Path
 

@@ -54,10 +54,14 @@ All tabs encode their important configuration in share links:
 - Sampling Planners: planner, start, goal, and circular obstacles
 - Parking: the car's start pose and the goal pose
 - Localization: filter and measurement-noise scale
-- SLAM: algorithm, timeline frame, and playback state
+- SLAM: algorithm, timeline frame, and playback state (LiDAR loop closure:
+  map view and scenario; Drive: world, drawn walls, error sliders, people)
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
 - Controller Arena: path preset (or the course you drew), target speed, and
   turn response
+- MPPI: sample count, horizon, temperature λ, noise σ, moving obstacles,
+  start, goal, and obstacles
+- Pushing: goal pose, pusher friction, run state, and obstacles
 
 ## Engagement event hooks
 
@@ -75,12 +79,18 @@ planner links preserve the selected planner, start and goal cells, and the full
 obstacle map. Controller Arena links preserve the path preset, target speed,
 and turn-response disturbance. For example,
 `?tab=arena&preset=hairpin&speed=4.25&response=0.65` reopens an identical
-three-controller comparison. Localization, SLAM, and ADMM links currently
-preserve the selected tab.
+three-controller comparison. Every other tab's link also preserves its
+configuration (see the list above).
 
 ## Tabs
 
 - **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.
+- **Sampling Planners** — RRT, RRT\*, Informed RRT\* (with its sampling
+  ellipse), and PRM growing around circular obstacles you place; drag the
+  start and goal, compare all four.
+- **Parking** — Hybrid A\* with a rectangular car footprint and Reeds-Shepp
+  shots: drag out a goal pose and the car drives the plan, reversing where it
+  has to.
 - **Localization** — PF / EKF with arrow-key driving and noise slider.
 - **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop, and
   **LiDAR loop closure** (scan-to-map + pose graph on a corridor loop; toggle the
@@ -105,6 +115,9 @@ preserve the selected tab.
   Loop checks and re-optimization are spread over frames so driving stays
   smooth. On phones the header collapses to a tab menu and the page scrolls.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
+- **MPPI** — a point-mass robot drives to a goal you drag among static and
+  moving obstacles, with every sampled rollout of every step drawn and shaded
+  by its weight; samples, horizon, temperature λ, and noise σ are adjustable.
 - **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
   the goal pose, click obstacles in or out, change the pusher friction, and watch
   the contact stick (yellow) or slide (orange). Presets for translation, a pure
