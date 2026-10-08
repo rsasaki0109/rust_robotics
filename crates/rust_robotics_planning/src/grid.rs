@@ -92,17 +92,25 @@ impl GridMap {
         // Initialize obstacle map
         let mut obstacle_map = vec![vec![false; y_width as usize]; x_width as usize];
 
-        // Generate obstacle map with robot radius inflation
-        for ix in 0..x_width {
-            let x = Self::calc_grid_position_static(ix, min_x, resolution);
-            for iy in 0..y_width {
-                let y = Self::calc_grid_position_static(iy, min_y, resolution);
-
-                for (&iox, &ioy) in ox.iter().zip(oy.iter()) {
+        // Generate obstacle map with robot radius inflation. Each obstacle only
+        // marks the cells in its bounding box (one extra cell of margin so float
+        // rounding at the box edge cannot drop a cell); the distance test is the
+        // same as checking every cell against every obstacle, at a fraction of
+        // the cost for large maps.
+        let reach = (robot_radius / resolution).ceil() as i32 + 1;
+        for (&iox, &ioy) in ox.iter().zip(oy.iter()) {
+            let cx = ((iox - min_x) / resolution).round() as i32;
+            let cy = ((ioy - min_y) / resolution).round() as i32;
+            for ix in (cx - reach).max(0)..=(cx + reach).min(x_width - 1) {
+                let x = Self::calc_grid_position_static(ix, min_x, resolution);
+                for iy in (cy - reach).max(0)..=(cy + reach).min(y_width - 1) {
+                    if obstacle_map[ix as usize][iy as usize] {
+                        continue;
+                    }
+                    let y = Self::calc_grid_position_static(iy, min_y, resolution);
                     let d = ((iox - x).powi(2) + (ioy - y).powi(2)).sqrt();
                     if d <= robot_radius {
                         obstacle_map[ix as usize][iy as usize] = true;
-                        break;
                     }
                 }
             }
@@ -353,5 +361,27 @@ mod tests {
         assert!(grid_map.is_valid(1, 1));
         assert!(grid_map.is_valid(2, 2));
         assert!(!grid_map.is_valid_step(1, 1, 2, 2));
+    }
+
+    #[test]
+    fn inflation_matches_brute_force_check() {
+        let ox = [0.0, 10.0, 3.3, 7.1, 5.0, 0.0, 10.0, 2.25];
+        let oy = [0.0, 0.0, 4.4, 2.9, 8.8, 10.0, 10.0, 6.75];
+        for (resolution, robot_radius) in [(1.0, 0.5), (0.5, 1.2), (0.25, 0.8), (0.3, 0.0)] {
+            let grid = GridMap::try_new(&ox, &oy, resolution, robot_radius).unwrap();
+            for ix in 0..grid.x_width {
+                let x = grid.calc_x_position(ix);
+                for iy in 0..grid.y_width {
+                    let y = grid.calc_y_position(iy);
+                    let expected = ox.iter().zip(&oy).any(|(&px, &py)| {
+                        ((px - x).powi(2) + (py - y).powi(2)).sqrt() <= robot_radius
+                    });
+                    assert_eq!(
+                        grid.obstacle_map[ix as usize][iy as usize], expected,
+                        "cell ({ix}, {iy}) at resolution {resolution}, radius {robot_radius}"
+                    );
+                }
+            }
+        }
     }
 }

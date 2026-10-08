@@ -1364,3 +1364,26 @@ below is library work that does not depend on them.
    its straight path (400 let it push through); ~0.6 ms per MPPI step native.
    Drive LiDAR SLAM re-measured with the ambiguity check: 1.1 ms mean tick,
    163 ms (corridor) / 241 ms (aliased) worst after three laps.
+9. ~~**Navigate and localize on the SLAM map (playground)**~~ **Done
+   (2026-10-08).** Library: `lidar_occupancy::OccupancyGrid` (log-odds,
+   Bresenham, chamfer distance field), `lidar_mcl::LidarMcl`
+   (likelihood-field MCL, ESS-triggered low-variance resampling, augmented MCL
+   + sensor resetting + 1 % constant probing, all with best-of-20 scored
+   injection, and 10× oversampled global initialization — converges in ≤ 10
+   updates on the test room), `LidarGraphSlam` deferred
+   optimization (`optimize_step`), and stamp-based `GridMap` inflation.
+   Playground Drive mode: occupancy-grid overlay, click-to-goal navigation
+   (A\* on the grid with 0.5 m clearance, Pure Pursuit with curvature-limited
+   speed, 1 s replanning), Kidnap robot → MCL on the frozen map (2,000
+   particles), on-screen joystick, wrapping header, `touch-action: none`.
+   Native release after three laps: worst frame 163 → 55 ms (corridor) and
+   241 → 47 ms (aliased) with 2 LM iterations per frame (what is left is
+   loop verification plus one 2-iteration step); grid rebuild ~4 ms, A\*
+   replan ~2 ms, MCL update ≤ 4 ms. Kidnap trials (6 seeds, ~1 m/s, look-ahead
+   wander): corridor loop 4/6 localized within ~7 m of driving (the ring is
+   close to 180° symmetric, so look-alike modes with scan fit 0.8–0.9 vs ~0.95
+   at the truth can persist); pillar hall 6/6 by the end of 40 s. Stricter
+   resets (fit < 0.85, more beams) did not help and sometimes dropped a
+   correct fix. The UI says "converged", shows the scan fit, and explains
+   look-alike places. Follow-up candidate: scan-matching-based candidate
+   generation for injection.

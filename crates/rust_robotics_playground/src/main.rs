@@ -10,6 +10,7 @@ mod pushing;
 mod share;
 mod slam;
 mod slam_drive;
+mod slam_nav;
 
 use app::PlaygroundApp;
 
