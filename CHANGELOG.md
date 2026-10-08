@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::lidar_occupancy`: log-odds `OccupancyGrid` built from
+  LiDAR scans at known poses (Bresenham ray tracing), cell / point occupancy
+  queries, occupied-cell export for planners, and a chamfer distance field.
+- `rust_robotics_slam::lidar_mcl`: `LidarMcl`, Monte Carlo localization on an
+  `OccupancyGrid` with a likelihood-field LiDAR model, an odometry motion
+  model, weights that accumulate until the effective sample size halves
+  (low-variance resampling), and augmented-MCL plus sensor-resetting recovery
+  whose injected particles are the best of several free-space draws — global
+  localization and kidnapped-robot recovery are tested.
+- `LidarGraphSlamConfig::deferred_optimization` with
+  `LidarGraphSlam::optimize_step` / `optimization_pending`: interactive
+  callers spread a loop-closure re-optimization over frames.
+- Playground **Drive LiDAR SLAM**: an occupancy-grid overlay built from the
+  SLAM map; click the map to send the robot to a goal (A\* on the grid, Pure
+  Pursuit on the SLAM estimate, periodic replanning while the map grows);
+  **Kidnap robot** freezes the map, teleports the robot, and localizes it with
+  `LidarMcl` (particles, truth vs estimate, "Kidnap again", "Spread
+  particles"); an on-screen joystick for touch screens; re-optimization is
+  deferred over frames so loop closures no longer stall a frame.
 - `DijkstraPlanner` / `DijkstraConfig` (`rust_robotics_planning::dijkstra`): a
   world-coordinate Dijkstra implementing `PathPlanner` (A\* grid with a zero
   heuristic); `RRTStar` implements `PathPlanner` (and derives `Clone`, `Debug`);
@@ -88,6 +107,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `AStarConfig::heuristic_weight` accepts `0.0` (uniform-cost search).
+- Grid-planner obstacle inflation (`GridMap`, used by A\*, Dijkstra, JPS,
+  Theta\*, …) stamps each obstacle's neighborhood instead of testing every cell
+  against every obstacle: same map, O(obstacles × r²) instead of
+  O(cells × obstacles).
+- The playground header wraps on narrow screens, and the web canvas disables
+  browser touch panning so map and joystick drags work on phones.
 - Dev/test builds compile `rust_robotics_slam` and `rust_robotics_optimization`
   with `opt-level = 2`; the SLAM headless examples run 20–50× faster in CI
   (e.g. `headless_lidar_loop_closure` 21 s → 0.6 s) with identical output.

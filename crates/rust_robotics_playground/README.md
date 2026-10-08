@@ -74,6 +74,14 @@ preserve the selected tab.
   loop closure, and sliders for odometry scale error, yaw drift, and range noise.
   Pick a world preset (corridor loop / pillar hall / empty box) and drag on the
   map to add walls; presets and drawn walls round-trip through share links.
+  The node scans feed a log-odds occupancy grid (toggle the overlay); click the
+  map to set a goal and the robot plans with A\* on that grid and follows the
+  path with Pure Pursuit from its SLAM estimate, replanning as the map grows.
+  **Kidnap robot** freezes the map, teleports the robot to a random free spot,
+  and localizes it with likelihood-field MCL (yellow particles; the gray robot
+  is the ground truth) — kidnap it again to watch the filter recover. Drive
+  with the arrow keys or the on-screen joystick (touch screens). Loop-closure
+  re-optimization is spread over frames so driving stays smooth.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
 - **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
   the goal pose, click obstacles in or out, change the pusher friction, and watch

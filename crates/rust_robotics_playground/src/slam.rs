@@ -627,7 +627,8 @@ impl SlamDemo {
             wrong_loop_edges: Vec::new(),
             scan: &frame.scan,
             estimate: frame.estimate,
-            front_end_pose: frame.front_end,
+            front_end_pose: Some(frame.front_end),
+            grid: None,
         };
         let mut view = view;
         for closure in run

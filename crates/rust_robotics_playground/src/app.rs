@@ -181,7 +181,7 @@ impl PlaygroundApp {
                 "Arrow keys drive the robot; compare Particle Filter vs EKF under sensor noise"
             }
             PlaygroundTab::Slam => {
-                "Replay EKF-SLAM, FastSLAM, ICP, or LiDAR loop closure — or drive a robot with live LiDAR SLAM"
+                "Replay EKF-SLAM, FastSLAM, ICP, or LiDAR loop closure — or drive a robot with live LiDAR SLAM, navigate on the map, and localize it after a kidnapping"
             }
             PlaygroundTab::AdmmFormation => {
                 "Receding-horizon ADMM formation: four agents track a noisy moving goal past an L-corner"
@@ -213,7 +213,8 @@ impl PlaygroundTab {
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            // Wrap so the tabs stay reachable on phone-width screens.
+            ui.horizontal_wrapped(|ui| {
                 ui.heading("RustRobotics Playground");
                 ui.separator();
                 for tab in [

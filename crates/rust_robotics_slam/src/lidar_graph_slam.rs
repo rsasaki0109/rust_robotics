@@ -87,6 +87,10 @@ pub struct LidarGraphSlamConfig {
     /// the current graph by more than `(xy [m], yaw [rad])`; consistent
     /// edges are kept and folded in by the next optimization.
     pub reoptimize_threshold: (f64, f64),
+    /// When `true`, [`LidarGraphSlam::update`] only marks the graph as needing
+    /// re-optimization and the caller spreads the work over frames with
+    /// [`LidarGraphSlam::optimize_step`] (for interactive applications).
+    pub deferred_optimization: bool,
     /// Back-end optimizer settings.
     pub pose_graph: PoseGraphConfig,
 }
@@ -116,6 +120,7 @@ impl Default for LidarGraphSlamConfig {
             degeneracy_ratio: 0.05,
             loop_sigma: (0.02, 0.003),
             reoptimize_threshold: (0.02, 0.005),
+            deferred_optimization: false,
             pose_graph: PoseGraphConfig {
                 max_iterations: 50,
                 ..PoseGraphConfig::default()
@@ -179,6 +184,8 @@ pub struct LidarGraphSlam {
     loop_closures: Vec<LoopClosure>,
     /// Loop matches rejected by the ambiguity check.
     ambiguous_loop_rejections: usize,
+    /// A loop edge disagreed with the graph and optimization has not converged.
+    optimization_pending: bool,
     /// Distance-weighted weak directions `Σ dₖ wₖ vₖ vₖᵀ` (front-end world
     /// frame) travelled since the last node without scan constraints.
     unobserved_translation: Matrix2<f64>,
@@ -196,6 +203,7 @@ impl LidarGraphSlam {
             edges: Vec::new(),
             loop_closures: Vec::new(),
             ambiguous_loop_rejections: 0,
+            optimization_pending: false,
             unobserved_translation: Matrix2::zeros(),
             unobserved_yaw_distance: 0.0,
         }
@@ -285,8 +293,12 @@ impl LidarGraphSlam {
                 self.loop_closures.push(closure);
                 let (xy, yaw) = self.config.reoptimize_threshold;
                 if innovation.x.hypot(innovation.y) > xy || innovation.yaw.abs() > yaw {
-                    self.optimize();
-                    optimized = true;
+                    if self.config.deferred_optimization {
+                        self.optimization_pending = true;
+                    } else {
+                        self.optimize();
+                        optimized = true;
+                    }
                 }
             }
         }
@@ -516,15 +528,43 @@ impl LidarGraphSlam {
     /// graph; call it explicitly to fold in consistent loop edges, e.g.
     /// before reading the final trajectory.
     pub fn optimize(&mut self) {
+        let config = self.config.pose_graph;
+        self.run_optimizer(&config);
+        self.optimization_pending = false;
+    }
+
+    /// Whether a disagreeing loop edge is waiting for (more) optimization.
+    /// Only set when [`LidarGraphSlamConfig::deferred_optimization`] is on.
+    pub fn optimization_pending(&self) -> bool {
+        self.optimization_pending
+    }
+
+    /// Runs at most `max_iterations` optimizer iterations if optimization is
+    /// pending, warm-started from the current node poses, and returns whether
+    /// it is still pending. Call once per frame to bound the work per frame.
+    pub fn optimize_step(&mut self, max_iterations: usize) -> bool {
+        if self.optimization_pending {
+            let config = PoseGraphConfig {
+                max_iterations: max_iterations.max(1),
+                ..self.config.pose_graph
+            };
+            self.optimization_pending = !self.run_optimizer(&config);
+        }
+        self.optimization_pending
+    }
+
+    /// Optimizes the node poses in place; returns whether it converged.
+    fn run_optimizer(&mut self, config: &PoseGraphConfig) -> bool {
         let initial: Vec<Pose2DNode> = self
             .nodes
             .iter()
             .map(|node| Pose2DNode::new(node.pose.x, node.pose.y, node.pose.yaw))
             .collect();
-        let result = optimize_pose_graph(&initial, &self.edges, &self.config.pose_graph);
+        let result = optimize_pose_graph(&initial, &self.edges, config);
         for (node, pose) in self.nodes.iter_mut().zip(result.poses) {
             node.pose = Pose2D::new(pose.x, pose.y, pose.yaw);
         }
+        result.converged
     }
 }
 
@@ -581,16 +621,14 @@ mod tests {
         assert!(slam.loop_closures().is_empty());
     }
 
-    #[test]
-    fn closes_a_loop_after_a_blind_odometry_stretch() {
-        let config = LidarGraphSlamConfig {
-            node_translation: 0.5,
-            loop_min_node_gap: 6,
-            ..LidarGraphSlamConfig::default()
-        };
-        let start = Pose2D::new(-1.0, -2.5, 0.0);
-        let mut slam = LidarGraphSlam::new(config, start);
-
+    /// Drives a closed circle with a LiDAR-blind stretch of biased odometry,
+    /// calling `each_frame` after every update. Returns the truth and the
+    /// number of accepted loop closures.
+    fn blind_loop(
+        slam: &mut LidarGraphSlam,
+        start: Pose2D,
+        mut each_frame: impl FnMut(&mut LidarGraphSlam, &LidarGraphSlamUpdate),
+    ) -> (Pose2D, usize) {
         // Drive a closed circle of radius 2 m back to the start.
         let steps = 126;
         let blind = 40..55;
@@ -603,7 +641,8 @@ mod tests {
             if blind.contains(&i) {
                 // LiDAR blind: biased odometry alone carries the front end.
                 let odom = Pose2D::new(step.x * 1.15, 0.0, step.yaw + 0.003);
-                slam.update(odom, &[]);
+                let update = slam.update(odom, &[]);
+                each_frame(slam, &update);
                 if i + 1 == blind.end {
                     // The front end lost its map, so it cannot snap back.
                     slam.front_end.reset(slam.front_end.pose());
@@ -612,7 +651,24 @@ mod tests {
             }
             let update = slam.update(step, &scan_at(truth));
             closures += usize::from(update.loop_closure.is_some());
+            each_frame(slam, &update);
         }
+        (truth, closures)
+    }
+
+    fn loop_config() -> LidarGraphSlamConfig {
+        LidarGraphSlamConfig {
+            node_translation: 0.5,
+            loop_min_node_gap: 6,
+            ..LidarGraphSlamConfig::default()
+        }
+    }
+
+    #[test]
+    fn closes_a_loop_after_a_blind_odometry_stretch() {
+        let start = Pose2D::new(-1.0, -2.5, 0.0);
+        let mut slam = LidarGraphSlam::new(loop_config(), start);
+        let (truth, closures) = blind_loop(&mut slam, start, |_, _| {});
 
         let drifted = relative_pose(truth, slam.front_end_pose());
         let corrected = relative_pose(truth, slam.pose());
@@ -624,6 +680,33 @@ mod tests {
         assert!(
             corrected.x.hypot(corrected.y) < 0.05,
             "loop closure left {:.3} m error",
+            corrected.x.hypot(corrected.y)
+        );
+        assert!(corrected.yaw.abs() < 0.01, "yaw error {}", corrected.yaw);
+    }
+
+    #[test]
+    fn deferred_optimization_spreads_the_work_over_frames() {
+        let config = LidarGraphSlamConfig {
+            deferred_optimization: true,
+            ..loop_config()
+        };
+        let start = Pose2D::new(-1.0, -2.5, 0.0);
+        let mut slam = LidarGraphSlam::new(config, start);
+        let (mut pending_frames, mut optimized_in_update) = (0, false);
+        let (truth, closures) = blind_loop(&mut slam, start, |slam, update| {
+            optimized_in_update |= update.optimized;
+            pending_frames += usize::from(slam.optimize_step(2));
+        });
+        while slam.optimize_step(2) {}
+
+        assert!(closures >= 1, "no loop closure accepted");
+        assert!(!optimized_in_update, "update optimized despite deferral");
+        assert!(pending_frames >= 1, "optimization finished in one step");
+        let corrected = relative_pose(truth, slam.pose());
+        assert!(
+            corrected.x.hypot(corrected.y) < 0.05,
+            "deferred optimization left {:.3} m error",
             corrected.x.hypot(corrected.y)
         );
         assert!(corrected.yaw.abs() < 0.01, "yaw error {}", corrected.yaw);

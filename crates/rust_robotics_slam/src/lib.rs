@@ -15,6 +15,8 @@ pub mod icp_matching;
 pub mod imu_preintegration;
 pub mod lidar_graph_slam;
 pub mod lidar_loop_scenario;
+pub mod lidar_mcl;
+pub mod lidar_occupancy;
 pub mod pose_graph_optimization;
 pub mod pose_graph_optimization_3d;
 pub mod robust_icp;

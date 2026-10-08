@@ -1,6 +1,9 @@
 //! Interactive LiDAR graph SLAM: drive a robot through the corridor loop with
-//! the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
-//! run live, and a shared renderer for LiDAR SLAM scenes.
+//! the arrow keys, the on-screen joystick or auto-drive while scan-to-map
+//! odometry and loop closure run live. The node scans feed an occupancy grid
+//! the robot can navigate on (click a goal: A* + Pure Pursuit), and the
+//! finished map can be frozen to localize a kidnapped robot with MCL. Also
+//! hosts the shared renderer for LiDAR SLAM scenes.
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::Vector2;
@@ -14,12 +17,16 @@ use rust_robotics_slam::{
         corridor_loop_deltas, corridor_loop_start, corridor_loop_start_for, corridor_loop_walls,
         corridor_loop_walls_for, CorridorLayout, CorridorLoopConfig,
     },
+    lidar_mcl::{LidarMcl, LidarMclConfig},
+    lidar_occupancy::{CellState, OccupancyConfig, OccupancyGrid},
     pose_graph_optimization::PoseGraphConfig,
     scan_to_map::{
         compose_pose, ranges_to_points, ray_cast_ranges, relative_pose, transform_scan_to_world,
         LineSegment,
     },
 };
+
+use crate::slam_nav::{draw_path, grid_image, joystick, NavStatus, Navigator};
 
 pub(crate) const WORLD_X: (f64, f64) = (-16.0, 16.0);
 pub(crate) const WORLD_Y: (f64, f64) = (-11.0, 11.0);
@@ -41,6 +48,14 @@ const AUTO_LOOKAHEAD: usize = 10;
 const WALL_SNAP: f64 = 0.1;
 const MIN_WALL_LENGTH: f64 = 0.3;
 const MAX_CUSTOM_WALLS: usize = 64;
+/// Pose-graph iterations per frame while a re-optimization is pending, so a
+/// loop closure never freezes the frame.
+const OPTIMIZE_ITERATIONS_PER_FRAME: usize = 2;
+const MCL_PARTICLES: usize = 2_000;
+/// Navigate on the MCL estimate only once the particles agree this well \[m\].
+const MCL_CONFIDENT_SPREAD: f64 = 0.4;
+/// A kidnapped robot lands at least this far from any wall \[m\].
+const KIDNAP_CLEARANCE: f64 = 0.8;
 
 const WALL: Color32 = Color32::from_rgb(90, 95, 105);
 const TRUTH: Color32 = Color32::from_rgba_premultiplied(60, 60, 60, 110);
@@ -56,6 +71,8 @@ const WRONG_LOOP_TOLERANCE: f64 = 0.5;
 const ALIASED_SPACING: f64 = 2.0;
 const GRAPH_MAP: Color32 = Color32::from_rgba_premultiplied(48, 77, 122, 120);
 const FRONT_END_MAP: Color32 = Color32::from_rgba_premultiplied(113, 71, 33, 120);
+const PARTICLE: Color32 = Color32::from_rgb(250, 200, 80);
+const TRUTH_ROBOT: Color32 = Color32::from_rgb(200, 200, 200);
 
 /// Everything needed to draw one LiDAR SLAM scene.
 pub(crate) struct LidarSceneView<'a> {
@@ -72,7 +89,10 @@ pub(crate) struct LidarSceneView<'a> {
     pub wrong_loop_edges: Vec<(Pose2D, Pose2D)>,
     pub scan: &'a [Vector2<f64>],
     pub estimate: Pose2D,
-    pub front_end_pose: Pose2D,
+    /// Scan-to-map pose, drawn when the front end is running.
+    pub front_end_pose: Option<Pose2D>,
+    /// Occupancy grid texture and the world rectangle `(min, max)` it covers.
+    pub grid: Option<(egui::TextureId, Vector2<f64>, Vector2<f64>)>,
 }
 
 fn world_rect(ui: &egui::Ui, reserved_height: f32) -> Rect {
@@ -133,6 +153,14 @@ pub(crate) fn draw_lidar_scene(
     let rect = world_rect(ui, reserved_height);
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 0.0, Color32::from_rgb(18, 22, 28));
+    if let Some((texture, min, max)) = view.grid {
+        painter.image(
+            texture,
+            Rect::from_two_pos(to_screen(rect, min.x, max.y), to_screen(rect, max.x, min.y)),
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+    }
 
     for wall in view.walls {
         painter.line_segment(
@@ -186,7 +214,9 @@ pub(crate) fn draw_lidar_scene(
     for point in transform_scan_to_world(view.scan, view.estimate) {
         painter.circle_filled(to_screen(rect, point.x, point.y), 1.4, SCAN);
     }
-    draw_robot(&painter, rect, view.front_end_pose, FRONT_END);
+    if let Some(pose) = view.front_end_pose {
+        draw_robot(&painter, rect, pose, FRONT_END);
+    }
     draw_robot(&painter, rect, view.estimate, GRAPH);
     ui.allocate_rect(rect, egui::Sense::click_and_drag())
 }
@@ -372,6 +402,28 @@ pub struct SlamDriveDemo {
     pub(crate) range_noise_cm: f32,
     pub(crate) auto_drive: bool,
     pub(crate) show_front_end_map: bool,
+    /// Occupancy grid of the node scans at their graph poses.
+    grid: OccupancyGrid,
+    /// Node scans already folded into `grid`.
+    grid_nodes: usize,
+    /// Bumped whenever `grid` (or the frozen MCL map) changes.
+    grid_version: u64,
+    grid_texture: Option<(u64, egui::TextureHandle)>,
+    pub(crate) show_grid: bool,
+    navigator: Navigator,
+    /// Localization on the frozen map after a kidnapping; SLAM is paused.
+    mcl: Option<LidarMcl>,
+    kidnappings: usize,
+    /// Joystick deflection `(forward, turn)` from the last frame.
+    joystick: Option<(f64, f64)>,
+}
+
+fn empty_grid() -> OccupancyGrid {
+    OccupancyGrid::new(
+        Vector2::new(WORLD_X.0, WORLD_Y.0),
+        Vector2::new(WORLD_X.1, WORLD_Y.1),
+        OccupancyConfig::default(),
+    )
 }
 
 impl Default for SlamDriveDemo {
@@ -423,6 +475,15 @@ impl SlamDriveDemo {
             range_noise_cm: 2.0,
             auto_drive: false,
             show_front_end_map: false,
+            grid: empty_grid(),
+            grid_nodes: 0,
+            grid_version: 0,
+            grid_texture: None,
+            show_grid: true,
+            navigator: Navigator::default(),
+            mcl: None,
+            kidnappings: 0,
+            joystick: None,
         }
     }
 
@@ -436,9 +497,101 @@ impl SlamDriveDemo {
         self.slam_update(Pose2D::origin());
     }
 
+    /// Whether SLAM is paused for localization on the frozen map.
+    fn localizing(&self) -> bool {
+        self.mcl.is_some()
+    }
+
+    /// Folds node scans added since the last call into the grid.
+    fn extend_grid(&mut self) {
+        let poses = self.slam.node_poses();
+        if poses.len() == self.grid_nodes {
+            return;
+        }
+        for (index, pose) in poses.iter().enumerate().skip(self.grid_nodes) {
+            if let Some(scan) = self.slam.node_scan(index) {
+                self.grid.insert_scan(*pose, scan);
+            }
+        }
+        self.grid_nodes = poses.len();
+        self.grid_version += 1;
+    }
+
+    /// Rebuilds the grid after the graph poses moved (loop closure).
+    fn rebuild_grid(&mut self) {
+        self.grid = empty_grid();
+        self.grid_nodes = 0;
+        self.extend_grid();
+    }
+
+    /// Spends this frame's optimizer budget on a pending re-optimization.
+    fn step_optimizer(&mut self) {
+        if self.slam.optimization_pending()
+            && !self.slam.optimize_step(OPTIMIZE_ITERATIONS_PER_FRAME)
+        {
+            self.rebuild_grid();
+        }
+    }
+
+    /// Freezes the map, teleports the robot to a random free spot and starts
+    /// MCL. The first kidnapping spreads the particles over the whole map
+    /// (global localization); later ones leave them believing the old pose.
+    fn kidnap(&mut self) -> bool {
+        if self.mcl.is_none() {
+            if self.slam.optimization_pending() {
+                self.slam.optimize();
+            }
+            self.rebuild_grid();
+        }
+        let grid = self
+            .mcl
+            .as_ref()
+            .map_or(&self.grid, |mcl| mcl.grid())
+            .clone();
+        let Some(pose) = (0..5_000).find_map(|_| {
+            let x = rand::Rng::random_range(&mut self.rng, WORLD_X.0..WORLD_X.1);
+            let y = rand::Rng::random_range(&mut self.rng, WORLD_Y.0..WORLD_Y.1);
+            let point = Vector2::new(x, y);
+            (grid.state_at(point) == CellState::Free
+                && wall_clearance(&self.walls, point) > KIDNAP_CLEARANCE)
+                .then(|| {
+                    let yaw = rand::Rng::random_range(
+                        &mut self.rng,
+                        -std::f64::consts::PI..std::f64::consts::PI,
+                    );
+                    Pose2D::new(x, y, yaw)
+                })
+        }) else {
+            return false;
+        };
+        if self.mcl.is_none() {
+            self.mcl = Some(LidarMcl::new(
+                grid,
+                LidarMclConfig {
+                    particles: MCL_PARTICLES,
+                    ..LidarMclConfig::default()
+                },
+            ));
+        }
+        self.truth = pose;
+        self.odometry = pose;
+        self.truth_trail.clear();
+        self.odometry_trail.clear();
+        self.front_end_trail.clear();
+        self.navigator.cancel();
+        self.auto_drive = false;
+        self.kidnappings += 1;
+        self.grid_version += 1;
+        // Localize from the first scan at the new spot.
+        self.slam_update(Pose2D::origin());
+        true
+    }
+
     fn slam_config(ambiguity_check: bool) -> LidarGraphSlamConfig {
         LidarGraphSlamConfig {
             loop_ambiguity_check: ambiguity_check,
+            // Re-optimize over several frames instead of stalling one.
+            deferred_optimization: true,
             // Long drives grow the graph; block-sparse PCG keeps each
             // re-optimization interactive.
             pose_graph: PoseGraphConfig {
@@ -492,6 +645,7 @@ impl SlamDriveDemo {
             range_noise_cm: self.range_noise_cm,
             auto_drive: self.auto_drive,
             show_front_end_map: self.show_front_end_map,
+            show_grid: self.show_grid,
             ..Self::blank()
         };
         fresh.start();
@@ -514,6 +668,9 @@ impl SlamDriveDemo {
         if let Some(value) = crate::share::boolean(query, "frontend_map") {
             self.show_front_end_map = value;
         }
+        if let Some(value) = crate::share::boolean(query, "grid") {
+            self.show_grid = value;
+        }
         let preset = crate::share::value(query, "world").and_then(WorldPreset::from_slug);
         let custom = crate::share::value(query, "walls").map(decode_walls);
         let ambiguity_check = crate::share::boolean(query, "alias_check");
@@ -530,12 +687,13 @@ impl SlamDriveDemo {
 
     pub fn share_query_suffix(&self) -> String {
         let mut query = format!(
-            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&world={}&alias_check={}",
+            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&grid={}&world={}&alias_check={}",
             self.odometry_scale_error_pct,
             self.yaw_drift_deg_per_m,
             self.range_noise_cm,
             u8::from(self.auto_drive),
             u8::from(self.show_front_end_map),
+            u8::from(self.show_grid),
             self.preset.slug(),
             u8::from(self.ambiguity_check),
         );
@@ -558,14 +716,45 @@ impl SlamDriveDemo {
 
     fn slam_update(&mut self, odom_delta: Pose2D) {
         let scan = self.scan();
+        if let Some(mcl) = &mut self.mcl {
+            mcl.predict(odom_delta);
+            mcl.update(&scan);
+            self.last_scan = scan;
+            self.truth_trail.push(self.truth);
+            return;
+        }
         let update = self.slam.update(odom_delta, &scan);
         if update.new_node.is_some() {
             self.node_truth.push(self.truth);
+        }
+        if update.optimized {
+            self.rebuild_grid();
+        } else {
+            self.extend_grid();
         }
         self.last_scan = scan;
         self.truth_trail.push(self.truth);
         self.odometry_trail.push(self.odometry);
         self.front_end_trail.push(self.slam.front_end_pose());
+    }
+
+    /// The pose the robot believes it has and whether it is sure enough to
+    /// navigate on it.
+    fn believed_pose(&self) -> (Pose2D, bool) {
+        match &self.mcl {
+            Some(mcl) => {
+                let (pose, spread) = mcl.estimate();
+                (pose, spread < MCL_CONFIDENT_SPREAD)
+            }
+            None => (self.slam.pose(), true),
+        }
+    }
+
+    fn navigation_control(&mut self) -> Option<(f64, f64)> {
+        let (pose, confident) = self.believed_pose();
+        let grid = self.mcl.as_ref().map_or(&self.grid, |mcl| mcl.grid());
+        self.navigator
+            .control(grid, pose, confident, DRIVE_SPEED, TURN_RATE, DT)
     }
 
     fn auto_control(&self) -> (f64, f64) {
@@ -610,6 +799,7 @@ impl SlamDriveDemo {
 
     /// Advances the simulation by one tick; returns whether the robot moved.
     fn tick(&mut self, speed: f64, omega: f64) -> bool {
+        self.step_optimizer();
         if speed == 0.0 && omega == 0.0 {
             return false;
         }
@@ -669,27 +859,66 @@ impl SlamDriveDemo {
             let delta = relative_pose(self.truth, pose);
             delta.x.hypot(delta.y)
         };
-        let wrong = self
-            .loop_is_wrong()
-            .into_iter()
-            .filter(|wrong| *wrong)
-            .count();
-        ui.label(format!(
-            "Driven {:.1} m · nodes {} · loop closures {} ({} wrong, {} ambiguous rejected) · \
-             position error: odometry {:.2} m, scan-to-map {:.3} m, graph SLAM {:.3} m",
-            self.driven,
-            self.slam.node_poses().len(),
-            self.slam.loop_closures().len(),
-            wrong,
-            self.slam.ambiguous_loop_rejections(),
-            error(self.odometry),
-            error(self.slam.front_end_pose()),
-            error(self.slam.pose()),
-        ));
+        if let Some(mcl) = &self.mcl {
+            let (estimate, spread) = mcl.estimate();
+            ui.label(format!(
+                "Localizing on the frozen map (kidnapped {}×) · {} particles · MCL error {:.2} m, \
+                 spread {:.2} m{}",
+                self.kidnappings,
+                mcl.particles().len(),
+                error(estimate),
+                spread,
+                if spread < MCL_CONFIDENT_SPREAD {
+                    " · localized"
+                } else {
+                    " · drive around to disambiguate"
+                },
+            ));
+        } else {
+            let wrong = self
+                .loop_is_wrong()
+                .into_iter()
+                .filter(|wrong| *wrong)
+                .count();
+            ui.label(format!(
+                "Driven {:.1} m · nodes {} · loop closures {} ({} wrong, {} ambiguous rejected){} · \
+                 position error: odometry {:.2} m, scan-to-map {:.3} m, graph SLAM {:.3} m",
+                self.driven,
+                self.slam.node_poses().len(),
+                self.slam.loop_closures().len(),
+                wrong,
+                self.slam.ambiguous_loop_rejections(),
+                if self.slam.optimization_pending() {
+                    " · optimizing…"
+                } else {
+                    ""
+                },
+                error(self.odometry),
+                error(self.slam.front_end_pose()),
+                error(self.slam.pose()),
+            ));
+        }
+        match &self.navigator.status {
+            NavStatus::Idle => {}
+            NavStatus::Following => {
+                ui.label("Navigating: A* on the occupancy grid, Pure Pursuit on the estimate.");
+            }
+            NavStatus::Reached => {
+                ui.label("Goal reached.");
+            }
+            NavStatus::Failed(reason) => {
+                ui.label(format!("Navigation stopped: {reason}."));
+            }
+            NavStatus::WaitingForLocalization => {
+                ui.label("Waiting for MCL to converge before navigating — drive a little.");
+            }
+        }
         ui.label(
-            "Arrow keys drive (click the map first). Drive a full lap — or tick Auto-drive on \
-             the corridor loop — and return to the start to close the loop. Tick Edit walls and \
-             drag on the map to build your own course. Purple: wheel odometry · orange: \
+            "Arrow keys or the joystick drive (click the map first for keys). Click the map to \
+             send the robot to a goal: A* plans on the occupancy grid built from the SLAM map and \
+             Pure Pursuit follows it. Drive a full lap — or tick Auto-drive on the corridor loop — \
+             to close the loop. Kidnap robot freezes the map, teleports the robot and localizes it \
+             with MCL (yellow particles, gray robot = truth). Purple: wheel odometry · orange: \
              scan-to-map · green: pose graph · magenta: loop edges · red: current scan.",
         );
         match self.preset {
@@ -700,7 +929,8 @@ impl SlamDriveDemo {
                 ui.label(
                     "Pillars repeat every 2 m, so neighboring places look identical. Untick \
                      Reject ambiguous loops and watch loop closures lock onto the wrong pillar \
-                     (yellow) and bend the map.",
+                     (yellow) and bend the map. Kidnap the robot here and MCL may settle on a \
+                     look-alike spot, too.",
                 );
             }
             _ => {}
@@ -776,18 +1006,85 @@ impl SlamDriveDemo {
         Some((start, end))
     }
 
+    /// Driver input this frame: keyboard or joystick, then the navigator,
+    /// then auto-drive.
+    fn control(&mut self, ctx: &egui::Context) -> (f64, f64) {
+        let keyboard = Self::keyboard_control(ctx);
+        let manual = if keyboard != (0.0, 0.0) {
+            Some(keyboard)
+        } else {
+            self.joystick.map(|(forward, turn)| {
+                let speed = if forward >= 0.0 { 1.0 } else { 0.5 } * forward * DRIVE_SPEED;
+                (speed, turn * TURN_RATE)
+            })
+        };
+        if let Some(command) = manual.filter(|command| *command != (0.0, 0.0)) {
+            if self.navigator.is_active() {
+                self.navigator.cancel();
+            }
+            return command;
+        }
+        if self.navigator.is_active() {
+            return self.navigation_control().unwrap_or((0.0, 0.0));
+        }
+        if self.auto_drive && !self.localizing() {
+            return self.auto_control();
+        }
+        (0.0, 0.0)
+    }
+
+    /// Uploads the occupancy grid texture if the grid changed.
+    fn grid_view(
+        &mut self,
+        ctx: &egui::Context,
+    ) -> Option<(egui::TextureId, Vector2<f64>, Vector2<f64>)> {
+        if !self.show_grid {
+            return None;
+        }
+        let grid = self.mcl.as_ref().map_or(&self.grid, |mcl| mcl.grid());
+        let options = egui::TextureOptions::NEAREST;
+        match &mut self.grid_texture {
+            Some((version, handle)) => {
+                if *version != self.grid_version {
+                    handle.set(grid_image(grid), options);
+                    *version = self.grid_version;
+                }
+            }
+            None => {
+                let handle = ctx.load_texture("slam_drive_grid", grid_image(grid), options);
+                self.grid_texture = Some((self.grid_version, handle));
+            }
+        }
+        let (width, height) = grid.size();
+        let min = grid.origin();
+        let max = min + Vector2::new(width as f64, height as f64) * grid.resolution();
+        self.grid_texture
+            .as_ref()
+            .map(|(_, handle)| (handle.id(), min, max))
+    }
+
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         self.world_controls(ui);
-        ui.horizontal(|ui| {
-            let auto_available = self.preset.has_centerline();
+        ui.horizontal_wrapped(|ui| {
+            let auto_available = self.preset.has_centerline() && !self.localizing();
             if !auto_available {
                 self.auto_drive = false;
             }
-            ui.add_enabled(
-                auto_available,
-                egui::Checkbox::new(&mut self.auto_drive, "Auto-drive"),
-            );
-            if ui.button("Reset").clicked() {
+            if ui
+                .add_enabled(
+                    auto_available,
+                    egui::Checkbox::new(&mut self.auto_drive, "Auto-drive"),
+                )
+                .changed()
+                && self.auto_drive
+            {
+                self.navigator.cancel();
+            }
+            if ui
+                .button("Reset")
+                .on_hover_text("Start a new SLAM run")
+                .clicked()
+            {
                 self.reset();
             }
             if ui
@@ -804,6 +1101,35 @@ impl SlamDriveDemo {
                 &mut self.show_front_end_map,
                 "Map at front-end poses (no loop closure)",
             );
+            ui.checkbox(&mut self.show_grid, "Occupancy grid");
+        });
+        ui.horizontal_wrapped(|ui| {
+            let kidnap_label = if self.localizing() {
+                "Kidnap again"
+            } else {
+                "Kidnap robot (freeze map, localize with MCL)"
+            };
+            if ui
+                .add_enabled(
+                    self.slam.node_poses().len() >= 5,
+                    egui::Button::new(kidnap_label),
+                )
+                .on_hover_text(
+                    "Teleport the robot to a random free spot of the map. SLAM stops; Monte \
+                     Carlo localization has to find the robot again on the frozen map.",
+                )
+                .clicked()
+            {
+                self.kidnap();
+            }
+            if let Some(mcl) = &mut self.mcl {
+                if ui.button("Spread particles").clicked() {
+                    mcl.initialize_global();
+                }
+            }
+            if self.navigator.is_active() && ui.button("Cancel goal").clicked() {
+                self.navigator.cancel();
+            }
         });
         ui.horizontal_wrapped(|ui| {
             ui.add(
@@ -816,11 +1142,7 @@ impl SlamDriveDemo {
             ui.add(egui::Slider::new(&mut self.range_noise_cm, 0.0..=5.0).text("range noise cm"));
         });
 
-        let (speed, omega) = if self.auto_drive {
-            self.auto_control()
-        } else {
-            Self::keyboard_control(ctx)
-        };
+        let (speed, omega) = self.control(ctx);
         let moving = self.tick(speed, omega);
 
         let (nodes, front_end_nodes) = self.view();
@@ -829,6 +1151,7 @@ impl SlamDriveDemo {
         } else {
             &nodes
         };
+        let grid = self.grid_view(ctx);
         let map = map_poses
             .iter()
             .enumerate()
@@ -844,6 +1167,7 @@ impl SlamDriveDemo {
                 loop_edges.push(edge);
             }
         }
+        let (estimate, _) = self.believed_pose();
         let view = LidarSceneView {
             walls: &self.walls,
             map,
@@ -855,11 +1179,33 @@ impl SlamDriveDemo {
             loop_edges,
             wrong_loop_edges,
             scan: &self.last_scan,
-            estimate: self.slam.pose(),
-            front_end_pose: self.slam.front_end_pose(),
+            estimate,
+            front_end_pose: (!self.localizing()).then(|| self.slam.front_end_pose()),
+            grid,
         };
         let response = draw_lidar_scene(ui, &view, 96.0);
-        self.last_map_rect = Some(response.rect);
+        let rect = response.rect;
+        self.last_map_rect = Some(rect);
+        {
+            let painter = ui.painter_at(rect);
+            if let Some(mcl) = &self.mcl {
+                for particle in mcl.particles().iter().step_by(2) {
+                    painter.circle_filled(
+                        to_screen(rect, particle.pose.x, particle.pose.y),
+                        1.2,
+                        PARTICLE,
+                    );
+                }
+                draw_robot(&painter, rect, self.truth, TRUTH_ROBOT);
+                draw_robot(&painter, rect, estimate, GRAPH);
+            }
+            draw_path(
+                &painter,
+                |x, y| to_screen(rect, x, y),
+                self.navigator.path(),
+                self.navigator.goal(),
+            );
+        }
         if response.clicked() || response.drag_started() {
             // Give the arrow keys back to driving if a slider had focus.
             ctx.memory_mut(|memory| {
@@ -868,8 +1214,13 @@ impl SlamDriveDemo {
                 }
             });
         }
+        if !self.edit_walls && response.clicked() {
+            if let Some(pos) = response.interact_pointer_pos() {
+                self.navigator.set_goal(to_world(rect, pos));
+                self.auto_drive = false;
+            }
+        }
         if let Some((start, end)) = self.edit_walls(&response) {
-            let rect = response.rect;
             ui.painter_at(rect).line_segment(
                 [
                     to_screen(rect, start.x, start.y),
@@ -878,6 +1229,7 @@ impl SlamDriveDemo {
                 Stroke::new(3.0_f32, Color32::from_rgb(250, 220, 90)),
             );
         }
+        self.joystick = joystick(ui, rect);
         ui.separator();
         self.status(ui);
 
@@ -891,7 +1243,14 @@ impl SlamDriveDemo {
             .iter()
             .any(|key| input.key_down(*key))
         });
-        if moving || self.auto_drive || keys_held || self.drag_start.is_some() {
+        if moving
+            || self.auto_drive
+            || keys_held
+            || self.drag_start.is_some()
+            || self.joystick.is_some()
+            || self.navigator.is_active()
+            || self.slam.optimization_pending()
+        {
             ctx.request_repaint_after(std::time::Duration::from_secs_f64(DT));
         }
     }
@@ -1061,6 +1420,140 @@ mod tests {
                 "scan point {point:?} is not on the box walls"
             );
         }
+    }
+
+    /// Auto-drives `ticks` ticks of the corridor loop to build a map.
+    fn mapped_demo(ticks: usize) -> SlamDriveDemo {
+        let mut demo = SlamDriveDemo::default();
+        for _ in 0..ticks {
+            let (speed, omega) = demo.auto_control();
+            demo.tick(speed, omega);
+        }
+        demo
+    }
+
+    fn clearance(demo: &SlamDriveDemo) -> f64 {
+        wall_clearance(&demo.walls, Vector2::new(demo.truth.x, demo.truth.y))
+    }
+
+    #[test]
+    fn the_occupancy_grid_follows_the_slam_map() {
+        let demo = mapped_demo(300);
+        assert_eq!(demo.grid_nodes, demo.slam.node_poses().len());
+        // Walls the robot has seen are occupied, the corridor it drove is free.
+        let start = corridor_loop_start();
+        assert_eq!(
+            demo.grid.state_at(Vector2::new(start.x, start.y)),
+            CellState::Free
+        );
+        let occupied = demo.grid.occupied_points();
+        assert!(occupied.len() > 200, "{} occupied cells", occupied.len());
+        let near_wall = occupied
+            .iter()
+            .filter(|point| wall_clearance(&demo.walls, **point) < 0.2)
+            .count();
+        assert!(
+            near_wall * 10 > occupied.len() * 9,
+            "occupied cells off the walls"
+        );
+    }
+
+    #[test]
+    fn navigates_to_a_clicked_goal_on_the_built_map() {
+        let mut demo = mapped_demo(450);
+        // Back to a spot the robot already mapped: near the start.
+        let start = corridor_loop_start();
+        let goal = Vector2::new(start.x + 3.0, start.y);
+        demo.navigator.set_goal(goal);
+        for _ in 0..900 {
+            let Some((speed, omega)) = demo.navigation_control() else {
+                break;
+            };
+            demo.tick(speed, omega);
+            assert!(clearance(&demo) >= ROBOT_RADIUS);
+        }
+        assert_eq!(demo.navigator.status, NavStatus::Reached);
+        let reached = Vector2::new(demo.truth.x, demo.truth.y);
+        assert!((reached - goal).norm() < 0.5, "stopped at {reached:?}");
+    }
+
+    #[test]
+    fn mcl_finds_the_kidnapped_robot_on_the_frozen_map() {
+        let mut demo = mapped_demo(1_700);
+        let nodes = demo.slam.node_poses().len();
+        assert!(demo.kidnap());
+        assert!(demo.localizing());
+        // Drive around the new spot by bouncing off walls.
+        let mut localized_at = None;
+        for tick in 0..900 {
+            let (speed, omega) = if clearance(&demo) < 0.9 {
+                (0.0, TURN_RATE)
+            } else {
+                (DRIVE_SPEED * 0.6, 0.2)
+            };
+            demo.tick(speed, omega);
+            let (estimate, confident) = demo.believed_pose();
+            let error = relative_pose(demo.truth, estimate);
+            if confident && error.x.hypot(error.y) < 0.3 {
+                localized_at.get_or_insert(tick);
+            }
+        }
+        assert!(localized_at.is_some(), "MCL never localized the robot");
+        let (estimate, confident) = demo.believed_pose();
+        let error = relative_pose(demo.truth, estimate);
+        assert!(confident, "particles still spread out");
+        assert!(error.x.hypot(error.y) < 0.3, "MCL error {error:?}");
+        // SLAM is paused while localizing.
+        assert_eq!(demo.slam.node_poses().len(), nodes);
+    }
+
+    #[test]
+    fn joystick_drives_and_map_clicks_set_goals() {
+        let ctx = egui::Context::default();
+        let mut demo = SlamDriveDemo::default();
+        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 900.0));
+        let run = |events: Vec<egui::Event>, demo: &mut SlamDriveDemo| {
+            let input = egui::RawInput {
+                screen_rect: Some(screen),
+                events,
+                ..Default::default()
+            };
+            let _ = ctx.run(input, |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| demo.ui(ctx, ui));
+            });
+        };
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        run(Vec::new(), &mut demo);
+        let rect = demo.last_map_rect.expect("map drawn");
+        let radius = (rect.width().min(rect.height()) * 0.12).clamp(36.0, 64.0);
+        let stick = rect.right_bottom() - Vec2::splat(radius + 12.0);
+
+        // Push the stick fully forward and hold it.
+        let start = demo.truth;
+        run(vec![egui::Event::PointerMoved(stick)], &mut demo);
+        run(vec![button(stick, true)], &mut demo);
+        let up = stick - Vec2::new(0.0, radius);
+        for _ in 0..20 {
+            run(vec![egui::Event::PointerMoved(up)], &mut demo);
+        }
+        run(vec![button(up, false)], &mut demo);
+        let moved = relative_pose(start, demo.truth);
+        assert!(moved.x > 0.5, "joystick did not drive forward: {moved:?}");
+        assert!(moved.y.abs() < 0.1 && moved.yaw.abs() < 0.05);
+        assert!(demo.navigator.goal().is_none(), "joystick press set a goal");
+
+        // A click elsewhere on the map sets a navigation goal there.
+        let target = to_screen(rect, -12.0, -8.5);
+        run(vec![egui::Event::PointerMoved(target)], &mut demo);
+        run(vec![button(target, true)], &mut demo);
+        run(vec![button(target, false)], &mut demo);
+        let goal = demo.navigator.goal().expect("goal set");
+        assert!((goal - Vector2::new(-12.0, -8.5)).norm() < 0.1, "{goal:?}");
     }
 
     fn auto_drive_wrong_loops(ambiguity_check: bool, seed: u64) -> (usize, usize) {

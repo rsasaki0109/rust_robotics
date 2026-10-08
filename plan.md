@@ -1364,3 +1364,19 @@ below is library work that does not depend on them.
    its straight path (400 let it push through); ~0.6 ms per MPPI step native.
    Drive LiDAR SLAM re-measured with the ambiguity check: 1.1 ms mean tick,
    163 ms (corridor) / 241 ms (aliased) worst after three laps.
+9. ~~**Navigate and localize on the SLAM map (playground)**~~ **Done
+   (2026-10-08).** Library: `lidar_occupancy::OccupancyGrid` (log-odds,
+   Bresenham, chamfer distance field), `lidar_mcl::LidarMcl`
+   (likelihood-field MCL, ESS-triggered low-variance resampling, augmented MCL
+   + sensor resetting with best-of-20 scored injection — global localization
+   converges in ≤ 10 updates on the test room), `LidarGraphSlam` deferred
+   optimization (`optimize_step`), and stamp-based `GridMap` inflation.
+   Playground Drive mode: occupancy-grid overlay, click-to-goal navigation
+   (A\* on the grid with 0.5 m clearance, Pure Pursuit with curvature-limited
+   speed, 1 s replanning), Kidnap robot → MCL on the frozen map (2,000
+   particles), on-screen joystick, wrapping header, `touch-action: none`.
+   Native release after three laps: worst frame 163 → 55 ms (corridor) and
+   241 → 47 ms (aliased) with 2 LM iterations per frame (what is left is
+   loop verification plus one 2-iteration step); grid rebuild ~4 ms, A\*
+   replan ~2 ms, MCL update ≤ 4 ms. In the aliased corridor MCL can settle on
+   a look-alike spot, which the UI points out.
