@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::lidar_graph_slam`: `LidarGraphSlam` adds pose-graph
+  loop closure on top of scan-to-map odometry — distance-spaced nodes,
+  coarse-to-fine scan-to-submap loop verification with inlier/residual/
+  correction gates, innovation-gated re-optimization, and degeneracy-aware
+  odometry edges whose uncertainty grows along directions the front end
+  cannot observe. The `headless_lidar_loop_closure` example (CI-gated) cuts
+  node RMSE on a 98 m corridor loop from 0.30 m to 0.012 m.
+- Scan-to-map degeneracy handling: `ScanToMapConfig::degeneracy_ratio`
+  discards Gauss-Newton steps along unobservable translation directions, and
+  registrations expose their Hessian (`ScanRegistration::hessian`,
+  `translational_observability`). `register_point_to_line` and
+  `scan_points_with_normals` are public for one-shot registration.
 - `rust_robotics_slam::scan_to_map`: scan-to-map 2D LiDAR odometry with a
   bounded keyframe submap in the corrected world frame, odometry-seeded
   point-to-line Gauss-Newton, distance-gated correspondences, and
@@ -29,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MathematicalRobotics-compatible IMU extrinsic/lever-arm transforms,
   navigation-state and bias factor families, EuRoC `imu0` `T_BS` ingestion,
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
+
+### Fixed
+- `RobustIcp2D::estimate` applied the current transform twice and mixed a
+  right-perturbation Jacobian with a left-composed update; non-identity seeds
+  did not converge and identity-seeded results were off by up to ~0.2 m.
 
 ## [0.2.0] - 2026-07-31
 

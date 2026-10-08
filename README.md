@@ -705,6 +705,28 @@ error and 1 deg/m yaw drift:
 cargo run -p rust_robotics --example headless_scan_to_map --no-default-features --features slam
 ```
 
+### Loop Closure (LiDAR Graph SLAM)
+
+`LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
+end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
+**degeneracy-aware odometry edges** — the front end discards Gauss-Newton
+steps along directions its Hessian cannot observe (a featureless corridor),
+and those edges get uncertainty that grows with the distance travelled along
+them, so the loop correction lands where the drift actually happened. On a
+deterministic 98 m corridor loop with a pillar-free 24 m corridor:
+
+| estimator | node RMSE \[m\] | final position error \[m\] |
+| --- | ---: | ---: |
+| raw odometry | 10.90 | 8.92 |
+| scan-to-map | 0.302 | 0.381 |
+| scan-to-map + loop closure | 0.012 | 0.020 |
+
+- [src](./crates/rust_robotics_slam/src/lidar_graph_slam.rs)
+
+```
+cargo run -p rust_robotics --example headless_lidar_loop_closure --no-default-features --features slam
+```
+
 ## FastSLAM 1.0
 
 <img src="./media/gallery/fastslam.gif" width="640px">

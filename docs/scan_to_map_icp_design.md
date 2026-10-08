@@ -381,6 +381,28 @@ This is a multi-week effort. Suggested phasing:
   pose moves by more than `SLAM_SUBMAP_RESET_DIST_M` (e.g.,
   2 m) within one scan, drop the submap.
 
+## Follow-up: degeneracy and loop closure (2026-10)
+
+- **Degenerate geometry.** In a featureless corridor the translational
+  Hessian has `λ_min / λ_max ≈ 0.01` (vs ≥ 0.09 elsewhere). Without handling,
+  Gauss-Newton steps along the unobservable axis are driven by normal noise.
+  `ScanToMapConfig::degeneracy_ratio` (default 0.03) projects the step out of
+  the weak direction, so the odometry prediction is kept along it. Ablation on
+  `headless_lidar_loop_closure`:
+
+  | `degeneracy_ratio` | front-end final error | node RMSE after loop closure |
+  | --- | ---: | ---: |
+  | 0.0 (off) | 0.62 m | 0.117 m |
+  | 0.03 (default) | 0.38 m | 0.012 m |
+
+- **Loop closure** lives in `rust_robotics_slam::lidar_graph_slam`
+  (`LidarGraphSlam`), not in the matcher: the front end stays local and only
+  its relative motion between nodes feeds the graph. Odometry edges inflate
+  their covariance along weak directions as `κ² M Mᵀ` with
+  `M = Σ dₖ wₖ vₖ vₖᵀ` (systematic, linear-in-distance growth), so a loop
+  correction is absorbed by the corridor section that actually drifted
+  instead of bending the well-constrained parts of the loop.
+
 ## Out of scope for the first PR
 
 - Submap loop closure / re-anchoring.

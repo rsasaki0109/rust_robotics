@@ -63,6 +63,11 @@ pub struct ScanToMapConfig {
     pub max_mean_residual: f64,
     /// Neighbor search radius used for normal estimation in beam order \[m\].
     pub normal_neighbor_distance: f64,
+    /// When `λ_min / λ_max` of the translational Hessian falls below this
+    /// ratio (e.g. in a featureless corridor), the Gauss-Newton step along the
+    /// weak direction is discarded and the odometry prediction is kept there.
+    /// `0.0` disables the projection.
+    pub degeneracy_ratio: f64,
 }
 
 impl Default for ScanToMapConfig {
@@ -81,6 +86,7 @@ impl Default for ScanToMapConfig {
             max_correction_yaw: 0.2,
             max_mean_residual: 0.1,
             normal_neighbor_distance: 0.3,
+            degeneracy_ratio: 0.03,
         }
     }
 }
@@ -134,6 +140,9 @@ pub struct ScanToMapUpdate {
     pub correspondences: usize,
     /// Mean absolute point-to-line residual after registration \[m\].
     pub mean_residual: f64,
+    /// Registration normal matrix (see [`ScanRegistration::hessian`]);
+    /// zero when no registration ran.
+    pub hessian: Matrix3<f64>,
     /// Submap points inside the matching radius.
     pub submap_points: usize,
     /// Whether this scan was inserted into the submap as a keyframe.
@@ -227,6 +236,7 @@ impl ScanToMapMatcher {
             iterations: 0,
             correspondences: 0,
             mean_residual: 0.0,
+            hessian: Matrix3::zeros(),
             submap_points: target_points.len(),
             inserted_keyframe: false,
         };
@@ -242,6 +252,7 @@ impl ScanToMapMatcher {
             update.iterations = registration.iterations;
             update.correspondences = registration.correspondences;
             update.mean_residual = registration.mean_residual;
+            update.hessian = registration.hessian;
             let correction = relative_pose(predicted_pose, registration.pose);
             update.status = if registration.correspondences < self.config.min_correspondences {
                 MatchStatus::RejectedTooFewCorrespondences
@@ -279,27 +290,12 @@ impl ScanToMapMatcher {
     }
 
     fn insert_keyframe(&mut self, scan_body: &[Vector2<f64>], pose: Pose2D) {
-        let normals = estimate_scan_normals(scan_body, self.config.normal_neighbor_distance);
-        let rotation = rotation(pose.yaw);
-        let translation = Vector2::new(pose.x, pose.y);
-        let mut points = Vec::new();
-        let mut world_normals = Vec::new();
-        let mut occupied = HashMap::new();
-        for (point, normal) in scan_body.iter().zip(normals) {
-            let Some(normal) = normal else {
-                continue;
-            };
-            let world = rotation * point + translation;
-            if self.config.voxel_size > 0.0
-                && occupied
-                    .insert(voxel_key(&world, self.config.voxel_size), ())
-                    .is_some()
-            {
-                continue;
-            }
-            points.push(world);
-            world_normals.push(rotation * normal);
-        }
+        let (points, world_normals) = scan_points_with_normals(
+            scan_body,
+            pose,
+            self.config.normal_neighbor_distance,
+            self.config.voxel_size,
+        );
         self.keyframes.push_back(Keyframe {
             points,
             normals: world_normals,
@@ -337,27 +333,72 @@ impl ScanToMapMatcher {
     }
 }
 
-struct Registration {
-    pose: Pose2D,
-    iterations: usize,
-    correspondences: usize,
-    mean_residual: f64,
+/// Result of [`register_point_to_line`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScanRegistration {
+    /// Estimated pose mapping source (body) points onto the target frame.
+    pub pose: Pose2D,
+    /// Gauss-Newton iterations run.
+    pub iterations: usize,
+    /// Correspondences inside `max_correspondence_distance` in the last iteration.
+    pub correspondences: usize,
+    /// Mean absolute point-to-line residual of those correspondences \[m\].
+    pub mean_residual: f64,
+    /// Gauss-Newton normal matrix `Σ w J Jᵀ` of the last iteration over the
+    /// world-frame `(x, y, yaw)`. Its small eigenvalues reveal directions the
+    /// geometry cannot observe (e.g. along a featureless corridor).
+    pub hessian: Matrix3<f64>,
 }
 
-/// Point-to-line Gauss-Newton on the absolute pose `(x, y, yaw)`.
-fn register_point_to_line(
+/// Transforms a beam-ordered body-frame scan to `pose` and attaches normals.
+///
+/// Points without a reliable normal are dropped; `voxel_size > 0` keeps one
+/// point per voxel. Returns `(points, normals)` in the frame of `pose`.
+pub fn scan_points_with_normals(
+    scan_body: &[Vector2<f64>],
+    pose: Pose2D,
+    normal_neighbor_distance: f64,
+    voxel_size: f64,
+) -> (Vec<Vector2<f64>>, Vec<Vector2<f64>>) {
+    let normals = estimate_scan_normals(scan_body, normal_neighbor_distance);
+    let rotation = rotation(pose.yaw);
+    let translation = Vector2::new(pose.x, pose.y);
+    let mut points = Vec::new();
+    let mut world_normals = Vec::new();
+    let mut occupied = HashMap::new();
+    for (point, normal) in scan_body.iter().zip(normals) {
+        let Some(normal) = normal else {
+            continue;
+        };
+        let world = rotation * point + translation;
+        if voxel_size > 0.0 && occupied.insert(voxel_key(&world, voxel_size), ()).is_some() {
+            continue;
+        }
+        points.push(world);
+        world_normals.push(rotation * normal);
+    }
+    (points, world_normals)
+}
+
+/// Registers body-frame `source` points against `target` points with normals,
+/// starting from `seed`, by point-to-line Gauss-Newton on `(x, y, yaw)`.
+///
+/// Uses `max_iterations`, `max_correspondence_distance`, and `huber_delta`
+/// from `config`; the acceptance gates are left to the caller.
+pub fn register_point_to_line(
     source: &[Vector2<f64>],
     target: &[Vector2<f64>],
     target_normals: &[Vector2<f64>],
     seed: Pose2D,
     config: &ScanToMapConfig,
-) -> Registration {
+) -> ScanRegistration {
     let grid = NeighborGrid::new(target, config.max_correspondence_distance);
 
     let mut pose = seed;
     let mut iterations = 0;
     let mut correspondences = 0;
     let mut mean_residual = f64::INFINITY;
+    let mut final_hessian = Matrix3::zeros();
 
     for _ in 0..config.max_iterations.max(1) {
         iterations += 1;
@@ -388,6 +429,7 @@ fn register_point_to_line(
             break;
         }
         mean_residual = residual_sum / correspondences as f64;
+        final_hessian = hessian;
         if correspondences < 3 {
             break;
         }
@@ -396,7 +438,12 @@ fn register_point_to_line(
         let Some(inverse) = (hessian + Matrix3::identity() * damping).try_inverse() else {
             break;
         };
-        let step = -inverse * gradient;
+        let mut step = -inverse * gradient;
+        if let Some(weak) = degenerate_direction(&hessian, config.degeneracy_ratio) {
+            let along = weak.dot(&step.xy());
+            step.x -= along * weak.x;
+            step.y -= along * weak.y;
+        }
         pose = Pose2D::new(
             pose.x + step.x,
             pose.y + step.y,
@@ -407,12 +454,37 @@ fn register_point_to_line(
         }
     }
 
-    Registration {
+    ScanRegistration {
         pose,
         iterations,
         correspondences,
         mean_residual,
+        hessian: final_hessian,
     }
+}
+
+/// Weakest translation direction of a registration Hessian, if its
+/// `λ_min / λ_max` ratio is below `ratio_threshold`.
+pub fn degenerate_direction(hessian: &Matrix3<f64>, ratio_threshold: f64) -> Option<Vector2<f64>> {
+    let (ratio, direction) = translational_observability(hessian);
+    (ratio < ratio_threshold).then_some(direction)
+}
+
+/// `(λ_min / λ_max, weakest unit direction)` of the translational 2×2 block of
+/// a registration Hessian. A ratio near 0 means translation along the
+/// direction is unobservable; an all-zero Hessian returns ratio 0.
+pub fn translational_observability(hessian: &Matrix3<f64>) -> (f64, Vector2<f64>) {
+    let (a, b, c) = (hessian[(0, 0)], hessian[(0, 1)], hessian[(1, 1)]);
+    let half_trace = 0.5 * (a + c);
+    let spread = (0.25 * (a - c) * (a - c) + b * b).sqrt();
+    let (large, small) = (half_trace + spread, half_trace - spread);
+    // Eigenvector of the larger eigenvalue has angle 0.5·atan2(2b, a − c).
+    let angle = 0.5 * (2.0 * b).atan2(a - c);
+    let weak = Vector2::new(-angle.sin(), angle.cos());
+    if large <= 0.0 {
+        return (0.0, weak);
+    }
+    ((small / large).max(0.0), weak)
 }
 
 /// Dense uniform grid answering "nearest point within `radius`" queries.

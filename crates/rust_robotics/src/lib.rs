@@ -24,7 +24,7 @@
 //! | `localization` | `localization` | `rust_robotics_localization` | EKF, UKF, CKF, particle filter, MCL, histogram filter |
 //! | `control` | `control` | `rust_robotics_control` | PID, Pure Pursuit, Stanley, LQR, MPC, MPPI, iLQR, Controller Arena |
 //! | `mapping` | `mapping` | `rust_robotics_mapping` | Occupancy / Gaussian grid maps, NDT, clustering, shape fitting |
-//! | `slam` | `slam` | `rust_robotics_slam` | EKF-SLAM, FastSLAM, ICP, scan-to-map odometry, pose graphs, IMU preintegration, bundle adjustment |
+//! | `slam` | `slam` | `rust_robotics_slam` | EKF-SLAM, FastSLAM, ICP, scan-to-map odometry, LiDAR loop closure, pose graphs, IMU preintegration, bundle adjustment |
 //! | `viz` | `viz` | `rust_robotics_viz` | gnuplot plotting and pure-Rust GIF recording (`gif`) |
 //!
 //! # Feature flags

@@ -1307,15 +1307,18 @@ below is library work that does not depend on them.
 3. ~~**CHANGELOG `[Unreleased]` backfill**~~ **Done (2026-10-08).** control
    no_std, embedded demo, Meta-Control, benchmark gate, Playground onboarding,
    scan-to-map.
-4. **Fix `RobustIcp2D` double transform.** `estimate()` passes already
-   transformed points into `weighted_gauss_newton`, which applies the transform
-   again, and the left-composed update does not match the right-perturbation
-   Jacobian. Identity-seeded tests pass only because of a 0.3 m tolerance.
-   Fix, then tighten `test_robust_icp_translation` to millimeter tolerance.
-5. **Loop closure on top of scan-to-map.** Emit keyframe poses + relative
-   constraints into `pose_graph_optimization` (SE(2)), detect revisits by
-   scan-to-submap matching against old keyframes, and add a playground SLAM
-   tab mode that scrubs before/after loop closure (Phase 3 6–18 month vision).
+4. ~~**Fix `RobustIcp2D` double transform.**~~ **Done (2026-10-08).**
+   Residuals and the left-perturbation Jacobian `[I, J w]` are evaluated at
+   the transformed points; the translation test is tightened to 1e-6 (the old
+   code left 0.21 m) and a non-identity seed test was added.
+5. ~~**Loop closure on top of scan-to-map.**~~ **Done (2026-10-08),
+   library + headless example.** `LidarGraphSlam`: nodes every 1 m,
+   coarse-to-fine scan-to-submap loop verification, innovation-gated
+   re-optimization, degeneracy-aware odometry edges, and front-end
+   degeneracy projection. `headless_lidar_loop_closure` (CI-gated): node RMSE
+   10.90 m raw odometry / 0.302 m scan-to-map / 0.012 m with loop closure on a
+   98 m corridor loop with a pillar-free 24 m corridor. Remaining: playground
+   SLAM-tab mode that scrubs before/after the closure.
 6. **Scan-to-map gallery GIF** — submap growth + three trajectories, via the
    `gif` feature, added to `scripts/generate_gallery_gifs.sh`.
 7. **0.3.0 API coherence, continued** — migrate remaining Tier 1 planners /
