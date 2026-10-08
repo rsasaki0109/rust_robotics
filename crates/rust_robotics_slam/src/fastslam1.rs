@@ -7,6 +7,7 @@
 
 use nalgebra::{Matrix2, Vector2, Vector3};
 use rand_distr::{Distribution, Normal, Uniform};
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -74,18 +75,6 @@ fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
         x[1] + u[0] * DT * yaw.sin(),
         normalize_angle(x[2] + u[1] * DT),
     )
-}
-
-/// Normalize angle to [-pi, pi]
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
 }
 
 /// Observation model: predict observation from particle pose and landmark

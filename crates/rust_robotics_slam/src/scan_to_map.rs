@@ -31,6 +31,7 @@ use std::collections::{HashMap, VecDeque};
 use std::f64::consts::PI;
 
 use nalgebra::{Matrix2, Matrix3, Vector2, Vector3};
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::Pose2D;
 
 /// Tuning parameters for [`ScanToMapMatcher`].
@@ -425,7 +426,7 @@ pub fn register_point_to_line(
         pose = Pose2D::new(
             pose.x + step.x,
             pose.y + step.y,
-            wrap_angle(pose.yaw + step.z),
+            normalize_angle(pose.yaw + step.z),
         );
         terms_at_pose = false;
         if step.x.hypot(step.y) < 1.0e-5 && step.z.abs() < 1.0e-5 {
@@ -664,7 +665,7 @@ pub fn compose_pose(pose: Pose2D, delta: Pose2D) -> Pose2D {
     Pose2D::new(
         pose.x + cos * delta.x - sin * delta.y,
         pose.y + sin * delta.x + cos * delta.y,
-        wrap_angle(pose.yaw + delta.yaw),
+        normalize_angle(pose.yaw + delta.yaw),
     )
 }
 
@@ -676,7 +677,7 @@ pub fn relative_pose(from: Pose2D, to: Pose2D) -> Pose2D {
     Pose2D::new(
         cos * dx + sin * dy,
         -sin * dx + cos * dy,
-        wrap_angle(to.yaw - from.yaw),
+        normalize_angle(to.yaw - from.yaw),
     )
 }
 
@@ -792,15 +793,6 @@ fn voxel_key(point: &Vector2<f64>, voxel_size: f64) -> (i64, i64) {
 fn rotation(yaw: f64) -> Matrix2<f64> {
     let (sin, cos) = yaw.sin_cos();
     Matrix2::new(cos, -sin, sin, cos)
-}
-
-fn wrap_angle(angle: f64) -> f64 {
-    let wrapped = (angle + PI).rem_euclid(2.0 * PI) - PI;
-    if wrapped <= -PI {
-        wrapped + 2.0 * PI
-    } else {
-        wrapped
-    }
 }
 
 #[cfg(test)]

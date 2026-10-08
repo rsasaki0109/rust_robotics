@@ -11,6 +11,7 @@
 
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix3, Vector2, Vector3};
 use rand_distr::{Distribution, Normal};
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -25,18 +26,6 @@ const LM_SIZE: usize = 2; // landmark state [x, y]
 // Noise parameters
 const Q_SIM: [[f64; 2]; 2] = [[0.2, 0.0], [0.0, (5.0 * PI / 180.0) * (5.0 * PI / 180.0)]]; // process noise (reduced)
 const R_SIM: [[f64; 2]; 2] = [[0.3, 0.0], [0.0, (5.0 * PI / 180.0) * (5.0 * PI / 180.0)]]; // observation noise (reduced)
-
-/// Normalize angle to [-pi, pi]
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
-}
 
 /// Process noise covariance for control input
 fn get_q_control() -> Matrix2<f64> {

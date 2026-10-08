@@ -7,6 +7,8 @@
 
 extern crate alloc;
 
+/// Angle helpers.
+pub mod angle;
 /// Error types and definitions for the RustRobotics workspace.
 pub mod error;
 #[cfg(feature = "std")]
@@ -15,6 +17,7 @@ pub mod lie;
 pub mod traits;
 pub mod types;
 
+pub use angle::*;
 pub use error::*;
 #[cfg(feature = "std")]
 pub use experiments::*;

@@ -333,16 +333,7 @@ pub fn time_varying_backstepping_control(
     TimeVaryingBacksteppingController::new(config).simulate(start, goal)
 }
 
-/// Normalizes an angle into `[-pi, pi]`.
-pub fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
-}
+pub use rust_robotics_core::normalize_angle;
 
 fn integrate_pose(pose: Pose2D, control: ControlInput, dt: f64) -> Pose2D {
     let x = pose.x + control.v * pose.yaw.cos() * dt;

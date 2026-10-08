@@ -11,8 +11,6 @@
 //!
 //! Reference: PythonRobotics ArmNavigation/n\_joint\_arm\_to\_point\_control
 
-use std::f64::consts::PI;
-
 /// Simulation parameters
 const KP: f64 = 2.0;
 const DT: f64 = 0.1;
@@ -165,13 +163,7 @@ pub fn distance_to_goal(current: &[f64; 2], goal: &[f64; 2]) -> ([f64; 2], f64) 
 
 /// Normalizes an angle to the range \[-pi, pi\].
 pub fn angle_mod(angle: f64) -> f64 {
-    let mut a = angle % (2.0 * PI);
-    if a > PI {
-        a -= 2.0 * PI;
-    } else if a < -PI {
-        a += 2.0 * PI;
-    }
-    a
+    rust_robotics_core::normalize_angle(angle)
 }
 
 /// Computes element-wise angle difference, each wrapped to \[-pi, pi\].
@@ -263,6 +255,7 @@ pub fn move_to_goal(
 mod tests {
     use super::*;
     use std::f64::consts::FRAC_PI_4;
+    use std::f64::consts::PI;
 
     #[test]
     fn test_forward_kinematics_straight() {

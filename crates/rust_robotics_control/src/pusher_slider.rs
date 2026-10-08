@@ -33,6 +33,7 @@
 
 use rand::{rngs::StdRng, SeedableRng};
 use rand_distr::{Distribution, Normal};
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::{RoboticsError, RoboticsResult};
 
 /// Planar pose `[x, y, theta]` of the slider in the world frame.
@@ -671,7 +672,7 @@ impl PusherSliderMppiController {
     fn pose_cost(&self, state: SliderState, goal: SliderState) -> f64 {
         let dx = state.x() - goal.x();
         let dy = state.y() - goal.y();
-        let dtheta = wrap_angle(state.theta() - goal.theta());
+        let dtheta = normalize_angle(state.theta() - goal.theta());
         let mut cost = self.config.position_weight * (dx * dx + dy * dy)
             + self.config.heading_weight * dtheta * dtheta;
         // Keep-out penalty for overlapping other objects (multi-object pushing).
@@ -861,7 +862,7 @@ pub fn simulate_push_with_obstacles(
         let dx = state.x() - goal.x();
         let dy = state.y() - goal.y();
         if (dx * dx + dy * dy).sqrt() < 0.2 * params.half_extent
-            && wrap_angle(state.theta() - goal.theta()).abs() < 0.05
+            && normalize_angle(state.theta() - goal.theta()).abs() < 0.05
         {
             break;
         }
@@ -874,7 +875,7 @@ pub fn simulate_push_with_obstacles(
         steps: executed,
         final_pose: state.pose,
         position_error: (dx * dx + dy * dy).sqrt(),
-        heading_error: wrap_angle(state.theta() - goal.theta()).abs(),
+        heading_error: normalize_angle(state.theta() - goal.theta()).abs(),
         stick_fraction: stick as f64 / denom,
         slide_fraction: slide as f64 / denom,
         path,
@@ -945,17 +946,6 @@ pub fn simulate_multi_push(
         max_position_error,
         max_heading_error,
     })
-}
-
-fn wrap_angle(a: f64) -> f64 {
-    let mut x = a;
-    while x > std::f64::consts::PI {
-        x -= std::f64::consts::TAU;
-    }
-    while x < -std::f64::consts::PI {
-        x += std::f64::consts::TAU;
-    }
-    x
 }
 
 #[cfg(test)]

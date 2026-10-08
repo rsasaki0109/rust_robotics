@@ -82,6 +82,7 @@ pub mod rocket_landing;
 pub mod rrt_star_seven_joint_arm;
 #[cfg(feature = "std")]
 pub mod sliding_mode_control;
+mod spline_course;
 pub mod stanley_controller;
 #[cfg(feature = "std")]
 pub mod state_machine;

@@ -7,12 +7,14 @@
 //!     - [Stanley: The robot that won the DARPA grand challenge](http://isl.ecst.csuchico.edu/DOCS/darpa2005/DARPA%202005%20Stanley.pdf)
 //!     - [Autonomous Automobile Path Tracking](https://www.ri.cmu.edu/pub_files/2009/2/Automatic_Steering_Methods_for_Autonomous_Automobile_Path_Tracking.pdf)
 
+use crate::spline_course::calc_spline_course;
 use alloc::vec::Vec;
 use core::f64::consts::PI;
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)]
 // f64 math via libm on no_std targets; on std hosts the inherent methods win
 use num_traits::Float;
+use rust_robotics_core::normalize_angle;
 use rust_robotics_core::{ControlInput, Path2D, PathTracker, Point2D, State2D};
 
 /// Vehicle state for Stanley Controller
@@ -141,17 +143,6 @@ impl StanleyController {
         path.yaw_profile()
     }
 
-    /// Normalize angle to [-PI, PI]
-    fn normalize_angle(mut angle: f64) -> f64 {
-        while angle > PI {
-            angle -= 2.0 * PI;
-        }
-        while angle < -PI {
-            angle += 2.0 * PI;
-        }
-        angle
-    }
-
     /// Find target index and cross-track error
     fn calc_target_index(&self, state: &VehicleState) -> (usize, f64) {
         let (fx, fy) = state.front_axle();
@@ -185,7 +176,7 @@ impl StanleyController {
         self.last_target_idx = target_idx;
 
         // Heading error
-        let theta_e = Self::normalize_angle(self.path_yaw[target_idx] - state.yaw);
+        let theta_e = normalize_angle(self.path_yaw[target_idx] - state.yaw);
 
         // Cross-track error correction
         let theta_d = (self.config.k * error_front_axle).atan2(state.v.max(0.1));
@@ -302,193 +293,6 @@ impl PathTracker for StanleyController {
     }
 }
 
-// Cubic spline helper functions for legacy interface
-
-fn calc_spline_course(x: &[f64], y: &[f64], ds: f64) -> SplineCourse {
-    let sp = CubicSpline2D::new(x, y);
-    let mut s = 0.0;
-    let mut course_x = Vec::new();
-    let mut course_y = Vec::new();
-    let mut course_yaw = Vec::new();
-    let mut course_k = Vec::new();
-    let mut course_s = Vec::new();
-
-    // sp.s is always non-empty: CubicSpline2D::new initializes s with at least one element
-    let s_max = *sp
-        .s
-        .last()
-        .expect("spline s is non-empty after construction")
-        - ds;
-    while s < s_max {
-        let (ix, iy) = sp.calc_position(s);
-        let iyaw = sp.calc_yaw(s);
-        let ik = sp.calc_curvature(s);
-        course_x.push(ix);
-        course_y.push(iy);
-        course_yaw.push(iyaw);
-        course_k.push(ik);
-        course_s.push(s);
-        s += ds;
-    }
-
-    (course_x, course_y, course_yaw, course_k, course_s)
-}
-
-struct CubicSpline {
-    a: Vec<f64>,
-    b: Vec<f64>,
-    c: Vec<f64>,
-    d: Vec<f64>,
-    x: Vec<f64>,
-}
-
-type SplineCourse = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
-
-impl CubicSpline {
-    fn new(x: &[f64], y: &[f64]) -> Self {
-        let n = x.len();
-        let mut h = vec![0.0; n - 1];
-        for i in 0..n - 1 {
-            h[i] = x[i + 1] - x[i];
-        }
-
-        let mut a = vec![0.0; n];
-        let mut b = vec![0.0; n];
-        let mut c = vec![0.0; n];
-        let mut d = vec![0.0; n];
-
-        a[..n].copy_from_slice(&y[..n]);
-
-        let mut alpha = vec![0.0; n - 1];
-        for i in 1..n - 1 {
-            alpha[i] = 3.0 * (a[i + 1] - a[i]) / h[i] - 3.0 * (a[i] - a[i - 1]) / h[i - 1];
-        }
-
-        let mut l = vec![1.0; n];
-        let mut mu = vec![0.0; n];
-        let mut z = vec![0.0; n];
-
-        for i in 1..n - 1 {
-            l[i] = 2.0 * (x[i + 1] - x[i - 1]) - h[i - 1] * mu[i - 1];
-            mu[i] = h[i] / l[i];
-            z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
-        }
-
-        for j in (0..n - 1).rev() {
-            c[j] = z[j] - mu[j] * c[j + 1];
-            b[j] = (a[j + 1] - a[j]) / h[j] - h[j] * (c[j + 1] + 2.0 * c[j]) / 3.0;
-            d[j] = (c[j + 1] - c[j]) / (3.0 * h[j]);
-        }
-
-        CubicSpline {
-            a,
-            b,
-            c,
-            d,
-            x: x.to_vec(),
-        }
-    }
-
-    fn calc(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return self.a[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return self.a[self.a.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        self.a[i] + self.b[i] * dx + self.c[i] * dx * dx + self.d[i] * dx * dx * dx
-    }
-
-    fn calc_d(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return self.b[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return self.b[self.b.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        self.b[i] + 2.0 * self.c[i] * dx + 3.0 * self.d[i] * dx * dx
-    }
-
-    fn calc_dd(&self, t: f64) -> f64 {
-        if t < self.x[0] {
-            return 2.0 * self.c[0];
-        } else if t > self.x[self.x.len() - 1] {
-            return 2.0 * self.c[self.c.len() - 1];
-        }
-
-        let mut i = self.search_index(t);
-        if i >= self.x.len() - 1 {
-            i = self.x.len() - 2;
-        }
-
-        let dx = t - self.x[i];
-        2.0 * self.c[i] + 6.0 * self.d[i] * dx
-    }
-
-    fn search_index(&self, x: f64) -> usize {
-        for i in 0..self.x.len() - 1 {
-            if self.x[i] <= x && x <= self.x[i + 1] {
-                return i;
-            }
-        }
-        self.x.len() - 2
-    }
-}
-
-struct CubicSpline2D {
-    s: Vec<f64>,
-    sx: CubicSpline,
-    sy: CubicSpline,
-}
-
-impl CubicSpline2D {
-    fn new(x: &[f64], y: &[f64]) -> Self {
-        let mut s = vec![0.0];
-        for i in 1..x.len() {
-            let dx = x[i] - x[i - 1];
-            let dy = y[i] - y[i - 1];
-            s.push(s[i - 1] + (dx * dx + dy * dy).sqrt());
-        }
-
-        let sx = CubicSpline::new(&s, x);
-        let sy = CubicSpline::new(&s, y);
-
-        CubicSpline2D { s, sx, sy }
-    }
-
-    fn calc_position(&self, s: f64) -> (f64, f64) {
-        let x = self.sx.calc(s);
-        let y = self.sy.calc(s);
-        (x, y)
-    }
-
-    fn calc_curvature(&self, s: f64) -> f64 {
-        let dx = self.sx.calc_d(s);
-        let ddx = self.sx.calc_dd(s);
-        let dy = self.sy.calc_d(s);
-        let ddy = self.sy.calc_dd(s);
-        (ddy * dx - ddx * dy) / (dx * dx + dy * dy).powf(1.5)
-    }
-
-    fn calc_yaw(&self, s: f64) -> f64 {
-        let dx = self.sx.calc_d(s);
-        let dy = self.sy.calc_d(s);
-        dy.atan2(dx)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,8 +335,8 @@ mod tests {
 
     #[test]
     fn test_stanley_normalize_angle() {
-        assert!((StanleyController::normalize_angle(3.0 * PI) - PI).abs() < 0.01);
-        assert!((StanleyController::normalize_angle(-3.0 * PI) + PI).abs() < 0.01);
+        assert!((normalize_angle(3.0 * PI) - PI).abs() < 0.01);
+        assert!((normalize_angle(-3.0 * PI) + PI).abs() < 0.01);
     }
 
     #[test]

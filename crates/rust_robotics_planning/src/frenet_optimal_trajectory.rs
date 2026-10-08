@@ -6,6 +6,7 @@
 //! lateral and longitudinal motion with jerk minimization.
 
 // Parameters
+use rust_robotics_core::normalize_angle;
 const MAX_SPEED: f64 = 50.0 / 3.6;
 const MAX_ACCEL: f64 = 5.0;
 const MAX_CURVATURE: f64 = 1.0;
@@ -532,14 +533,6 @@ fn road_width_samples(
             }
         }
     }
-}
-
-fn normalize_angle(angle: f64) -> f64 {
-    let mut normalized = (angle + std::f64::consts::PI).rem_euclid(2.0 * std::f64::consts::PI);
-    if normalized < 0.0 {
-        normalized += 2.0 * std::f64::consts::PI;
-    }
-    normalized - std::f64::consts::PI
 }
 
 fn frenet_to_cartesian(

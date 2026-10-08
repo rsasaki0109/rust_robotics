@@ -3,8 +3,6 @@
 //! Implements a bicycle kinematic model for vehicle motion.
 //! Based on PythonRobotics implementation.
 
-use std::f64::consts::PI;
-
 /// Vehicle state
 #[derive(Debug, Clone, Copy)]
 pub struct VehicleState {
@@ -155,21 +153,12 @@ impl MotionModel {
     }
 }
 
-/// Normalize angle to [-PI, PI]
-pub fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
-}
+pub use rust_robotics_core::normalize_angle;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::PI;
 
     type TrajectorySample = (f64, f64, f64);
     type TrajectoryParams = (f64, f64, f64);

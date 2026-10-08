@@ -10,7 +10,7 @@
 
 use nalgebra::{DMatrix, DVector, Matrix3, Vector3};
 use rand_distr::{Distribution, Normal};
-use std::f64::consts::PI;
+use rust_robotics_core::normalize_angle;
 
 // Simulation parameters
 const DT: f64 = 2.0; // time step [s]
@@ -69,18 +69,6 @@ impl Edge {
     }
 }
 
-/// Normalize angle to [-pi, pi]
-fn pi_2_pi(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
-}
-
 /// Calculate observation noise covariance
 fn cal_observation_sigma() -> Matrix3<f64> {
     Matrix3::from_diagonal(&Vector3::new(
@@ -114,8 +102,8 @@ fn calc_edge(
 ) -> Edge {
     let mut edge = Edge::new();
 
-    let tangle1 = pi_2_pi(yaw1 + angle1);
-    let tangle2 = pi_2_pi(yaw2 + angle2);
+    let tangle1 = normalize_angle(yaw1 + angle1);
+    let tangle2 = normalize_angle(yaw2 + angle2);
 
     let tmp1 = d1 * tangle1.cos();
     let tmp2 = d2 * tangle2.cos();
@@ -352,8 +340,8 @@ pub fn observation(
         let dx = lx - x_true_new[0];
         let dy = ly - x_true_new[1];
         let d = (dx * dx + dy * dy).sqrt();
-        let angle = pi_2_pi(dy.atan2(dx) - x_true_new[2]);
-        let phi = pi_2_pi(dy.atan2(dx));
+        let angle = normalize_angle(dy.atan2(dx) - x_true_new[2]);
+        let phi = normalize_angle(dy.atan2(dx));
 
         if d <= MAX_RANGE {
             // Add noise

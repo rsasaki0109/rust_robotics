@@ -9,11 +9,11 @@
 //!   <https://www.ipb.uni-bonn.de/wp-content/papercite-data/pdf/grisetti10titsmag.pdf>
 
 use nalgebra::{DMatrix, DVector, Matrix2, Matrix3, Vector2, Vector3};
+use rust_robotics_core::normalize_angle;
 use rust_robotics_optimization::{
     solve, Factor, FactorEvaluation, LinearSolver, OptimizationResult, Problem, SolverConfig,
     SolverMethod, TerminationReason, Variable, VariableId,
 };
-use std::f64::consts::PI;
 
 /// Configuration for pose graph optimization.
 #[derive(Debug, Clone, Copy)]
@@ -248,16 +248,6 @@ fn edge_error_and_jacobians(
     (error, j_i, j_j)
 }
 
-fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
-}
-
 #[cfg(test)]
 fn relative_transform(from: &Pose2DNode, to: &Pose2DNode) -> Pose2DNode {
     let dx = to.x - from.x;
@@ -287,6 +277,7 @@ fn rotation_matrix_transpose_derivative(yaw: f64) -> Matrix2<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f64::consts::PI;
 
     fn edge_from_truth(poses: &[Pose2DNode], from: usize, to: usize) -> Edge2D {
         Edge2D {

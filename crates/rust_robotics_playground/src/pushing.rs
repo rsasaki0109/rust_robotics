@@ -7,6 +7,7 @@ use rust_robotics_control::pusher_slider::{
     ContactMode, PusherCommand, PusherMppiConfig, PusherSliderMppiController, PusherSliderParams,
     SliderState,
 };
+use rust_robotics_core::normalize_angle;
 
 /// Visible table area \[m\].
 const TABLE_X: (f64, f64) = (-0.12, 0.48);
@@ -27,10 +28,6 @@ const OBSTACLE: Color32 = Color32::from_rgb(200, 90, 90);
 const TRAIL: Color32 = Color32::from_rgba_premultiplied(70, 90, 120, 160);
 const STICK: Color32 = Color32::from_rgb(250, 220, 90);
 const SLIDE: Color32 = Color32::from_rgb(240, 120, 60);
-
-fn wrap_angle(angle: f64) -> f64 {
-    (angle + std::f64::consts::PI).rem_euclid(std::f64::consts::TAU) - std::f64::consts::PI
-}
 
 /// What a drag on the table edits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,13 +125,13 @@ impl PushingDemo {
         self.goal = SliderState::new(
             x.clamp(TABLE_X.0, TABLE_X.1),
             y.clamp(TABLE_Y.0, TABLE_Y.1),
-            wrap_angle(theta),
+            normalize_angle(theta),
         );
     }
 
     fn errors(&self) -> (f64, f64) {
         let position = (self.slider.x() - self.goal.x()).hypot(self.slider.y() - self.goal.y());
-        let heading = wrap_angle(self.slider.theta() - self.goal.theta()).abs();
+        let heading = normalize_angle(self.slider.theta() - self.goal.theta()).abs();
         (position, heading)
     }
 

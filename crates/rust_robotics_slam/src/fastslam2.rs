@@ -13,6 +13,7 @@
 use nalgebra::{Matrix2, Matrix2x3, Matrix3, Vector2, Vector3};
 use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
+use rust_robotics_core::normalize_angle;
 use std::f64::consts::PI;
 
 // Simulation parameters
@@ -80,17 +81,6 @@ impl Particle {
         self.y = pose[1];
         self.yaw = normalize_angle(pose[2]);
     }
-}
-
-fn normalize_angle(angle: f64) -> f64 {
-    let mut a = angle;
-    while a > PI {
-        a -= 2.0 * PI;
-    }
-    while a < -PI {
-        a += 2.0 * PI;
-    }
-    a
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {

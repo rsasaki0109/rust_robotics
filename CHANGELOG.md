@@ -175,6 +175,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- One angle-wrapping function, `rust_robotics_core::normalize_angle`,
+  replaces 30 private copies (`normalize_angle`, `wrap_angle`, `pi_2_pi`)
+  across planning, control, SLAM, the playground, and examples. It returns
+  the same values for ordinary angles; the loop-based copies hung on an
+  infinite angle. Public paths such as `mpc::normalize_angle` re-export it.
+- Stanley, LQR Steer, LQR Speed+Steer, and Rear Wheel Feedback share one
+  cubic spline course builder instead of four copies.
 - Playground on phones (narrow layout): buttons, chips, checkboxes and
   slider handles are finger-sized (36 px tall, more spacing), including
   the Drive map's zoom buttons; Localization's hint mentions touch.
@@ -236,6 +243,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by `PathPlanner`, `PathTracker`, and `Controller` (see `docs/api_traits.md`).
 
 ### Fixed
+- Spline courses of the path-tracking controllers: a repeated waypoint gave
+  a zero-length spline interval and NaN everywhere; repeats are now
+  dropped.
+- LQR Steer: the nearest-point search had no memory and could jump to
+  another leg of a hairpin or crossing course; it now walks forward from
+  the previous nearest point, like Pure Pursuit and Stanley.
 - FastSLAM 1.0: a landmark's first sighting set its position but kept the
   1000·I prior covariance, so every later sighting re-initialized it and
   the EKF update and particle weighting never ran (FastSLAM degenerated to

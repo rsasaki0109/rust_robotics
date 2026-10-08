@@ -4,7 +4,7 @@
 //! Control: `[accel, steer]`
 
 use nalgebra::{Matrix2, Matrix2x4, Matrix4, Matrix4x2, Vector2, Vector4};
-use std::f64::consts::PI;
+use rust_robotics_core::normalize_angle;
 
 const WHEEL_BASE: f64 = 2.5;
 const TERMINAL_WEIGHT_SCALE: f64 = 20.0;
@@ -331,16 +331,6 @@ fn state_error(state: &Vector4<f64>, goal: Vector4<f64>) -> Vector4<f64> {
         normalize_angle(state[2] - goal[2]),
         state[3] - goal[3],
     )
-}
-
-fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > PI {
-        angle -= 2.0 * PI;
-    }
-    while angle < -PI {
-        angle += 2.0 * PI;
-    }
-    angle
 }
 
 fn dynamics(state: &Vector4<f64>, control: &Vector2<f64>, dt: f64) -> Vector4<f64> {

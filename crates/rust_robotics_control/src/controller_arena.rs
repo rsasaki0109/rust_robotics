@@ -394,15 +394,7 @@ pub(crate) fn propagate(state: State2D, command: ControlInput, dt: f64) -> State
     State2D::new(x, y, yaw, command.v)
 }
 
-pub(crate) fn normalize_angle(mut angle: f64) -> f64 {
-    while angle > std::f64::consts::PI {
-        angle -= 2.0 * std::f64::consts::PI;
-    }
-    while angle < -std::f64::consts::PI {
-        angle += 2.0 * std::f64::consts::PI;
-    }
-    angle
-}
+pub(crate) use rust_robotics_core::normalize_angle;
 
 pub(crate) fn cross_track_error(path: &Path2D, state: State2D) -> f64 {
     let position = state.position();
