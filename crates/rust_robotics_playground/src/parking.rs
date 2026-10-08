@@ -154,22 +154,32 @@ pub struct ParkingDemo {
     last_time: Option<f64>,
     /// Goal being dragged out: press position (world) and current heading.
     dragging: Option<Pose>,
+    /// Built on first use and kept: the parked cars never move.
+    planner: Option<HybridAStarPlanner>,
+    /// Plan on the next frame (set at startup and by share links, so a
+    /// visitor who never opens this tab pays nothing).
+    needs_plan: bool,
 }
+
+/// Start and goal of the parallel-parking preset (the default scene).
+const PARALLEL_START: Pose = [3.0, 8.0, 0.0];
+/// Centered in the curbside gap, rear axle 1 m ahead of the rear bumper.
+const PARALLEL_GOAL: Pose = [9.9 + (7.5 - PARKED_LONG) / 2.0 + CAR.rear, 1.35, 0.0];
 
 impl Default for ParkingDemo {
     fn default() -> Self {
-        let mut demo = Self {
+        Self {
             cars: parked_cars(),
-            car: [3.0, 8.0, 0.0],
-            goal: [0.0; 3],
+            car: PARALLEL_START,
+            goal: PARALLEL_GOAL,
             plan: None,
             failure: None,
             driven: 0.0,
             last_time: None,
             dragging: None,
-        };
-        demo.preset_parallel();
-        demo
+            planner: None,
+            needs_plan: true,
+        }
     }
 }
 
@@ -229,11 +239,15 @@ impl ParkingDemo {
         let goal = crate::share::value(query, "goal").and_then(parse_pose);
         if let Some(car) = car {
             self.car = car;
-            // The link's car pose is the start, not where a plan left it.
-            self.plan = None;
         }
         if let Some(goal) = goal {
-            self.set_goal(goal);
+            self.goal = [goal[0], goal[1], wrap(goal[2])];
+        }
+        if car.is_some() || goal.is_some() {
+            // The link's car pose is the start, not where a plan left it.
+            self.plan = None;
+            self.failure = None;
+            self.needs_plan = true;
         }
     }
 
@@ -251,26 +265,44 @@ impl ParkingDemo {
 
     /// Plans from where the car is now to `goal`.
     fn set_goal(&mut self, goal: Pose) {
-        // Leave the car where the animation got to.
+        // Leave the car at the last path sample it reached: samples were
+        // collision-checked, poses between them were not.
         if let Some(plan) = &self.plan {
-            self.car = plan.pose_at(self.driven);
+            let reached = plan
+                .distance
+                .partition_point(|&d| d <= self.driven)
+                .saturating_sub(1);
+            self.car = plan.poses[reached];
         }
         self.goal = [goal[0], goal[1], wrap(goal[2])];
+        self.plan_now();
+    }
+
+    /// Plans from `self.car` to `self.goal`.
+    fn plan_now(&mut self) {
+        self.needs_plan = false;
         self.driven = 0.0;
-        let (ox, oy) = obstacle_points(&self.cars);
+        if self.planner.is_none() {
+            let (ox, oy) = obstacle_points(&self.cars);
+            match HybridAStarPlanner::with_vehicle(&ox, &oy, planner_config(), CAR) {
+                Ok(planner) => self.planner = Some(planner.with_max_expansions(MAX_EXPANSIONS)),
+                Err(error) => {
+                    self.plan = None;
+                    self.failure = Some(error.to_string());
+                    return;
+                }
+            }
+        }
+        let planner = self.planner.as_mut().expect("planner built above");
         let timer = Instant::now();
-        let result = HybridAStarPlanner::with_vehicle(&ox, &oy, planner_config(), CAR)
-            .map(|planner| planner.with_max_expansions(MAX_EXPANSIONS))
-            .and_then(|mut planner| {
-                planner.plan(
-                    self.car[0],
-                    self.car[1],
-                    self.car[2],
-                    self.goal[0],
-                    self.goal[1],
-                    self.goal[2],
-                )
-            });
+        let result = planner.plan(
+            self.car[0],
+            self.car[1],
+            self.car[2],
+            self.goal[0],
+            self.goal[1],
+            self.goal[2],
+        );
         let elapsed_ms = timer.elapsed().as_secs_f64() * 1000.0;
         match result {
             Ok(path) if !path.is_empty() => {
@@ -312,10 +344,16 @@ impl ParkingDemo {
     }
 
     fn preset_parallel(&mut self) {
-        self.car = [3.0, 8.0, 0.0];
+        self.car = PARALLEL_START;
         self.plan = None;
-        // Centered in the gap, rear axle 1 m ahead of the rear bumper.
-        self.set_goal([9.9 + (7.5 - PARKED_LONG) / 2.0 + CAR.rear, 1.35, 0.0]);
+        self.set_goal(PARALLEL_GOAL);
+    }
+
+    /// Runs the plan a share link or startup asked for.
+    pub(crate) fn ensure_planned(&mut self) {
+        if self.needs_plan {
+            self.plan_now();
+        }
     }
 
     fn preset_back_in(&mut self) {
@@ -438,6 +476,7 @@ impl ParkingDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.ensure_planned();
         let rect = crate::ui_kit::fit_rect(ui, (LOT_H / LOT_W) as f32, 34.0);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         self.handle_pointer(rect, &response);
@@ -629,6 +668,7 @@ mod tests {
     #[test]
     fn presets_park_without_touching_anything() {
         let mut demo = ParkingDemo::default();
+        demo.ensure_planned();
         check_plan(&demo, "parallel", true);
         demo.preset_back_in();
         check_plan(&demo, "back in", true);
@@ -639,6 +679,7 @@ mod tests {
     #[test]
     fn plans_do_not_change_gear_more_than_needed() {
         let mut demo = ParkingDemo::default();
+        demo.ensure_planned();
         let switches = |demo: &ParkingDemo| demo.plan.as_ref().expect("plan").switches;
         assert!(switches(&demo) <= 3, "parallel: {}", switches(&demo));
         demo.preset_back_in();
@@ -655,12 +696,28 @@ mod tests {
     #[test]
     fn driving_ends_at_the_goal_and_the_next_plan_starts_there() {
         let mut demo = ParkingDemo::default();
+        assert!(demo.plan.is_none(), "planned before the tab was shown");
+        demo.ensure_planned();
         let length = demo.plan.as_ref().unwrap().length();
         demo.driven = length;
         let parked = demo.current_pose();
         demo.set_goal([20.0, 9.0, 0.0]);
         let start = demo.plan.as_ref().expect("plan").poses[0];
         assert!((start[0] - parked[0]).hypot(start[1] - parked[1]) < 1e-6);
+
+        // A new goal mid-drive starts from a path sample, which is known to
+        // be free, so planning from there never fails on the start pose.
+        let plan = demo.plan.clone().expect("plan");
+        for k in 1..20 {
+            demo.plan = Some(plan.clone());
+            demo.driven = plan.length() * k as f64 / 20.0 + 0.013;
+            demo.set_goal([25.0, 9.0, 0.0]);
+            assert!(
+                !demo.failure.as_deref().unwrap_or("").contains("start"),
+                "stuck at {k}: {:?}",
+                demo.failure
+            );
+        }
     }
 
     #[test]
@@ -684,6 +741,7 @@ mod tests {
         let query = demo.share_query();
         let mut restored = ParkingDemo::default();
         restored.apply_share_query(&query);
+        restored.ensure_planned();
         assert!((restored.car[0] - 6.0).abs() < 1e-9);
         assert!((restored.goal[0] - 20.0).abs() < 1e-9);
         assert!((restored.goal[2] - 3.0).abs() < 0.01);

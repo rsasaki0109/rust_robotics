@@ -146,7 +146,8 @@ fn default_obstacles() -> Vec<(f64, f64, f64)> {
 
 impl Default for SamplingDemo {
     fn default() -> Self {
-        let mut demo = Self {
+        // Planned on the first frame the tab is shown (see `scene`).
+        Self {
             kind: SamplingKind::RrtStar,
             obstacles: default_obstacles(),
             start: [1.5, 1.5],
@@ -157,9 +158,7 @@ impl Default for SamplingDemo {
             animate: true,
             grow_from: None,
             grab: None,
-        };
-        demo.replan();
-        demo
+        }
     }
 }
 
@@ -378,7 +377,7 @@ impl SamplingDemo {
                 .collect();
         }
         self.compare.clear();
-        self.replan();
+        self.result = None;
     }
 
     pub fn share_query(&self) -> String {
@@ -576,6 +575,9 @@ impl SamplingDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.result.is_none() {
+            self.replan();
+        }
         let rect = crate::ui_kit::fit_rect(ui, 1.0, 34.0);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         self.handle_pointer(rect, &response);

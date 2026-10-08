@@ -331,42 +331,32 @@ fn generate_path(q0: [f64; 3], q1: [f64; 3], max_curvature: f64, step_size: f64)
         left_x_right90_straight_left90_x_right,
     ];
 
+    // A candidate with a segment too short to sample is skipped on its own
+    // (this used to discard every candidate).
     for path_func in path_functions {
         // Original
         let (flag, travel_distances, steering_dirns) = path_func(x, y, dth);
-        if flag {
-            if has_too_small_segment(&travel_distances, step_size) {
-                return Vec::new();
-            }
+        if flag && !has_too_small_segment(&travel_distances, step_size) {
             set_path(&mut paths, travel_distances, steering_dirns, step_size);
         }
 
         // Timeflip
         let (flag, travel_distances, steering_dirns) = path_func(-x, y, -dth);
-        if flag {
-            if has_too_small_segment(&travel_distances, step_size) {
-                return Vec::new();
-            }
+        if flag && !has_too_small_segment(&travel_distances, step_size) {
             let travel_distances = timeflip(travel_distances);
             set_path(&mut paths, travel_distances, steering_dirns, step_size);
         }
 
         // Reflect
         let (flag, travel_distances, steering_dirns) = path_func(x, -y, -dth);
-        if flag {
-            if has_too_small_segment(&travel_distances, step_size) {
-                return Vec::new();
-            }
+        if flag && !has_too_small_segment(&travel_distances, step_size) {
             let steering_dirns = reflect(steering_dirns);
             set_path(&mut paths, travel_distances, steering_dirns, step_size);
         }
 
         // Timeflip + Reflect
         let (flag, travel_distances, steering_dirns) = path_func(-x, -y, dth);
-        if flag {
-            if has_too_small_segment(&travel_distances, step_size) {
-                return Vec::new();
-            }
+        if flag && !has_too_small_segment(&travel_distances, step_size) {
             let travel_distances = timeflip(travel_distances);
             let steering_dirns = reflect(steering_dirns);
             set_path(&mut paths, travel_distances, steering_dirns, step_size);
@@ -445,6 +435,12 @@ fn generate_local_course(
     let mut directions = Vec::new();
 
     for ((interp_dists, &mode), &length) in interpolate_dists_list.iter().zip(modes).zip(lengths) {
+        // A zero-length segment adds no motion, only a duplicate sample
+        // whose direction (-1 for a length of 0) would read as two gear
+        // changes.
+        if length == 0.0 {
+            continue;
+        }
         for &dist in interp_dists {
             let (x, y, yaw, direction) = interpolate(
                 dist,

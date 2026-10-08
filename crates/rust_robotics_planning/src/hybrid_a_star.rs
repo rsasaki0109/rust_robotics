@@ -190,9 +190,16 @@ pub struct VehicleFootprint {
 impl VehicleFootprint {
     /// Circles `(offset along the heading from the rear axle, radius)` that
     /// together cover the rectangle: one per width-sized slice of its length.
+    ///
+    /// At most 16 circles; a degenerate footprint (non-positive width or
+    /// length) gets a single circle.
     pub fn covering_circles(&self) -> Vec<(f64, f64)> {
-        let length = self.front + self.rear;
-        let n = (length / self.width).ceil().max(1.0) as usize;
+        let length = (self.front + self.rear).max(0.0);
+        let n = if self.width > 0.0 && length > 0.0 {
+            ((length / self.width).ceil() as usize).clamp(1, 16)
+        } else {
+            1
+        };
         let slice = length / n as f64;
         let radius = (slice / 2.0).hypot(self.width / 2.0);
         (0..n)
@@ -223,6 +230,9 @@ pub struct HybridAStarPlanner {
     /// Offsets along the heading of the collision circles' centers; just
     /// the rear axle (`[0.0]`) for a round robot.
     circle_offsets: Vec<f64>,
+    /// Finer grid for collision checks of a vehicle footprint (the search
+    /// grid is too coarse to place a car's corners).
+    collision_map: Option<GridMap>,
     /// Search budget: node expansions before giving up.
     max_expansions: usize,
     /// Precomputed holonomic heuristic (cost from each grid cell to goal)
@@ -241,6 +251,7 @@ impl HybridAStarPlanner {
             config,
             grid_map,
             circle_offsets: vec![0.0],
+            collision_map: None,
             max_expansions: usize::MAX,
             h_map: Vec::new(),
             goal_x: 0,
@@ -268,6 +279,16 @@ impl HybridAStarPlanner {
                 ..config
             },
         )?;
+        // Circle centers are looked up in the cell they round to, up to half
+        // a cell diagonal away: check them on a finer grid inflated by that
+        // much more, so the car's corners never reach an obstacle.
+        let resolution = (planner.config.xy_resolution / 5.0).max(0.05);
+        planner.collision_map = Some(GridMap::try_new(
+            ox,
+            oy,
+            resolution,
+            radius + resolution * std::f64::consts::SQRT_2 / 2.0,
+        )?);
         planner.circle_offsets = circles.into_iter().map(|(offset, _)| offset).collect();
         Ok(planner)
     }
@@ -290,6 +311,19 @@ impl HybridAStarPlanner {
         gy: f64,
         gyaw: f64,
     ) -> RoboticsResult<HybridAStarPath> {
+        // The start and goal themselves must be free, or nothing can be
+        // planned (checked before the costly heuristic map).
+        if !self.verify_path(&[sx], &[sy], &[syaw]) {
+            return Err(RoboticsError::PlanningError(
+                "Hybrid A*: the start pose collides".to_string(),
+            ));
+        }
+        if !self.verify_path(&[gx], &[gy], &[gyaw]) {
+            return Err(RoboticsError::PlanningError(
+                "Hybrid A*: the goal pose collides".to_string(),
+            ));
+        }
+
         // Compute grid indices for goal
         self.goal_x = self.grid_map.calc_x_index(gx);
         self.goal_y = self.grid_map.calc_y_index(gy);
@@ -345,18 +379,6 @@ impl HybridAStarPlanner {
         open_map.insert(start_key, start_idx);
 
         let mut iteration = 0;
-
-        // The start itself must be free, or nothing can be planned.
-        if !self.verify_path(&[sx], &[sy], &[syaw]) {
-            return Err(RoboticsError::PlanningError(
-                "Hybrid A*: the start pose collides".to_string(),
-            ));
-        }
-        if !self.verify_path(&[gx], &[gy], &[gyaw]) {
-            return Err(RoboticsError::PlanningError(
-                "Hybrid A*: the goal pose collides".to_string(),
-            ));
-        }
 
         while let Some(current_priority) = open_set.pop() {
             if iteration >= self.max_expansions {
@@ -578,12 +600,13 @@ impl HybridAStarPlanner {
     /// Verify that all poses in a path are collision-free (every collision
     /// circle of the vehicle at every pose).
     fn verify_path(&self, x_list: &[f64], y_list: &[f64], yaw_list: &[f64]) -> bool {
+        let map = self.collision_map.as_ref().unwrap_or(&self.grid_map);
         for ((&x, &y), &yaw) in x_list.iter().zip(y_list).zip(yaw_list) {
             let (s, c) = yaw.sin_cos();
             for &offset in &self.circle_offsets {
-                let ix = self.grid_map.calc_x_index(x + offset * c);
-                let iy = self.grid_map.calc_y_index(y + offset * s);
-                if !self.grid_map.is_valid(ix, iy) {
+                let ix = map.calc_x_index(x + offset * c);
+                let iy = map.calc_y_index(y + offset * s);
+                if !map.is_valid(ix, iy) {
                     return false;
                 }
             }
@@ -613,11 +636,10 @@ impl HybridAStarPlanner {
             self.config.max_curvature,
             self.config.step_size,
         );
-        for path in &mut candidates {
-            path.directions = motion_directions(&path.x, &path.y, &path.yaw);
-        }
+        let arriving = if current.direction { 1 } else { -1 };
         let cost = |path: &reeds_shepp_path::Path| {
-            let switches = path.directions.windows(2).filter(|w| w[0] != w[1]).count();
+            let switches = path.directions.windows(2).filter(|w| w[0] != w[1]).count()
+                + usize::from(path.directions.first().is_some_and(|&d| d != arriving));
             path.l + self.config.switch_back_cost * switches as f64
         };
         candidates.sort_by(|a, b| cost(a).total_cmp(&cost(b)));
@@ -793,32 +815,6 @@ impl PartialOrd for DijkstraNode {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
-}
-
-/// Direction of travel (+1 along the heading, -1 against it) at each sample,
-/// from the motion to the next sample. Samples where the vehicle does not
-/// move (segment joints, zero-length segments) take the direction of the
-/// motion around them, so they add no spurious gear changes.
-fn motion_directions(x: &[f64], y: &[f64], yaw: &[f64]) -> Vec<i32> {
-    let n = x.len();
-    let mut directions: Vec<Option<i32>> = (0..n.saturating_sub(1))
-        .map(|i| {
-            let along = (x[i + 1] - x[i]) * yaw[i].cos() + (y[i + 1] - y[i]) * yaw[i].sin();
-            (along.abs() > 1e-9).then_some(if along < 0.0 { -1 } else { 1 })
-        })
-        .collect();
-    // The last sample keeps the direction of the step into it.
-    directions.push(None);
-    let mut last = None;
-    for d in directions.iter_mut() {
-        match d {
-            Some(value) => last = Some(*value),
-            None => *d = last,
-        }
-    }
-    // Leading stationary samples take the first real direction.
-    let first = directions.iter().flatten().next().copied().unwrap_or(1);
-    directions.into_iter().map(|d| d.unwrap_or(first)).collect()
 }
 
 /// Normalize angle to [-pi, pi]
@@ -1017,6 +1013,23 @@ mod tests {
     }
 
     #[test]
+    fn degenerate_footprints_do_not_blow_up() {
+        let flat = VehicleFootprint {
+            front: 3.6,
+            rear: 1.0,
+            width: 0.0,
+        };
+        assert_eq!(flat.covering_circles().len(), 1);
+        let thin = VehicleFootprint {
+            width: 1e-6,
+            ..flat
+        };
+        assert!(thin.covering_circles().len() <= 16);
+        let (ox, oy) = parking_street();
+        assert!(HybridAStarPlanner::with_vehicle(&ox, &oy, parking_config(), flat).is_err());
+    }
+
+    #[test]
     fn covering_circles_cover_the_car() {
         let car = car();
         let circles = car.covering_circles();
@@ -1077,18 +1090,6 @@ mod tests {
                 );
             }
         }
-    }
-
-    #[test]
-    fn motion_directions_ignore_stationary_samples() {
-        // Forward 2 samples, a duplicated joint, then reverse.
-        let x = [0.0, 1.0, 2.0, 2.0, 1.0, 1.0];
-        let y = [0.0; 6];
-        let yaw = [0.0; 6];
-        assert_eq!(motion_directions(&x, &y, &yaw), vec![1, 1, 1, -1, -1, -1]);
-        // A straight run with zero-length pieces is all forward.
-        let x = [0.0, 0.0, 1.0, 2.0, 2.0];
-        assert_eq!(motion_directions(&x, &[0.0; 5], &[0.0; 5]), vec![1; 5]);
     }
 
     #[test]
