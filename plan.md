@@ -1387,3 +1387,44 @@ below is library work that does not depend on them.
    correct fix. The UI says "converged", shows the scan fit, and explains
    look-alike places. Follow-up candidate: scan-matching-based candidate
    generation for injection.
+10. ~~**Web check, exploration, people + DWA, scan-matching MCL, frame
+   time**~~ **Done (2026-10-08).**
+   - *Web build:* the playground crashed on load in every browser —
+     `std::time::Instant` panics on `wasm32-unknown-unknown` (Grid Planners
+     times its startup plan). Fixed with `web-time`; verified by serving the
+     WASM build locally and driving it in headless Chromium (Pages itself is
+     not reachable from the development environment): desktop, 390 px phone
+     layout (compact header, scrolling, stacked sliders — a slider row cannot
+     wrap and pushed the joystick off-screen), touch joystick and tap-to-goal.
+   - *Exploration:* `frontier_exploration` + Drive-mode Explore: pillar hall
+     19 goals / 89 m, all four worlds complete. Goals plan into unknown space
+     and snap off walls; the planner adds the live scan within 4 m to its
+     obstacles.
+   - *People + DWA:* up to 8 non-yielding people only the LiDAR sees; DWA
+     overrides Pure Pursuit when its 1 s arc would hit something, with a
+     stall watchdog (one replan, then fail). Pillar hall, 6 people, 8 seeds:
+     15/16 goals, 2 bump ticks (Pure Pursuit alone: 79 bump ticks over 4
+     seeds). With people in the scans, scan-to-map can drift ~1 m.
+   - *MCL:* correlative scan matching candidates (0.3 m × 7.5° lattice on a
+     wide field, refined) seed global localization and recovery; injection
+     only when another place beats the refined estimate; heaviest-mode
+     estimate. Kidnap → final within 0.3 m: 7/12 → 11/12 on SLAM-built maps;
+     re-kidnaps on explored maps: pillar hall 6-8/8 within 0.3 m, corridor
+     loop 8/8 within 0.5 m (the corridor map itself is off by ~0.5 m where
+     it drifted; a drifted map can make the 180°-rotated corridor fit better,
+     which MCL then correctly prefers).
+   - *Frame time:* loop verification is queued and done a step per frame
+     (`background_step`), LM damping carries across frames
+     (`optimize_pose_graph_warm`) with an inexact PCG (100 / 1e-4) and a
+     30-iteration budget, grid rebuilds run 12 nodes per frame, MCL
+     candidates refresh 250 lattice cells per update. Three laps: worst
+     frame 77 → 18 ms (163 ms before any deferral), 5 frames over 16 ms;
+     MCL worst frame 62 → 9 ms. A supercover ray walk was tried for cheaper
+     grids but eroded walls for MCL (pillar hall 8/8 → 5/8) and was dropped.
+11. ~~**Web smoke test in CI; moving objects out of SLAM**~~ **Done
+   (2026-10-08).** `scripts/web_smoke` + CI `web-smoke` job (trunk build,
+   every tab and a phone viewport in headless Chromium; verified to fail on
+   the `std::time::Instant` crash). `dynamic_filter::DynamicPointFilter`
+   (weak-hit free-space grid: a point in recently-free space is moving):
+   pillar hall, 6 people, 6 seeds, worst SLAM error 1.18 → 0.37 m (no
+   people: 0.18 m), all goals reached either way.

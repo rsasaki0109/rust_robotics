@@ -210,31 +210,71 @@ impl PlaygroundTab {
     }
 }
 
+const TABS: [PlaygroundTab; 6] = [
+    PlaygroundTab::GridPlanners,
+    PlaygroundTab::Localization,
+    PlaygroundTab::Slam,
+    PlaygroundTab::AdmmFormation,
+    PlaygroundTab::ControllerArena,
+    PlaygroundTab::Pushing,
+];
+
+/// Below this width \[points\] the header collapses for phones.
+const NARROW_WIDTH: f32 = 700.0;
+
+impl PlaygroundApp {
+    fn tab_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.onboarding_ui(ctx, ui);
+        match self.tab {
+            PlaygroundTab::GridPlanners => self.grid_demo.ui(ui),
+            PlaygroundTab::Localization => self.localization_demo.ui(ctx, ui),
+            PlaygroundTab::Slam => self.slam_demo.ui(ctx, ui),
+            PlaygroundTab::AdmmFormation => self.admm_demo.ui(ctx, ui),
+            PlaygroundTab::ControllerArena => self.controller_arena_demo.ui(ctx, ui),
+            PlaygroundTab::Pushing => self.pushing_demo.ui(ctx, ui),
+        }
+    }
+
+    fn select_tab(&mut self, tab: PlaygroundTab) {
+        if self.tab != tab {
+            self.save_current_experiment();
+            crate::engagement::track("tab_changed");
+        }
+        self.tab = tab;
+        self.share_status = None;
+    }
+}
+
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let narrow = ctx.screen_rect().width() < NARROW_WIDTH;
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             // Wrap so the tabs stay reachable on phone-width screens.
             ui.horizontal_wrapped(|ui| {
-                ui.heading("RustRobotics Playground");
-                ui.separator();
-                for tab in [
-                    PlaygroundTab::GridPlanners,
-                    PlaygroundTab::Localization,
-                    PlaygroundTab::Slam,
-                    PlaygroundTab::AdmmFormation,
-                    PlaygroundTab::ControllerArena,
-                    PlaygroundTab::Pushing,
-                ] {
-                    if ui
-                        .selectable_label(self.tab == tab, Self::tab_label(tab))
-                        .clicked()
-                    {
-                        if self.tab != tab {
-                            self.save_current_experiment();
-                            crate::engagement::track("tab_changed");
+                if narrow {
+                    // A compact header leaves the screen to the demo.
+                    ui.strong("RustRobotics");
+                    let mut selected = self.tab;
+                    egui::ComboBox::from_id_salt("tab_select")
+                        .selected_text(Self::tab_label(self.tab))
+                        .show_ui(ui, |ui| {
+                            for tab in TABS {
+                                ui.selectable_value(&mut selected, tab, Self::tab_label(tab));
+                            }
+                        });
+                    if selected != self.tab {
+                        self.select_tab(selected);
+                    }
+                } else {
+                    ui.heading("RustRobotics Playground");
+                    ui.separator();
+                    for tab in TABS {
+                        if ui
+                            .selectable_label(self.tab == tab, Self::tab_label(tab))
+                            .clicked()
+                        {
+                            self.select_tab(tab);
                         }
-                        self.tab = tab;
-                        self.share_status = None;
                     }
                 }
                 ui.separator();
@@ -262,7 +302,9 @@ impl eframe::App for PlaygroundApp {
                     ui.label(status);
                 }
             });
-            ui.label(Self::tab_hint(self.tab));
+            if !narrow {
+                ui.label(Self::tab_hint(self.tab));
+            }
             if let Some(query) = self.resume_query.clone() {
                 ui.horizontal(|ui| {
                     ui.label("Continue where you left off?");
@@ -279,14 +321,14 @@ impl eframe::App for PlaygroundApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.onboarding_ui(ctx, ui);
-            match self.tab {
-                PlaygroundTab::GridPlanners => self.grid_demo.ui(ui),
-                PlaygroundTab::Localization => self.localization_demo.ui(ctx, ui),
-                PlaygroundTab::Slam => self.slam_demo.ui(ctx, ui),
-                PlaygroundTab::AdmmFormation => self.admm_demo.ui(ctx, ui),
-                PlaygroundTab::ControllerArena => self.controller_arena_demo.ui(ctx, ui),
-                PlaygroundTab::Pushing => self.pushing_demo.ui(ctx, ui),
+            if narrow {
+                // Phones cannot fit controls and the scene on one screen;
+                // scroll the page (drags on the scene still go to the scene).
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| self.tab_ui(ctx, ui));
+            } else {
+                self.tab_ui(ctx, ui);
             }
         });
 

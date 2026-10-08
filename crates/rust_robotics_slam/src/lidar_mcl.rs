@@ -65,6 +65,16 @@ pub struct LidarMclConfig {
     /// Global (re)initialization scores this many times `particles` uniform
     /// poses against the first scan and keeps `particles` of them.
     pub global_oversampling: usize,
+    /// Correlative scan matching proposes this many distinct candidate poses
+    /// (0 disables it); global seeding and injected particles draw from
+    /// them, so every place the scan fits keeps particles until motion
+    /// tells the look-alikes apart.
+    pub scan_match_candidates: usize,
+    /// Recompute the candidates every this many updates.
+    pub scan_match_interval: usize,
+    /// Fraction of injected particles drawn around a candidate (the rest are
+    /// scored uniform draws).
+    pub scan_match_share: f64,
     /// Smoothing factors of the long- and short-term likelihood averages
     /// (augmented MCL, `alpha_slow < alpha_fast`).
     pub alpha_slow: f64,
@@ -90,6 +100,9 @@ impl Default for LidarMclConfig {
             reset_candidates: 20,
             min_injection: 0.01,
             global_oversampling: 10,
+            scan_match_candidates: 8,
+            scan_match_interval: 20,
+            scan_match_share: 0.5,
             alpha_slow: 0.01,
             alpha_fast: 0.3,
             seed: 3,
@@ -109,7 +122,6 @@ pub struct Particle {
 pub struct LidarMcl {
     config: LidarMclConfig,
     grid: OccupancyGrid,
-    field: Vec<f32>,
     free_cells: Vec<(usize, usize)>,
     particles: Vec<Particle>,
     rng: StdRng,
@@ -118,13 +130,71 @@ pub struct LidarMcl {
     fit: f64,
     /// Particles are uniform and the next scan should seed them.
     global_pending: bool,
+    /// Per-cell beam log-likelihood with the configured hit sigma, and with
+    /// a wide sigma for the coarse correlative search.
+    log_fine: Vec<f32>,
+    log_coarse: Vec<f32>,
+    candidates: Vec<(Pose2D, f64)>,
+    updates_since_candidates: usize,
+    /// A candidate refresh in progress.
+    match_job: Option<MatchJob>,
+    /// A candidate away from the current estimate explains the scan clearly
+    /// better than the (equally refined) estimate does.
+    alternative_better: bool,
 }
+
+/// A candidate must beat the refined estimate by this per-beam fit to
+/// count as a better explanation of the scan.
+const BETTER_FIT_MARGIN: f64 = 0.03;
+
+/// Relative prior weight of a continuously injected probe particle.
+const PROBE_PRIOR: f64 = 0.05;
+
+/// Lattice cells scored per update while candidates refresh in the
+/// background.
+const MATCH_CELLS_PER_UPDATE: usize = 250;
+
+/// A correlative search in progress, spread over updates.
+#[derive(Debug, Clone)]
+struct MatchJob {
+    fine: Vec<Vector2<f64>>,
+    coarse: Vec<Vector2<f64>>,
+    cells: Vec<(usize, usize)>,
+    cursor: usize,
+    scored: Vec<(Pose2D, f64)>,
+    count: usize,
+    /// Odometry since the scan the search uses.
+    motion: Pose2D,
+}
+
+/// Coarse lattice spacing of the correlative search \[m\].
+const MATCH_STEP: f64 = 0.3;
+/// Headings of the correlative search.
+const MATCH_HEADINGS: usize = 48;
+/// Hit sigma of the coarse search \[m\]: wide enough that the true pose on
+/// the lattice still scores well.
+const MATCH_COARSE_SIGMA: f64 = 0.35;
+/// Candidates closer than this (and `MATCH_DISTINCT_YAW`) are one candidate.
+const MATCH_DISTINCT_XY: f64 = 0.6;
+const MATCH_DISTINCT_YAW: f64 = 0.35;
 
 impl LidarMcl {
     /// Creates a filter on `grid` with particles spread uniformly over the
     /// free cells (global localization).
     pub fn new(grid: OccupancyGrid, config: LidarMclConfig) -> Self {
         let field = grid.distance_field(config.max_field_distance);
+        let log_table = |sigma: f64| -> Vec<f32> {
+            field
+                .iter()
+                .map(|&distance| {
+                    let distance = f64::from(distance);
+                    let hit = (-distance * distance / (2.0 * sigma * sigma)).exp();
+                    (hit + config.random_weight).ln() as f32
+                })
+                .collect()
+        };
+        let log_fine = log_table(config.hit_sigma);
+        let log_coarse = log_table(MATCH_COARSE_SIGMA);
         let (width, height) = grid.size();
         let free_cells = (0..height)
             .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -133,7 +203,6 @@ impl LidarMcl {
         let mut mcl = Self {
             config,
             grid,
-            field,
             free_cells,
             particles: Vec::new(),
             rng: StdRng::seed_from_u64(config.seed),
@@ -141,6 +210,12 @@ impl LidarMcl {
             w_fast: 0.0,
             fit: 0.0,
             global_pending: false,
+            log_fine,
+            log_coarse,
+            candidates: Vec::new(),
+            updates_since_candidates: 0,
+            match_job: None,
+            alternative_better: false,
         };
         mcl.initialize_global();
         mcl
@@ -221,6 +296,34 @@ impl LidarMcl {
             );
             particle.pose = compose_pose(particle.pose, noisy);
         }
+        if let Some(job) = &mut self.match_job {
+            job.motion = compose_pose(job.motion, odom_delta);
+        }
+    }
+
+    /// Mean per-beam log-likelihood of `beams` from `pose` under `table`.
+    fn mean_log(&self, table: &[f32], pose: Pose2D, beams: &[Vector2<f64>]) -> f64 {
+        let (width, _) = self.grid.size();
+        let (sin, cos) = pose.yaw.sin_cos();
+        let outside = {
+            let distance = self.config.max_field_distance;
+            let sigma = self.config.hit_sigma;
+            let hit = (-distance * distance / (2.0 * sigma * sigma)).exp();
+            (hit + self.config.random_weight).ln()
+        };
+        let sum: f64 = beams
+            .iter()
+            .map(|beam| {
+                let world = Vector2::new(
+                    pose.x + cos * beam.x - sin * beam.y,
+                    pose.y + sin * beam.x + cos * beam.y,
+                );
+                self.grid
+                    .cell_of(world)
+                    .map_or(outside, |(x, y)| f64::from(table[y * width + x]))
+            })
+            .sum();
+        sum / beams.len().max(1) as f64
     }
 
     /// Per-beam likelihood of the scan from `pose` (geometric mean, in (0, 1]).
@@ -228,27 +331,205 @@ impl LidarMcl {
         if beams.is_empty() {
             return 1.0;
         }
-        let (width, _) = self.grid.size();
-        let (sin, cos) = pose.yaw.sin_cos();
-        let sigma_sq = self.config.hit_sigma * self.config.hit_sigma;
-        let log_sum: f64 = beams
+        self.mean_log(&self.log_fine, pose, beams).exp() / (1.0 + self.config.random_weight)
+    }
+
+    /// Correlative scan matching (Olson, 2009) over the whole map: scores a
+    /// coarse lattice of free positions × headings against a wide likelihood
+    /// field, refines the best by local search on the fine field, and returns
+    /// up to `count` distinct poses with their per-beam likelihood, best
+    /// first. Look-alike places come back as separate candidates.
+    pub fn scan_match_candidates(
+        &self,
+        scan_body: &[Vector2<f64>],
+        count: usize,
+    ) -> Vec<(Pose2D, f64)> {
+        let Some(mut job) = self.start_match(scan_body, count) else {
+            return Vec::new();
+        };
+        while !self.advance_match(&mut job, usize::MAX) {}
+        self.finish_match(job)
+    }
+
+    /// Sets up a correlative search; `None` without beams or candidates.
+    fn start_match(&self, scan_body: &[Vector2<f64>], count: usize) -> Option<MatchJob> {
+        let stride = self.config.beam_stride.max(1);
+        let fine: Vec<Vector2<f64>> = scan_body.iter().step_by(stride).copied().collect();
+        let coarse: Vec<Vector2<f64>> = scan_body.iter().step_by(stride * 2).copied().collect();
+        if fine.is_empty() || count == 0 {
+            return None;
+        }
+        let lattice = ((MATCH_STEP / self.grid.resolution()).round() as usize).max(1);
+        let cells = self
+            .free_cells
             .iter()
-            .map(|beam| {
-                let world = Vector2::new(
-                    pose.x + cos * beam.x - sin * beam.y,
-                    pose.y + sin * beam.x + cos * beam.y,
-                );
-                let distance = self
-                    .grid
-                    .cell_of(world)
-                    .map_or(self.config.max_field_distance, |(x, y)| {
-                        f64::from(self.field[y * width + x])
-                    });
-                let hit = (-distance * distance / (2.0 * sigma_sq)).exp();
-                (hit + self.config.random_weight).ln()
+            .filter(|(x, y)| x % lattice == 0 && y % lattice == 0)
+            .copied()
+            .collect();
+        Some(MatchJob {
+            fine,
+            coarse,
+            cells,
+            cursor: 0,
+            scored: Vec::new(),
+            count,
+            motion: Pose2D::origin(),
+        })
+    }
+
+    /// Scores up to `max_cells` more lattice cells (all headings); returns
+    /// whether the coarse search is complete.
+    fn advance_match(&self, job: &mut MatchJob, max_cells: usize) -> bool {
+        let end = job.cursor.saturating_add(max_cells).min(job.cells.len());
+        for &(x, y) in &job.cells[job.cursor..end] {
+            let center = self.grid.cell_center(x, y);
+            for i in 0..MATCH_HEADINGS {
+                let yaw = -std::f64::consts::PI
+                    + std::f64::consts::TAU * i as f64 / MATCH_HEADINGS as f64;
+                let pose = Pose2D::new(center.x, center.y, yaw);
+                job.scored
+                    .push((pose, self.mean_log(&self.log_coarse, pose, &job.coarse)));
+            }
+        }
+        job.cursor = end;
+        // Keep only the best few between chunks.
+        let keep = (job.count * 6).min(job.scored.len());
+        if keep > 0 && job.scored.len() > keep {
+            job.scored
+                .select_nth_unstable_by(keep - 1, |a, b| b.1.total_cmp(&a.1));
+            job.scored.truncate(keep);
+        }
+        job.cursor == job.cells.len()
+    }
+
+    /// Refines the coarse winners and keeps distinct ones, moved by the
+    /// odometry since the search started.
+    fn finish_match(&self, job: MatchJob) -> Vec<(Pose2D, f64)> {
+        let MatchJob {
+            fine,
+            scored,
+            count,
+            motion,
+            ..
+        } = job;
+        let mut refined: Vec<(Pose2D, f64)> = scored
+            .into_iter()
+            .map(|(pose, _)| self.refine(pose, &fine))
+            .map(|(pose, score)| (compose_pose(pose, motion), score))
+            .collect();
+        refined.sort_by(|a, b| b.1.total_cmp(&a.1));
+        let mut distinct: Vec<(Pose2D, f64)> = Vec::with_capacity(count);
+        for (pose, score) in refined {
+            let duplicate = distinct.iter().any(|(kept, _)| {
+                let yaw = (kept.yaw - pose.yaw)
+                    .sin()
+                    .atan2((kept.yaw - pose.yaw).cos());
+                (kept.x - pose.x).hypot(kept.y - pose.y) < MATCH_DISTINCT_XY
+                    && yaw.abs() < MATCH_DISTINCT_YAW
+            });
+            if !duplicate {
+                distinct.push((pose, score));
+                if distinct.len() == count {
+                    break;
+                }
+            }
+        }
+        distinct
+            .into_iter()
+            .map(|(pose, score)| (pose, score.exp() / (1.0 + self.config.random_weight)))
+            .collect()
+    }
+
+    /// Hill-climbs `pose` on the fine field with shrinking steps.
+    fn refine(&self, mut pose: Pose2D, beams: &[Vector2<f64>]) -> (Pose2D, f64) {
+        let mut score = self.mean_log(&self.log_fine, pose, beams);
+        let (mut step_xy, mut step_yaw) = (
+            MATCH_STEP / 2.0,
+            std::f64::consts::PI / MATCH_HEADINGS as f64,
+        );
+        for _ in 0..4 {
+            loop {
+                let mut improved = false;
+                for (dx, dy, dyaw) in [
+                    (step_xy, 0.0, 0.0),
+                    (-step_xy, 0.0, 0.0),
+                    (0.0, step_xy, 0.0),
+                    (0.0, -step_xy, 0.0),
+                    (0.0, 0.0, step_yaw),
+                    (0.0, 0.0, -step_yaw),
+                ] {
+                    let candidate = Pose2D::new(pose.x + dx, pose.y + dy, pose.yaw + dyaw);
+                    let candidate_score = self.mean_log(&self.log_fine, candidate, beams);
+                    if candidate_score > score + 1.0e-9 {
+                        pose = candidate;
+                        score = candidate_score;
+                        improved = true;
+                    }
+                }
+                if !improved {
+                    break;
+                }
+            }
+            step_xy /= 2.0;
+            step_yaw /= 2.0;
+        }
+        (pose, score)
+    }
+
+    /// The current scan-matching candidates (refreshed during updates).
+    pub fn candidates(&self) -> &[(Pose2D, f64)] {
+        &self.candidates
+    }
+
+    /// A pose drawn around a uniformly chosen candidate, if there are any.
+    fn candidate_pose(&mut self) -> Option<Pose2D> {
+        if self.candidates.is_empty() {
+            return None;
+        }
+        let (pose, _) = self.candidates[self.rng.random_range(0..self.candidates.len())];
+        let xy = Normal::new(0.0, 0.08).expect("finite sigma");
+        let yaw = Normal::new(0.0, 0.04).expect("finite sigma");
+        Some(Pose2D::new(
+            pose.x + xy.sample(&mut self.rng),
+            pose.y + xy.sample(&mut self.rng),
+            pose.yaw + yaw.sample(&mut self.rng),
+        ))
+    }
+
+    /// Whether a candidate away from the current estimate fits the scan
+    /// clearly better than the estimate itself, refined the same way. A
+    /// look-alike place only ties, so it does not count.
+    fn alternative_is_better(&self, beams: &[Vector2<f64>]) -> bool {
+        let (estimate, _) = self.estimate();
+        let current = self.refine(estimate, beams).1.exp() / (1.0 + self.config.random_weight);
+        self.candidates
+            .iter()
+            .filter(|(pose, _)| {
+                let yaw = (pose.yaw - estimate.yaw)
+                    .sin()
+                    .atan2((pose.yaw - estimate.yaw).cos());
+                (pose.x - estimate.x).hypot(pose.y - estimate.y) > MATCH_DISTINCT_XY
+                    || yaw.abs() > MATCH_DISTINCT_YAW
             })
-            .sum();
-        (log_sum / beams.len() as f64).exp() / (1.0 + self.config.random_weight)
+            .any(|(_, fit)| *fit > current + BETTER_FIT_MARGIN)
+    }
+
+    /// An injected particle: around a scan-matching candidate with
+    /// probability `scan_match_share` while some other place explains the
+    /// scan clearly better than the estimate, else the best of a few uniform
+    /// draws. (Otherwise candidates at look-alike places would only compete
+    /// with the true pose on alignment, not on evidence.)
+    fn injected_pose(&mut self, beams: &[Vector2<f64>]) -> Pose2D {
+        if self.alternative_better
+            && self
+                .rng
+                .random_bool(self.config.scan_match_share.clamp(0.0, 1.0))
+        {
+            if let Some(pose) = self.candidate_pose() {
+                return pose;
+            }
+        }
+        self.scored_free_pose(beams)
     }
 
     /// Measurement update and resampling with a beam-ordered body-frame scan.
@@ -261,6 +542,27 @@ impl LidarMcl {
         if beams.is_empty() || self.particles.is_empty() {
             return;
         }
+        self.updates_since_candidates += 1;
+        if self.config.scan_match_candidates > 0 {
+            if self.global_pending {
+                // Seeding needs the candidates now.
+                self.match_job = None;
+                self.candidates =
+                    self.scan_match_candidates(scan_body, self.config.scan_match_candidates);
+                self.updates_since_candidates = 0;
+            } else if let Some(mut job) = self.match_job.take() {
+                // Refresh in the background, a slice of the map per update.
+                if self.advance_match(&mut job, MATCH_CELLS_PER_UPDATE) {
+                    self.candidates = self.finish_match(job);
+                    self.alternative_better = self.alternative_is_better(&beams);
+                } else {
+                    self.match_job = Some(job);
+                }
+            } else if self.updates_since_candidates >= self.config.scan_match_interval.max(1) {
+                self.match_job = self.start_match(scan_body, self.config.scan_match_candidates);
+                self.updates_since_candidates = 0;
+            }
+        }
         if self.global_pending {
             self.seed_from_scan(&beams);
             return;
@@ -269,23 +571,30 @@ impl LidarMcl {
             (self.particles.len() as f64 * self.config.min_injection.clamp(0.0, 1.0)) as usize;
         for _ in 0..probes {
             let slot = self.rng.random_range(0..self.particles.len());
-            let pose = self.scored_free_pose(&beams);
-            self.particles[slot].pose = pose;
+            let pose = self.injected_pose(&beams);
+            // A probe starts from a small prior weight (a teleport is
+            // unlikely), not from whatever weight the replaced slot had
+            // earned: it takes over only by explaining the scans clearly
+            // better, not by surviving a stretch where places look alike.
+            self.particles[slot] = Particle {
+                pose,
+                weight: PROBE_PRIOR / self.particles.len() as f64,
+            };
         }
         // Sharpen the per-beam geometric mean back to a scan likelihood. A
-        // particle standing outside the mapped free space is implausible.
+        // particle inside a wall is implausible (unknown cells are not: the
+        // map may simply have a hole there).
         let exponent = self.config.independent_beams.max(1.0);
         let likelihoods: Vec<f64> = self
             .particles
             .iter()
             .map(|particle| {
                 let position = Vector2::new(particle.pose.x, particle.pose.y);
-                let inside = self.grid.state_at(position) == CellState::Free;
                 let likelihood = self.beam_likelihood(particle.pose, &beams);
-                if inside {
-                    likelihood
+                if self.grid.state_at(position) == CellState::Occupied {
+                    likelihood * 0.1
                 } else {
-                    likelihood * 1.0e-3
+                    likelihood
                 }
             })
             .collect();
@@ -331,7 +640,14 @@ impl LidarMcl {
         } else {
             0.0
         };
-        let inject = (1.0 - self.w_fast / self.w_slow).max(reset);
+        let mut inject = (1.0 - self.w_fast / self.w_slow).max(reset);
+        // With scan matching on, a poor fit alone is not evidence of a
+        // kidnapping: the robot may simply see something the map lacks.
+        // Re-seed only when some other place explains the scan clearly
+        // better than where the particles are.
+        if self.config.scan_match_candidates > 0 && !self.alternative_better {
+            inject = 0.0;
+        }
         let effective = 1.0
             / self
                 .particles
@@ -370,6 +686,14 @@ impl LidarMcl {
             })
             .collect();
         self.resample_to(count, 0.0, beams);
+        // Every candidate place gets an equal share of particles, so a
+        // look-alike that happened to score higher cannot crowd out the rest.
+        let share = (count as f64 * self.config.scan_match_share.clamp(0.0, 1.0) / 2.0) as usize;
+        for slot in 0..share.min(count) {
+            if let Some(pose) = self.candidate_pose() {
+                self.particles[slot].pose = pose;
+            }
+        }
         let average = candidates.iter().map(|(_, l)| l).sum::<f64>() / candidates.len() as f64;
         self.w_slow = average;
         self.w_fast = average;
@@ -410,7 +734,7 @@ impl LidarMcl {
                 cumulative += self.particles[index].weight;
             }
             let pose = if self.rng.random_bool(inject.clamp(0.0, 1.0)) {
-                self.scored_free_pose(beams)
+                self.injected_pose(beams)
             } else {
                 self.particles[index].pose
             };
@@ -426,25 +750,83 @@ impl LidarMcl {
         self.fit
     }
 
-    /// Weighted mean pose and the RMS distance of particles from it \[m\].
+    /// Pose of the heaviest particle mode and the RMS distance of all
+    /// particles from it \[m\].
     pub fn estimate(&self) -> (Pose2D, f64) {
+        // The weighted mean of a multimodal cloud lies between the modes:
+        // average only the heaviest mode (particles near the heaviest 1 m ×
+        // 45° bin), and measure the spread of all particles around it, so a
+        // filter still torn between look-alike places reads as unconverged.
+        const BIN_XY: f64 = 1.0;
+        const BIN_YAW: f64 = std::f64::consts::FRAC_PI_4;
+        let bin = |pose: &Pose2D| {
+            (
+                (pose.x / BIN_XY).floor() as i64,
+                (pose.y / BIN_XY).floor() as i64,
+                (pose.yaw.rem_euclid(std::f64::consts::TAU) / BIN_YAW).floor() as i64,
+            )
+        };
+        let mut bins: std::collections::HashMap<(i64, i64, i64), f64> =
+            std::collections::HashMap::new();
+        for particle in &self.particles {
+            *bins.entry(bin(&particle.pose)).or_insert(0.0) += particle.weight;
+        }
+        let Some(&heaviest) = bins
+            .iter()
+            .max_by(|a, b| a.1.total_cmp(b.1))
+            .map(|(key, _)| key)
+        else {
+            return (Pose2D::origin(), f64::INFINITY);
+        };
+        let seed = self
+            .particles
+            .iter()
+            .filter(|particle| bin(&particle.pose) == heaviest)
+            .fold((0.0, 0.0, 0.0, 0.0, 0.0), |(x, y, s, c, w), p| {
+                (
+                    x + p.weight * p.pose.x,
+                    y + p.weight * p.pose.y,
+                    s + p.weight * p.pose.yaw.sin(),
+                    c + p.weight * p.pose.yaw.cos(),
+                    w + p.weight,
+                )
+            });
+        let seed_weight = seed.4.max(1.0e-300);
+        let center = Pose2D::new(
+            seed.0 / seed_weight,
+            seed.1 / seed_weight,
+            seed.2.atan2(seed.3),
+        );
         let (mut x, mut y, mut sin, mut cos, mut total) = (0.0, 0.0, 0.0, 0.0, 0.0);
         for particle in &self.particles {
-            let w = particle.weight;
-            x += w * particle.pose.x;
-            y += w * particle.pose.y;
-            sin += w * particle.pose.yaw.sin();
-            cos += w * particle.pose.yaw.cos();
-            total += w;
+            let yaw = (particle.pose.yaw - center.yaw)
+                .sin()
+                .atan2((particle.pose.yaw - center.yaw).cos());
+            let near = (particle.pose.x - center.x).hypot(particle.pose.y - center.y) < BIN_XY
+                && yaw.abs() < BIN_YAW;
+            if near {
+                let w = particle.weight;
+                x += w * particle.pose.x;
+                y += w * particle.pose.y;
+                sin += w * particle.pose.yaw.sin();
+                cos += w * particle.pose.yaw.cos();
+                total += w;
+            }
         }
         let total = total.max(1.0e-300);
         let mean = Pose2D::new(x / total, y / total, sin.atan2(cos));
+        let all: f64 = self
+            .particles
+            .iter()
+            .map(|p| p.weight)
+            .sum::<f64>()
+            .max(1.0e-300);
         let spread = (self
             .particles
             .iter()
             .map(|p| p.weight * ((p.pose.x - mean.x).powi(2) + (p.pose.y - mean.y).powi(2)))
             .sum::<f64>()
-            / total)
+            / all)
             .sqrt();
         (mean, spread)
     }
@@ -507,6 +889,40 @@ mod tests {
             mcl.update(&scan(truth));
         }
         truth
+    }
+
+    #[test]
+    fn scan_matching_finds_the_pose_and_its_look_alikes() {
+        let mcl = LidarMcl::new(map(), LidarMclConfig::default());
+        let truth = Pose2D::new(-2.0, -1.0, 0.3);
+        let candidates = mcl.scan_match_candidates(&scan(truth), 4);
+        let (best, fit) = candidates[0];
+        let error = relative_pose(truth, best);
+        assert!(error.x.hypot(error.y) < 0.15, "best {best:?}");
+        assert!(error.yaw.abs() < 0.05, "best {best:?}");
+        assert!(fit > 0.8, "fit {fit}");
+
+        // A bare rectangle looks the same rotated by 180°: both come back.
+        let room = polygon(&[(-5.0, -3.0), (5.0, -3.0), (5.0, 3.0), (-5.0, 3.0)]);
+        let pose = Pose2D::new(2.0, 1.0, 0.4);
+        let scan_of = |pose: Pose2D| ranges_to_points(&ray_cast_ranges(pose, &room, 180, 12.0));
+        let grid = OccupancyGrid::from_scans(
+            [(pose, scan_of(pose).as_slice())],
+            0.5,
+            OccupancyConfig::default(),
+        );
+        let mcl = LidarMcl::new(grid, LidarMclConfig::default());
+        let candidates = mcl.scan_match_candidates(&scan_of(pose), 4);
+        let mirror = Pose2D::new(-2.0, -1.0, 0.4 + std::f64::consts::PI);
+        for expected in [pose, mirror] {
+            assert!(
+                candidates.iter().any(|(candidate, _)| {
+                    let error = relative_pose(expected, *candidate);
+                    error.x.hypot(error.y) < 0.2 && error.yaw.abs() < 0.1
+                }),
+                "{expected:?} missing from {candidates:?}"
+            );
+        }
     }
 
     #[test]

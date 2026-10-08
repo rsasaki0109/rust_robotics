@@ -1,0 +1,9 @@
+{
+  "name": "rust-robotics-web-smoke",
+  "private": true,
+  "description": "Loads the WASM playground in headless Chromium and fails on any page error or Rust panic.",
+  "type": "module",
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

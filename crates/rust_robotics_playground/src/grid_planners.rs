@@ -1,6 +1,6 @@
 //! Interactive grid planner demo: A*, Dijkstra, JPS, and Theta*.
 
-use std::time::Instant;
+use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Sense, Stroke, Vec2};
 use rust_robotics_core::{Obstacles, Point2D, RoboticsResult};

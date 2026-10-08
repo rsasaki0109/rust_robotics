@@ -75,6 +75,10 @@ pub struct SolverSummary {
     pub linear_iterations: usize,
     pub hessian_blocks: usize,
     pub hessian_scalar_entries: usize,
+    /// Levenberg-Marquardt damping when the solve stopped; pass it back as
+    /// [`SolverConfig::initial_damping`] to continue a solve that was cut
+    /// short (e.g. spread over frames) without restarting the damping.
+    pub final_damping: f64,
 }
 
 /// Solves a factor graph in place.
@@ -92,6 +96,7 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
             linear_iterations: 0,
             hessian_blocks: 0,
             hessian_scalar_entries: 0,
+            final_damping: config.initial_damping,
         });
     }
 
@@ -117,6 +122,7 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                 total_linear_iterations,
                 hessian_blocks,
                 hessian_scalar_entries,
+                damping,
             ));
         }
 
@@ -144,6 +150,7 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                 total_linear_iterations,
                 hessian_blocks,
                 hessian_scalar_entries,
+                damping,
             ));
         }
 
@@ -167,6 +174,7 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
                     total_linear_iterations,
                     hessian_blocks,
                     hessian_scalar_entries,
+                    damping,
                 ));
             }
         } else {
@@ -184,6 +192,7 @@ pub fn solve(problem: &mut Problem, config: &SolverConfig) -> OptimizationResult
         total_linear_iterations,
         hessian_blocks,
         hessian_scalar_entries,
+        damping,
     ))
 }
 
@@ -378,6 +387,7 @@ fn summary(
     linear_iterations: usize,
     hessian_blocks: usize,
     hessian_scalar_entries: usize,
+    final_damping: f64,
 ) -> SolverSummary {
     SolverSummary {
         initial_cost,
@@ -388,6 +398,7 @@ fn summary(
         linear_iterations,
         hessian_blocks,
         hessian_scalar_entries,
+        final_damping,
     }
 }
 

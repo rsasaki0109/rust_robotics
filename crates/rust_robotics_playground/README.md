@@ -80,8 +80,15 @@ preserve the selected tab.
   **Kidnap robot** freezes the map, teleports the robot to a random free spot,
   and localizes it with likelihood-field MCL (yellow particles; the gray robot
   is the ground truth) — kidnap it again to watch the filter recover. Drive
-  with the arrow keys or the on-screen joystick (touch screens). Loop-closure
-  re-optimization is spread over frames so driving stays smooth.
+  with the arrow keys or the on-screen joystick (touch screens). **Explore
+  (frontiers)** drives to the nearest reachable boundary between known free
+  and unknown space (orange) until the map is complete. **Moving people**
+  are seen by the LiDAR but not in the map; when the next second of the Pure
+  Pursuit arc would hit something, DWA picks a collision-free arc (yellow).
+  **Ignore moving objects** keeps their scan points (purple) out of scan
+  matching and the map; untick it to watch them drag the SLAM estimate.
+  Loop checks and re-optimization are spread over frames so driving stays
+  smooth. On phones the header collapses to a tab menu and the page scrolls.
 - **ADMM Formation** — receding-horizon consensus ADMM with four agents past an L-corner.
 - **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
   the goal pose, click obstacles in or out, change the pusher friction, and watch

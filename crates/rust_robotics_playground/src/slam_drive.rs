@@ -12,6 +12,8 @@ use rand_distr::{Distribution, Normal};
 use rust_robotics_core::Pose2D;
 use rust_robotics_optimization::LinearSolver;
 use rust_robotics_slam::{
+    dynamic_filter::{DynamicFilterConfig, DynamicPointFilter},
+    frontier_exploration::{is_frontier_near, next_frontier_goal, FrontierConfig},
     lidar_graph_slam::{LidarGraphSlam, LidarGraphSlamConfig},
     lidar_loop_scenario::{
         corridor_loop_deltas, corridor_loop_start, corridor_loop_start_for, corridor_loop_walls,
@@ -51,9 +53,21 @@ const MAX_CUSTOM_WALLS: usize = 64;
 /// Pose-graph iterations per frame while a re-optimization is pending, so a
 /// loop closure never freezes the frame.
 const OPTIMIZE_ITERATIONS_PER_FRAME: usize = 2;
+/// Node scans folded into a background grid rebuild per frame.
+const GRID_REBUILD_NODES_PER_FRAME: usize = 12;
 const MCL_PARTICLES: usize = 2_000;
 /// Navigate on the MCL estimate only once the particles agree this well \[m\].
 const MCL_CONFIDENT_SPREAD: f64 = 0.4;
+/// Re-check that the exploration goal is still a frontier this often \[s\].
+const EXPLORE_RECHECK: f64 = 0.5;
+const FRONTIER: Color32 = Color32::from_rgb(255, 160, 60);
+/// DWA's trajectory while it overrides Pure Pursuit.
+const LOCAL_PLAN: Color32 = Color32::from_rgb(250, 240, 120);
+/// People are squares of this half-size \[m\] walking at about 0.7 m/s.
+const PERSON_HALF_SIZE: f64 = 0.22;
+const PERSON_SPEED: f64 = 0.7;
+const MAX_PEOPLE: usize = 8;
+const PERSON: Color32 = Color32::from_rgb(200, 120, 255);
 /// A kidnapped robot lands at least this far from any wall \[m\].
 const KIDNAP_CLEARANCE: f64 = 0.8;
 
@@ -408,6 +422,9 @@ pub struct SlamDriveDemo {
     grid_nodes: usize,
     /// Bumped whenever `grid` (or the frozen MCL map) changes.
     grid_version: u64,
+    /// A rebuild at the optimized poses in progress, a few nodes per frame,
+    /// and how many nodes it has folded in; `grid` is used until it is done.
+    grid_rebuild: Option<(OccupancyGrid, usize)>,
     grid_texture: Option<(u64, egui::TextureHandle)>,
     pub(crate) show_grid: bool,
     navigator: Navigator,
@@ -416,6 +433,45 @@ pub struct SlamDriveDemo {
     kidnappings: usize,
     /// Joystick deflection `(forward, turn)` from the last frame.
     joystick: Option<(f64, f64)>,
+    /// Raw ranges of each node's scan, so the grid also learns the free
+    /// space along beams without a return.
+    node_ranges: Vec<Vec<f64>>,
+    /// Drive to frontiers until the map is complete.
+    pub(crate) explore: bool,
+    exploration: ExploreState,
+    /// People walking around: seen by the LiDAR, not in the map.
+    pub(crate) people_count: usize,
+    people: Vec<Pose2D>,
+    /// Keep LiDAR points on moving objects out of SLAM and the map.
+    pub(crate) ignore_moving: bool,
+    dynamic_filter: DynamicPointFilter,
+    /// Scan points the filter has kept out of SLAM so far, and the last
+    /// scan's (body frame) for drawing.
+    dynamic_points: usize,
+    last_dynamic: Vec<Vector2<f64>>,
+    /// Ticks the robot was blocked by a person.
+    person_bumps: usize,
+}
+
+/// Progress of frontier exploration.
+#[derive(Debug, Default)]
+struct ExploreState {
+    /// The frontier being driven to and its cluster.
+    target: Option<Vector2<f64>>,
+    cells: Vec<Vector2<f64>>,
+    /// Frontiers the planner could not reach.
+    failed: Vec<Vector2<f64>>,
+    since_check: f64,
+    complete: bool,
+    goals: usize,
+}
+
+fn new_dynamic_filter() -> DynamicPointFilter {
+    DynamicPointFilter::new(
+        Vector2::new(WORLD_X.0, WORLD_Y.0),
+        Vector2::new(WORLD_X.1, WORLD_Y.1),
+        DynamicFilterConfig::default(),
+    )
 }
 
 fn empty_grid() -> OccupancyGrid {
@@ -478,12 +534,23 @@ impl SlamDriveDemo {
             grid: empty_grid(),
             grid_nodes: 0,
             grid_version: 0,
+            grid_rebuild: None,
             grid_texture: None,
             show_grid: true,
             navigator: Navigator::default(),
             mcl: None,
             kidnappings: 0,
             joystick: None,
+            node_ranges: Vec::new(),
+            explore: false,
+            exploration: ExploreState::default(),
+            people_count: 0,
+            people: Vec::new(),
+            ignore_moving: true,
+            dynamic_filter: new_dynamic_filter(),
+            dynamic_points: 0,
+            last_dynamic: Vec::new(),
+            person_bumps: 0,
         }
     }
 
@@ -495,6 +562,12 @@ impl SlamDriveDemo {
         self.slam = LidarGraphSlam::new(Self::slam_config(self.ambiguity_check), pose);
         self.rebuild_walls();
         self.slam_update(Pose2D::origin());
+    }
+
+    /// Screen rect of the scene in the last frame.
+    #[cfg(test)]
+    pub(crate) fn last_map_rect(&self) -> Option<Rect> {
+        self.last_map_rect
     }
 
     /// Whether SLAM is paused for localization on the frozen map.
@@ -509,7 +582,9 @@ impl SlamDriveDemo {
             return;
         }
         for (index, pose) in poses.iter().enumerate().skip(self.grid_nodes) {
-            if let Some(scan) = self.slam.node_scan(index) {
+            if let Some(ranges) = self.node_ranges.get(index) {
+                self.grid.insert_ranges(*pose, ranges, MAX_RANGE);
+            } else if let Some(scan) = self.slam.node_scan(index) {
                 self.grid.insert_scan(*pose, scan);
             }
         }
@@ -517,20 +592,53 @@ impl SlamDriveDemo {
         self.grid_version += 1;
     }
 
-    /// Rebuilds the grid after the graph poses moved (loop closure).
+    /// Rebuilds the grid now (graph poses moved, or the map is frozen).
     fn rebuild_grid(&mut self) {
+        self.grid_rebuild = None;
         self.grid = empty_grid();
         self.grid_nodes = 0;
         self.extend_grid();
     }
 
-    /// Spends this frame's optimizer budget on a pending re-optimization.
-    fn step_optimizer(&mut self) {
-        if self.slam.optimization_pending()
-            && !self.slam.optimize_step(OPTIMIZE_ITERATIONS_PER_FRAME)
-        {
-            self.rebuild_grid();
+    /// Starts rebuilding the grid at the new graph poses in the background.
+    fn schedule_grid_rebuild(&mut self) {
+        self.grid_rebuild = Some((empty_grid(), 0));
+    }
+
+    /// Folds a few more node scans into the background rebuild and swaps it
+    /// in once it has caught up with every node.
+    fn step_grid_rebuild(&mut self) {
+        let Some((mut grid, mut done)) = self.grid_rebuild.take() else {
+            return;
+        };
+        let poses = self.slam.node_poses();
+        let end = (done + GRID_REBUILD_NODES_PER_FRAME).min(poses.len());
+        for (index, pose) in poses.iter().enumerate().take(end).skip(done) {
+            if let Some(ranges) = self.node_ranges.get(index) {
+                grid.insert_ranges(*pose, ranges, MAX_RANGE);
+            } else if let Some(scan) = self.slam.node_scan(index) {
+                grid.insert_scan(*pose, scan);
+            }
         }
+        done = end;
+        if done == poses.len() {
+            self.grid = grid;
+            self.grid_nodes = done;
+            self.grid_version += 1;
+        } else {
+            self.grid_rebuild = Some((grid, done));
+        }
+    }
+
+    /// Spends this frame's budget on deferred SLAM work (queued loop checks,
+    /// a pending re-optimization) and on a background grid rebuild.
+    fn step_optimizer(&mut self) {
+        let optimizing = self.slam.optimization_pending();
+        self.slam.background_step(OPTIMIZE_ITERATIONS_PER_FRAME);
+        if optimizing && !self.slam.optimization_pending() {
+            self.schedule_grid_rebuild();
+        }
+        self.step_grid_rebuild();
     }
 
     /// Freezes the map, teleports the robot to a random free spot and starts
@@ -538,9 +646,9 @@ impl SlamDriveDemo {
     /// (global localization); later ones leave them believing the old pose.
     fn kidnap(&mut self) -> bool {
         if self.mcl.is_none() {
-            if self.slam.optimization_pending() {
-                self.slam.optimize();
-            }
+            // Finish queued loop checks and the optimization before the
+            // map is frozen.
+            while self.slam.background_step(OPTIMIZE_ITERATIONS_PER_FRAME) {}
             self.rebuild_grid();
         }
         let grid = self
@@ -578,7 +686,7 @@ impl SlamDriveDemo {
         self.truth_trail.clear();
         self.odometry_trail.clear();
         self.front_end_trail.clear();
-        self.navigator.cancel();
+        self.set_explore(false);
         self.auto_drive = false;
         self.kidnappings += 1;
         self.grid_version += 1;
@@ -597,8 +705,8 @@ impl SlamDriveDemo {
             pose_graph: PoseGraphConfig {
                 max_iterations: 30,
                 linear_solver: LinearSolver::BlockSparsePcg {
-                    max_iterations: 1_000,
-                    tolerance: 1.0e-8,
+                    max_iterations: 100,
+                    tolerance: 1.0e-4,
                 },
                 ..PoseGraphConfig::default()
             },
@@ -646,6 +754,8 @@ impl SlamDriveDemo {
             auto_drive: self.auto_drive,
             show_front_end_map: self.show_front_end_map,
             show_grid: self.show_grid,
+            people_count: self.people_count,
+            ignore_moving: self.ignore_moving,
             ..Self::blank()
         };
         fresh.start();
@@ -671,6 +781,12 @@ impl SlamDriveDemo {
         if let Some(value) = crate::share::boolean(query, "grid") {
             self.show_grid = value;
         }
+        if let Some(value) = crate::share::bounded_f32(query, "people", 0.0, MAX_PEOPLE as f32) {
+            self.people_count = value as usize;
+        }
+        if let Some(value) = crate::share::boolean(query, "ignore_moving") {
+            self.ignore_moving = value;
+        }
         let preset = crate::share::value(query, "world").and_then(WorldPreset::from_slug);
         let custom = crate::share::value(query, "walls").map(decode_walls);
         let ambiguity_check = crate::share::boolean(query, "alias_check");
@@ -687,13 +803,15 @@ impl SlamDriveDemo {
 
     pub fn share_query_suffix(&self) -> String {
         let mut query = format!(
-            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&grid={}&world={}&alias_check={}",
+            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&grid={}&people={}&ignore_moving={}&world={}&alias_check={}",
             self.odometry_scale_error_pct,
             self.yaw_drift_deg_per_m,
             self.range_noise_cm,
             u8::from(self.auto_drive),
             u8::from(self.show_front_end_map),
             u8::from(self.show_grid),
+            self.people_count,
+            u8::from(self.ignore_moving),
             self.preset.slug(),
             u8::from(self.ambiguity_check),
         );
@@ -704,18 +822,19 @@ impl SlamDriveDemo {
         query
     }
 
-    fn scan(&mut self) -> Vec<Vector2<f64>> {
+    /// Noisy ranges (infinite for no return) of a LiDAR scan at the truth.
+    fn scan(&mut self) -> Vec<f64> {
         let sigma = f64::from(self.range_noise_cm) / 100.0;
         let noise = Normal::new(0.0, sigma.max(1.0e-9)).expect("finite noise");
-        let ranges: Vec<f64> = ray_cast_ranges(self.truth, &self.walls, BEAMS, MAX_RANGE)
+        ray_cast_ranges(self.truth, &self.scene_walls(), BEAMS, MAX_RANGE)
             .into_iter()
             .map(|range| range + noise.sample(&mut self.rng))
-            .collect();
-        ranges_to_points(&ranges)
+            .collect()
     }
 
     fn slam_update(&mut self, odom_delta: Pose2D) {
-        let scan = self.scan();
+        let ranges = self.scan();
+        let scan = ranges_to_points(&ranges);
         if let Some(mcl) = &mut self.mcl {
             mcl.predict(odom_delta);
             mcl.update(&scan);
@@ -723,15 +842,45 @@ impl SlamDriveDemo {
             self.truth_trail.push(self.truth);
             return;
         }
-        let update = self.slam.update(odom_delta, &scan);
+        // Keep people out of scan matching and the map: points in space the
+        // last scans saw as free are moving (judged at the predicted pose).
+        let predicted = compose_pose(self.slam.front_end_pose(), odom_delta);
+        let mut ranges = ranges;
+        self.last_dynamic.clear();
+        let static_scan = if self.ignore_moving {
+            let world = transform_scan_to_world(&scan, predicted);
+            let mut kept = Vec::with_capacity(scan.len());
+            let mut points = scan.iter().zip(world);
+            for range in &mut ranges {
+                if !range.is_finite() {
+                    continue;
+                }
+                let Some((body, world)) = points.next() else {
+                    break;
+                };
+                if self.dynamic_filter.is_dynamic(world) {
+                    *range = f64::NAN;
+                    self.dynamic_points += 1;
+                    self.last_dynamic.push(*body);
+                } else {
+                    kept.push(*body);
+                }
+            }
+            kept
+        } else {
+            scan.clone()
+        };
+        let update = self.slam.update(odom_delta, &static_scan);
+        self.dynamic_filter
+            .observe(self.slam.front_end_pose(), &scan);
         if update.new_node.is_some() {
             self.node_truth.push(self.truth);
+            self.node_ranges.push(ranges);
         }
         if update.optimized {
-            self.rebuild_grid();
-        } else {
-            self.extend_grid();
+            self.schedule_grid_rebuild();
         }
+        self.extend_grid();
         self.last_scan = scan;
         self.truth_trail.push(self.truth);
         self.odometry_trail.push(self.odometry);
@@ -753,8 +902,18 @@ impl SlamDriveDemo {
     fn navigation_control(&mut self) -> Option<(f64, f64)> {
         let (pose, confident) = self.believed_pose();
         let grid = self.mcl.as_ref().map_or(&self.grid, |mcl| mcl.grid());
-        self.navigator
-            .control(grid, pose, confident, DRIVE_SPEED, TURN_RATE, DT)
+        // The live scan, placed at the estimate, guards against what the
+        // map does not show.
+        let obstacles = transform_scan_to_world(&self.last_scan, pose);
+        self.navigator.control(
+            grid,
+            pose,
+            confident,
+            &obstacles,
+            DRIVE_SPEED,
+            TURN_RATE,
+            DT,
+        )
     }
 
     fn auto_control(&self) -> (f64, f64) {
@@ -797,16 +956,110 @@ impl SlamDriveDemo {
         })
     }
 
+    /// Walls plus the outline of every person, as the LiDAR sees them.
+    fn scene_walls(&self) -> Vec<LineSegment> {
+        let mut segments = self.walls.clone();
+        for person in &self.people {
+            segments.extend(rectangle(
+                (person.x - PERSON_HALF_SIZE, person.y - PERSON_HALF_SIZE),
+                (person.x + PERSON_HALF_SIZE, person.y + PERSON_HALF_SIZE),
+            ));
+        }
+        segments
+    }
+
+    /// Distance from the robot center at `point` to the nearest person edge.
+    fn person_clearance(&self, point: Vector2<f64>) -> f64 {
+        self.people
+            .iter()
+            .map(|person| {
+                let dx = ((point.x - person.x).abs() - PERSON_HALF_SIZE).max(0.0);
+                let dy = ((point.y - person.y).abs() - PERSON_HALF_SIZE).max(0.0);
+                dx.hypot(dy)
+            })
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    /// Spawns or removes people to match `people_count` and walks them:
+    /// straight ahead, turning to a random heading at walls, other people
+    /// or on touching the robot.
+    fn step_people(&mut self) {
+        self.people.truncate(self.people_count);
+        let robot = Vector2::new(self.truth.x, self.truth.y);
+        while self.people.len() < self.people_count {
+            let spawned = (0..500).find_map(|_| {
+                let point = Vector2::new(
+                    rand::Rng::random_range(&mut self.rng, WORLD_X.0..WORLD_X.1),
+                    rand::Rng::random_range(&mut self.rng, WORLD_Y.0..WORLD_Y.1),
+                );
+                let inside = self.is_inside_world(point);
+                (inside && wall_clearance(&self.walls, point) > 1.0 && (point - robot).norm() > 3.0)
+                    .then(|| {
+                        let heading = rand::Rng::random_range(
+                            &mut self.rng,
+                            -std::f64::consts::PI..std::f64::consts::PI,
+                        );
+                        Pose2D::new(point.x, point.y, heading)
+                    })
+            });
+            match spawned {
+                Some(person) => self.people.push(person),
+                None => break,
+            }
+        }
+        for index in 0..self.people.len() {
+            let person = self.people[index];
+            let next = compose_pose(person, Pose2D::new(PERSON_SPEED * DT, 0.0, 0.0));
+            let point = Vector2::new(next.x, next.y);
+            let crowded =
+                self.people.iter().enumerate().any(|(other, p)| {
+                    other != index && (Vector2::new(p.x, p.y) - point).norm() < 0.8
+                });
+            // People do not yield to the robot (only a touch stops them):
+            // avoiding them is the robot's job.
+            if wall_clearance(&self.walls, point) < PERSON_HALF_SIZE + 0.25
+                || (point - robot).norm() < ROBOT_RADIUS + PERSON_HALF_SIZE
+                || crowded
+            {
+                let turn = rand::Rng::random_range(&mut self.rng, 1.5..4.7);
+                self.people[index].yaw = wrap_angle(person.yaw + turn);
+            } else {
+                self.people[index] = next;
+            }
+        }
+    }
+
+    /// Whether `point` lies in the walkable area: a ray to the right from
+    /// there crosses the closed wall outlines an odd number of times (inside
+    /// the outer walls, outside the corridor loop's inner block and pillars).
+    fn is_inside_world(&self, point: Vector2<f64>) -> bool {
+        let crossings = self
+            .walls
+            .iter()
+            .filter(|wall| {
+                let (a, b) = (wall.start, wall.end);
+                (a.y > point.y) != (b.y > point.y)
+                    && point.x < a.x + (point.y - a.y) / (b.y - a.y) * (b.x - a.x)
+            })
+            .count();
+        crossings % 2 == 1
+    }
+
     /// Advances the simulation by one tick; returns whether the robot moved.
     fn tick(&mut self, speed: f64, omega: f64) -> bool {
         self.step_optimizer();
+        self.step_people();
         if speed == 0.0 && omega == 0.0 {
             return false;
         }
         let mut next = compose_pose(self.truth, Pose2D::new(speed * DT, 0.0, omega * DT));
-        if wall_clearance(&self.walls, Vector2::new(next.x, next.y)) < ROBOT_RADIUS {
+        let point = Vector2::new(next.x, next.y);
+        if wall_clearance(&self.walls, point) < ROBOT_RADIUS {
             // Bumped into a wall: turn in place only.
             next = Pose2D::new(self.truth.x, self.truth.y, next.yaw);
+        } else if self.person_clearance(point) < ROBOT_RADIUS {
+            next = Pose2D::new(self.truth.x, self.truth.y, next.yaw);
+            self.person_bumps += 1;
         }
         let true_delta = relative_pose(self.truth, next);
         self.truth = next;
@@ -899,6 +1152,29 @@ impl SlamDriveDemo {
                 error(self.slam.pose()),
             ));
         }
+        if !self.people.is_empty() && self.mcl.is_none() {
+            ui.label(if self.ignore_moving {
+                format!(
+                    "{} scan points on moving objects kept out of SLAM so far (purple).",
+                    self.dynamic_points
+                )
+            } else {
+                "Moving people go into scan matching and the map: watch the SLAM error grow."
+                    .to_string()
+            });
+        }
+        if self.explore {
+            ui.label(format!(
+                "Exploring: frontier {} (orange), {} unreachable skipped.",
+                self.exploration.goals,
+                self.exploration.failed.len()
+            ));
+        } else if self.exploration.complete {
+            ui.label(format!(
+                "Exploration complete: no reachable frontier left after {} goals and {:.0} m.",
+                self.exploration.goals, self.driven
+            ));
+        }
         match &self.navigator.status {
             NavStatus::Idle => {}
             NavStatus::Following => {
@@ -917,7 +1193,8 @@ impl SlamDriveDemo {
         ui.label(
             "Arrow keys or the joystick drive (click the map first for keys). Click the map to \
              send the robot to a goal: A* plans on the occupancy grid built from the SLAM map and \
-             Pure Pursuit follows it. Drive a full lap — or tick Auto-drive on the corridor loop — \
+             Pure Pursuit follows it; tick Explore and it maps the world by itself, frontier by \
+             frontier. Drive a full lap — or tick Auto-drive on the corridor loop — \
              to close the loop. Kidnap robot freezes the map, teleports the robot and localizes it \
              with MCL (yellow particles, gray robot = truth); in long, similar-looking corridors \
              it can converge on a look-alike spot until a distinctive feature comes into view. \
@@ -1009,6 +1286,67 @@ impl SlamDriveDemo {
         Some((start, end))
     }
 
+    /// Starts or stops frontier exploration.
+    fn set_explore(&mut self, on: bool) {
+        self.explore = on && !self.localizing();
+        self.exploration = ExploreState::default();
+        self.navigator.cancel();
+        if self.explore {
+            self.auto_drive = false;
+        }
+    }
+
+    /// Picks the next frontier when the navigator is idle or the current
+    /// one has been seen; stops when no reachable frontier is left.
+    fn explore_step(&mut self) {
+        let config = FrontierConfig::default();
+        if let NavStatus::Failed(_) = self.navigator.status {
+            if let Some(target) = self.exploration.target.take() {
+                self.exploration.failed.push(target);
+            }
+            self.navigator.status = NavStatus::Idle;
+        }
+        self.exploration.since_check += DT;
+        let seen = self.navigator.is_active()
+            && self.exploration.since_check >= EXPLORE_RECHECK
+            && self
+                .exploration
+                .target
+                .is_some_and(|target| !is_frontier_near(&self.grid, target, 0.5));
+        if self.exploration.since_check >= EXPLORE_RECHECK {
+            self.exploration.since_check = 0.0;
+        }
+        if self.navigator.is_active() && !seen {
+            return;
+        }
+        let pose = self.slam.pose();
+        match next_frontier_goal(
+            &self.grid,
+            Vector2::new(pose.x, pose.y),
+            &self.exploration.failed,
+            &config,
+        ) {
+            Some(goal) => {
+                self.navigator.set_goal(goal.target);
+                self.exploration.target = Some(goal.target);
+                self.exploration.cells = goal
+                    .frontier
+                    .cells
+                    .iter()
+                    .map(|&(x, y)| self.grid.cell_center(x, y))
+                    .collect();
+                self.exploration.goals += 1;
+            }
+            None => {
+                self.navigator.cancel();
+                self.explore = false;
+                self.exploration.target = None;
+                self.exploration.cells.clear();
+                self.exploration.complete = true;
+            }
+        }
+    }
+
     /// Driver input this frame: keyboard or joystick, then the navigator,
     /// then auto-drive.
     fn control(&mut self, ctx: &egui::Context) -> (f64, f64) {
@@ -1022,10 +1360,16 @@ impl SlamDriveDemo {
             })
         };
         if let Some(command) = manual.filter(|command| *command != (0.0, 0.0)) {
+            if self.explore {
+                self.set_explore(false);
+            }
             if self.navigator.is_active() {
                 self.navigator.cancel();
             }
             return command;
+        }
+        if self.explore && !self.localizing() {
+            self.explore_step();
         }
         if self.navigator.is_active() {
             return self.navigation_control().unwrap_or((0.0, 0.0));
@@ -1081,7 +1425,8 @@ impl SlamDriveDemo {
                 .changed()
                 && self.auto_drive
             {
-                self.navigator.cancel();
+                self.set_explore(false);
+                self.auto_drive = true;
             }
             if ui
                 .button("Reset")
@@ -1105,6 +1450,11 @@ impl SlamDriveDemo {
                 "Map at front-end poses (no loop closure)",
             );
             ui.checkbox(&mut self.show_grid, "Occupancy grid");
+            ui.checkbox(&mut self.ignore_moving, "Ignore moving objects")
+                .on_hover_text(
+                    "Keep LiDAR points that land in space recent scans saw as free (people \
+                     walking) out of scan matching and the map. They are drawn purple.",
+                );
         });
         ui.horizontal_wrapped(|ui| {
             let kidnap_label = if self.localizing() {
@@ -1130,20 +1480,47 @@ impl SlamDriveDemo {
                     mcl.initialize_global();
                 }
             }
+            let mut explore = self.explore;
+            if ui
+                .add_enabled(
+                    !self.localizing(),
+                    egui::Checkbox::new(&mut explore, "Explore (frontiers)"),
+                )
+                .on_hover_text(
+                    "Drive autonomously to the nearest frontier between known free and unknown \
+                     space (A* + Pure Pursuit) until no reachable frontier is left.",
+                )
+                .changed()
+            {
+                self.set_explore(explore);
+            }
             if self.navigator.is_active() && ui.button("Cancel goal").clicked() {
                 self.navigator.cancel();
             }
         });
-        ui.horizontal_wrapped(|ui| {
+        // Sliders are composite widgets that a wrapping row cannot break,
+        // so stack them on narrow (phone) screens instead of overflowing.
+        let sliders = |ui: &mut egui::Ui, demo: &mut Self| {
             ui.add(
-                egui::Slider::new(&mut self.odometry_scale_error_pct, 0.0..=10.0)
+                egui::Slider::new(&mut demo.odometry_scale_error_pct, 0.0..=10.0)
                     .text("odometry scale error %"),
             );
             ui.add(
-                egui::Slider::new(&mut self.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"),
+                egui::Slider::new(&mut demo.yaw_drift_deg_per_m, 0.0..=3.0).text("yaw drift °/m"),
             );
-            ui.add(egui::Slider::new(&mut self.range_noise_cm, 0.0..=5.0).text("range noise cm"));
-        });
+            ui.add(egui::Slider::new(&mut demo.range_noise_cm, 0.0..=5.0).text("range noise cm"));
+            ui.add(egui::Slider::new(&mut demo.people_count, 0..=MAX_PEOPLE).text("moving people"))
+                .on_hover_text(
+                    "People walk around: the LiDAR sees them but the map does not. While \
+                 navigating, DWA steers around them (yellow arc) when the Pure Pursuit arc \
+                 would hit one.",
+                );
+        };
+        if ui.available_width() < 800.0 {
+            ui.vertical(|ui| sliders(ui, self));
+        } else {
+            ui.horizontal(|ui| sliders(ui, self));
+        }
 
         let (speed, omega) = self.control(ctx);
         let moving = self.tick(speed, omega);
@@ -1202,6 +1579,42 @@ impl SlamDriveDemo {
                 draw_robot(&painter, rect, self.truth, TRUTH_ROBOT);
                 draw_robot(&painter, rect, estimate, GRAPH);
             }
+            if self.mcl.is_none() {
+                for point in transform_scan_to_world(&self.last_dynamic, self.slam.pose()) {
+                    painter.circle_filled(to_screen(rect, point.x, point.y), 2.2, PERSON);
+                }
+            }
+            for person in &self.people {
+                painter.rect_filled(
+                    Rect::from_two_pos(
+                        to_screen(
+                            rect,
+                            person.x - PERSON_HALF_SIZE,
+                            person.y + PERSON_HALF_SIZE,
+                        ),
+                        to_screen(
+                            rect,
+                            person.x + PERSON_HALF_SIZE,
+                            person.y - PERSON_HALF_SIZE,
+                        ),
+                    ),
+                    1.0,
+                    PERSON,
+                );
+            }
+            if self.explore {
+                for cell in &self.exploration.cells {
+                    painter.circle_filled(to_screen(rect, cell.x, cell.y), 1.5, FRONTIER);
+                }
+            }
+            if let Some(local) = self.navigator.local_plan() {
+                let points = local
+                    .points
+                    .iter()
+                    .map(|p| to_screen(rect, p.x, p.y))
+                    .collect();
+                painter.add(egui::Shape::line(points, Stroke::new(2.5_f32, LOCAL_PLAN)));
+            }
             draw_path(
                 &painter,
                 |x, y| to_screen(rect, x, y),
@@ -1252,7 +1665,9 @@ impl SlamDriveDemo {
             || self.drag_start.is_some()
             || self.joystick.is_some()
             || self.navigator.is_active()
-            || self.slam.optimization_pending()
+            || self.slam.background_pending()
+            || self.grid_rebuild.is_some()
+            || !self.people.is_empty()
         {
             ctx.request_repaint_after(std::time::Duration::from_secs_f64(DT));
         }
@@ -1493,28 +1908,71 @@ mod tests {
 
     #[test]
     fn mcl_finds_the_kidnapped_robot_on_the_frozen_map() {
-        let mut demo = mapped_demo(1_700);
+        // Explore the pillar hall, then kidnap the robot six times in a row:
+        // the first is a global localization, the others start from a
+        // confident, wrong belief. Require five of six to end within 0.3 m.
+        let mut demo = SlamDriveDemo {
+            preset: WorldPreset::PillarHall,
+            ..SlamDriveDemo::blank()
+        };
+        demo.start();
+        explore(&mut demo, 8_000);
         let nodes = demo.slam.node_poses().len();
-        assert!(demo.kidnap());
-        assert!(demo.localizing());
-        // Drive on from the new spot, turning away from walls.
-        let mut localized_at = None;
-        for tick in 0..1_200 {
-            let (speed, omega) = wander(&demo);
-            demo.tick(speed, omega);
-            let (estimate, confident) = demo.believed_pose();
-            let error = relative_pose(demo.truth, estimate);
-            if confident && error.x.hypot(error.y) < 0.3 {
-                localized_at.get_or_insert(tick);
+        let mut localized = 0;
+        for seed in 1..=6 {
+            demo.rng = StdRng::seed_from_u64(seed);
+            assert!(demo.kidnap());
+            assert!(demo.localizing());
+            for _ in 0..900 {
+                let (speed, omega) = wander(&demo);
+                demo.tick(speed, omega);
             }
+            let (estimate, _) = demo.believed_pose();
+            let error = relative_pose(demo.truth, estimate);
+            localized += usize::from(error.x.hypot(error.y) < 0.3);
         }
-        assert!(localized_at.is_some(), "MCL never localized the robot");
-        let (estimate, confident) = demo.believed_pose();
-        let error = relative_pose(demo.truth, estimate);
-        assert!(confident, "particles still spread out");
-        assert!(error.x.hypot(error.y) < 0.3, "MCL error {error:?}");
+        assert!(
+            localized >= 5,
+            "only {localized} of 6 kidnappings localized"
+        );
         // SLAM is paused while localizing.
         assert_eq!(demo.slam.node_poses().len(), nodes);
+    }
+
+    #[test]
+    fn moving_people_stay_out_of_slam() {
+        // Six people who do not yield, across the hall and back; this seed
+        // drifts by more than a meter when people go into scan matching.
+        let run = |ignore_moving: bool| {
+            let mut demo = SlamDriveDemo {
+                preset: WorldPreset::PillarHall,
+                rng: StdRng::seed_from_u64(3),
+                people_count: 6,
+                ignore_moving,
+                ..SlamDriveDemo::blank()
+            };
+            demo.start();
+            let mut worst = 0.0_f64;
+            for goal in [Vector2::new(10.0, 7.5), Vector2::new(-12.0, -7.5)] {
+                demo.navigator.set_goal(goal);
+                for _ in 0..1_500 {
+                    let Some((speed, omega)) = demo.navigation_control() else {
+                        break;
+                    };
+                    demo.tick(speed, omega);
+                    let error = relative_pose(demo.truth, demo.slam.pose());
+                    worst = worst.max(error.x.hypot(error.y));
+                }
+            }
+            (worst, demo.dynamic_points)
+        };
+        let (unfiltered, _) = run(false);
+        let (filtered, flagged) = run(true);
+        assert!(flagged > 100, "only {flagged} points flagged");
+        assert!(
+            filtered < 0.5 && filtered < 0.5 * unfiltered,
+            "worst SLAM error {filtered:.2} m filtered vs {unfiltered:.2} m unfiltered"
+        );
     }
 
     #[test]
@@ -1564,6 +2022,105 @@ mod tests {
         run(vec![button(target, false)], &mut demo);
         let goal = demo.navigator.goal().expect("goal set");
         assert!((goal - Vector2::new(-12.0, -8.5)).norm() < 0.1, "{goal:?}");
+    }
+
+    /// Runs exploration for at most `max_ticks`; returns the ticks used.
+    fn explore(demo: &mut SlamDriveDemo, max_ticks: usize) -> usize {
+        demo.set_explore(true);
+        for tick in 0..max_ticks {
+            if !demo.explore {
+                return tick;
+            }
+            demo.explore_step();
+            let (speed, omega) = if demo.navigator.is_active() {
+                demo.navigation_control().unwrap_or((0.0, 0.0))
+            } else {
+                (0.0, 0.0)
+            };
+            demo.tick(speed, omega);
+            assert!(clearance(demo) >= ROBOT_RADIUS - 1e-9);
+        }
+        max_ticks
+    }
+
+    #[test]
+    fn exploration_completes_on_the_corridor_loop() {
+        let mut demo = SlamDriveDemo::default();
+        let ticks = explore(&mut demo, 6_000);
+        assert!(
+            demo.exploration.complete,
+            "still exploring after {ticks} ticks"
+        );
+        // A full lap is ~85 m; exploring sees most of it from a distance.
+        assert!(demo.driven > 40.0, "explored only {:.0} m", demo.driven);
+    }
+
+    #[test]
+    fn navigation_steers_around_walking_people() {
+        // Across the unexplored hall and back with six people who do not
+        // yield: the map grows on the way and the people are only in the
+        // live scan. Three seeds; at least five of six goals, few bumps.
+        let (mut reached, mut bumps) = (0, 0);
+        for seed in 1..=3 {
+            let mut demo = SlamDriveDemo {
+                preset: WorldPreset::PillarHall,
+                rng: StdRng::seed_from_u64(seed),
+                people_count: 6,
+                ..SlamDriveDemo::blank()
+            };
+            demo.start();
+            for goal in [Vector2::new(10.0, 7.5), Vector2::new(-12.0, -7.5)] {
+                demo.navigator.set_goal(goal);
+                for _ in 0..1_500 {
+                    let Some((speed, omega)) = demo.navigation_control() else {
+                        break;
+                    };
+                    demo.tick(speed, omega);
+                    assert!(clearance(&demo) >= ROBOT_RADIUS - 1e-9);
+                }
+                reached += usize::from(demo.navigator.status == NavStatus::Reached);
+            }
+            assert_eq!(demo.people.len(), 6);
+            bumps += demo.person_bumps;
+        }
+        assert!(reached >= 5, "reached {reached} of 6 goals");
+        assert!(bumps <= 6, "{bumps} ticks blocked by a person");
+    }
+
+    #[test]
+    fn exploration_maps_the_pillar_hall() {
+        let mut demo = SlamDriveDemo {
+            preset: WorldPreset::PillarHall,
+            ..SlamDriveDemo::blank()
+        };
+        demo.start();
+        let ticks = explore(&mut demo, 12_000);
+        assert!(
+            demo.exploration.complete,
+            "still exploring after {ticks} ticks"
+        );
+        // Sample the hall floor away from walls and pillars.
+        let walls = WorldPreset::PillarHall.walls();
+        let (mut floor, mut known) = (0, 0);
+        for i in 0..60 {
+            for j in 0..40 {
+                let point = Vector2::new(
+                    -14.5 + 29.0 * i as f64 / 59.0,
+                    -9.5 + 19.0 * j as f64 / 39.0,
+                );
+                if wall_clearance(&walls, point) < 0.6 {
+                    continue;
+                }
+                floor += 1;
+                known += usize::from(demo.grid.state_at(point) == CellState::Free);
+            }
+        }
+        let coverage = known as f64 / floor as f64;
+        assert!(
+            coverage > 0.9,
+            "only {:.0} % of the floor is known",
+            100.0 * coverage
+        );
     }
 
     fn auto_drive_wrong_loops(ambiguity_check: bool, seed: u64) -> (usize, usize) {
