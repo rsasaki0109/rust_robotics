@@ -5,6 +5,7 @@ use crate::controller_arena::ControllerArenaDemo;
 use crate::engagement::Experiment;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
+use crate::pushing::PushingDemo;
 use crate::slam::SlamDemo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,6 +15,7 @@ enum PlaygroundTab {
     Slam,
     AdmmFormation,
     ControllerArena,
+    Pushing,
 }
 
 pub struct PlaygroundApp {
@@ -23,6 +25,7 @@ pub struct PlaygroundApp {
     slam_demo: SlamDemo,
     admm_demo: AdmmFormationDemo,
     controller_arena_demo: ControllerArenaDemo,
+    pushing_demo: PushingDemo,
     share_status: Option<&'static str>,
     onboarding_step: Option<u8>,
     recent_experiments: Vec<Experiment>,
@@ -45,6 +48,10 @@ impl PlaygroundApp {
         slam_demo.apply_share_query(&query);
         let mut admm_demo = AdmmFormationDemo::default();
         admm_demo.apply_share_query(&query);
+        let mut pushing_demo = PushingDemo::default();
+        if query.contains("tab=pushing") {
+            pushing_demo.apply_share_query(&query);
+        }
         crate::engagement::track("playground_loaded");
         if !query.is_empty() {
             crate::engagement::track("shared_experiment_opened");
@@ -56,6 +63,7 @@ impl PlaygroundApp {
             slam_demo,
             admm_demo,
             controller_arena_demo,
+            pushing_demo,
             share_status: None,
             onboarding_step: (!crate::engagement::onboarding_complete() && query.is_empty())
                 .then_some(0),
@@ -74,6 +82,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => "SLAM",
             PlaygroundTab::AdmmFormation => "ADMM Formation",
             PlaygroundTab::ControllerArena => "Controller Arena",
+            PlaygroundTab::Pushing => "Pushing",
         }
     }
 
@@ -84,6 +93,7 @@ impl PlaygroundApp {
             PlaygroundTab::Slam => self.slam_demo.share_query(),
             PlaygroundTab::AdmmFormation => self.admm_demo.share_query(),
             PlaygroundTab::ControllerArena => self.controller_arena_demo.share_query(),
+            PlaygroundTab::Pushing => self.pushing_demo.share_query(),
         }
     }
 
@@ -100,6 +110,9 @@ impl PlaygroundApp {
         self.slam_demo.apply_share_query(query);
         self.admm_demo.apply_share_query(query);
         self.controller_arena_demo.apply_share_query(query);
+        if self.tab == PlaygroundTab::Pushing {
+            self.pushing_demo.apply_share_query(query);
+        }
         self.share_status = None;
     }
 
@@ -168,13 +181,16 @@ impl PlaygroundApp {
                 "Arrow keys drive the robot; compare Particle Filter vs EKF under sensor noise"
             }
             PlaygroundTab::Slam => {
-                "Scrub the timeline to replay EKF-SLAM, FastSLAM, or ICP scan matching on a canned loop"
+                "Replay EKF-SLAM, FastSLAM, ICP, or LiDAR loop closure — or drive a robot with live LiDAR SLAM"
             }
             PlaygroundTab::AdmmFormation => {
                 "Receding-horizon ADMM formation: four agents track a noisy moving goal past an L-corner"
             }
             PlaygroundTab::ControllerArena => {
                 "Replay Pure Pursuit / Stanley / LQR Steer under identical paths and dynamics"
+            }
+            PlaygroundTab::Pushing => {
+                "Drag the goal pose; face-switching MPPI pushes a box under stick/slide contact"
             }
         }
     }
@@ -188,6 +204,7 @@ impl PlaygroundTab {
             "slam" => Some(Self::Slam),
             "admm" => Some(Self::AdmmFormation),
             "arena" => Some(Self::ControllerArena),
+            "pushing" => Some(Self::Pushing),
             _ => None,
         }
     }
@@ -205,6 +222,7 @@ impl eframe::App for PlaygroundApp {
                     PlaygroundTab::Slam,
                     PlaygroundTab::AdmmFormation,
                     PlaygroundTab::ControllerArena,
+                    PlaygroundTab::Pushing,
                 ] {
                     if ui
                         .selectable_label(self.tab == tab, Self::tab_label(tab))
@@ -267,6 +285,7 @@ impl eframe::App for PlaygroundApp {
                 PlaygroundTab::Slam => self.slam_demo.ui(ctx, ui),
                 PlaygroundTab::AdmmFormation => self.admm_demo.ui(ctx, ui),
                 PlaygroundTab::ControllerArena => self.controller_arena_demo.ui(ctx, ui),
+                PlaygroundTab::Pushing => self.pushing_demo.ui(ctx, ui),
             }
         });
 

@@ -1,8 +1,38 @@
 # Scan-to-Map ICP Design
 
-Status: design draft, no code merged yet.
+Status: **library implementation landed** as
+`rust_robotics_slam::scan_to_map` (`ScanToMapMatcher`), with the deterministic
+`headless_scan_to_map` example gated in CI. The ROS `slam_node` integration
+(phases 2–5 below) is still pending and follows the ROS2 freeze in `plan.md`.
 Audience: next agent picking up corrected-SLAM work on `dev/corrected-slam-eval`.
 Companion to `docs/corrected_slam_evaluation_plan.md`.
+
+## Library implementation (2026-10)
+
+The library slice implements phase 1 (helpers) and the core of the submap
+algorithm without the ROS plumbing:
+
+- `compose_pose`, `relative_pose`, `transform_scan_to_world` — the pose and
+  frame helpers listed in phase 1.
+- `ScanToMapMatcher::update(odom_delta, scan_body)` — predicts with odometry,
+  registers the scan against the submap seeded at the prediction, gates the
+  correction, and inserts accepted keyframes.
+- Registration is **point-to-line** Gauss-Newton directly on the absolute pose
+  (normals from beam-order PCA), not `icp_matching`: the existing
+  point-to-point ICP starts from identity, and `RobustIcp2D` applies its
+  transform twice when seeded with a non-identity initial pose. Because the
+  matcher solves for the absolute pose, no world-residual → body-delta
+  conversion is needed.
+- Submap budget: `max_scans` keyframes, `max_radius` around the prediction,
+  and voxel de-duplication of the merged target (newest keyframe wins).
+- Open questions resolved: *stationary pruning* — scans are inserted only as
+  keyframes (`keyframe_translation` / `keyframe_yaw`); *bad seeds* — gated by
+  `max_correction_translation` / `max_correction_yaw` / `max_mean_residual`,
+  rejected scans are never inserted; *bootstrap* — matching starts once the
+  in-radius submap has `min_correspondences` points, otherwise the prediction
+  is kept and the scan bootstraps the submap.
+- `ScanToMapConfig::scan_to_scan()` (`max_scans = 1`, every scan a keyframe)
+  is the A/B baseline on identical inputs.
 
 ## Why this exists
 
@@ -350,6 +380,41 @@ This is a multi-week effort. Suggested phasing:
   becomes stale instantly. Consider a guard: if the corrected
   pose moves by more than `SLAM_SUBMAP_RESET_DIST_M` (e.g.,
   2 m) within one scan, drop the submap.
+
+## Follow-up: degeneracy and loop closure (2026-10)
+
+- **Degenerate geometry.** In a featureless corridor the translational
+  Hessian has `λ_min / λ_max ≈ 0.01` (vs ≥ 0.09 elsewhere). Without handling,
+  Gauss-Newton steps along the unobservable axis are driven by normal noise.
+  `ScanToMapConfig::degeneracy_ratio` (default 0.03) projects the step out of
+  the weak direction, so the odometry prediction is kept along it. Ablation on
+  `headless_lidar_loop_closure`:
+
+  | `degeneracy_ratio` | front-end final error | node RMSE after loop closure |
+  | --- | ---: | ---: |
+  | 0.0 (off) | 0.62 m | 0.117 m |
+  | 0.03 (default) | 0.38 m | 0.012 m |
+
+- **Loop closure** lives in `rust_robotics_slam::lidar_graph_slam`
+  (`LidarGraphSlam`), not in the matcher: the front end stays local and only
+  its relative motion between nodes feeds the graph. Odometry edges inflate
+  their covariance along weak directions as `κ² M Mᵀ` with
+  `M = Σ dₖ wₖ vₖ vₖᵀ` (systematic, linear-in-distance growth), so a loop
+  correction is absorbed by the corridor section that actually drifted
+  instead of bending the well-constrained parts of the loop.
+
+## Follow-up: perceptual aliasing (2026-10)
+
+With identical pillars every 2.5 m, loop verification against a candidate's
+neighborhood can converge to the alignment one pillar over. Those matches
+have ~100 % inliers and agree with each other, so geometric gates and
+pairwise consistency both pass them; 12 such edges corrupted the map
+(node RMSE 1.81 m vs 0.29 m for scan-to-map alone). The ambiguity check
+re-registers each accepted match from seeds shifted ±1/2/3 m in x and y and
+rejects it when a distinct solution (> 0.3 m away) reaches ≥ 90 % of the
+best inlier count. In featureless corridors the same test rejects matches
+whose along-axis position is unobservable. Cost: up to 12 extra coarse-to-
+fine registrations per accepted candidate.
 
 ## Out of scope for the first PR
 

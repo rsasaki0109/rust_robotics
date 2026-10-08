@@ -215,7 +215,7 @@ impl From<Vector2<f64>> for ControlInput {
 }
 
 /// Path represented as a sequence of 2D points
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Path2D {
     pub points: Vec<Point2D>,
 }

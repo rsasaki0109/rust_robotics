@@ -1277,3 +1277,90 @@ noted.
   exposes an error-threshold flutter artifact (15 switches). 7 focused tests,
   `benchmark_meta_control` CSV+SVG, and the CSV is pinned in the benchmark
   gate. See `docs/meta_control_reproduction.md`.
+
+## Next Concrete Queue (v4 — 2026-10-08)
+
+Status review against the repository on 2026-10-08: `v0.2.0` is tagged on
+GitHub but crates.io still serves `0.1.0` for every crate
+(`rust_robotics_optimization` is unpublished). Maintainer decision for this
+cycle: **publishing, issue filing, and announcements are on hold** — the queue
+below is library work that does not depend on them.
+
+### Hold (maintainer decision, do not start)
+
+- crates.io publish / version bump / GitHub Release.
+- Filing good-first-issues.
+- Announcement wave (TWiR, r/rust, Show HN, X).
+
+### Active
+
+1. ~~**Scan-to-map LiDAR odometry (library slice)**~~ **Done (2026-10-08).**
+   `rust_robotics_slam::scan_to_map::ScanToMapMatcher` per
+   `docs/scan_to_map_icp_design.md`: keyframe submap in the corrected world
+   frame, odometry-seeded point-to-line Gauss-Newton, distance-gated
+   correspondences, correction/residual gates, `scan_to_scan()` A/B preset.
+   `headless_scan_to_map` (CI-gated): position RMSE 0.631 m raw odometry /
+   0.011 m scan-to-scan / 0.002 m scan-to-map over a 28 m biased run.
+2. ~~**Curated docs.rs front page**~~ **Done (2026-10-08).** Umbrella
+   `lib.rs` now carries a module map, feature-flag table, and three runnable
+   doctests (A\*, EKF, scan-to-map).
+3. ~~**CHANGELOG `[Unreleased]` backfill**~~ **Done (2026-10-08).** control
+   no_std, embedded demo, Meta-Control, benchmark gate, Playground onboarding,
+   scan-to-map.
+4. ~~**Fix `RobustIcp2D` double transform.**~~ **Done (2026-10-08).**
+   Residuals and the left-perturbation Jacobian `[I, J w]` are evaluated at
+   the transformed points; the translation test is tightened to 1e-6 (the old
+   code left 0.21 m) and a non-identity seed test was added.
+5. ~~**Loop closure on top of scan-to-map.**~~ **Done (2026-10-08),
+   library + headless example.** `LidarGraphSlam`: nodes every 1 m,
+   coarse-to-fine scan-to-submap loop verification, innovation-gated
+   re-optimization, degeneracy-aware odometry edges, and front-end
+   degeneracy projection. `headless_lidar_loop_closure` (CI-gated): node RMSE
+   10.90 m raw odometry / 0.302 m scan-to-map / 0.012 m with loop closure on a
+   98 m corridor loop with a pillar-free 24 m corridor. Playground SLAM-tab
+   **LiDAR Loop Closure** mode landed 2026-10-08 (lazy-computed run, jump to
+   first closure, front-end vs loop-closed map toggle, share links), plus a
+   live **Drive LiDAR SLAM** mode (arrow keys / auto-drive, odometry-error
+   sliders). Native release: 1.2 ms mean per tick, ~170 ms worst on the
+   largest re-optimization after three laps (245 nodes, block-sparse PCG);
+   graph SLAM error 9 mm vs 1.22 m scan-to-map only. Goes live on Pages once
+   merged to `main`.
+   Course editing landed the same day: world presets, drag-to-draw walls, and
+   share links carrying the course.
+   Perceptual-aliasing guard landed the same day: loop ambiguity check
+   (shifted-seed re-registration), periodic-pillar scenario,
+   `headless_lidar_aliasing` (12 false closures / 1.81 m RMSE off vs 0 /
+   0.032 m on), playground replay scenarios and an Aliased corridor world.
+   Dev profile now optimizes the SLAM and optimizer crates (CI SLAM examples
+   20–50× faster, identical output).
+6. ~~**Loop-closure gallery GIF**~~ **Done (2026-10-08).**
+   `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
+   added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via
+   `rust_robotics_slam::lidar_loop_scenario`.
+6b. **Real-data evaluation (on hold — no data path).** CARMEN reader, Kümmerle
+   relative-pose metric, and `carmen_lidar_slam` landed (synthetic log in CI:
+   relation error 2.58 m odometry / 0.057 m scan-to-map / 0.015 m graph SLAM).
+   Blocked: `ais.informatik.uni-freiburg.de` is not reachable from the
+   development environment; run the example on intel.clf / fr079 / MIT CSAIL
+   with their relations and record results in `docs/datasets.md`, then tune
+   the real-data defaults. The HTTPS proxy of the development environment cannot
+   relay the (HTTP-only) benchmark host even when allowed; maintainer decision
+   2026-10-08: skip until the data is available another way.
+7. **0.3.0 API coherence, continued** — *Tier 1 conformance landed
+   2026-10-08*: `DijkstraPlanner`, `RRTStar: PathPlanner`, planner / tracker
+   contract tests through trait objects, three never-implemented traits
+   deprecated, and two Tier 1 tracker bugs fixed (stale same-length paths,
+   Rear Wheel Feedback sinc). Follow-up the same day: the three dead traits
+   were removed outright for 0.3.0 instead of deprecated (unreleased breaking
+   minor; `Estimator2D` precedent), and DWA keeps an inherent API pinned by
+   `tests/tier1_dwa_contract.rs` (no `LocalPlanner` trait until a second
+   implementer exists). Only remaining item is release-bound: flip
+   `cargo-semver-checks` to a hard gate when 0.3.0 is cut (maintainer
+   decision 2026-10-08: not cutting yet).
+8. ~~**Playground pusher-slider tab**~~ **Done (2026-10-08).** `Pushing` tab:
+   drag/turn the goal, click obstacles, friction slider, presets (translate,
+   90° in-place turn, sideways), stick/slide coloring, share links. Obstacle
+   keep-out weight raised to 1e5 so the slider never overlaps an obstacle on
+   its straight path (400 let it push through); ~0.6 ms per MPPI step native.
+   Drive LiDAR SLAM re-measured with the ambiguity check: 1.1 ms mean tick,
+   163 ms (corridor) / 241 ms (aliased) worst after three laps.

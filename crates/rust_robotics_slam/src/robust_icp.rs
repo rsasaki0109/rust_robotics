@@ -150,8 +150,7 @@ impl<'a> RobustIcp2D<'a> {
             prev_error = error;
 
             // Weighted Gauss-Newton update
-            let Some(delta) = weighted_gauss_newton(&transform, &src_transformed, &nearest_dsts)
-            else {
+            let Some(delta) = weighted_gauss_newton(&src_transformed, &nearest_dsts) else {
                 break;
             };
 
@@ -171,12 +170,10 @@ impl<'a> RobustIcp2D<'a> {
     }
 }
 
-/// Jacobian of transform w.r.t. SE(2) parameters
-fn jacobian(rot: &Rotation2<f64>, landmark: &Vector2<f64>) -> Matrix2x3<f64> {
-    let a = Vector2::new(-landmark[1], landmark[0]);
-    let r = rot.matrix();
-    let b = rot * a;
-    Matrix2x3::new(r[(0, 0)], r[(0, 1)], b[0], r[(1, 0)], r[(1, 1)], b[1])
+/// Jacobian of `exp(δ) ∘ T` applied to a point, w.r.t. the left SE(2)
+/// perturbation `δ = [tx, ty, θ]`, evaluated at the already transformed point.
+fn jacobian(transformed: &Vector2<f64>) -> Matrix2x3<f64> {
+    Matrix2x3::new(1.0, 0.0, -transformed[1], 0.0, 1.0, transformed[0])
 }
 
 /// Compute MAD-based robust standard deviation
@@ -232,21 +229,16 @@ fn inverse3x3(m: &Matrix3<f64>) -> Option<Matrix3<f64>> {
     Some(inv / det)
 }
 
-/// Weighted Gauss-Newton update with Huber loss
-fn weighted_gauss_newton(
-    transform: &Transform2D,
-    src: &[Vector2<f64>],
-    dst: &[Vector2<f64>],
-) -> Option<Vector3<f64>> {
+/// Weighted Gauss-Newton update with Huber loss.
+///
+/// `src` must already be transformed by the current estimate; the returned
+/// step is a left perturbation, applied as `from_param(step).compose(&T)`.
+fn weighted_gauss_newton(src: &[Vector2<f64>], dst: &[Vector2<f64>]) -> Option<Vector3<f64>> {
     if src.len() < 2 {
         return None;
     }
 
-    let residuals: Vec<Vector2<f64>> = src
-        .iter()
-        .zip(dst.iter())
-        .map(|(s, d)| transform.transform(s) - d)
-        .collect();
+    let residuals: Vec<Vector2<f64>> = src.iter().zip(dst.iter()).map(|(s, d)| s - d).collect();
 
     let stddevs = calc_stddevs(&residuals)?;
 
@@ -254,7 +246,7 @@ fn weighted_gauss_newton(
     let mut jtj = Matrix3::<f64>::zeros();
 
     for (s, r) in src.iter().zip(residuals.iter()) {
-        let j = jacobian(&transform.rot, s);
+        let j = jacobian(s);
         for (dim, jacobian_row) in j.row_iter().enumerate() {
             if stddevs[dim] == 0.0 {
                 continue;
@@ -332,8 +324,33 @@ mod tests {
         for (sp, dp) in src.iter().zip(dst.iter()) {
             let transformed = result.transform.transform(sp);
             let error = (transformed - dp).norm();
-            assert!(error < 0.3, "Point error too large: {}", error);
+            assert!(error < 1e-6, "Point error too large: {}", error);
         }
+    }
+
+    fn spiral(count: usize) -> Vec<SVector<f64, 2>> {
+        (0..count)
+            .map(|i| {
+                let t = i as f64 * 0.25;
+                SVector::from([(0.5 + 0.1 * t) * t.cos(), (0.5 + 0.1 * t) * t.sin()])
+            })
+            .collect()
+    }
+
+    #[test]
+    fn test_robust_icp_non_identity_seed() {
+        let dst = spiral(60);
+        let truth = Transform2D::from_param(&Vector3::new(0.6, -0.4, 0.35));
+        // src = truth⁻¹(dst), so the transform aligning src to dst is `truth`.
+        let inverse_rot = truth.rot.inverse();
+        let src: Vec<SVector<f64, 2>> = dst.iter().map(|p| inverse_rot * (p - truth.t)).collect();
+        let seed = Transform2D::from_param(&Vector3::new(0.03, 0.02, -0.02)).compose(&truth);
+
+        let icp = RobustIcp2D::new(&dst);
+        let result = icp.estimate(&src, &seed, 50);
+
+        assert!((result.transform.t - truth.t).norm() < 1e-6);
+        assert!((result.transform.rot.angle() - truth.rot.angle()).abs() < 1e-6);
     }
 
     #[test]

@@ -7,7 +7,6 @@
 
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
-use std::f64::INFINITY;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct Node {
@@ -90,8 +89,8 @@ impl DStarLite {
             .map(|(&x, &y)| (x - x_min_world, y - y_min_world))
             .collect();
 
-        let g = nalgebra::DMatrix::from_element(x_max as usize, y_max as usize, INFINITY);
-        let rhs = nalgebra::DMatrix::from_element(x_max as usize, y_max as usize, INFINITY);
+        let g = nalgebra::DMatrix::from_element(x_max as usize, y_max as usize, f64::INFINITY);
+        let rhs = nalgebra::DMatrix::from_element(x_max as usize, y_max as usize, f64::INFINITY);
 
         let motions = [
             Node::new(1, 0),
@@ -158,7 +157,7 @@ impl DStarLite {
 
     fn c(&self, _u: &Node, v: &Node) -> f64 {
         if self.is_obstacle(v) {
-            return INFINITY;
+            return f64::INFINITY;
         }
         self.heuristic(_u, v)
     }
@@ -171,10 +170,16 @@ impl DStarLite {
             self.initialized = true;
             self.u.clear();
             self.km = 0.0;
-            self.rhs =
-                nalgebra::DMatrix::from_element(self.x_max as usize, self.y_max as usize, INFINITY);
-            self.g =
-                nalgebra::DMatrix::from_element(self.x_max as usize, self.y_max as usize, INFINITY);
+            self.rhs = nalgebra::DMatrix::from_element(
+                self.x_max as usize,
+                self.y_max as usize,
+                f64::INFINITY,
+            );
+            self.g = nalgebra::DMatrix::from_element(
+                self.x_max as usize,
+                self.y_max as usize,
+                f64::INFINITY,
+            );
             self.rhs[(self.goal.x as usize, self.goal.y as usize)] = 0.0;
             self.u.push((self.calculate_key(&self.goal), self.goal));
             self.detected_obstacles.clear();
@@ -183,7 +188,7 @@ impl DStarLite {
 
     fn update_vertex(&mut self, u: Node) {
         if u.x != self.goal.x || u.y != self.goal.y {
-            let mut min_rhs = INFINITY;
+            let mut min_rhs = f64::INFINITY;
             for s in self.get_neighbors(&u) {
                 let cost = self.c(&u, &s) + self.g[(s.x as usize, s.y as usize)];
                 if cost < min_rhs {
@@ -219,7 +224,7 @@ impl DStarLite {
                     self.update_vertex(s);
                 }
             } else {
-                self.g[(u.x as usize, u.y as usize)] = INFINITY;
+                self.g[(u.x as usize, u.y as usize)] = f64::INFINITY;
                 self.update_vertex(u);
                 for s in self.get_neighbors(&u) {
                     self.update_vertex(s);
@@ -246,7 +251,7 @@ impl DStarLite {
         while current.x != self.goal.x || current.y != self.goal.y {
             path.push((current.x + self.x_min_world, current.y + self.y_min_world));
 
-            let mut min_cost = INFINITY;
+            let mut min_cost = f64::INFINITY;
             let mut next_node = current;
 
             for neighbor in self.get_neighbors(&current) {

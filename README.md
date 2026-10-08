@@ -41,6 +41,9 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
   <tr>
     <td colspan="3" align="center"><a href="#pose-graph-optimization"><img src="./media/gallery/factor_graph_optimization.gif" width="540" alt="Block-sparse factor graph optimization"/></a><br/><b>Block-sparse Factor Graph Optimization</b></td>
   </tr>
+  <tr>
+    <td colspan="3" align="center"><a href="#loop-closure-lidar-graph-slam"><img src="./media/gallery/lidar_loop_closure.gif" width="540" alt="LiDAR graph SLAM loop closure on a corridor loop"/></a><br/><b>LiDAR Loop Closure (scan-to-map + pose graph)</b></td>
+  </tr>
 </table>
 
 Every animation above is rendered by the library itself — regenerate them all with
@@ -143,10 +146,18 @@ cargo run -p rust_robotics_playground
 ```
 
 Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
-Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP timelines, or **ADMM Formation**
-for the multi-agent horizon-consensus demo. **Controller Arena** replays Pure
-Pursuit, Stanley, and LQR Steer under an identical path, initial state, clock,
-and actuation model, with shareable speed and turn-response settings.
+Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
+timelines, or pick **Drive LiDAR SLAM** to drive a robot around a corridor loop
+with the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
+run live — crank up the odometry error and watch the map snap back when you
+return to the start. Switch worlds (corridor loop, pillar hall, empty box) or
+drag on the map to draw your own walls; the course is saved in the share link. **ADMM Formation** shows the multi-agent
+horizon-consensus demo. **Pushing** lets you drag the goal pose of a box that a
+face-switching MPPI controller pushes under quasi-static stick/slide contact —
+including turning it in place and routing around obstacles you click in.
+**Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
+identical path, initial state, clock, and actuation model, with shareable speed
+and turn-response settings.
 
 <img src="./docs/assets/controller-arena.png" width="900" alt="Controller Arena comparing Pure Pursuit, Stanley, and LQR Steer">
 
@@ -683,6 +694,86 @@ The SLAM crate also provides robust optimizer-backed point-to-line ICP in 2D
 and point-to-plane ICP in 3D:
 
 - [src](./crates/rust_robotics_slam/src/geometric_icp.rs)
+
+## Scan-to-Map LiDAR Odometry
+
+Registers each 2D scan against a bounded local submap of recent keyframes kept
+in the corrected world frame, seeded by the odometry prediction, with
+point-to-line Gauss-Newton, distance-gated correspondences, and
+correction/residual gates. On a deterministic 28 m run with 3 % odometry scale
+error and 1 deg/m yaw drift:
+
+| estimator | position RMSE \[m\] | final yaw error \[deg\] |
+| --- | ---: | ---: |
+| raw odometry | 0.631 | 29.2 |
+| seeded scan-to-scan | 0.011 | 0.36 |
+| scan-to-map | 0.002 | 0.03 |
+
+- [src](./crates/rust_robotics_slam/src/scan_to_map.rs)
+- [design](./docs/scan_to_map_icp_design.md)
+
+```
+cargo run -p rust_robotics --example headless_scan_to_map --no-default-features --features slam
+```
+
+### Loop Closure (LiDAR Graph SLAM)
+
+<img src="./media/gallery/lidar_loop_closure.gif" width="640px">
+
+Gray: ground truth, orange: scan-to-map front end, green: pose-graph nodes,
+magenta: loop edges, blue: map from node scans, red: current scan. The front
+end drifts in the pillar-free top corridor; the animation pauses on each
+re-optimization so the correction is visible. In the playground's SLAM tab,
+**LiDAR Loop Closure** replays this run and **Drive LiDAR SLAM** lets you
+drive it yourself:
+<https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&algorithm=drive&auto=1>
+
+#### Perceptual aliasing
+
+Identical pillars every 2.5 m make neighboring places look the same, so a loop
+match can lock onto the pillar next door — and a run of such matches agrees
+with itself, so no consistency check catches it. `LidarGraphSlam`'s
+**ambiguity check** re-registers every accepted loop match from seeds shifted
+±1/2/3 m and rejects it when a distinct alignment fits nearly as well:
+
+| ambiguity check | loop closures | false closures | node RMSE \[m\] |
+| --- | ---: | ---: | ---: |
+| off | 16 | 12 | 1.812 (worse than scan-to-map alone, 0.292) |
+| on | 7 | 0 | 0.032 |
+
+```
+cargo run -p rust_robotics --example headless_lidar_aliasing --no-default-features --features slam
+```
+
+The playground replays both runs (false loop edges in yellow) and offers an
+**Aliased corridor** world in Drive LiDAR SLAM with the check switchable.
+
+#### Real logs and the SLAM benchmark metric
+
+`carmen_lidar_slam` runs `LidarGraphSlam` on CARMEN laser logs (Intel Research
+Lab, Freiburg, …) and scores it with the relative-pose metric of the Kümmerle
+et al. SLAM benchmark; without arguments it uses a synthetic log. See
+[docs/datasets.md](./docs/datasets.md#carmen-2d-laser-logs-slam-benchmark).
+
+`LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
+end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
+**degeneracy-aware odometry edges** — the front end discards Gauss-Newton
+steps along directions its Hessian cannot observe (a featureless corridor),
+and those edges get uncertainty that grows with the distance travelled along
+them, so the loop correction lands where the drift actually happened. On a
+deterministic 98 m corridor loop with a pillar-free 24 m corridor:
+
+| estimator | node RMSE \[m\] | final position error \[m\] |
+| --- | ---: | ---: |
+| raw odometry | 10.90 | 8.92 |
+| scan-to-map | 0.302 | 0.381 |
+| scan-to-map + loop closure | 0.012 | 0.020 |
+
+- [src](./crates/rust_robotics_slam/src/lidar_graph_slam.rs)
+
+```
+cargo run -p rust_robotics --example headless_lidar_loop_closure --no-default-features --features slam
+```
 
 ## FastSLAM 1.0
 

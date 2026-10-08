@@ -16,7 +16,8 @@ pub struct AStarConfig {
     pub resolution: f64,
     /// Robot radius for obstacle inflation
     pub robot_radius: f64,
-    /// Heuristic weight (1.0 = optimal, >1.0 = faster but suboptimal)
+    /// Heuristic weight (1.0 = optimal, >1.0 = faster but suboptimal,
+    /// 0.0 = uniform-cost search, i.e. Dijkstra)
     pub heuristic_weight: f64,
 }
 
@@ -44,9 +45,9 @@ impl AStarConfig {
                 self.robot_radius
             )));
         }
-        if !self.heuristic_weight.is_finite() || self.heuristic_weight <= 0.0 {
+        if !self.heuristic_weight.is_finite() || self.heuristic_weight < 0.0 {
             return Err(RoboticsError::InvalidParameter(format!(
-                "heuristic_weight must be positive and finite, got {}",
+                "heuristic_weight must be non-negative and finite, got {}",
                 self.heuristic_weight
             )));
         }
@@ -400,7 +401,7 @@ mod tests {
     fn test_a_star_try_new_rejects_invalid_config() {
         let (ox, oy) = create_simple_obstacles();
         let config = AStarConfig {
-            heuristic_weight: 0.0,
+            heuristic_weight: -1.0,
             ..Default::default()
         };
 
@@ -409,6 +410,13 @@ mod tests {
             Err(err) => err,
         };
         assert!(matches!(err, RoboticsError::InvalidParameter(_)));
+
+        // A zero weight is valid: uniform-cost search (Dijkstra).
+        let dijkstra = AStarConfig {
+            heuristic_weight: 0.0,
+            ..Default::default()
+        };
+        assert!(AStarPlanner::try_new(&ox, &oy, dijkstra).is_ok());
     }
 
     #[test]

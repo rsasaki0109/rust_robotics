@@ -56,3 +56,12 @@ rust_robotics_viz = { path = "crates/rust_robotics_viz", version = "0.2.0" }
 [patch.crates-io]
 raw_sync_2 = { path = "vendor/raw_sync_2" }
 shared_memory_extended = { path = "vendor/shared_memory_extended" }
+
+# Scan matching and pose-graph optimization are dominated by small nalgebra
+# operations that are 20-50x slower unoptimized; keep the SLAM and optimizer
+# crates fast in dev/test builds so their headless examples stay cheap in CI.
+[profile.dev.package.rust_robotics_slam]
+opt-level = 2
+
+[profile.dev.package.rust_robotics_optimization]
+opt-level = 2

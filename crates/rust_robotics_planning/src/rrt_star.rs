@@ -6,7 +6,7 @@
 
 use rand::Rng;
 
-use rust_robotics_core::{Path2D, Point2D, RoboticsError, RoboticsResult};
+use rust_robotics_core::{Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
 
 /// Internal node for RRT* tree
 #[derive(Debug, Clone)]
@@ -32,6 +32,7 @@ impl Node {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct RRTStar {
     pub start: Node,
     pub end: Node,
@@ -427,6 +428,14 @@ impl RRTStar {
     /// Get the obstacle list
     pub fn get_obstacles(&self) -> &[(f64, f64, f64)] {
         &self.obstacle_list
+    }
+}
+
+impl PathPlanner for RRTStar {
+    /// Plans on a copy of this planner, so `&self` keeps its own tree; use
+    /// [`RRTStar::plan_from`] to keep the tree for inspection.
+    fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
+        self.clone().plan_from(start, goal)
     }
 }
 
