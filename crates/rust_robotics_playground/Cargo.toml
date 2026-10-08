@@ -11,7 +11,11 @@ description = "Interactive egui playground for RustRobotics algorithms (not publ
 publish = false
 
 [dependencies]
-egui = "0.31"
+# No egui default fonts in the web build: ui_kit::install_fonts embeds just
+# the two it needs (Ubuntu-Light and the icon font), about 440 KB less
+# gzipped WASM than all four. Native builds keep them (eframe below).
+egui = { version = "0.31", default-features = false }
+epaint_default_fonts = "0.31"
 rust_robotics_planning = { workspace = true }
 rust_robotics_localization = { workspace = true }
 rust_robotics_slam = { workspace = true }
@@ -29,11 +33,11 @@ web-time = "1"
 eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow"] }
+eframe = { version = "0.31", default-features = false, features = ["glow"] }
 wasm-bindgen-futures = "0.4"
 console_error_panic_hook = "0.1"
 getrandom = { version = "0.3", features = ["wasm_js"] }
-web-sys = { version = "0.3", features = ["Document", "Window", "HtmlCanvasElement", "Element", "Event", "EventTarget", "History", "Location", "Storage"] }
+web-sys = { version = "0.3", features = ["Document", "Window", "HtmlCanvasElement", "Element", "Node", "Event", "EventTarget", "History", "Location", "Storage"] }
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 

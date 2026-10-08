@@ -7,9 +7,40 @@ use egui::{Color32, Rect, Vec2};
 /// Accent color of the playground (buttons, selections, links).
 pub const ACCENT: Color32 = Color32::from_rgb(255, 152, 56);
 
+/// Fonts: Ubuntu-Light for all text (monospace included, so the web build
+/// does not ship a monospace font) with the emoji-icon font as fallback
+/// for the few symbols used (▶ ⏸ 🔗 ⏱ ↺ ×).
+pub fn install_fonts(ctx: &egui::Context) {
+    use egui::{FontData, FontDefinitions, FontFamily};
+    use std::sync::Arc;
+    let mut fonts = FontDefinitions::empty();
+    fonts.font_data.insert(
+        "Ubuntu-Light".to_owned(),
+        Arc::new(FontData::from_static(epaint_default_fonts::UBUNTU_LIGHT)),
+    );
+    // The same tweak egui applies to its default icon font.
+    fonts.font_data.insert(
+        "emoji-icon-font".to_owned(),
+        Arc::new(
+            FontData::from_static(epaint_default_fonts::EMOJI_ICON).tweak(egui::FontTweak {
+                scale: 0.90,
+                ..Default::default()
+            }),
+        ),
+    );
+    for family in [FontFamily::Proportional, FontFamily::Monospace] {
+        fonts.families.insert(
+            family,
+            vec!["Ubuntu-Light".to_owned(), "emoji-icon-font".to_owned()],
+        );
+    }
+    ctx.set_fonts(fonts);
+}
+
 /// Dark visuals matching the canvases and the landing page, slightly larger
 /// text, and roomier controls (comfortable on touch screens too).
 pub fn apply_style(ctx: &egui::Context) {
+    install_fonts(ctx);
     let mut visuals = egui::Visuals::dark();
     visuals.panel_fill = Color32::from_rgb(16, 20, 26);
     visuals.window_fill = Color32::from_rgb(22, 27, 34);
@@ -70,7 +101,8 @@ pub fn overlay_text(ui: &egui::Ui, rect: Rect, text: &str) {
         text.to_owned(),
         egui::FontId::proportional(13.0),
         Color32::from_rgb(210, 215, 225),
-        rect.width() - 24.0,
+        // Leave the top-right corner to scene buttons.
+        rect.width() - 72.0,
     );
     let pos = rect.left_top() + Vec2::new(12.0, 10.0);
     let painter = ui.painter_at(rect);
@@ -167,5 +199,54 @@ pub fn every(ctx: &egui::Context, last: &mut f64, period: f64) -> bool {
         true
     } else {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The web build only embeds Ubuntu-Light and the icon font: every
+    /// non-ASCII symbol in the UI's strings must be in one of them, or it
+    /// renders as a box.
+    #[test]
+    fn embedded_fonts_cover_every_symbol_the_ui_uses() {
+        let ctx = egui::Context::default();
+        super::install_fonts(&ctx);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let mut used: Vec<char> = Vec::new();
+        for source in [
+            include_str!("admm_formation.rs"),
+            include_str!("app.rs"),
+            include_str!("controller_arena.rs"),
+            include_str!("grid_planners.rs"),
+            include_str!("localization.rs"),
+            include_str!("pushing.rs"),
+            include_str!("sampling.rs"),
+            include_str!("slam.rs"),
+            include_str!("slam_drive.rs"),
+            include_str!("ui_kit.rs"),
+        ] {
+            for line in source.lines() {
+                if line.trim_start().starts_with("//") {
+                    continue;
+                }
+                // Characters inside string literals only.
+                for (index, literal) in line.split('"').enumerate() {
+                    if index % 2 == 1 {
+                        used.extend(literal.chars().filter(|c| !c.is_ascii()));
+                    }
+                }
+            }
+        }
+        used.sort_unstable();
+        used.dedup();
+        assert!(used.contains(&'▶'), "scan found {used:?}");
+        let font = egui::FontId::proportional(14.0);
+        let missing: Vec<char> = ctx.fonts(|fonts| {
+            used.iter()
+                .copied()
+                .filter(|c| !fonts.has_glyph(&font, *c))
+                .collect()
+        });
+        assert!(missing.is_empty(), "no glyph for {missing:?}");
     }
 }

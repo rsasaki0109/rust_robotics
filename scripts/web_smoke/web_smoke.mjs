@@ -44,6 +44,7 @@ const browser = await chromium.launch({
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
   { name: 'grid', query: 'tab=grid' },
+  { name: 'sampling', query: 'tab=sampling&planner=informed', clickScene: true },
   { name: 'localization', query: 'tab=localization' },
   { name: 'slam-replay', query: 'tab=slam&algorithm=loop' },
   { name: 'drive', query: 'tab=slam&algorithm=drive&world=hall&people=3', clickScene: true },

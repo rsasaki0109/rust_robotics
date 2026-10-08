@@ -665,13 +665,20 @@ const playTiles = [
     title: "Drive LiDAR SLAM",
     text: "Map a world live, close loops, navigate, explore, get kidnapped.",
     image: "assets/playground/drive.png",
-    link: "playground/?tab=slam&algorithm=drive"
+    link: "playground/?tab=slam&algorithm=drive",
+    featured: true
   },
   {
     title: "Grid planners",
     text: "Draw walls and race A*, Dijkstra, JPS, and Theta*.",
     image: "assets/playground/grid.png",
     link: "playground/?tab=grid"
+  },
+  {
+    title: "Sampling planners",
+    text: "Watch RRT, RRT*, Informed RRT*, and PRM explore.",
+    image: "assets/playground/sampling.png",
+    link: "playground/?tab=sampling"
   },
   {
     title: "Localization",
@@ -741,7 +748,7 @@ function renderTiles() {
   const root = document.getElementById("play-tiles");
   root.replaceChildren(
     ...playTiles.map((tile) => {
-      const link = element("a", "tile");
+      const link = element("a", tile.featured ? "tile featured" : "tile");
       link.href = tile.link;
       const body = element("div", "tile-body");
       body.append(element("h3", "", tile.title), element("p", "", tile.text));

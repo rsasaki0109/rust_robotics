@@ -114,6 +114,90 @@ fn world_rect(ui: &egui::Ui, reserved_height: f32) -> Rect {
     crate::ui_kit::fit_rect(ui, aspect, reserved_height)
 }
 
+/// Zoom and pan of a LiDAR scene. The whole world is drawn into a larger
+/// "map rectangle" that the visible scene clips, so the usual world <->
+/// screen mapping works unchanged on the map rectangle.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MapView {
+    /// 1 shows the whole world.
+    pub zoom: f32,
+    /// World point at the center of the scene.
+    pub center: Vector2<f64>,
+    /// Keep the robot centered while zoomed in.
+    pub follow: bool,
+}
+
+impl Default for MapView {
+    fn default() -> Self {
+        Self {
+            zoom: 1.0,
+            center: Vector2::new((WORLD_X.0 + WORLD_X.1) / 2.0, (WORLD_Y.0 + WORLD_Y.1) / 2.0),
+            follow: true,
+        }
+    }
+}
+
+impl MapView {
+    pub const MAX_ZOOM: f32 = 8.0;
+
+    /// Screen pixels per meter in the visible `rect`.
+    fn scale(&self, rect: Rect) -> f32 {
+        rect.width() / (WORLD_X.1 - WORLD_X.0) as f32 * self.zoom
+    }
+
+    /// Where the whole world is drawn for the visible `rect`.
+    pub fn map_rect(&self, rect: Rect) -> Rect {
+        let scale = self.scale(rect);
+        let size = Vec2::new(
+            (WORLD_X.1 - WORLD_X.0) as f32 * scale,
+            (WORLD_Y.1 - WORLD_Y.0) as f32 * scale,
+        );
+        let min = rect.center()
+            - Vec2::new(
+                (self.center.x - WORLD_X.0) as f32 * scale,
+                (WORLD_Y.1 - self.center.y) as f32 * scale,
+            );
+        Rect::from_min_size(min, size)
+    }
+
+    /// Keeps the zoom in range and the view inside the world.
+    fn clamp(&mut self) {
+        self.zoom = self.zoom.clamp(1.0, Self::MAX_ZOOM);
+        let zoom = f64::from(self.zoom);
+        let half_x = (WORLD_X.1 - WORLD_X.0) / zoom / 2.0;
+        let half_y = (WORLD_Y.1 - WORLD_Y.0) / zoom / 2.0;
+        self.center.x = self.center.x.clamp(WORLD_X.0 + half_x, WORLD_X.1 - half_x);
+        self.center.y = self.center.y.clamp(WORLD_Y.0 + half_y, WORLD_Y.1 - half_y);
+    }
+
+    /// Multiplies the zoom by `factor`, keeping the world point under the
+    /// screen position `anchor` where it is.
+    pub fn zoom_at(&mut self, rect: Rect, anchor: Pos2, factor: f32) {
+        let fixed = to_world(self.map_rect(rect), anchor);
+        self.zoom = (self.zoom * factor).clamp(1.0, Self::MAX_ZOOM);
+        let scale = f64::from(self.scale(rect));
+        let offset = anchor - rect.center();
+        self.center = Vector2::new(
+            fixed.x - f64::from(offset.x) / scale,
+            fixed.y + f64::from(offset.y) / scale,
+        );
+        self.clamp();
+    }
+
+    /// Moves the view by a screen-space drag `delta`.
+    pub fn pan(&mut self, rect: Rect, delta: Vec2) {
+        let scale = f64::from(self.scale(rect));
+        self.center.x -= f64::from(delta.x) / scale;
+        self.center.y += f64::from(delta.y) / scale;
+        self.follow = false;
+        self.clamp();
+    }
+
+    pub fn is_zoomed(&self) -> bool {
+        self.zoom > 1.001
+    }
+}
+
 fn to_screen(rect: Rect, x: f64, y: f64) -> Pos2 {
     let u = ((x - WORLD_X.0) / (WORLD_X.1 - WORLD_X.0)) as f32;
     let v = 1.0 - ((y - WORLD_Y.0) / (WORLD_Y.1 - WORLD_Y.0)) as f32;
@@ -156,18 +240,22 @@ fn draw_robot(painter: &egui::Painter, rect: Rect, pose: Pose2D, color: Color32)
 }
 
 /// Draws a LiDAR SLAM scene, leaving `reserved_height` px below it free.
+/// Returns the scene's response (its rect is the visible scene) and the map
+/// rectangle the world was drawn into (see [`MapView`]).
 pub(crate) fn draw_lidar_scene(
     ui: &mut egui::Ui,
     view: &LidarSceneView<'_>,
     reserved_height: f32,
-) -> egui::Response {
+    map_view: MapView,
+) -> (egui::Response, Rect) {
     let rect = world_rect(ui, reserved_height);
+    let map = map_view.map_rect(rect);
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 0.0, Color32::from_rgb(18, 22, 28));
     if let Some((texture, min, max)) = view.grid {
         painter.image(
             texture,
-            Rect::from_two_pos(to_screen(rect, min.x, max.y), to_screen(rect, max.x, min.y)),
+            Rect::from_two_pos(to_screen(map, min.x, max.y), to_screen(map, max.x, min.y)),
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
             Color32::WHITE,
         );
@@ -176,8 +264,8 @@ pub(crate) fn draw_lidar_scene(
     for wall in view.walls {
         painter.line_segment(
             [
-                to_screen(rect, wall.start.x, wall.start.y),
-                to_screen(rect, wall.end.x, wall.end.y),
+                to_screen(map, wall.start.x, wall.start.y),
+                to_screen(map, wall.end.x, wall.end.y),
             ],
             Stroke::new(1.0_f32, WALL),
         );
@@ -192,44 +280,39 @@ pub(crate) fn draw_lidar_scene(
     };
     for (pose, scan) in &view.map {
         for point in transform_scan_to_world(scan, *pose).iter().step_by(stride) {
-            painter.circle_filled(to_screen(rect, point.x, point.y), 1.0, map_color);
+            painter.circle_filled(to_screen(map, point.x, point.y), 1.0, map_color);
         }
     }
 
-    draw_trail(&painter, rect, view.truth, Stroke::new(1.0_f32, TRUTH));
+    draw_trail(&painter, map, view.truth, Stroke::new(1.0_f32, TRUTH));
+    draw_trail(&painter, map, view.odometry, Stroke::new(1.0_f32, ODOMETRY));
     draw_trail(
         &painter,
-        rect,
-        view.odometry,
-        Stroke::new(1.0_f32, ODOMETRY),
-    );
-    draw_trail(
-        &painter,
-        rect,
+        map,
         view.front_end,
         Stroke::new(1.5_f32, FRONT_END),
     );
-    draw_trail(&painter, rect, view.nodes, Stroke::new(2.0_f32, GRAPH));
+    draw_trail(&painter, map, view.nodes, Stroke::new(2.0_f32, GRAPH));
     for (a, b) in &view.loop_edges {
         painter.line_segment(
-            [to_screen(rect, a.x, a.y), to_screen(rect, b.x, b.y)],
+            [to_screen(map, a.x, a.y), to_screen(map, b.x, b.y)],
             Stroke::new(1.5_f32, LOOP_EDGE),
         );
     }
     for (a, b) in &view.wrong_loop_edges {
         painter.line_segment(
-            [to_screen(rect, a.x, a.y), to_screen(rect, b.x, b.y)],
+            [to_screen(map, a.x, a.y), to_screen(map, b.x, b.y)],
             Stroke::new(3.0_f32, WRONG_LOOP_EDGE),
         );
     }
     for point in transform_scan_to_world(view.scan, view.estimate) {
-        painter.circle_filled(to_screen(rect, point.x, point.y), 1.4, SCAN);
+        painter.circle_filled(to_screen(map, point.x, point.y), 1.4, SCAN);
     }
     if let Some(pose) = view.front_end_pose {
-        draw_robot(&painter, rect, pose, FRONT_END);
+        draw_robot(&painter, map, pose, FRONT_END);
     }
-    draw_robot(&painter, rect, view.estimate, GRAPH);
-    ui.allocate_rect(rect, egui::Sense::click_and_drag())
+    draw_robot(&painter, map, view.estimate, GRAPH);
+    (ui.allocate_rect(rect, egui::Sense::click_and_drag()), map)
 }
 
 /// Distance from `point` to the closest wall segment.
@@ -392,6 +475,8 @@ pub struct SlamDriveDemo {
     drag_end: Option<Vector2<f64>>,
     /// Screen rect of the map in the last frame (for tests and hit-testing).
     last_map_rect: Option<Rect>,
+    /// Zoom and pan of the map.
+    map_view: MapView,
     centerline: Vec<Pose2D>,
     rng: StdRng,
     slam: LidarGraphSlam,
@@ -509,6 +594,7 @@ impl SlamDriveDemo {
             drag_start: None,
             drag_end: None,
             last_map_rect: None,
+            map_view: MapView::default(),
             centerline,
             rng: StdRng::seed_from_u64(7),
             slam: LidarGraphSlam::new(Self::slam_config(true), corridor_loop_start()),
@@ -1248,7 +1334,11 @@ impl SlamDriveDemo {
     }
 
     /// Handles wall drawing on the map; returns the in-progress wall, if any.
-    fn edit_walls(&mut self, response: &egui::Response) -> Option<(Vector2<f64>, Vector2<f64>)> {
+    fn edit_walls(
+        &mut self,
+        response: &egui::Response,
+        map: Rect,
+    ) -> Option<(Vector2<f64>, Vector2<f64>)> {
         if !self.edit_walls {
             self.drag_start = None;
             self.drag_end = None;
@@ -1256,14 +1346,12 @@ impl SlamDriveDemo {
         }
         let pointer = response
             .interact_pointer_pos()
-            .map(|pos| snap(to_world(response.rect, pos)));
+            .map(|pos| snap(to_world(map, pos)));
         if response.drag_started() {
             // egui reports a drag only after the pointer moved past a
             // threshold, so anchor the wall where the button went down.
             let origin = response.ctx.input(|input| input.pointer.press_origin());
-            self.drag_start = origin
-                .map(|pos| snap(to_world(response.rect, pos)))
-                .or(pointer);
+            self.drag_start = origin.map(|pos| snap(to_world(map, pos))).or(pointer);
         }
         if pointer.is_some() {
             self.drag_end = pointer;
@@ -1371,6 +1459,73 @@ impl SlamDriveDemo {
             return self.auto_control();
         }
         (0.0, 0.0)
+    }
+
+    /// Wheel / pinch zoom around the pointer, drag (or two fingers) to pan
+    /// while zoomed, and +, -, Fit buttons in the corner of the map.
+    fn zoom_controls(&mut self, ui: &mut egui::Ui, rect: Rect, response: &egui::Response) {
+        let view = &mut self.map_view;
+        if response.hovered() {
+            let (scroll, pinch, touch) = ui.input(|input| {
+                (
+                    input.smooth_scroll_delta.y,
+                    input.zoom_delta(),
+                    input.multi_touch().map(|touch| touch.translation_delta),
+                )
+            });
+            let factor = pinch * (scroll * 0.0015).exp();
+            if (factor - 1.0).abs() > 1e-4 {
+                let anchor = response.hover_pos().unwrap_or(rect.center());
+                view.zoom_at(rect, anchor, factor);
+                // The scene used the wheel: do not also scroll the page.
+                ui.input_mut(|input| input.smooth_scroll_delta = Vec2::ZERO);
+            }
+            if let Some(delta) = touch.filter(|_| view.is_zoomed()) {
+                view.pan(rect, delta);
+            }
+        }
+        // One-finger / mouse drags pan, unless they draw walls.
+        if !self.edit_walls && view.is_zoomed() && response.dragged() {
+            view.pan(rect, response.drag_delta());
+        }
+
+        // A column of buttons in the top-right corner of the map.
+        let right = rect.right() - 10.0;
+        let button = |ui: &mut egui::Ui, row: f32, width: f32, label: &str, hover: &str| {
+            let at = Rect::from_min_size(
+                egui::pos2(right - width, rect.top() + 10.0 + row * 36.0),
+                Vec2::new(width, 30.0),
+            );
+            // A detached child, so the buttons do not move the layout cursor
+            // (the status line goes below the map, not below them).
+            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(at));
+            child
+                .add_sized(at.size(), egui::Button::new(label))
+                .on_hover_text(hover)
+        };
+        if button(ui, 0.0, 30.0, "+", "Zoom in (or use the wheel / pinch)").clicked() {
+            view.zoom_at(rect, rect.center(), 1.6);
+        }
+        if button(ui, 1.0, 30.0, "-", "Zoom out").clicked() {
+            view.zoom_at(rect, rect.center(), 1.0 / 1.6);
+        }
+        if view.is_zoomed() {
+            if button(ui, 2.0, 62.0, "Fit", "Show the whole world").clicked() {
+                *view = MapView::default();
+            }
+            let follow = button(ui, 3.0, 62.0, "Follow", "Keep the robot centered");
+            if view.follow {
+                ui.painter().rect_stroke(
+                    follow.rect,
+                    6.0,
+                    Stroke::new(1.5_f32, crate::ui_kit::ACCENT),
+                    egui::StrokeKind::Inside,
+                );
+            }
+            if follow.clicked() {
+                view.follow = !view.follow;
+            }
+        }
     }
 
     /// Uploads the occupancy grid texture if the grid changed.
@@ -1590,25 +1745,29 @@ impl SlamDriveDemo {
             front_end_pose: (!self.localizing()).then(|| self.slam.front_end_pose()),
             grid,
         };
-        let response = draw_lidar_scene(ui, &view, 40.0);
+        if self.map_view.follow && self.map_view.is_zoomed() {
+            self.map_view.center = Vector2::new(estimate.x, estimate.y);
+            self.map_view.clamp();
+        }
+        let (response, map) = draw_lidar_scene(ui, &view, 40.0, self.map_view);
         let rect = response.rect;
-        self.last_map_rect = Some(rect);
+        self.last_map_rect = Some(map);
         {
             let painter = ui.painter_at(rect);
             if let Some(mcl) = &self.mcl {
                 for particle in mcl.particles().iter().step_by(2) {
                     painter.circle_filled(
-                        to_screen(rect, particle.pose.x, particle.pose.y),
+                        to_screen(map, particle.pose.x, particle.pose.y),
                         1.2,
                         PARTICLE,
                     );
                 }
-                draw_robot(&painter, rect, self.truth, TRUTH_ROBOT);
-                draw_robot(&painter, rect, estimate, GRAPH);
+                draw_robot(&painter, map, self.truth, TRUTH_ROBOT);
+                draw_robot(&painter, map, estimate, GRAPH);
             }
             if self.mcl.is_none() {
                 for point in transform_scan_to_world(&self.last_dynamic, self.slam.pose()) {
-                    painter.circle_filled(to_screen(rect, point.x, point.y), 2.2, PERSON);
+                    painter.circle_filled(to_screen(map, point.x, point.y), 2.2, PERSON);
                 }
             }
             for person in &self.people {
@@ -1631,20 +1790,20 @@ impl SlamDriveDemo {
             }
             if self.explore {
                 for cell in &self.exploration.cells {
-                    painter.circle_filled(to_screen(rect, cell.x, cell.y), 1.5, FRONTIER);
+                    painter.circle_filled(to_screen(map, cell.x, cell.y), 1.5, FRONTIER);
                 }
             }
             if let Some(local) = self.navigator.local_plan() {
                 let points = local
                     .points
                     .iter()
-                    .map(|p| to_screen(rect, p.x, p.y))
+                    .map(|p| to_screen(map, p.x, p.y))
                     .collect();
                 painter.add(egui::Shape::line(points, Stroke::new(2.5_f32, LOCAL_PLAN)));
             }
             draw_path(
                 &painter,
-                |x, y| to_screen(rect, x, y),
+                |x, y| to_screen(map, x, y),
                 self.navigator.path(),
                 self.navigator.goal(),
             );
@@ -1659,15 +1818,15 @@ impl SlamDriveDemo {
         }
         if !self.edit_walls && response.clicked() {
             if let Some(pos) = response.interact_pointer_pos() {
-                self.navigator.set_goal(to_world(rect, pos));
+                self.navigator.set_goal(to_world(map, pos));
                 self.auto_drive = false;
             }
         }
-        if let Some((start, end)) = self.edit_walls(&response) {
+        if let Some((start, end)) = self.edit_walls(&response, map) {
             ui.painter_at(rect).line_segment(
                 [
-                    to_screen(rect, start.x, start.y),
-                    to_screen(rect, end.x, end.y),
+                    to_screen(map, start.x, start.y),
+                    to_screen(map, end.x, end.y),
                 ],
                 Stroke::new(3.0_f32, Color32::from_rgb(250, 220, 90)),
             );
@@ -1680,6 +1839,7 @@ impl SlamDriveDemo {
             );
         }
         self.joystick = joystick(ui, rect);
+        self.zoom_controls(ui, rect, &response);
         ui.label(self.status_line());
 
         let keys_held = ctx.input(|input| {
@@ -2055,6 +2215,82 @@ mod tests {
         run(vec![button(target, false)], &mut demo);
         let goal = demo.navigator.goal().expect("goal set");
         assert!((goal - Vector2::new(-12.0, -8.5)).norm() < 0.1, "{goal:?}");
+    }
+
+    #[test]
+    fn map_view_zooms_around_the_anchor_and_stays_in_the_world() {
+        let rect = Rect::from_min_size(Pos2::new(50.0, 40.0), Vec2::new(640.0, 440.0));
+        let mut view = MapView::default();
+        assert_eq!(view.map_rect(rect), rect);
+
+        let anchor = Pos2::new(200.0, 150.0);
+        let before = to_world(view.map_rect(rect), anchor);
+        view.zoom_at(rect, anchor, 3.0);
+        let after = to_world(view.map_rect(rect), anchor);
+        assert!((before - after).norm() < 1e-3, "{before:?} -> {after:?}");
+        assert!((view.zoom - 3.0).abs() < 1e-6);
+
+        // Dragging far left and down stops at the world's right and top edges.
+        view.pan(rect, Vec2::new(-1e5, 1e5));
+        let map = view.map_rect(rect);
+        assert!((map.right() - rect.right()).abs() < 1e-2, "{map:?}");
+        assert!((map.top() - rect.top()).abs() < 1e-2, "{map:?}");
+        assert!(!view.follow);
+
+        view.zoom_at(rect, anchor, 1e-3);
+        assert_eq!(view.zoom, 1.0);
+        assert_eq!(view.map_rect(rect), rect);
+    }
+
+    #[test]
+    fn wheel_zooms_the_map_and_taps_still_set_goals() {
+        let ctx = egui::Context::default();
+        let mut demo = SlamDriveDemo::default();
+        let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, 900.0));
+        let run = |events: Vec<egui::Event>, demo: &mut SlamDriveDemo| {
+            let input = egui::RawInput {
+                screen_rect: Some(screen),
+                events,
+                ..Default::default()
+            };
+            let _ = ctx.run(input, |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| demo.scene(ctx, ui));
+            });
+        };
+        run(Vec::new(), &mut demo);
+        let full = demo.last_map_rect.expect("map drawn");
+        let over = full.center() + Vec2::new(-150.0, 60.0);
+        run(vec![egui::Event::PointerMoved(over)], &mut demo);
+        for _ in 0..10 {
+            run(
+                vec![egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta: Vec2::new(0.0, 120.0),
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                &mut demo,
+            );
+        }
+        assert!(demo.map_view.is_zoomed(), "zoom {}", demo.map_view.zoom);
+        let map = demo.last_map_rect.expect("map drawn");
+        assert!(map.width() > full.width() * 1.2, "{map:?} vs {full:?}");
+
+        // A tap on the zoomed map sets the goal under the finger.
+        let target = to_screen(map, -12.0, -8.5);
+        assert!(full.contains(target), "goal off screen at {target:?}");
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        run(vec![egui::Event::PointerMoved(target)], &mut demo);
+        run(vec![button(target, true)], &mut demo);
+        run(vec![button(target, false)], &mut demo);
+        let map = demo.last_map_rect.expect("map drawn");
+        let goal = demo.navigator.goal().expect("goal set");
+        let expected = to_world(map, target);
+        assert!((goal - expected).norm() < 0.3, "{goal:?} vs {expected:?}");
     }
 
     /// Runs exploration for at most `max_ticks`; returns the ticks used.

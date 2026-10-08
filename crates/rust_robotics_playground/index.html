@@ -20,10 +20,27 @@
     .loading {
       position: fixed;
       inset: 0;
-      display: grid;
-      place-items: center;
-      gap: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
       pointer-events: none;
+      color: #98a2b0;
+      font-size: 15px;
+    }
+
+    .spinner {
+      width: 34px;
+      height: 34px;
+      border: 3px solid rgba(255, 255, 255, 0.12);
+      border-top-color: #ff9838;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     canvas {
@@ -35,16 +52,12 @@
   </style>
 </head>
 <body>
-  <div class="loading" id="loading">Loading RustRobotics Playground…</div>
+  <!-- Removed by the app once it is running (src/main.rs). -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text">Loading the RustRobotics playground…</div>
+  </div>
   <canvas id="rust_robotics_playground"></canvas>
-  <link data-trunk rel="rust" data-bin="rust_robotics_playground" data-wasm-opt="z" />
-  <script>
-    window.addEventListener("load", () => {
-      const loading = document.getElementById("loading");
-      if (loading) {
-        loading.remove();
-      }
-    });
-  </script>
+  <link data-trunk rel="rust" data-bin="rust_robotics_playground" data-cargo-profile="wasm-release" data-wasm-opt="z" />
 </body>
 </html>

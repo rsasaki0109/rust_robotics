@@ -3499,6 +3499,7 @@ dependencies = [
  "console_error_panic_hook",
  "eframe",
  "egui",
+ "epaint_default_fonts",
  "getrandom 0.3.4",
  "js-sys",
  "nalgebra",
