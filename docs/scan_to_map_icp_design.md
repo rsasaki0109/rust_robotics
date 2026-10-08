@@ -1,8 +1,38 @@
 # Scan-to-Map ICP Design
 
-Status: design draft, no code merged yet.
+Status: **library implementation landed** as
+`rust_robotics_slam::scan_to_map` (`ScanToMapMatcher`), with the deterministic
+`headless_scan_to_map` example gated in CI. The ROS `slam_node` integration
+(phases 2–5 below) is still pending and follows the ROS2 freeze in `plan.md`.
 Audience: next agent picking up corrected-SLAM work on `dev/corrected-slam-eval`.
 Companion to `docs/corrected_slam_evaluation_plan.md`.
+
+## Library implementation (2026-10)
+
+The library slice implements phase 1 (helpers) and the core of the submap
+algorithm without the ROS plumbing:
+
+- `compose_pose`, `relative_pose`, `transform_scan_to_world` — the pose and
+  frame helpers listed in phase 1.
+- `ScanToMapMatcher::update(odom_delta, scan_body)` — predicts with odometry,
+  registers the scan against the submap seeded at the prediction, gates the
+  correction, and inserts accepted keyframes.
+- Registration is **point-to-line** Gauss-Newton directly on the absolute pose
+  (normals from beam-order PCA), not `icp_matching`: the existing
+  point-to-point ICP starts from identity, and `RobustIcp2D` applies its
+  transform twice when seeded with a non-identity initial pose. Because the
+  matcher solves for the absolute pose, no world-residual → body-delta
+  conversion is needed.
+- Submap budget: `max_scans` keyframes, `max_radius` around the prediction,
+  and voxel de-duplication of the merged target (newest keyframe wins).
+- Open questions resolved: *stationary pruning* — scans are inserted only as
+  keyframes (`keyframe_translation` / `keyframe_yaw`); *bad seeds* — gated by
+  `max_correction_translation` / `max_correction_yaw` / `max_mean_residual`,
+  rejected scans are never inserted; *bootstrap* — matching starts once the
+  in-radius submap has `min_correspondences` points, otherwise the prediction
+  is kept and the scan bootstraps the submap.
+- `ScanToMapConfig::scan_to_scan()` (`max_scans = 1`, every scan a keyframe)
+  is the A/B baseline on identical inputs.
 
 ## Why this exists
 

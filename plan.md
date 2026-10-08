@@ -1277,3 +1277,48 @@ noted.
   exposes an error-threshold flutter artifact (15 switches). 7 focused tests,
   `benchmark_meta_control` CSV+SVG, and the CSV is pinned in the benchmark
   gate. See `docs/meta_control_reproduction.md`.
+
+## Next Concrete Queue (v4 — 2026-10-08)
+
+Status review against the repository on 2026-10-08: `v0.2.0` is tagged on
+GitHub but crates.io still serves `0.1.0` for every crate
+(`rust_robotics_optimization` is unpublished). Maintainer decision for this
+cycle: **publishing, issue filing, and announcements are on hold** — the queue
+below is library work that does not depend on them.
+
+### Hold (maintainer decision, do not start)
+
+- crates.io publish / version bump / GitHub Release.
+- Filing good-first-issues.
+- Announcement wave (TWiR, r/rust, Show HN, X).
+
+### Active
+
+1. ~~**Scan-to-map LiDAR odometry (library slice)**~~ **Done (2026-10-08).**
+   `rust_robotics_slam::scan_to_map::ScanToMapMatcher` per
+   `docs/scan_to_map_icp_design.md`: keyframe submap in the corrected world
+   frame, odometry-seeded point-to-line Gauss-Newton, distance-gated
+   correspondences, correction/residual gates, `scan_to_scan()` A/B preset.
+   `headless_scan_to_map` (CI-gated): position RMSE 0.631 m raw odometry /
+   0.011 m scan-to-scan / 0.002 m scan-to-map over a 28 m biased run.
+2. ~~**Curated docs.rs front page**~~ **Done (2026-10-08).** Umbrella
+   `lib.rs` now carries a module map, feature-flag table, and three runnable
+   doctests (A\*, EKF, scan-to-map).
+3. ~~**CHANGELOG `[Unreleased]` backfill**~~ **Done (2026-10-08).** control
+   no_std, embedded demo, Meta-Control, benchmark gate, Playground onboarding,
+   scan-to-map.
+4. **Fix `RobustIcp2D` double transform.** `estimate()` passes already
+   transformed points into `weighted_gauss_newton`, which applies the transform
+   again, and the left-composed update does not match the right-perturbation
+   Jacobian. Identity-seeded tests pass only because of a 0.3 m tolerance.
+   Fix, then tighten `test_robust_icp_translation` to millimeter tolerance.
+5. **Loop closure on top of scan-to-map.** Emit keyframe poses + relative
+   constraints into `pose_graph_optimization` (SE(2)), detect revisits by
+   scan-to-submap matching against old keyframes, and add a playground SLAM
+   tab mode that scrubs before/after loop closure (Phase 3 6–18 month vision).
+6. **Scan-to-map gallery GIF** — submap growth + three trajectories, via the
+   `gif` feature, added to `scripts/generate_gallery_gifs.sh`.
+7. **0.3.0 API coherence, continued** — migrate remaining Tier 1 planners /
+   trackers / estimators onto `PathPlanner` / `PathTracker` /
+   `StateEstimator` per `docs/api_traits.md`.
+8. **Playground pusher-slider tab** (v3 P3 #10, still open).

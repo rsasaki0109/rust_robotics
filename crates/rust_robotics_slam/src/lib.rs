@@ -15,6 +15,7 @@ pub mod imu_preintegration;
 pub mod pose_graph_optimization;
 pub mod pose_graph_optimization_3d;
 pub mod robust_icp;
+pub mod scan_to_map;
 pub mod vio_pipeline;
 pub mod visual_frontend;
 
@@ -22,3 +23,4 @@ pub mod visual_frontend;
 pub use ekf_slam::EKFSLAMState;
 pub use icp_matching::ICPResult;
 pub use robust_icp::{RobustICPResult, RobustIcp2D, Transform2D};
+pub use scan_to_map::{MatchStatus, ScanToMapConfig, ScanToMapMatcher, ScanToMapUpdate};

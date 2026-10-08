@@ -237,6 +237,11 @@ path = "examples/headless_factor_graph_stack.rs"
 required-features = ["slam"]
 
 [[example]]
+name = "headless_scan_to_map"
+path = "examples/headless_scan_to_map.rs"
+required-features = ["slam"]
+
+[[example]]
 name = "headless_euroc_vio"
 path = "examples/headless_euroc_vio.rs"
 required-features = ["slam"]

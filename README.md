@@ -684,6 +684,27 @@ and point-to-plane ICP in 3D:
 
 - [src](./crates/rust_robotics_slam/src/geometric_icp.rs)
 
+## Scan-to-Map LiDAR Odometry
+
+Registers each 2D scan against a bounded local submap of recent keyframes kept
+in the corrected world frame, seeded by the odometry prediction, with
+point-to-line Gauss-Newton, distance-gated correspondences, and
+correction/residual gates. On a deterministic 28 m run with 3 % odometry scale
+error and 1 deg/m yaw drift:
+
+| estimator | position RMSE \[m\] | final yaw error \[deg\] |
+| --- | ---: | ---: |
+| raw odometry | 0.631 | 29.2 |
+| seeded scan-to-scan | 0.011 | 0.36 |
+| scan-to-map | 0.002 | 0.03 |
+
+- [src](./crates/rust_robotics_slam/src/scan_to_map.rs)
+- [design](./docs/scan_to_map_icp_design.md)
+
+```
+cargo run -p rust_robotics --example headless_scan_to_map --no-default-features --features slam
+```
+
 ## FastSLAM 1.0
 
 <img src="./media/gallery/fastslam.gif" width="640px">

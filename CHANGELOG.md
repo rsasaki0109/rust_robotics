@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `rust_robotics_slam::scan_to_map`: scan-to-map 2D LiDAR odometry with a
+  bounded keyframe submap in the corrected world frame, odometry-seeded
+  point-to-line Gauss-Newton, distance-gated correspondences, and
+  correction/residual gates. A seeded scan-to-scan preset shares the same API.
+  The `headless_scan_to_map` example compares raw odometry, scan-to-scan, and
+  scan-to-map on a deterministic biased-odometry run and is gated in CI.
+- `no_std` support for `rust_robotics_control` Tier 1 controllers (PID, Pure
+  Pursuit, Stanley, LQR Steer); the remaining controllers stay behind `std`.
+- `rust_robotics_embedded_demo`: EKF + Pure Pursuit / PID closed loop on an
+  emulated STM32F405 under QEMU, gated by the `embedded-demo` CI job.
+- `meta_control`: deterministic controller switching over Pure Pursuit /
+  Stanley / LQR Steer under the shared Controller Arena engine.
+- Benchmark regression gate (`scripts/check_benchmark_gate.sh`, `BENCHMARKS.md`)
+  over 11 deterministic benchmark examples.
+- Playground onboarding and recent-experiment history.
 - A streaming EuRoC visual frontend with Shi-Tomasi detection, pyramidal
   Lucas-Kanade tracking, forward/backward checks, IMU-seeded triangulation,
   protected sidecar output, and a PNG CLI.
