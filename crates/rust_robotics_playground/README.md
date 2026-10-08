@@ -28,6 +28,14 @@ RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url
 
 Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
+## Layout
+
+Each demo splits into `controls()` (widgets in the left side panel, or below
+the scene on screens narrower than 700 px) and `scene()` (simulation step,
+drawing, and a one-line status). Per-frame logic lives in `scene()` so it
+keeps running whatever the panel shows. Shared look and helpers (dark theme,
+`fit_rect`, section headings, legends, the playback bar) are in `ui_kit.rs`.
+
 ## First visit and saved experiments
 
 New browser visitors see a 30-second mission that runs all four grid planners
@@ -55,7 +63,7 @@ from the robotics code.
 
 ## Reproducible links
 
-Use **Copy share link** in the header to copy a URL for the active demo. Grid
+Use **Share** in the header to copy a URL for the active demo. Grid
 planner links preserve the selected planner, start and goal cells, and the full
 obstacle map. Controller Arena links preserve the path preset, target speed,
 and turn-response disturbance. For example,

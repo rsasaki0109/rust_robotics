@@ -11,6 +11,7 @@ mod share;
 mod slam;
 mod slam_drive;
 mod slam_nav;
+mod ui_kit;
 
 use app::PlaygroundApp;
 

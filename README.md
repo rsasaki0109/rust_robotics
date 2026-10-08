@@ -145,8 +145,8 @@ Interactive grid-planner playground (native egui):
 cargo run -p rust_robotics_playground
 ```
 
-Open the **Localization** tab for Particle Filter / EKF driving with arrow keys.
-Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
+Open the **Localization** tab for Particle Filter / EKF: hold the pointer on
+the map (or use the arrow keys) to drive. Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
 timelines, or pick **Drive LiDAR SLAM** to drive a robot around a corridor loop
 with the arrow keys (or auto-drive) while scan-to-map odometry and loop closure
 run live — crank up the odometry error and watch the map snap back when you

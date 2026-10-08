@@ -51,6 +51,7 @@ const cases = [
   { name: 'arena', query: 'tab=arena' },
   { name: 'pushing', query: 'tab=pushing' },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
+  { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },
 ];
 
 let failures = 0;
@@ -74,9 +75,10 @@ for (const test of cases) {
   await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
   if (test.clickScene) {
-    // Send the robot somewhere: exercises planning and the navigator.
-    await page.mouse.move(400, 500);
-    await page.mouse.click(400, 500);
+    // Send the robot somewhere (the scene fills the right of the side
+    // panel): exercises planning and the navigator.
+    await page.mouse.move(800, 420);
+    await page.mouse.click(800, 420);
     await page.waitForTimeout(3000);
   }
   const loading = await page.evaluate(() => Boolean(document.getElementById('loading')));

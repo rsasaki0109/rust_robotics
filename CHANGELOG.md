@@ -142,6 +142,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
 
 ### Changed
+- Playground UX: one dark theme, controls in a resizable side panel (below
+  the scene on phones), scenes that fill the window, a compact status line
+  under each scene, legends, and long explanations folded into "How it
+  works". SLAM opens in live Drive mode; replays share a play/pause +
+  timeline bar and advance at a fixed rate regardless of frame rate; the
+  Controller Arena reruns as soon as a setting changes. Grid Planners: drag
+  to paint or erase walls (solid even on fast drags), drag start/goal
+  directly, no edit-mode toggle. Localization: hold the pointer on the map
+  to drive there, or let it tour the landmarks (on by default).
+- GitHub Pages landing page simplified: short hero with a playground
+  screenshot, six "Play in your browser" tiles that open each demo, and a
+  compact gallery (12 cards, filter chips, "Show all").
 - `OccupancyGrid` updates each cell at most once per scan with a hit winning
   over a miss (grazing beams no longer erase walls), and one miss now marks
   a cell free (`free_threshold` −0.6 → −0.3).

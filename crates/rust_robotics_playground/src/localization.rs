@@ -1,7 +1,8 @@
-//! Interactive localization demo: Particle Filter and EKF with keyboard driving.
+//! Interactive localization demo: Particle Filter and EKF. Drive with the
+//! arrow keys, by holding the pointer on the map, or let the robot tour the
+//! landmarks on its own.
 
 use std::f64::consts::PI;
-use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::{Matrix2, Matrix4, Vector2};
@@ -54,11 +55,17 @@ pub struct LocalizationDemo {
     ekf: EKFLocalizer,
     landmarks: Obstacles,
     noise_scale: f32,
-    steps_per_sec: f64,
     step_count: u64,
     trail_true: Vec<Point2D>,
     trail_est: Vec<Point2D>,
+    /// Tour the landmarks on its own.
+    auto_drive: bool,
+    /// Next corner of the automatic tour.
+    tour_index: usize,
 }
+
+/// Corners of the automatic tour around the landmarks.
+const TOUR: [(f64, f64); 4] = [(8.5, 3.5), (8.5, 6.5), (3.5, 6.5), (3.5, 3.5)];
 
 impl Default for LocalizationDemo {
     fn default() -> Self {
@@ -96,10 +103,11 @@ impl Default for LocalizationDemo {
             ekf,
             landmarks,
             noise_scale: 1.0,
-            steps_per_sec: 0.0,
             step_count: 0,
             trail_true: Vec::new(),
             trail_est: Vec::new(),
+            auto_drive: true,
+            tour_index: 0,
         }
     }
 }
@@ -131,8 +139,8 @@ impl LocalizationDemo {
         self.pf = fresh.pf;
         self.ekf = fresh.ekf;
         self.landmarks = fresh.landmarks;
-        self.steps_per_sec = 0.0;
         self.step_count = 0;
+        self.tour_index = 0;
         self.trail_true.clear();
         self.trail_est.clear();
         self.filter = filter;
@@ -157,6 +165,42 @@ impl LocalizationDemo {
             }
         });
         ControlInput::new(v, omega)
+    }
+
+    /// Drives toward a world point: turn first, then go.
+    fn steer_toward(&self, target: Point2D) -> ControlInput {
+        let dx = target.x - self.true_state.x;
+        let dy = target.y - self.true_state.y;
+        if dx.hypot(dy) < 0.3 {
+            return ControlInput::new(0.0, 0.0);
+        }
+        let error = (dy.atan2(dx) - self.true_state.yaw + PI).rem_euclid(2.0 * PI) - PI;
+        let omega = (2.0 * error).clamp(-TURN_RATE, TURN_RATE);
+        let v = if error.abs() < 1.0 {
+            LINEAR_SPEED
+        } else {
+            0.2 * LINEAR_SPEED
+        };
+        ControlInput::new(v, omega)
+    }
+
+    fn tour_control(&mut self) -> ControlInput {
+        let (x, y) = TOUR[self.tour_index];
+        let corner = Point2D::new(x, y);
+        if (corner.x - self.true_state.x).hypot(corner.y - self.true_state.y) < 0.6 {
+            self.tour_index = (self.tour_index + 1) % TOUR.len();
+        }
+        let (x, y) = TOUR[self.tour_index];
+        self.steer_toward(Point2D::new(x, y))
+    }
+
+    fn screen_to_world(rect: Rect, pos: Pos2) -> Point2D {
+        let u = f64::from((pos.x - rect.min.x) / rect.width());
+        let v = f64::from((pos.y - rect.min.y) / rect.height());
+        Point2D::new(
+            WORLD_MIN + u * (WORLD_MAX - WORLD_MIN),
+            WORLD_MIN + (1.0 - v) * (WORLD_MAX - WORLD_MIN),
+        )
     }
 
     fn propagate_true(state: &mut State2D, control: ControlInput) {
@@ -204,7 +248,6 @@ impl LocalizationDemo {
             return;
         }
 
-        let start = Instant::now();
         self.apply_noise_scale();
         let meas_sigma = 0.12 * f64::from(self.noise_scale);
 
@@ -229,10 +272,6 @@ impl LocalizationDemo {
         let est_point = Point2D::new(estimate.x, estimate.y);
         self.push_trail(true_point, est_point);
 
-        let elapsed = start.elapsed().as_secs_f64();
-        if elapsed > 0.0 {
-            self.steps_per_sec = 0.9 * self.steps_per_sec + 0.1 * (1.0 / elapsed);
-        }
         self.step_count += 1;
     }
 
@@ -247,10 +286,9 @@ impl LocalizationDemo {
         }
     }
 
-    fn world_rect(&self, ui: &egui::Ui) -> (Rect, f32) {
-        let side = ui.available_width().min(ui.available_height() - 8.0);
-        let origin = ui.cursor().min;
-        (Rect::from_min_size(origin, Vec2::splat(side)), side)
+    fn world_rect(ui: &egui::Ui) -> (Rect, f32) {
+        let rect = crate::ui_kit::fit_rect(ui, 1.0, 34.0);
+        (rect, rect.width())
     }
 
     fn world_to_screen(&self, rect: Rect, side: f32, p: Point2D) -> Pos2 {
@@ -393,14 +431,9 @@ impl LocalizationDemo {
         );
     }
 
-    pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        let control = self.read_control(ctx);
-        if control.v.abs() > 1e-6 || control.omega.abs() > 1e-6 {
-            self.step_simulation(control);
-        }
-
-        ui.horizontal(|ui| {
-            ui.label("Filter:");
+    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Filter");
+        ui.horizontal_wrapped(|ui| {
             for kind in [FilterKind::ParticleFilter, FilterKind::Ekf] {
                 if ui
                     .selectable_label(self.filter == kind, kind.label())
@@ -411,40 +444,81 @@ impl LocalizationDemo {
                     self.trail_est.clear();
                 }
             }
-            ui.separator();
-            ui.add(
-                egui::Slider::new(&mut self.noise_scale, 0.2..=3.0)
-                    .text("Measurement noise")
-                    .logarithmic(true),
-            );
+        });
+        crate::ui_kit::section(ui, "Sensor noise");
+        ui.add(egui::Slider::new(&mut self.noise_scale, 0.2..=3.0).logarithmic(true));
+
+        crate::ui_kit::section(ui, "Driving");
+        ui.horizontal_wrapped(|ui| {
+            ui.checkbox(&mut self.auto_drive, "Auto tour");
             if ui.button("Reset").clicked() {
                 self.reset();
             }
         });
+        crate::ui_kit::hint(
+            ui,
+            "Hold the pointer on the map to drive there, or use the arrow keys.",
+        );
+        crate::ui_kit::legend(
+            ui,
+            &[
+                (Color32::from_rgb(90, 220, 120), "true pose"),
+                (
+                    match self.filter {
+                        FilterKind::ParticleFilter => Color32::from_rgb(80, 170, 255),
+                        FilterKind::Ekf => Color32::from_rgb(255, 140, 70),
+                    },
+                    "estimate",
+                ),
+                (Color32::from_rgb(220, 200, 90), "landmark"),
+            ],
+        );
+        crate::ui_kit::how_it_works(
+            ui,
+            "localization_help",
+            "The robot measures noisy ranges to the five landmarks. The particle filter \
+             keeps a cloud of pose hypotheses and resamples them by how well they explain \
+             the ranges; the EKF keeps one Gaussian (the ellipse) and corrects it with a \
+             noisy position fix. Raise the noise to see which one copes better.",
+        );
+    }
 
-        ui.horizontal(|ui| {
-            let est = match self.filter {
-                FilterKind::ParticleFilter => self.pf.state_2d(),
-                FilterKind::Ekf => self.ekf.state_2d(),
-            };
-            ui.label(format!(
-                "true=({:.2}, {:.2})  est=({:.2}, {:.2})  err={:.2} m  steps={}  {:.0} steps/s",
-                self.true_state.x,
-                self.true_state.y,
-                est.x,
-                est.y,
-                ((self.true_state.x - est.x).powi(2) + (self.true_state.y - est.y).powi(2)).sqrt(),
-                self.step_count,
-                self.steps_per_sec
-            ));
-        });
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let (rect, side) = Self::world_rect(ui);
+        let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
 
-        ui.label("Arrow keys: ↑↓ drive, ←→ turn. Green = ground truth, blue/orange = estimate.");
-        ui.add_space(6.0);
-
-        let (rect, side) = self.world_rect(ui);
-        let _ = ui.allocate_rect(rect, egui::Sense::hover());
+        let mut control = self.read_control(ctx);
+        let keys = control.v.abs() > 1e-6 || control.omega.abs() > 1e-6;
+        if !keys {
+            if let Some(pos) = response
+                .is_pointer_button_down_on()
+                .then(|| response.interact_pointer_pos())
+                .flatten()
+            {
+                control = self.steer_toward(Self::screen_to_world(rect, pos));
+            } else if self.auto_drive {
+                control = self.tour_control();
+            }
+        } else {
+            self.auto_drive = false;
+        }
+        if response.is_pointer_button_down_on() {
+            self.auto_drive = false;
+        }
+        self.step_simulation(control);
         self.draw_scene(ui, rect, side);
+
+        let est = match self.filter {
+            FilterKind::ParticleFilter => self.pf.state_2d(),
+            FilterKind::Ekf => self.ekf.state_2d(),
+        };
+        let error = (self.true_state.x - est.x).hypot(self.true_state.y - est.y);
+        ui.label(format!(
+            "{}  ·  error {:.2} m  ·  {} steps",
+            self.filter.label(),
+            error,
+            self.step_count,
+        ));
     }
 }
 
@@ -464,6 +538,26 @@ mod tests {
         restored.apply_share_query(&query);
         assert_eq!(restored.filter, FilterKind::Ekf);
         assert!((restored.noise_scale - 2.4).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn auto_tour_drives_around_the_landmarks_and_stays_tracked() {
+        let mut demo = LocalizationDemo::default();
+        let mut seen = [false; 4];
+        for _ in 0..1500 {
+            let control = demo.tour_control();
+            demo.step_simulation(control);
+            seen[demo.tour_index] = true;
+            assert!(
+                (super::WORLD_MIN..=super::WORLD_MAX).contains(&demo.true_state.x)
+                    && (super::WORLD_MIN..=super::WORLD_MAX).contains(&demo.true_state.y),
+                "left the world"
+            );
+        }
+        assert!(seen.iter().all(|s| *s), "tour corners visited: {seen:?}");
+        let est = demo.pf.state_2d();
+        let error = (demo.true_state.x - est.x).hypot(demo.true_state.y - est.y);
+        assert!(error < 1.0, "particle filter lost the robot: {error:.2} m");
     }
 
     #[test]

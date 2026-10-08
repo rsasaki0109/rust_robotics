@@ -33,7 +33,8 @@ pub struct PlaygroundApp {
 }
 
 impl PlaygroundApp {
-    pub fn new(_ctx: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        crate::ui_kit::apply_style(&cc.egui_ctx);
         let query = crate::share::current_query();
         let tab = crate::share::value(&query, "tab")
             .and_then(PlaygroundTab::from_slug)
@@ -126,27 +127,38 @@ impl PlaygroundApp {
         let Some(step) = self.onboarding_step else {
             return;
         };
-        egui::Frame::group(ui.style())
-            .fill(egui::Color32::from_rgb(27, 39, 54))
+        if self.tab != PlaygroundTab::GridPlanners {
+            return;
+        }
+        egui::Frame::new()
+            .fill(crate::ui_kit::ACCENT.gamma_multiply(0.12))
+            .stroke(egui::Stroke::new(
+                1.0_f32,
+                crate::ui_kit::ACCENT.gamma_multiply(0.5),
+            ))
+            .corner_radius(8.0)
+            .inner_margin(10.0)
             .show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| match step {
+                ui.set_width(ui.available_width());
+                match step {
                     0 => {
                         ui.strong("30-second mission");
-                        ui.label("Compare four planners on the same map, then save a reproducible result.");
-                        if ui.button("Start mission").clicked() {
-                            self.tab = PlaygroundTab::GridPlanners;
-                            self.onboarding_step = Some(1);
-                            crate::engagement::track("preset_started");
-                        }
-                        if ui.small_button("Skip").clicked() {
-                            self.onboarding_step = None;
-                            crate::engagement::mark_onboarding_complete();
-                            crate::engagement::track("onboarding_skipped");
-                        }
+                        ui.label("Race four planners on one map, then save the result.");
+                        ui.horizontal(|ui| {
+                            if ui.button("Start").clicked() {
+                                self.onboarding_step = Some(1);
+                                crate::engagement::track("preset_started");
+                            }
+                            if ui.small_button("Skip").clicked() {
+                                self.onboarding_step = None;
+                                crate::engagement::mark_onboarding_complete();
+                                crate::engagement::track("onboarding_skipped");
+                            }
+                        });
                     }
                     1 => {
                         ui.strong("Step 1 of 2");
-                        ui.label("Run A*, Dijkstra, JPS, and Theta* on the current obstacle map.");
+                        ui.label("Run A*, Dijkstra, JPS, and Theta* on the current map.");
                         if ui.button("Compare all planners").clicked() {
                             self.grid_demo.run_guided_comparison();
                             self.onboarding_step = Some(2);
@@ -154,44 +166,56 @@ impl PlaygroundApp {
                         }
                     }
                     _ => {
-                        ui.strong("Result ready");
-                        ui.label("Save the exact map, endpoints, and selected planner for your next visit.");
-                        if ui.button("Save result and finish").clicked() {
+                        ui.strong("Step 2 of 2");
+                        ui.label("Save the map, endpoints, and planner as a link.");
+                        if ui.button("Save and copy link").clicked() {
                             let url = crate::share::share_url(&self.share_query());
                             ctx.copy_text(url);
                             self.save_current_experiment();
-                            self.share_status = Some("Saved and copied!");
+                            self.share_status = Some("Link copied");
                             self.onboarding_step = None;
                             crate::engagement::mark_onboarding_complete();
                             crate::engagement::track("onboarding_completed");
                             crate::engagement::track("share_link_copied");
                         }
                     }
-                });
+                }
             });
-        ui.add_space(6.0);
+        ui.add_space(4.0);
+    }
+
+    fn resume_ui(&mut self, ui: &mut egui::Ui) {
+        let Some(query) = self.resume_query.clone() else {
+            return;
+        };
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("↺ Resume last experiment").clicked() {
+                self.apply_query(&query);
+                self.resume_query = None;
+                crate::engagement::track("returning_experiment_resumed");
+            }
+            if ui.small_button("✕").on_hover_text("Dismiss").clicked() {
+                self.resume_query = None;
+            }
+        });
     }
 
     fn tab_hint(tab: PlaygroundTab) -> &'static str {
         match tab {
-            PlaygroundTab::GridPlanners => {
-                "Click obstacles, drag start/goal, compare A* / Dijkstra / JPS / Theta*"
-            }
+            PlaygroundTab::GridPlanners => "Draw walls, drag start and goal, race four planners.",
             PlaygroundTab::Localization => {
-                "Arrow keys drive the robot; compare Particle Filter vs EKF under sensor noise"
+                "Particle filter vs EKF: steer the robot and watch the estimate."
             }
             PlaygroundTab::Slam => {
-                "Replay EKF-SLAM, FastSLAM, ICP, or LiDAR loop closure — or drive a robot with live LiDAR SLAM, navigate on the map, and localize it after a kidnapping"
+                "Drive a robot with live LiDAR SLAM, or replay classic SLAM algorithms."
             }
             PlaygroundTab::AdmmFormation => {
-                "Receding-horizon ADMM formation: four agents track a noisy moving goal past an L-corner"
+                "Four agents agree on a formation via ADMM while tracking a noisy goal."
             }
             PlaygroundTab::ControllerArena => {
-                "Replay Pure Pursuit / Stanley / LQR Steer under identical paths and dynamics"
+                "Pure Pursuit, Stanley, and LQR on the same course and vehicle."
             }
-            PlaygroundTab::Pushing => {
-                "Drag the goal pose; face-switching MPPI pushes a box under stick/slide contact"
-            }
+            PlaygroundTab::Pushing => "Push a box to a goal pose with face-switching MPPI.",
         }
     }
 }
@@ -223,16 +247,36 @@ const TABS: [PlaygroundTab; 6] = [
 const NARROW_WIDTH: f32 = 700.0;
 
 impl PlaygroundApp {
-    fn tab_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        self.onboarding_ui(ctx, ui);
+    fn controls_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         match self.tab {
-            PlaygroundTab::GridPlanners => self.grid_demo.ui(ui),
-            PlaygroundTab::Localization => self.localization_demo.ui(ctx, ui),
-            PlaygroundTab::Slam => self.slam_demo.ui(ctx, ui),
-            PlaygroundTab::AdmmFormation => self.admm_demo.ui(ctx, ui),
-            PlaygroundTab::ControllerArena => self.controller_arena_demo.ui(ctx, ui),
-            PlaygroundTab::Pushing => self.pushing_demo.ui(ctx, ui),
+            PlaygroundTab::GridPlanners => self.grid_demo.controls(ctx, ui),
+            PlaygroundTab::Localization => self.localization_demo.controls(ctx, ui),
+            PlaygroundTab::Slam => self.slam_demo.controls(ctx, ui),
+            PlaygroundTab::AdmmFormation => self.admm_demo.controls(ctx, ui),
+            PlaygroundTab::ControllerArena => self.controller_arena_demo.controls(ctx, ui),
+            PlaygroundTab::Pushing => self.pushing_demo.controls(ctx, ui),
         }
+    }
+
+    fn scene_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        match self.tab {
+            PlaygroundTab::GridPlanners => self.grid_demo.scene(ctx, ui),
+            PlaygroundTab::Localization => self.localization_demo.scene(ctx, ui),
+            PlaygroundTab::Slam => self.slam_demo.scene(ctx, ui),
+            PlaygroundTab::AdmmFormation => self.admm_demo.scene(ctx, ui),
+            PlaygroundTab::ControllerArena => self.controller_arena_demo.scene(ctx, ui),
+            PlaygroundTab::Pushing => self.pushing_demo.scene(ctx, ui),
+        }
+    }
+
+    /// Title, one-line description, and the panel's extras above the controls.
+    fn panel_intro(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        ui.add_space(4.0);
+        ui.heading(Self::tab_label(self.tab));
+        crate::ui_kit::hint(ui, Self::tab_hint(self.tab));
+        ui.add_space(2.0);
+        self.resume_ui(ui);
+        self.onboarding_ui(ctx, ui);
     }
 
     fn select_tab(&mut self, tab: PlaygroundTab) {
@@ -243,102 +287,134 @@ impl PlaygroundApp {
         self.tab = tab;
         self.share_status = None;
     }
+
+    fn header_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, narrow: bool) {
+        ui.horizontal(|ui| {
+            ui.hyperlink_to(
+                egui::RichText::new("RustRobotics")
+                    .strong()
+                    .color(egui::Color32::WHITE),
+                "../",
+            )
+            .on_hover_text("Back to the project page");
+            ui.add_space(6.0);
+            if narrow {
+                let mut selected = self.tab;
+                egui::ComboBox::from_id_salt("tab_select")
+                    .selected_text(Self::tab_label(self.tab))
+                    .show_ui(ui, |ui| {
+                        for tab in TABS {
+                            ui.selectable_value(&mut selected, tab, Self::tab_label(tab));
+                        }
+                    });
+                if selected != self.tab {
+                    self.select_tab(selected);
+                }
+            } else {
+                for tab in TABS {
+                    if ui
+                        .selectable_label(self.tab == tab, Self::tab_label(tab))
+                        .clicked()
+                    {
+                        self.select_tab(tab);
+                    }
+                }
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let recent = self.recent_experiments.clone();
+                if !recent.is_empty() {
+                    ui.menu_button("⏱", |ui| {
+                        ui.label(egui::RichText::new("Recent experiments").small().weak());
+                        for experiment in recent {
+                            if ui.button(&experiment.label).clicked() {
+                                self.apply_query(&experiment.query);
+                                crate::engagement::track("returning_experiment_resumed");
+                                ui.close_menu();
+                            }
+                        }
+                    })
+                    .response
+                    .on_hover_text("Recent experiments");
+                }
+                let share = if narrow { "🔗" } else { "🔗 Share" };
+                if ui
+                    .button(share)
+                    .on_hover_text("Copy a link to this exact experiment")
+                    .clicked()
+                {
+                    let url = crate::share::share_url(&self.share_query());
+                    ctx.copy_text(url);
+                    self.save_current_experiment();
+                    self.share_status = Some("Link copied");
+                    crate::engagement::track("share_link_copied");
+                }
+                if let Some(status) = self.share_status {
+                    ui.label(
+                        egui::RichText::new(status)
+                            .small()
+                            .color(crate::ui_kit::ACCENT),
+                    );
+                }
+            });
+        });
+    }
 }
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let narrow = ctx.screen_rect().width() < NARROW_WIDTH;
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
-            // Wrap so the tabs stay reachable on phone-width screens.
-            ui.horizontal_wrapped(|ui| {
-                if narrow {
-                    // A compact header leaves the screen to the demo.
-                    ui.strong("RustRobotics");
-                    let mut selected = self.tab;
-                    egui::ComboBox::from_id_salt("tab_select")
-                        .selected_text(Self::tab_label(self.tab))
-                        .show_ui(ui, |ui| {
-                            for tab in TABS {
-                                ui.selectable_value(&mut selected, tab, Self::tab_label(tab));
-                            }
-                        });
-                    if selected != self.tab {
-                        self.select_tab(selected);
-                    }
-                } else {
-                    ui.heading("RustRobotics Playground");
-                    ui.separator();
-                    for tab in TABS {
-                        if ui
-                            .selectable_label(self.tab == tab, Self::tab_label(tab))
-                            .clicked()
-                        {
-                            self.select_tab(tab);
-                        }
-                    }
-                }
-                ui.separator();
-                if ui.button("Copy share link").clicked() {
-                    let url = crate::share::share_url(&self.share_query());
-                    ctx.copy_text(url);
-                    self.save_current_experiment();
-                    self.share_status = Some("Copied!");
-                    crate::engagement::track("share_link_copied");
-                }
-                let recent = self.recent_experiments.clone();
-                ui.menu_button("Recent experiments", |ui| {
-                    if recent.is_empty() {
-                        ui.label("No saved experiments yet");
-                    }
-                    for experiment in recent {
-                        if ui.button(&experiment.label).clicked() {
-                            self.apply_query(&experiment.query);
-                            crate::engagement::track("returning_experiment_resumed");
-                            ui.close_menu();
-                        }
-                    }
-                });
-                if let Some(status) = self.share_status {
-                    ui.label(status);
-                }
-            });
-            if !narrow {
-                ui.label(Self::tab_hint(self.tab));
-            }
-            if let Some(query) = self.resume_query.clone() {
-                ui.horizontal(|ui| {
-                    ui.label("Continue where you left off?");
-                    if ui.small_button("Resume last experiment").clicked() {
-                        self.apply_query(&query);
-                        self.resume_query = None;
-                        crate::engagement::track("returning_experiment_resumed");
-                    }
-                    if ui.small_button("Dismiss").clicked() {
-                        self.resume_query = None;
-                    }
-                });
-            }
-        });
+        let bar = ctx.style().visuals.extreme_bg_color;
+        egui::TopBottomPanel::top("header")
+            .frame(
+                egui::Frame::new()
+                    .fill(bar)
+                    .inner_margin(egui::Margin::symmetric(12, 8)),
+            )
+            .show(ctx, |ui| self.header_ui(ctx, ui, narrow));
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if narrow {
-                // Phones cannot fit controls and the scene on one screen;
-                // scroll the page (drags on the scene still go to the scene).
+        if narrow {
+            // Phones: the scene first, the controls below it (scroll down).
+            egui::CentralPanel::default().show(ctx, |ui| {
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
-                    .show(ui, |ui| self.tab_ui(ctx, ui));
-            } else {
-                self.tab_ui(ctx, ui);
-            }
-        });
+                    .show(ui, |ui| {
+                        self.scene_ui(ctx, ui);
+                        ui.separator();
+                        self.panel_intro(ctx, ui);
+                        self.controls_ui(ctx, ui);
+                        ui.add_space(24.0);
+                    });
+            });
+        } else {
+            egui::SidePanel::left("controls")
+                .resizable(true)
+                .default_width(320.0)
+                .width_range(260.0..=440.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(ctx.style().visuals.panel_fill)
+                        .inner_margin(egui::Margin::symmetric(14, 10)),
+                )
+                .show(ctx, |ui| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            self.panel_intro(ctx, ui);
+                            ui.separator();
+                            self.controls_ui(ctx, ui);
+                            ui.add_space(12.0);
+                        });
+                });
+            egui::CentralPanel::default()
+                .frame(
+                    egui::Frame::new()
+                        .fill(ctx.style().visuals.extreme_bg_color)
+                        .inner_margin(16),
+                )
+                .show(ctx, |ui| self.scene_ui(ctx, ui));
+        }
 
-        if matches!(
-            self.tab,
-            PlaygroundTab::Localization
-                | PlaygroundTab::Slam
-                | PlaygroundTab::AdmmFormation
-                | PlaygroundTab::ControllerArena
-        ) {
+        if self.tab == PlaygroundTab::Localization {
             ctx.request_repaint();
         }
     }
