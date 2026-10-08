@@ -258,13 +258,9 @@ impl RRTPlanner {
 
     fn check_collision(&self, node: &RRTNode) -> bool {
         for obs in &self.obstacles {
-            for (&px, &py) in node.path_x.iter().zip(node.path_y.iter()) {
-                let dx = obs.x - px;
-                let dy = obs.y - py;
-                let d = (dx * dx + dy * dy).sqrt();
-                if d <= obs.radius + self.config.robot_radius {
-                    return false;
-                }
+            let reach = obs.radius + self.config.robot_radius;
+            if polyline_within(&node.path_x, &node.path_y, [obs.x, obs.y], reach) {
+                return false;
             }
         }
         true
@@ -310,6 +306,29 @@ impl RRTPlanner {
     }
 }
 
+/// Whether the polyline `xs, ys` (or its single point) passes within
+/// `reach` of `p`: every segment is checked, not only its sample points, so
+/// a thin obstacle between two samples is still caught.
+pub(crate) fn polyline_within(xs: &[f64], ys: &[f64], p: [f64; 2], reach: f64) -> bool {
+    let dist2 = |a: [f64; 2], b: [f64; 2]| {
+        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+        let l2 = dx * dx + dy * dy;
+        let t = if l2 > 0.0 {
+            (((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let (cx, cy) = (a[0] + t * dx - p[0], a[1] + t * dy - p[1]);
+        cx * cx + cy * cy
+    };
+    let reach2 = reach * reach;
+    match xs.len().min(ys.len()) {
+        0 => false,
+        1 => dist2([xs[0], ys[0]], [xs[0], ys[0]]) <= reach2,
+        n => (0..n - 1).any(|i| dist2([xs[i], ys[i]], [xs[i + 1], ys[i + 1]]) <= reach2),
+    }
+}
+
 impl PathPlanner for RRTPlanner {
     fn plan(&self, start: Point2D, goal: Point2D) -> Result<Path2D, RoboticsError> {
         let mut planner = RRTPlanner {
@@ -328,6 +347,17 @@ impl PathPlanner for RRTPlanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_thin_obstacle_between_two_path_samples_is_a_collision() {
+        // Samples 0.5 m apart, a 0.1 m obstacle exactly between them.
+        let xs = [0.0, 0.5];
+        let ys = [0.0, 0.0];
+        assert!(polyline_within(&xs, &ys, [0.25, 0.0], 0.1));
+        assert!(!polyline_within(&xs, &ys, [0.25, 0.3], 0.1));
+        assert!(polyline_within(&[1.0], &[1.0], [1.05, 1.0], 0.1));
+        assert!(!polyline_within(&[], &[], [0.0, 0.0], 1.0));
+    }
 
     fn assert_close(actual: f64, expected: f64) {
         assert!(

@@ -606,7 +606,9 @@ impl JPSPlanner {
         expected_cost: f64,
     ) -> Option<JPSInvalidJumpPathDetail> {
         let has_only_valid_steps = self.path_has_only_valid_steps(path);
-        let has_cost_mismatch = (path.total_length() - expected_cost).abs() > 1e-6;
+        // The search cost is in grid cells, the path in meters.
+        let expected_length = expected_cost * self.grid_map.resolution;
+        let has_cost_mismatch = (path.total_length() - expected_length).abs() > 1e-6;
 
         match (has_only_valid_steps, has_cost_mismatch) {
             (true, false) => None,
@@ -886,6 +888,33 @@ mod tests {
     use rust_robotics_core::Obstacles;
     use std::collections::{BinaryHeap, HashMap, HashSet};
     use std::hint::black_box;
+
+    #[test]
+    fn a_finer_grid_still_plans_as_pure_jps() {
+        // Search costs are in cells and path lengths in meters: at 0.5 m per
+        // cell they used to disagree, so every query fell back to A*.
+        let mut points = Vec::new();
+        for i in 0..=20 {
+            let t = i as f64 * 0.5;
+            for (x, y) in [(t, 0.0), (t, 10.0), (0.0, t), (10.0, t)] {
+                points.push(Point2D::new(x, y));
+            }
+        }
+        let planner = JPSPlanner::from_obstacle_points(
+            &Obstacles::from_points(points),
+            JPSConfig {
+                resolution: 0.5,
+                robot_radius: 0.5,
+                heuristic_weight: 1.0,
+            },
+        )
+        .expect("planner");
+        let result = planner
+            .plan_with_diagnostics(Point2D::new(1.0, 1.0), Point2D::new(8.0, 6.0))
+            .expect("path");
+        assert_eq!(result.diagnostics.fallback_reason, None);
+        assert!(!result.diagnostics.used_fallback);
+    }
     use std::time::Instant;
 
     #[derive(Debug)]

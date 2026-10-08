@@ -77,10 +77,15 @@ impl InformedRRTStar {
             (self.start.x + self.goal.x) / 2.0,
             (self.start.y + self.goal.y) / 2.0,
         ];
-        let a1 = [
-            (self.goal.x - self.start.x) / c_min,
-            (self.goal.y - self.start.y) / c_min,
-        ];
+        // Start on the goal: any orientation of the (circular) region works.
+        let a1 = if c_min > 1e-12 {
+            [
+                (self.goal.x - self.start.x) / c_min,
+                (self.goal.y - self.start.y) / c_min,
+            ]
+        } else {
+            [1.0, 0.0]
+        };
         let e_theta = a1[1].atan2(a1[0]);
         let cos_theta = e_theta.cos();
         let sin_theta = e_theta.sin();
@@ -210,7 +215,11 @@ impl InformedRRTStar {
         rotation_matrix: &[[f64; 2]; 2],
         x_ball: [f64; 2],
     ) -> [f64; 2] {
-        let r = [c_max / 2.0, (c_max * c_max - c_min * c_min).sqrt() / 2.0];
+        // A path barely longer than c_min (rounding) must not give NaN.
+        let r = [
+            c_max / 2.0,
+            (c_max * c_max - c_min * c_min).max(0.0).sqrt() / 2.0,
+        ];
         let scaled = [r[0] * x_ball[0], r[1] * x_ball[1]];
         let rotated = [
             rotation_matrix[0][0] * scaled[0] + rotation_matrix[0][1] * scaled[1],
@@ -303,6 +312,26 @@ impl InformedRRTStar {
                 if self.check_collision(near_node, theta, d) {
                     self.node_list[i].parent = Some(new_node_index);
                     self.node_list[i].cost = s_cost;
+                    self.propagate_cost_to_leaves(i);
+                }
+            }
+        }
+    }
+
+    /// After a rewire lowered `parent`'s cost, lowers its descendants' too
+    /// (otherwise later parent choices compare against stale costs).
+    fn propagate_cost_to_leaves(&mut self, parent: usize) {
+        let mut stack = vec![parent];
+        while let Some(p) = stack.pop() {
+            let (px, py, pcost) = {
+                let node = &self.node_list[p];
+                (node.x, node.y, node.cost)
+            };
+            for i in 0..self.node_list.len() {
+                if self.node_list[i].parent == Some(p) {
+                    let node = &mut self.node_list[i];
+                    node.cost = pcost + (node.x - px).hypot(node.y - py);
+                    stack.push(i);
                 }
             }
         }
@@ -321,6 +350,11 @@ impl InformedRRTStar {
     }
 
     fn check_segment_collision(&self, x1: f64, y1: f64, x2: f64, y2: f64) -> bool {
+        // A non-finite segment is never free (NaN comparisons are all false
+        // and would otherwise read as "no collision").
+        if ![x1, y1, x2, y2].iter().all(|v| v.is_finite()) {
+            return false;
+        }
         for &(ox, oy, size) in &self.obstacle_list {
             let dd = self.distance_squared_point_to_segment([x1, y1], [x2, y2], [ox, oy]);
             if dd <= size * size {
@@ -390,6 +424,50 @@ impl InformedRRTStar {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn start_on_the_goal_adds_no_nan_nodes() {
+        let mut planner = InformedRRTStar::new(
+            (5.0, 5.0),
+            (5.0, 5.0),
+            vec![(8.0, 8.0, 1.0)],
+            (0.0, 10.0),
+            0.5,
+            10,
+            200,
+        );
+        let _ = planner.planning();
+        assert!(planner
+            .node_list
+            .iter()
+            .all(|n| n.x.is_finite() && n.y.is_finite() && n.cost.is_finite()));
+    }
+
+    #[test]
+    fn rewiring_keeps_descendant_costs_consistent() {
+        let mut planner = InformedRRTStar::new(
+            (0.0, 0.0),
+            (9.0, 9.0),
+            vec![(5.0, 5.0, 1.5), (3.0, 7.0, 1.0)],
+            (-1.0, 10.0),
+            1.0,
+            10,
+            600,
+        );
+        let _ = planner.planning();
+        // Every node's cost is its parent's cost plus the edge length.
+        for node in &planner.node_list {
+            if let Some(p) = node.parent {
+                let parent = &planner.node_list[p];
+                let expected = parent.cost + (node.x - parent.x).hypot(node.y - parent.y);
+                assert!(
+                    (node.cost - expected).abs() < 1e-6,
+                    "stale cost {} vs {expected}",
+                    node.cost
+                );
+            }
+        }
+    }
 
     fn assert_close(actual: f64, expected: f64) {
         assert!(
