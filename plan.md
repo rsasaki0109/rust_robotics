@@ -1327,6 +1327,12 @@ below is library work that does not depend on them.
    merged to `main`.
    Course editing landed the same day: world presets, drag-to-draw walls, and
    share links carrying the course.
+   Perceptual-aliasing guard landed the same day: loop ambiguity check
+   (shifted-seed re-registration), periodic-pillar scenario,
+   `headless_lidar_aliasing` (12 false closures / 1.81 m RMSE off vs 0 /
+   0.032 m on), playground replay scenarios and an Aliased corridor world.
+   Dev profile now optimizes the SLAM and optimizer crates (CI SLAM examples
+   20–50× faster, identical output).
 6. ~~**Loop-closure gallery GIF**~~ **Done (2026-10-08).**
    `render_gif_lidar_loop_closure` → `media/gallery/lidar_loop_closure.gif`,
    added to `scripts/generate_gallery_gifs.sh`; the scenario is shared via

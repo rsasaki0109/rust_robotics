@@ -11,7 +11,8 @@ use rust_robotics_optimization::LinearSolver;
 use rust_robotics_slam::{
     lidar_graph_slam::{LidarGraphSlam, LidarGraphSlamConfig},
     lidar_loop_scenario::{
-        corridor_loop_deltas, corridor_loop_start, corridor_loop_walls, CorridorLoopConfig,
+        corridor_loop_deltas, corridor_loop_start, corridor_loop_start_for, corridor_loop_walls,
+        corridor_loop_walls_for, CorridorLayout, CorridorLoopConfig,
     },
     pose_graph_optimization::PoseGraphConfig,
     scan_to_map::{
@@ -48,6 +49,11 @@ const FRONT_END: Color32 = Color32::from_rgb(240, 150, 70);
 const GRAPH: Color32 = Color32::from_rgb(90, 210, 140);
 const LOOP_EDGE: Color32 = Color32::from_rgb(230, 90, 220);
 const SCAN: Color32 = Color32::from_rgb(255, 90, 100);
+const WRONG_LOOP_EDGE: Color32 = Color32::from_rgb(250, 220, 90);
+/// A loop edge more than this far from ground truth is a false closure \[m\].
+const WRONG_LOOP_TOLERANCE: f64 = 0.5;
+/// Pillar spacing of the aliased corridor \[m\].
+const ALIASED_SPACING: f64 = 2.0;
 const GRAPH_MAP: Color32 = Color32::from_rgba_premultiplied(48, 77, 122, 120);
 const FRONT_END_MAP: Color32 = Color32::from_rgba_premultiplied(113, 71, 33, 120);
 
@@ -62,6 +68,8 @@ pub(crate) struct LidarSceneView<'a> {
     pub front_end: &'a [Pose2D],
     pub nodes: &'a [Pose2D],
     pub loop_edges: Vec<(Pose2D, Pose2D)>,
+    /// Loop edges known (from ground truth) to be false closures.
+    pub wrong_loop_edges: Vec<(Pose2D, Pose2D)>,
     pub scan: &'a [Vector2<f64>],
     pub estimate: Pose2D,
     pub front_end_pose: Pose2D,
@@ -169,6 +177,12 @@ pub(crate) fn draw_lidar_scene(
             Stroke::new(1.5_f32, LOOP_EDGE),
         );
     }
+    for (a, b) in &view.wrong_loop_edges {
+        painter.line_segment(
+            [to_screen(rect, a.x, a.y), to_screen(rect, b.x, b.y)],
+            Stroke::new(3.0_f32, WRONG_LOOP_EDGE),
+        );
+    }
     for point in transform_scan_to_world(view.scan, view.estimate) {
         painter.circle_filled(to_screen(rect, point.x, point.y), 1.4, SCAN);
     }
@@ -209,16 +223,39 @@ fn rectangle(min: (f64, f64), max: (f64, f64)) -> Vec<LineSegment> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WorldPreset {
     CorridorLoop,
+    AliasedCorridor,
     PillarHall,
     EmptyBox,
 }
 
 impl WorldPreset {
-    const ALL: [Self; 3] = [Self::CorridorLoop, Self::PillarHall, Self::EmptyBox];
+    const ALL: [Self; 4] = [
+        Self::CorridorLoop,
+        Self::AliasedCorridor,
+        Self::PillarHall,
+        Self::EmptyBox,
+    ];
+
+    /// Corridor worlds share the centerline used by auto-drive.
+    fn has_centerline(self) -> bool {
+        matches!(self, Self::CorridorLoop | Self::AliasedCorridor)
+    }
+
+    fn start_pose(self) -> Pose2D {
+        match self {
+            // Start mid-corridor, where no corner is in LiDAR range.
+            Self::AliasedCorridor => corridor_loop_start_for(&CorridorLoopConfig {
+                start_offset: 12.0,
+                ..CorridorLoopConfig::default()
+            }),
+            _ => corridor_loop_start(),
+        }
+    }
 
     fn label(self) -> &'static str {
         match self {
             Self::CorridorLoop => "Corridor loop",
+            Self::AliasedCorridor => "Aliased corridor",
             Self::PillarHall => "Pillar hall",
             Self::EmptyBox => "Empty box",
         }
@@ -227,6 +264,7 @@ impl WorldPreset {
     fn slug(self) -> &'static str {
         match self {
             Self::CorridorLoop => "corridor",
+            Self::AliasedCorridor => "aliased",
             Self::PillarHall => "hall",
             Self::EmptyBox => "box",
         }
@@ -239,6 +277,9 @@ impl WorldPreset {
     fn walls(self) -> Vec<LineSegment> {
         match self {
             Self::CorridorLoop => corridor_loop_walls(),
+            Self::AliasedCorridor => corridor_loop_walls_for(CorridorLayout::Periodic {
+                spacing: ALIASED_SPACING,
+            }),
             Self::PillarHall => {
                 let mut walls = rectangle((-15.0, -10.0), (15.0, 10.0));
                 for (x, y) in [
@@ -321,7 +362,11 @@ pub struct SlamDriveDemo {
     truth_trail: Vec<Pose2D>,
     odometry_trail: Vec<Pose2D>,
     front_end_trail: Vec<Pose2D>,
+    /// Ground truth at each pose-graph node.
+    node_truth: Vec<Pose2D>,
     last_scan: Vec<Vector2<f64>>,
+    /// Reject ambiguous loop matches (perceptual aliasing).
+    pub(crate) ambiguity_check: bool,
     pub(crate) odometry_scale_error_pct: f32,
     pub(crate) yaw_drift_deg_per_m: f32,
     pub(crate) range_noise_cm: f32,
@@ -361,7 +406,7 @@ impl SlamDriveDemo {
             last_map_rect: None,
             centerline,
             rng: StdRng::seed_from_u64(7),
-            slam: LidarGraphSlam::new(Self::slam_config(), corridor_loop_start()),
+            slam: LidarGraphSlam::new(Self::slam_config(true), corridor_loop_start()),
             truth: corridor_loop_start(),
             odometry: corridor_loop_start(),
             pending_odometry: Pose2D::origin(),
@@ -370,7 +415,9 @@ impl SlamDriveDemo {
             truth_trail: Vec::new(),
             odometry_trail: Vec::new(),
             front_end_trail: Vec::new(),
+            node_truth: Vec::new(),
             last_scan: Vec::new(),
+            ambiguity_check: true,
             odometry_scale_error_pct: 3.0,
             yaw_drift_deg_per_m: 1.0,
             range_noise_cm: 2.0,
@@ -381,12 +428,17 @@ impl SlamDriveDemo {
 
     /// Builds the walls for the current world and takes the first scan.
     fn start(&mut self) {
+        let pose = self.preset.start_pose();
+        self.truth = pose;
+        self.odometry = pose;
+        self.slam = LidarGraphSlam::new(Self::slam_config(self.ambiguity_check), pose);
         self.rebuild_walls();
         self.slam_update(Pose2D::origin());
     }
 
-    fn slam_config() -> LidarGraphSlamConfig {
+    fn slam_config(ambiguity_check: bool) -> LidarGraphSlamConfig {
         LidarGraphSlamConfig {
+            loop_ambiguity_check: ambiguity_check,
             // Long drives grow the graph; block-sparse PCG keeps each
             // re-optimization interactive.
             pose_graph: PoseGraphConfig {
@@ -423,7 +475,7 @@ impl SlamDriveDemo {
 
     fn set_preset(&mut self, preset: WorldPreset) {
         self.preset = preset;
-        if preset != WorldPreset::CorridorLoop {
+        if !preset.has_centerline() {
             self.auto_drive = false;
         }
         self.reset();
@@ -434,6 +486,7 @@ impl SlamDriveDemo {
             preset: self.preset,
             custom_walls: std::mem::take(&mut self.custom_walls),
             edit_walls: self.edit_walls,
+            ambiguity_check: self.ambiguity_check,
             odometry_scale_error_pct: self.odometry_scale_error_pct,
             yaw_drift_deg_per_m: self.yaw_drift_deg_per_m,
             range_noise_cm: self.range_noise_cm,
@@ -463,10 +516,12 @@ impl SlamDriveDemo {
         }
         let preset = crate::share::value(query, "world").and_then(WorldPreset::from_slug);
         let custom = crate::share::value(query, "walls").map(decode_walls);
-        if preset.is_some() || custom.is_some() {
+        let ambiguity_check = crate::share::boolean(query, "alias_check");
+        if preset.is_some() || custom.is_some() || ambiguity_check.is_some() {
             self.preset = preset.unwrap_or(self.preset);
             self.custom_walls = custom.unwrap_or_default();
-            if self.preset != WorldPreset::CorridorLoop {
+            self.ambiguity_check = ambiguity_check.unwrap_or(self.ambiguity_check);
+            if !self.preset.has_centerline() {
                 self.auto_drive = false;
             }
             self.reset();
@@ -475,13 +530,14 @@ impl SlamDriveDemo {
 
     pub fn share_query_suffix(&self) -> String {
         let mut query = format!(
-            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&world={}",
+            "odom_scale={}&yaw_drift={}&noise={}&auto={}&frontend_map={}&world={}&alias_check={}",
             self.odometry_scale_error_pct,
             self.yaw_drift_deg_per_m,
             self.range_noise_cm,
             u8::from(self.auto_drive),
             u8::from(self.show_front_end_map),
             self.preset.slug(),
+            u8::from(self.ambiguity_check),
         );
         if !self.custom_walls.is_empty() {
             query.push_str("&walls=");
@@ -502,7 +558,10 @@ impl SlamDriveDemo {
 
     fn slam_update(&mut self, odom_delta: Pose2D) {
         let scan = self.scan();
-        self.slam.update(odom_delta, &scan);
+        let update = self.slam.update(odom_delta, &scan);
+        if update.new_node.is_some() {
+            self.node_truth.push(self.truth);
+        }
         self.last_scan = scan;
         self.truth_trail.push(self.truth);
         self.odometry_trail.push(self.odometry);
@@ -587,6 +646,20 @@ impl SlamDriveDemo {
         true
     }
 
+    /// Whether each loop closure is false, judged against ground truth.
+    fn loop_is_wrong(&self) -> Vec<bool> {
+        self.slam
+            .loop_closures()
+            .iter()
+            .map(|closure| {
+                let truth =
+                    relative_pose(self.node_truth[closure.from], self.node_truth[closure.to]);
+                let error = relative_pose(truth, closure.relative);
+                error.x.hypot(error.y) > WRONG_LOOP_TOLERANCE
+            })
+            .collect()
+    }
+
     fn view(&self) -> (Vec<Pose2D>, Vec<Pose2D>) {
         (self.slam.node_poses(), self.slam.node_front_end_poses())
     }
@@ -596,12 +669,19 @@ impl SlamDriveDemo {
             let delta = relative_pose(self.truth, pose);
             delta.x.hypot(delta.y)
         };
+        let wrong = self
+            .loop_is_wrong()
+            .into_iter()
+            .filter(|wrong| *wrong)
+            .count();
         ui.label(format!(
-            "Driven {:.1} m · nodes {} · loop closures {} · position error: odometry {:.2} m, \
-             scan-to-map {:.3} m, graph SLAM {:.3} m",
+            "Driven {:.1} m · nodes {} · loop closures {} ({} wrong, {} ambiguous rejected) · \
+             position error: odometry {:.2} m, scan-to-map {:.3} m, graph SLAM {:.3} m",
             self.driven,
             self.slam.node_poses().len(),
             self.slam.loop_closures().len(),
+            wrong,
+            self.slam.ambiguous_loop_rejections(),
             error(self.odometry),
             error(self.slam.front_end_pose()),
             error(self.slam.pose()),
@@ -612,8 +692,18 @@ impl SlamDriveDemo {
              drag on the map to build your own course. Purple: wheel odometry · orange: \
              scan-to-map · green: pose graph · magenta: loop edges · red: current scan.",
         );
-        if self.preset == WorldPreset::CorridorLoop {
-            ui.label("The top corridor has no pillars, so scan matching drifts there.");
+        match self.preset {
+            WorldPreset::CorridorLoop => {
+                ui.label("The top corridor has no pillars, so scan matching drifts there.");
+            }
+            WorldPreset::AliasedCorridor => {
+                ui.label(
+                    "Pillars repeat every 2 m, so neighboring places look identical. Untick \
+                     Reject ambiguous loops and watch loop closures lock onto the wrong pillar \
+                     (yellow) and bend the map.",
+                );
+            }
+            _ => {}
         }
     }
 
@@ -689,7 +779,7 @@ impl SlamDriveDemo {
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         self.world_controls(ui);
         ui.horizontal(|ui| {
-            let auto_available = self.preset == WorldPreset::CorridorLoop;
+            let auto_available = self.preset.has_centerline();
             if !auto_available {
                 self.auto_drive = false;
             }
@@ -698,6 +788,16 @@ impl SlamDriveDemo {
                 egui::Checkbox::new(&mut self.auto_drive, "Auto-drive"),
             );
             if ui.button("Reset").clicked() {
+                self.reset();
+            }
+            if ui
+                .checkbox(&mut self.ambiguity_check, "Reject ambiguous loops")
+                .on_hover_text(
+                    "Re-register each loop match from shifted seeds and reject it when another \
+                     alignment fits nearly as well (perceptual aliasing). Restarts the run.",
+                )
+                .changed()
+            {
                 self.reset();
             }
             ui.checkbox(
@@ -734,12 +834,16 @@ impl SlamDriveDemo {
             .enumerate()
             .filter_map(|(index, pose)| self.slam.node_scan(index).map(|scan| (*pose, scan)))
             .collect();
-        let loop_edges = self
-            .slam
-            .loop_closures()
-            .iter()
-            .map(|closure| (nodes[closure.from], nodes[closure.to]))
-            .collect();
+        let mut loop_edges = Vec::new();
+        let mut wrong_loop_edges = Vec::new();
+        for (closure, wrong) in self.slam.loop_closures().iter().zip(self.loop_is_wrong()) {
+            let edge = (nodes[closure.from], nodes[closure.to]);
+            if wrong {
+                wrong_loop_edges.push(edge);
+            } else {
+                loop_edges.push(edge);
+            }
+        }
         let view = LidarSceneView {
             walls: &self.walls,
             map,
@@ -749,6 +853,7 @@ impl SlamDriveDemo {
             front_end: &self.front_end_trail,
             nodes: &nodes,
             loop_edges,
+            wrong_loop_edges,
             scan: &self.last_scan,
             estimate: self.slam.pose(),
             front_end_pose: self.slam.front_end_pose(),
@@ -954,6 +1059,46 @@ mod tests {
             assert!(
                 wall_clearance(&box_walls, point) < 0.15,
                 "scan point {point:?} is not on the box walls"
+            );
+        }
+    }
+
+    fn auto_drive_wrong_loops(ambiguity_check: bool, seed: u64) -> (usize, usize) {
+        let mut demo = SlamDriveDemo {
+            preset: WorldPreset::AliasedCorridor,
+            ambiguity_check,
+            rng: StdRng::seed_from_u64(seed),
+            ..SlamDriveDemo::blank()
+        };
+        demo.start();
+        let lap = 85.4;
+        while demo.driven < lap + 14.0 {
+            let (speed, omega) = demo.auto_control();
+            demo.tick(speed, omega);
+        }
+        let wrong = demo.loop_is_wrong().into_iter().filter(|w| *w).count();
+        (wrong, demo.slam.loop_closures().len())
+    }
+
+    #[test]
+    fn aliased_corridor_needs_the_ambiguity_check() {
+        // Aliasing is stochastic: without the check some seeds lock onto the
+        // wrong pillar; with it, no seed may produce a false loop.
+        let seeds = 1..=6;
+        let failures = seeds
+            .clone()
+            .filter(|seed| auto_drive_wrong_loops(false, *seed).0 > 0)
+            .count();
+        assert!(failures > 0, "aliasing never produced a false loop");
+        for seed in seeds {
+            let (wrong, closures) = auto_drive_wrong_loops(true, seed);
+            assert_eq!(
+                wrong, 0,
+                "seed {seed}: ambiguity check let a false loop through"
+            );
+            assert!(
+                closures > 0,
+                "seed {seed}: ambiguity check rejected every loop"
             );
         }
     }

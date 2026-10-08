@@ -403,6 +403,19 @@ This is a multi-week effort. Suggested phasing:
   correction is absorbed by the corridor section that actually drifted
   instead of bending the well-constrained parts of the loop.
 
+## Follow-up: perceptual aliasing (2026-10)
+
+With identical pillars every 2.5 m, loop verification against a candidate's
+neighborhood can converge to the alignment one pillar over. Those matches
+have ~100 % inliers and agree with each other, so geometric gates and
+pairwise consistency both pass them; 12 such edges corrupted the map
+(node RMSE 1.81 m vs 0.29 m for scan-to-map alone). The ambiguity check
+re-registers each accepted match from seeds shifted ±1/2/3 m in x and y and
+rejects it when a distinct solution (> 0.3 m away) reaches ≥ 90 % of the
+best inlier count. In featureless corridors the same test rejects matches
+whose along-axis position is unobservable. Cost: up to 12 extra coarse-to-
+fine registrations per accepted candidate.
+
 ## Out of scope for the first PR
 
 - Submap loop closure / re-anchoring.

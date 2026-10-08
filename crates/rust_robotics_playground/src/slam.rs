@@ -12,7 +12,9 @@ use rust_robotics_slam::{
     fastslam1::{create_particles, fastslam_update, get_best_particle},
     icp_matching::icp_matching,
     lidar_graph_slam::LidarGraphSlamConfig,
-    lidar_loop_scenario::{run_corridor_loop, CorridorLoopConfig, CorridorLoopRun},
+    lidar_loop_scenario::{
+        aliased_corridor_config, run_corridor_loop, CorridorLoopConfig, CorridorLoopRun,
+    },
     scan_to_map::relative_pose,
 };
 
@@ -25,6 +27,65 @@ const WORLD_MAX: f64 = 14.0;
 const STEPS: usize = 72;
 
 const LOOP_FRAMES_PER_TICK: usize = 2;
+/// A loop edge more than this far from ground truth is a false closure \[m\].
+const WRONG_LOOP_TOLERANCE: f64 = 0.5;
+
+/// Recorded runs available in the loop-closure replay.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LoopScenario {
+    Corridor,
+    AliasedNoCheck,
+    AliasedWithCheck,
+}
+
+impl LoopScenario {
+    const ALL: [Self; 3] = [Self::Corridor, Self::AliasedNoCheck, Self::AliasedWithCheck];
+
+    fn index(self) -> usize {
+        match self {
+            Self::Corridor => 0,
+            Self::AliasedNoCheck => 1,
+            Self::AliasedWithCheck => 2,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Corridor => "Corridor loop",
+            Self::AliasedNoCheck => "Aliased corridor, no ambiguity check",
+            Self::AliasedWithCheck => "Aliased corridor, ambiguity check",
+        }
+    }
+
+    fn slug(self) -> &'static str {
+        match self {
+            Self::Corridor => "corridor",
+            Self::AliasedNoCheck => "aliased_off",
+            Self::AliasedWithCheck => "aliased_on",
+        }
+    }
+
+    fn from_slug(value: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|scenario| scenario.slug() == value)
+    }
+
+    fn run(self) -> CorridorLoopRun {
+        let (scenario, ambiguity_check) = match self {
+            Self::Corridor => (CorridorLoopConfig::default(), true),
+            Self::AliasedNoCheck => (aliased_corridor_config(), false),
+            Self::AliasedWithCheck => (aliased_corridor_config(), true),
+        };
+        run_corridor_loop(
+            &scenario,
+            LidarGraphSlamConfig {
+                loop_ambiguity_check: ambiguity_check,
+                ..LidarGraphSlamConfig::default()
+            },
+        )
+    }
+}
 
 const LANDMARKS: [[f64; 2]; 6] = [
     [2.5, 1.5],
@@ -100,8 +161,10 @@ pub struct SlamDemo {
     ekf_frames: Vec<SlamFrame>,
     fastslam_frames: Vec<SlamFrame>,
     icp_frames: Vec<SlamFrame>,
-    /// Corridor-loop graph SLAM run, computed the first time the mode opens.
-    loop_run: Option<CorridorLoopRun>,
+    /// Selected loop-closure replay scenario.
+    loop_scenario: LoopScenario,
+    /// Recorded runs per scenario, computed the first time each is shown.
+    loop_runs: [Option<CorridorLoopRun>; 3],
     /// Render the loop-closure map at front-end poses (before correction).
     show_front_end_map: bool,
     /// Live, keyboard-driven LiDAR graph SLAM.
@@ -339,7 +402,8 @@ impl Default for SlamDemo {
             ekf_frames,
             fastslam_frames,
             icp_frames,
-            loop_run: None,
+            loop_scenario: LoopScenario::Corridor,
+            loop_runs: [None, None, None],
             show_front_end_map: false,
             drive: SlamDriveDemo::default(),
         }
@@ -366,6 +430,11 @@ impl SlamDemo {
         if let Some(front_end) = crate::share::boolean(query, "frontend_map") {
             self.show_front_end_map = front_end;
         }
+        if let Some(scenario) =
+            crate::share::value(query, "scenario").and_then(LoopScenario::from_slug)
+        {
+            self.loop_scenario = scenario;
+        }
         if self.kind == SlamKind::Drive {
             self.drive.apply_share_query(query);
         }
@@ -386,8 +455,9 @@ impl SlamDemo {
         );
         if self.kind == SlamKind::LoopClosure {
             query.push_str(&format!(
-                "&frontend_map={}",
-                u8::from(self.show_front_end_map)
+                "&frontend_map={}&scenario={}",
+                u8::from(self.show_front_end_map),
+                self.loop_scenario.slug()
             ));
         }
         query
@@ -402,12 +472,8 @@ impl SlamDemo {
     }
 
     fn loop_run(&mut self) -> &CorridorLoopRun {
-        self.loop_run.get_or_insert_with(|| {
-            run_corridor_loop(
-                &CorridorLoopConfig::default(),
-                LidarGraphSlamConfig::default(),
-            )
-        })
+        let scenario = self.loop_scenario;
+        self.loop_runs[scenario.index()].get_or_insert_with(|| scenario.run())
     }
 
     fn frame_count(&mut self) -> usize {
@@ -419,11 +485,13 @@ impl SlamDemo {
 
     fn reset(&mut self) {
         let kind = self.kind;
-        let loop_run = self.loop_run.take();
+        let loop_runs = std::mem::take(&mut self.loop_runs);
+        let loop_scenario = self.loop_scenario;
         let drive = std::mem::take(&mut self.drive);
         *self = Self::default();
         self.kind = kind;
-        self.loop_run = loop_run;
+        self.loop_runs = loop_runs;
+        self.loop_scenario = loop_scenario;
         self.drive = drive;
     }
 
@@ -555,17 +623,26 @@ impl SlamDemo {
             odometry: &odometry,
             front_end: &front_end,
             nodes: &frame.node_poses,
-            loop_edges: run
-                .loop_closures
-                .iter()
-                .filter(|closure| closure.to < node_count)
-                .map(|closure| (frame.node_poses[closure.from], frame.node_poses[closure.to]))
-                .collect(),
+            loop_edges: Vec::new(),
+            wrong_loop_edges: Vec::new(),
             scan: &frame.scan,
             estimate: frame.estimate,
             front_end_pose: frame.front_end,
         };
-        draw_lidar_scene(ui, &view, 72.0);
+        let mut view = view;
+        for closure in run
+            .loop_closures
+            .iter()
+            .filter(|closure| closure.to < node_count)
+        {
+            let edge = (frame.node_poses[closure.from], frame.node_poses[closure.to]);
+            if run.is_wrong_loop(closure, WRONG_LOOP_TOLERANCE) {
+                view.wrong_loop_edges.push(edge);
+            } else {
+                view.loop_edges.push(edge);
+            }
+        }
+        draw_lidar_scene(ui, &view, 110.0);
     }
 
     fn loop_status(&mut self, ui: &mut egui::Ui) {
@@ -576,25 +653,38 @@ impl SlamDemo {
             let delta = relative_pose(frame.truth, pose);
             delta.x.hypot(delta.y)
         };
-        let closures = run
+        let closures: Vec<_> = run
             .loop_closures
             .iter()
             .filter(|closure| closure.to < frame.node_poses.len())
+            .collect();
+        let wrong = closures
+            .iter()
+            .filter(|closure| run.is_wrong_loop(closure, WRONG_LOOP_TOLERANCE))
             .count();
         ui.label(format!(
-            "Nodes {} · loop closures {} · position error: scan-to-map {:.3} m, \
+            "Nodes {} · loop closures {} ({} wrong) · position error: scan-to-map {:.3} m, \
              graph SLAM {:.3} m",
             frame.node_poses.len(),
-            closures,
+            closures.len(),
+            wrong,
             error(frame.front_end),
             error(frame.estimate),
         ));
         ui.label(
             "Gray: truth · purple: wheel odometry · orange: scan-to-map front end · \
-             green: pose graph · magenta: loop edges · red: current scan. The top \
-             corridor has no pillars, so the front end drifts there until the loop \
-             closes.",
+             green: pose graph · magenta: loop edges · yellow: false loop edges · red: \
+             current scan. The top corridor has no pillars, so the front end drifts there \
+             until the loop closes.",
         );
+        if self.loop_scenario != LoopScenario::Corridor {
+            ui.label(
+                "Aliased corridor: identical pillars every 2.5 m and a start mid-corridor. \
+                 Without the ambiguity check, loop matches lock onto the pillar next door \
+                 and bend the map; with it, those matches are rejected until a unique \
+                 view (a corner) closes the loop.",
+            );
+        }
     }
 
     pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
@@ -639,6 +729,20 @@ impl SlamDemo {
         });
 
         if self.kind == SlamKind::LoopClosure {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("Scenario:");
+                for scenario in LoopScenario::ALL {
+                    if ui
+                        .selectable_label(self.loop_scenario == scenario, scenario.label())
+                        .clicked()
+                    {
+                        self.loop_scenario = scenario;
+                        self.playing = false;
+                    }
+                }
+            });
+            let max_idx = self.frame_count().saturating_sub(1);
+            self.frame_idx = self.frame_idx.min(max_idx);
             ui.horizontal(|ui| {
                 let first_loop = self.loop_run().first_loop_frame();
                 if let Some(first_loop) = first_loop {
@@ -697,7 +801,7 @@ impl SlamDemo {
 
 #[cfg(test)]
 mod tests {
-    use super::{SlamDemo, SlamKind};
+    use super::{LoopScenario, SlamDemo, SlamKind};
 
     #[test]
     fn share_query_round_trips_timeline() {
@@ -721,16 +825,19 @@ mod tests {
             kind: SlamKind::LoopClosure,
             frame_idx: 321,
             show_front_end_map: true,
+            loop_scenario: LoopScenario::AliasedNoCheck,
             ..SlamDemo::default()
         };
         let query = demo.share_query();
         assert!(query.contains("algorithm=loop"));
+        assert!(query.contains("scenario=aliased_off"));
         assert!(query.contains("frontend_map=1"));
         let mut restored = SlamDemo::default();
         restored.apply_share_query(&query);
         assert_eq!(restored.kind, SlamKind::LoopClosure);
         assert_eq!(restored.frame_idx, 321);
         assert!(restored.show_front_end_map);
-        assert!(restored.loop_run.is_none());
+        assert_eq!(restored.loop_scenario, LoopScenario::AliasedNoCheck);
+        assert!(restored.loop_runs.iter().all(Option::is_none));
     }
 }

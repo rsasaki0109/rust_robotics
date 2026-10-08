@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Perceptual-aliasing guard: `LidarGraphSlamConfig::loop_ambiguity_check`
+  (default on) re-registers accepted loop matches from shifted seeds and
+  rejects ambiguous ones; `LidarGraphSlam::ambiguous_loop_rejections`.
+  `lidar_loop_scenario` gains `CorridorLayout::Periodic`, `start_offset`,
+  `aliased_corridor_config`, and ground-truth `is_wrong_loop`. The
+  `headless_lidar_aliasing` example (CI-gated) shows 12 false closures and a
+  1.81 m node RMSE without the check vs none and 0.032 m with it.
+- Playground: aliased-corridor scenarios in the loop-closure replay (false
+  loop edges in yellow) and an **Aliased corridor** world plus a "Reject
+  ambiguous loops" toggle in Drive LiDAR SLAM.
 - `rust_robotics_slam::lidar_loop_scenario`: the deterministic corridor-loop
   scenario (walls, centerline, biased odometry, noisy LiDAR) with per-step
   recording, shared by the headless example, the gallery GIF, and the
@@ -57,6 +67,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MathematicalRobotics-compatible IMU extrinsic/lever-arm transforms,
   navigation-state and bias factor families, EuRoC `imu0` `T_BS` ingestion,
   and visual-pose-constrained state/bias refinement in the VIO pipeline.
+
+### Changed
+- Dev/test builds compile `rust_robotics_slam` and `rust_robotics_optimization`
+  with `opt-level = 2`; the SLAM headless examples run 20–50× faster in CI
+  (e.g. `headless_lidar_loop_closure` 21 s → 0.6 s) with identical output.
 
 ### Fixed
 - `RobustIcp2D::estimate` applied the current transform twice and mixed a

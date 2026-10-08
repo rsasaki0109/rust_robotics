@@ -26,8 +26,8 @@ use rust_robotics_core::Pose2D;
 use crate::pose_graph_optimization::{optimize_pose_graph, Edge2D, Pose2DNode, PoseGraphConfig};
 use crate::scan_to_map::{
     compose_pose, register_point_to_line, relative_pose, scan_points_with_normals,
-    transform_scan_to_world, translational_observability, ScanToMapConfig, ScanToMapMatcher,
-    ScanToMapUpdate,
+    transform_scan_to_world, translational_observability, ScanRegistration, ScanToMapConfig,
+    ScanToMapMatcher, ScanToMapUpdate,
 };
 
 /// Tuning parameters for [`LidarGraphSlam`].
@@ -57,6 +57,18 @@ pub struct LidarGraphSlamConfig {
     pub loop_max_correction_translation: f64,
     /// Maximum loop correction rotation relative to the estimate \[rad\].
     pub loop_max_correction_yaw: f64,
+    /// Reject loop matches that are not unique (perceptual aliasing): the
+    /// accepted solution is re-registered from seeds shifted by
+    /// ±`loop_ambiguity_shifts` along x and y, and any distinct alternative
+    /// that scores nearly as well makes the match ambiguous.
+    pub loop_ambiguity_check: bool,
+    /// Seed shifts \[m\] used by the ambiguity check.
+    pub loop_ambiguity_shifts: [f64; 3],
+    /// An alternative is "nearly as good" when its inlier ratio is at least
+    /// this fraction of the best match's.
+    pub loop_ambiguity_ratio: f64,
+    /// Alternatives closer than this to the best match are the same solution \[m\].
+    pub loop_ambiguity_separation: f64,
     /// Base standard deviations `(xy [m], yaw [rad])` of an odometry edge.
     pub odometry_sigma: (f64, f64),
     /// Odometry translation uncertainty per meter travelled in a direction
@@ -94,6 +106,10 @@ impl Default for LidarGraphSlamConfig {
             loop_max_mean_residual: 0.05,
             loop_max_correction_translation: 3.0,
             loop_max_correction_yaw: 0.6,
+            loop_ambiguity_check: true,
+            loop_ambiguity_shifts: [1.0, 2.0, 3.0],
+            loop_ambiguity_ratio: 0.9,
+            loop_ambiguity_separation: 0.3,
             odometry_sigma: (0.005, 0.0005),
             odometry_scale_sigma: 0.05,
             odometry_yaw_sigma: 0.05,
@@ -138,6 +154,12 @@ pub struct LidarGraphSlamUpdate {
     pub loop_closure: Option<LoopClosure>,
 }
 
+enum LoopVerification {
+    Accepted(LoopClosure),
+    Ambiguous,
+    Rejected,
+}
+
 #[derive(Debug, Clone)]
 struct Node {
     /// Optimized pose in the graph frame.
@@ -155,6 +177,8 @@ pub struct LidarGraphSlam {
     nodes: Vec<Node>,
     edges: Vec<Edge2D>,
     loop_closures: Vec<LoopClosure>,
+    /// Loop matches rejected by the ambiguity check.
+    ambiguous_loop_rejections: usize,
     /// Distance-weighted weak directions `Σ dₖ wₖ vₖ vₖᵀ` (front-end world
     /// frame) travelled since the last node without scan constraints.
     unobserved_translation: Matrix2<f64>,
@@ -171,6 +195,7 @@ impl LidarGraphSlam {
             nodes: Vec::new(),
             edges: Vec::new(),
             loop_closures: Vec::new(),
+            ambiguous_loop_rejections: 0,
             unobserved_translation: Matrix2::zeros(),
             unobserved_yaw_distance: 0.0,
         }
@@ -215,6 +240,11 @@ impl LidarGraphSlam {
     /// Accepted loop closures, oldest first.
     pub fn loop_closures(&self) -> &[LoopClosure] {
         &self.loop_closures
+    }
+
+    /// Number of loop matches rejected as ambiguous (perceptual aliasing).
+    pub fn ambiguous_loop_rejections(&self) -> usize {
+        self.ambiguous_loop_rejections
     }
 
     /// Pose-graph edges (odometry and loop) in insertion order.
@@ -351,7 +381,7 @@ impl LidarGraphSlam {
         });
     }
 
-    fn detect_loop(&self, index: usize) -> Option<LoopClosure> {
+    fn detect_loop(&mut self, index: usize) -> Option<LoopClosure> {
         if index < self.config.loop_min_node_gap {
             return None;
         }
@@ -369,13 +399,66 @@ impl LidarGraphSlam {
             .collect();
         candidates.sort_by(|a, b| a.0.total_cmp(&b.0));
 
-        candidates
-            .into_iter()
-            .take(self.config.loop_max_candidates)
-            .find_map(|(_, candidate)| self.verify_loop(candidate, index))
+        for (_, candidate) in candidates.into_iter().take(self.config.loop_max_candidates) {
+            match self.verify_loop(candidate, index) {
+                LoopVerification::Accepted(closure) => return Some(closure),
+                LoopVerification::Ambiguous => self.ambiguous_loop_rejections += 1,
+                LoopVerification::Rejected => {}
+            }
+        }
+        None
     }
 
-    fn verify_loop(&self, candidate: usize, index: usize) -> Option<LoopClosure> {
+    /// Coarse-to-fine point-to-line registration for loop verification.
+    fn register_loop(
+        &self,
+        source: &[Vector2<f64>],
+        target: &[Vector2<f64>],
+        normals: &[Vector2<f64>],
+        seed: Pose2D,
+    ) -> ScanRegistration {
+        let front = &self.config.front_end;
+        let mut pose = seed;
+        let mut registration = None;
+        for radius in self.config.loop_correspondence_schedule {
+            let config = ScanToMapConfig {
+                max_correspondence_distance: radius,
+                max_iterations: front.max_iterations.max(30),
+                ..*front
+            };
+            let result = register_point_to_line(source, target, normals, pose, &config);
+            pose = result.pose;
+            registration = Some(result);
+        }
+        registration.expect("correspondence schedule is non-empty")
+    }
+
+    /// Whether a distinct alternative alignment scores nearly as well as `best`.
+    fn is_ambiguous(
+        &self,
+        source: &[Vector2<f64>],
+        target: &[Vector2<f64>],
+        normals: &[Vector2<f64>],
+        best: &ScanRegistration,
+    ) -> bool {
+        let best_inliers = best.correspondences as f64;
+        self.config
+            .loop_ambiguity_shifts
+            .iter()
+            .flat_map(|shift| [(*shift, 0.0), (-shift, 0.0), (0.0, *shift), (0.0, -shift)])
+            .any(|(dx, dy)| {
+                let seed = Pose2D::new(best.pose.x + dx, best.pose.y + dy, best.pose.yaw);
+                let alternative = self.register_loop(source, target, normals, seed);
+                let separation =
+                    (alternative.pose.x - best.pose.x).hypot(alternative.pose.y - best.pose.y);
+                separation > self.config.loop_ambiguity_separation
+                    && alternative.mean_residual <= self.config.loop_max_mean_residual
+                    && alternative.correspondences as f64
+                        >= self.config.loop_ambiguity_ratio * best_inliers
+            })
+    }
+
+    fn verify_loop(&self, candidate: usize, index: usize) -> LoopVerification {
         let front = &self.config.front_end;
         let first = candidate.saturating_sub(self.config.loop_map_neighbors);
         let last = (candidate + self.config.loop_map_neighbors).min(index - 1);
@@ -399,30 +482,26 @@ impl LidarGraphSlam {
         )
         .0;
         if source.len() < front.min_correspondences || target.len() < front.min_correspondences {
-            return None;
+            return LoopVerification::Rejected;
         }
 
         let seed = self.nodes[index].pose;
-        let mut pose = seed;
-        let mut registration = None;
-        for radius in self.config.loop_correspondence_schedule {
-            let config = ScanToMapConfig {
-                max_correspondence_distance: radius,
-                max_iterations: front.max_iterations.max(30),
-                ..*front
-            };
-            let result = register_point_to_line(&source, &target, &normals, pose, &config);
-            pose = result.pose;
-            registration = Some(result);
-        }
-        let registration = registration?;
+        let registration = self.register_loop(&source, &target, &normals, seed);
         let inlier_ratio = registration.correspondences as f64 / source.len() as f64;
         let correction = relative_pose(seed, registration.pose);
         let accepted = inlier_ratio >= self.config.loop_min_inlier_ratio
             && registration.mean_residual <= self.config.loop_max_mean_residual
             && correction.x.hypot(correction.y) <= self.config.loop_max_correction_translation
             && correction.yaw.abs() <= self.config.loop_max_correction_yaw;
-        accepted.then(|| LoopClosure {
+        if !accepted {
+            return LoopVerification::Rejected;
+        }
+        if self.config.loop_ambiguity_check
+            && self.is_ambiguous(&source, &target, &normals, &registration)
+        {
+            return LoopVerification::Ambiguous;
+        }
+        LoopVerification::Accepted(LoopClosure {
             from: candidate,
             to: index,
             relative: relative_pose(self.nodes[candidate].pose, registration.pose),

@@ -14,11 +14,28 @@ use rand_distr::{Distribution, Normal};
 use rust_robotics_core::Pose2D;
 
 use crate::lidar_graph_slam::{LidarGraphSlam, LidarGraphSlamConfig, LoopClosure};
-use crate::scan_to_map::{compose_pose, ranges_to_points, ray_cast_ranges, LineSegment};
+use crate::scan_to_map::{
+    compose_pose, ranges_to_points, ray_cast_ranges, relative_pose, LineSegment,
+};
+
+/// Pillar arrangement along the bottom corridor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum CorridorLayout {
+    /// Irregularly spaced pillars: every place looks different.
+    Irregular,
+    /// Identical pillars every `spacing` meters on both walls of the bottom
+    /// corridor: neighboring places look the same (perceptual aliasing).
+    Periodic { spacing: f64 },
+}
 
 /// Scenario parameters for [`run_corridor_loop`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CorridorLoopConfig {
+    /// Pillar arrangement along the bottom corridor.
+    pub layout: CorridorLayout,
+    /// Distance along the centerline (from the bottom-left start) at which
+    /// the robot starts \[m\].
+    pub start_offset: f64,
     /// Distance travelled per step \[m\].
     pub step: f64,
     /// Turning radius at the corridor corners \[m\].
@@ -44,6 +61,8 @@ pub struct CorridorLoopConfig {
 impl Default for CorridorLoopConfig {
     fn default() -> Self {
         Self {
+            layout: CorridorLayout::Irregular,
+            start_offset: 0.0,
             step: 0.2,
             corner_radius: 1.5,
             extra_distance: 12.0,
@@ -104,14 +123,44 @@ pub struct CorridorLoopRun {
     pub final_estimate: Pose2D,
     /// All accepted loop closures.
     pub loop_closures: Vec<LoopClosure>,
+    /// Loop matches rejected as ambiguous (perceptual aliasing).
+    pub ambiguous_loop_rejections: usize,
 }
 
 impl CorridorLoopRun {
+    /// Whether `closure`'s measured relative pose is off from ground truth by
+    /// more than `tolerance` meters (a false loop closure).
+    pub fn is_wrong_loop(&self, closure: &LoopClosure, tolerance: f64) -> bool {
+        let truth = relative_pose(self.node_truth[closure.from], self.node_truth[closure.to]);
+        let error = relative_pose(truth, closure.relative);
+        error.x.hypot(error.y) > tolerance
+    }
+
+    /// Number of false loop closures (see [`Self::is_wrong_loop`]).
+    pub fn wrong_loop_closures(&self, tolerance: f64) -> usize {
+        self.loop_closures
+            .iter()
+            .filter(|closure| self.is_wrong_loop(closure, tolerance))
+            .count()
+    }
+
     /// Index of the first frame that accepted a loop closure.
     pub fn first_loop_frame(&self) -> Option<usize> {
         self.frames
             .iter()
             .position(|frame| frame.loop_closure.is_some())
+    }
+}
+
+/// Perceptual-aliasing variant: identical pillars every 2.5 m along the
+/// bottom corridor and a start in its middle, where no corner is in LiDAR
+/// range, so loop matches can lock onto the wrong pillar.
+pub fn aliased_corridor_config() -> CorridorLoopConfig {
+    CorridorLoopConfig {
+        layout: CorridorLayout::Periodic { spacing: 2.5 },
+        start_offset: 12.0,
+        extra_distance: 14.0,
+        ..CorridorLoopConfig::default()
     }
 }
 
@@ -140,14 +189,32 @@ fn rectangle(min: (f64, f64), max: (f64, f64)) -> Vec<LineSegment> {
 /// Walls of the corridor loop: outer 30 × 20 m, inner block 24 × 14 m, and
 /// pillars at irregular spacing except along the top corridor.
 pub fn corridor_loop_walls() -> Vec<LineSegment> {
+    corridor_loop_walls_for(CorridorLayout::Irregular)
+}
+
+/// Walls of the corridor loop with the given bottom-corridor `layout`.
+pub fn corridor_loop_walls_for(layout: CorridorLayout) -> Vec<LineSegment> {
     let mut walls = rectangle((-15.0, -10.0), (15.0, 10.0));
     walls.extend(rectangle((-12.0, -7.0), (12.0, 7.0)));
     let pillar = |x: f64, y: f64| rectangle((x - 0.2, y - 0.2), (x + 0.2, y + 0.2));
-    for x in [-9.3, -4.1, 1.2, 6.7, 10.4] {
-        walls.extend(pillar(x, -9.8));
-    }
-    for x in [-7.6, -1.9, 3.8, 8.9] {
-        walls.extend(pillar(x, -7.2));
+    match layout {
+        CorridorLayout::Irregular => {
+            for x in [-9.3, -4.1, 1.2, 6.7, 10.4] {
+                walls.extend(pillar(x, -9.8));
+            }
+            for x in [-7.6, -1.9, 3.8, 8.9] {
+                walls.extend(pillar(x, -7.2));
+            }
+        }
+        CorridorLayout::Periodic { spacing } => {
+            let spacing = spacing.max(0.5);
+            let count = (22.0 / spacing).floor() as i32;
+            for i in 0..=count {
+                let x = -11.0 + f64::from(i) * spacing;
+                walls.extend(pillar(x, -9.8));
+                walls.extend(pillar(x, -7.2));
+            }
+        }
     }
     // The top corridor is left featureless: in its middle the LiDAR sees two
     // parallel walls only, so along-corridor motion is unobservable and the
@@ -173,8 +240,30 @@ pub fn corridor_loop_lap_length(corner_radius: f64) -> f64 {
     2.0 * (27.0 + 17.0) - 8.0 * corner_radius + 2.0 * std::f64::consts::PI * corner_radius
 }
 
-/// Body-frame step deltas along the corridor centerline (rounded rectangle).
+/// Start pose of `config`: `start_offset` meters along the centerline.
+pub fn corridor_loop_start_for(config: &CorridorLoopConfig) -> Pose2D {
+    centerline_deltas(config, config.start_offset)
+        .into_iter()
+        .fold(corridor_loop_start(), compose_pose)
+}
+
+/// Body-frame step deltas along the corridor centerline (rounded rectangle),
+/// starting `start_offset` meters along it and covering one lap plus
+/// `extra_distance`.
 pub fn corridor_loop_deltas(config: &CorridorLoopConfig) -> Vec<Pose2D> {
+    let skipped = centerline_deltas(config, config.start_offset).len();
+    let total = corridor_loop_lap_length(config.corner_radius) + config.extra_distance;
+    centerline_deltas(config, config.start_offset + total)
+        .into_iter()
+        .skip(skipped)
+        .collect()
+}
+
+/// Deltas from the bottom-left start covering at least `total` meters.
+fn centerline_deltas(config: &CorridorLoopConfig, total: f64) -> Vec<Pose2D> {
+    if total <= 0.0 {
+        return Vec::new();
+    }
     let radius = config.corner_radius;
     let quarter = std::f64::consts::FRAC_PI_2 * radius;
     let half_lap = [
@@ -183,7 +272,6 @@ pub fn corridor_loop_deltas(config: &CorridorLoopConfig) -> Vec<Pose2D> {
         (17.0 - 2.0 * radius, 0.0),
         (quarter, 1.0 / radius),
     ];
-    let total = corridor_loop_lap_length(radius) + config.extra_distance;
     let mut deltas = Vec::new();
     let mut travelled = 0.0;
     'outer: loop {
@@ -212,7 +300,7 @@ pub fn run_corridor_loop(
     config: &CorridorLoopConfig,
     slam_config: LidarGraphSlamConfig,
 ) -> CorridorLoopRun {
-    let walls = corridor_loop_walls();
+    let walls = corridor_loop_walls_for(config.layout);
     let deltas = corridor_loop_deltas(config);
     let mut rng = StdRng::seed_from_u64(config.seed);
     let range_noise = Normal::new(0.0, config.range_noise).expect("valid range noise");
@@ -225,7 +313,7 @@ pub fn run_corridor_loop(
         ranges_to_points(&ranges)
     };
 
-    let start = corridor_loop_start();
+    let start = corridor_loop_start_for(config);
     let mut truth = start;
     let mut odometry = start;
     let mut slam = LidarGraphSlam::new(slam_config, start);
@@ -285,6 +373,7 @@ pub fn run_corridor_loop(
         final_node_poses: slam.node_poses(),
         final_estimate: slam.pose(),
         loop_closures: slam.loop_closures().to_vec(),
+        ambiguous_loop_rejections: slam.ambiguous_loop_rejections(),
         walls,
     }
 }

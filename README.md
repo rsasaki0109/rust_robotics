@@ -726,6 +726,26 @@ re-optimization so the correction is visible. In the playground's SLAM tab,
 drive it yourself:
 <https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&algorithm=drive&auto=1>
 
+#### Perceptual aliasing
+
+Identical pillars every 2.5 m make neighboring places look the same, so a loop
+match can lock onto the pillar next door — and a run of such matches agrees
+with itself, so no consistency check catches it. `LidarGraphSlam`'s
+**ambiguity check** re-registers every accepted loop match from seeds shifted
+±1/2/3 m and rejects it when a distinct alignment fits nearly as well:
+
+| ambiguity check | loop closures | false closures | node RMSE \[m\] |
+| --- | ---: | ---: | ---: |
+| off | 16 | 12 | 1.812 (worse than scan-to-map alone, 0.292) |
+| on | 7 | 0 | 0.032 |
+
+```
+cargo run -p rust_robotics --example headless_lidar_aliasing --no-default-features --features slam
+```
+
+The playground replays both runs (false loop edges in yellow) and offers an
+**Aliased corridor** world in Drive LiDAR SLAM with the check switchable.
+
 `LidarGraphSlam` adds a pose-graph back end on top of the scan-to-map front
 end: nodes every 1 m, coarse-to-fine scan-to-submap loop verification, and
 **degeneracy-aware odometry edges** — the front end discards Gauss-Newton
