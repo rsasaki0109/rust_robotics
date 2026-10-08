@@ -16,7 +16,7 @@ use std::f64::consts::PI;
 // Simulation parameters
 const DT: f64 = 0.1; // time step [s]
 const MAX_RANGE: f64 = 20.0; // maximum observation range [m]
-const M_DIST_TH: f64 = 4.0; // Mahalanobis distance threshold for data association (chi-square 95% for 2 DOF)
+const M_DIST_TH: f64 = 4.0; // Mahalanobis distance gate for data association [σ] (compared squared: 16, looser than the 95% χ²(2) value 5.99)
 
 // State dimension
 const STATE_SIZE: usize = 3; // robot state [x, y, yaw]
@@ -309,82 +309,45 @@ fn search_correspond_landmark_id(state: &EKFSLAMState, z: &Vector2<f64>) -> Opti
 
 /// Add a new landmark to the state
 fn add_new_landmark(state: &mut EKFSLAMState, z: &Vector2<f64>) {
-    let robot_pose = state.get_robot_pose();
-
-    // Calculate landmark position from observation
-    let lm_x = robot_pose[0] + z[0] * (robot_pose[2] + z[1]).cos();
-    let lm_y = robot_pose[1] + z[0] * (robot_pose[2] + z[1]).sin();
-
-    // Extend state vector
+    // Extend the state and covariance with a zero block, then fill it in.
     let old_n = state.x.len();
     let new_n = old_n + LM_SIZE;
+    state.x = state.x.clone().resize_vertically(new_n, 0.0);
+    state.p = state.p.clone().resize(new_n, new_n, 0.0);
+    initialize_landmark(state, z, old_n);
+    state.n_lm += 1;
+}
 
-    let mut new_x = DVector::zeros(new_n);
-    for i in 0..old_n {
-        new_x[i] = state.x[i];
-    }
-    new_x[old_n] = lm_x;
-    new_x[old_n + 1] = lm_y;
-    state.x = new_x;
+/// Initializes the landmark at state index `lm_idx` from its first
+/// observation `z`, linearizing `l = r + d·(cos, sin)(yaw + θ)`:
+/// `P_ll = G_r P_rr G_rᵀ + G_z R G_zᵀ` and `P_l· = G_r P_r·`, so the
+/// landmark inherits the robot's uncertainty and stays correlated with it.
+fn initialize_landmark(state: &mut EKFSLAMState, z: &Vector2<f64>, lm_idx: usize) {
+    let robot_pose = state.get_robot_pose();
+    let (s, c) = (robot_pose[2] + z[1]).sin_cos();
+    state.x[lm_idx] = robot_pose[0] + z[0] * c;
+    state.x[lm_idx + 1] = robot_pose[1] + z[0] * s;
 
-    // Extend covariance matrix
-    let mut new_p = DMatrix::zeros(new_n, new_n);
-
-    // Copy old covariance
-    for i in 0..old_n {
-        for j in 0..old_n {
-            new_p[(i, j)] = state.p[(i, j)];
-        }
-    }
-
-    // Initialize new landmark covariance with large uncertainty
-    let r = get_r();
-
-    // Jacobian of landmark initialization with respect to robot pose and observation
-    let c = (robot_pose[2] + z[1]).cos();
-    let s = (robot_pose[2] + z[1]).sin();
-
-    // G_r: Jacobian w.r.t. robot pose [x, y, yaw]
+    // G_r: Jacobian w.r.t. robot pose [x, y, yaw]; G_z: w.r.t. [d, angle].
     let g_r = nalgebra::Matrix2x3::new(1.0, 0.0, -z[0] * s, 0.0, 1.0, z[0] * c);
-
-    // G_z: Jacobian w.r.t. observation [d, angle]
     let g_z = Matrix2::new(c, -z[0] * s, s, z[0] * c);
 
-    // Initial landmark covariance
-    let p_rr = state.p.fixed_view::<3, 3>(0, 0);
-    let p_lm = g_r * p_rr * g_r.transpose() + g_z * r * g_z.transpose();
-
-    // Set landmark-landmark covariance
-    new_p[(old_n, old_n)] = p_lm[(0, 0)];
-    new_p[(old_n, old_n + 1)] = p_lm[(0, 1)];
-    new_p[(old_n + 1, old_n)] = p_lm[(1, 0)];
-    new_p[(old_n + 1, old_n + 1)] = p_lm[(1, 1)];
-
-    // Cross-covariance between robot and new landmark
-    let p_rl = p_rr * g_r.transpose();
-    for i in 0..STATE_SIZE {
-        for j in 0..LM_SIZE {
-            new_p[(i, old_n + j)] = p_rl[(i, j)];
-            new_p[(old_n + j, i)] = p_rl[(i, j)];
-        }
-    }
-
-    // Cross-covariance between existing landmarks and new landmark
-    for k in 0..state.n_lm {
-        let lm_idx = STATE_SIZE + k * LM_SIZE;
+    // Cross-covariance with every other state entry: G_r P_r·.
+    let n = state.x.len();
+    let p_r = state.p.rows(0, STATE_SIZE).into_owned();
+    let cross = g_r * p_r;
+    for j in (0..n).filter(|j| !(lm_idx..lm_idx + LM_SIZE).contains(j)) {
         for i in 0..LM_SIZE {
-            for j in 0..STATE_SIZE {
-                let p_lk_r = state.p[(lm_idx + i, j)];
-                for l in 0..LM_SIZE {
-                    new_p[(lm_idx + i, old_n + l)] += p_lk_r * g_r[(l, j)];
-                    new_p[(old_n + l, lm_idx + i)] = new_p[(lm_idx + i, old_n + l)];
-                }
-            }
+            state.p[(lm_idx + i, j)] = cross[(i, j)];
+            state.p[(j, lm_idx + i)] = cross[(i, j)];
         }
     }
-
-    state.p = new_p;
-    state.n_lm += 1;
+    let p_rr = state.p.fixed_view::<3, 3>(0, 0).into_owned();
+    let p_ll = g_r * p_rr * g_r.transpose() + g_z * get_r() * g_z.transpose();
+    state
+        .p
+        .fixed_view_mut::<2, 2>(lm_idx, lm_idx)
+        .copy_from(&p_ll);
 }
 
 /// EKF SLAM update step for a single observation
@@ -486,22 +449,7 @@ pub fn ekf_slam_known_correspondences(
             let lm_idx = STATE_SIZE + lm_id * LM_SIZE;
             if state.p[(lm_idx, lm_idx)] > 1e5 {
                 // First observation of this landmark - initialize it
-                let robot_pose = state.get_robot_pose();
-                let lm_x = robot_pose[0] + z[0] * (robot_pose[2] + z[1]).cos();
-                let lm_y = robot_pose[1] + z[0] * (robot_pose[2] + z[1]).sin();
-                state.x[lm_idx] = lm_x;
-                state.x[lm_idx + 1] = lm_y;
-
-                // Initialize with observation covariance
-                let r = get_r();
-                let c = (robot_pose[2] + z[1]).cos();
-                let s = (robot_pose[2] + z[1]).sin();
-                let g_z = Matrix2::new(c, -z[0] * s, s, z[0] * c);
-                let p_lm = g_z * r * g_z.transpose();
-                state.p[(lm_idx, lm_idx)] = p_lm[(0, 0)] + 0.1;
-                state.p[(lm_idx, lm_idx + 1)] = p_lm[(0, 1)];
-                state.p[(lm_idx + 1, lm_idx)] = p_lm[(1, 0)];
-                state.p[(lm_idx + 1, lm_idx + 1)] = p_lm[(1, 1)] + 0.1;
+                initialize_landmark(state, &z, lm_idx);
             } else {
                 // Update existing landmark
                 ekf_slam_update(state, &z, *lm_id);
@@ -594,6 +542,35 @@ mod tests {
         assert!(new_x[0] > 0.0);
         assert!(new_x[1].abs() < 1e-10);
         assert!(new_x[2].abs() < 1e-10);
+    }
+
+    #[test]
+    fn a_known_landmark_inherits_the_robot_uncertainty_on_first_sighting() {
+        // Robot pose uncertain (P_rr = I); the landmark seen 5 m ahead must be
+        // at least that uncertain and correlated with the robot.
+        let mut known = EKFSLAMState::new();
+        ekf_slam_known_correspondences(&mut known, &Vector2::zeros(), &[(5.0, 0.0, 0)], 2);
+        let lm = STATE_SIZE;
+        assert!(known.p[(lm, lm)] > known.p[(0, 0)] * 0.99, "{}", known.p);
+        assert!(
+            known.p[(lm, 0)] > 0.5,
+            "robot-landmark correlation {}",
+            known.p[(lm, 0)]
+        );
+        assert_eq!(known.p[(lm, 0)], known.p[(0, lm)]);
+        // The still-unseen landmark keeps its prior and no correlation.
+        assert!(known.p[(lm + 2, lm + 2)] > 1e5);
+        assert_eq!(known.p[(lm + 2, lm)], 0.0);
+
+        // Same block as the unknown-association path from the same prior.
+        let mut unknown = EKFSLAMState::new();
+        ekf_slam_predict(&mut unknown, &Vector2::zeros());
+        add_new_landmark(&mut unknown, &Vector2::new(5.0, 0.0));
+        for i in 0..STATE_SIZE + LM_SIZE {
+            for j in 0..STATE_SIZE + LM_SIZE {
+                assert!((known.p[(i, j)] - unknown.p[(i, j)]).abs() < 1e-12);
+            }
+        }
     }
 
     #[test]

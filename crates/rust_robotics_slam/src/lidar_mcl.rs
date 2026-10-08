@@ -248,6 +248,8 @@ impl LidarMcl {
 
     /// Spreads the particles uniformly over the free space.
     pub fn initialize_global(&mut self) {
+        // A verdict about where the old particles were no longer applies.
+        self.alternative_better = false;
         let count = self.config.particles.max(1);
         let weight = 1.0 / count as f64;
         self.particles = (0..count)
@@ -263,6 +265,8 @@ impl LidarMcl {
 
     /// Spreads the particles around `pose` (position σ `xy`, heading σ `yaw`).
     pub fn initialize_at(&mut self, pose: Pose2D, xy: f64, yaw: f64) {
+        // A verdict about where the old particles were no longer applies.
+        self.alternative_better = false;
         let count = self.config.particles.max(1);
         let position = Normal::new(0.0, xy.max(1.0e-9)).expect("finite sigma");
         let heading = Normal::new(0.0, yaw.max(1.0e-9)).expect("finite sigma");
@@ -880,6 +884,17 @@ mod tests {
     }
 
     /// Drives a slow circle from `start`, returning the final truth.
+    #[test]
+    fn reinitializing_drops_the_old_verdict_on_alternatives() {
+        let mut mcl = LidarMcl::new(map(), LidarMclConfig::default());
+        mcl.alternative_better = true;
+        mcl.initialize_at(Pose2D::new(1.0, 0.0, 0.0), 0.1, 0.05);
+        assert!(!mcl.alternative_better);
+        mcl.alternative_better = true;
+        mcl.initialize_global();
+        assert!(!mcl.alternative_better);
+    }
+
     fn drive(mcl: &mut LidarMcl, start: Pose2D, steps: usize) -> Pose2D {
         let mut truth = start;
         let step = Pose2D::new(0.1, 0.0, 0.04);
