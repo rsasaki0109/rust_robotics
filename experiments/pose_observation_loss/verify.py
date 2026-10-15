@@ -20,9 +20,15 @@ innovation_scale = math.sqrt(1.0 - noise_rho * noise_rho)
 rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
 variants = [
-    v for v in ["baseline", "aware", "averaged"] if any(r["variant"] == v for r in rows)
+    v
+    for v in ["baseline", "aware", "averaged", "guarded"]
+    if any(r["variant"] == v for r in rows)
 ]
-assert variants in [["baseline", "aware"], ["aware", "averaged"]]
+assert variants in [
+    ["baseline", "aware"],
+    ["aware", "averaged"],
+    ["averaged", "guarded"],
+]
 reference_variant = variants[0]
 assert len(rows) == 9 * 3 * len(variants) * len(seeds)
 goals = {"open_50x50": (48, 48), "dense_50x50": (48, 48), "maze_50x50": (35, 45)}
@@ -61,6 +67,10 @@ for item in json.loads((run / "manifest.json").read_text()):
         clearance = float(track[0]["step_min_obstacle_distance"])
         recovery_samples = deque(maxlen=25)
         previous_normalized_noise = [0.0, 0.0, 0.0]
+        guard_seconds = 0.0
+        guard_entries = 0
+        guard_exits = 0
+        frozen_steering = 0.0
         for i, r in enumerate(track[1:], 1):
             before = track[i - 1]
             t = float(r["time_s"])
@@ -127,7 +137,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 and not was_paused
             ):
                 pauses += 1
-            if item["variant"] == "averaged":
+            if item["variant"] in ["averaged", "guarded"]:
                 if (
                     r["correction_received"] == "true"
                     or r["precision_activation"] == "true"
@@ -206,7 +216,43 @@ for item in json.loads((run / "manifest.json").read_text()):
             if paused:
                 paused_time += 0.02
                 assert float(r["target_speed"]) == 0 and float(r["steering"]) == 0
-            brake = paused or r["stop_latched"] == "true"
+            guarded = r.get("guard_active", "false") == "true"
+            if item["variant"] == "guarded":
+                margin = (
+                    0.5
+                    + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
+                    + 0.02 * float(r["observation_age"])
+                )
+                assert abs(margin - float(r["preview_margin"])) < 3e-9
+                previously_guarded = before.get("guard_active", "false") == "true"
+                if r["guard_triggered"] == "true":
+                    guard_entries += 1
+                    assert not previously_guarded and guarded
+                    assert float(r["preview_clearance_lower_bound"]) <= margin + 2e-9
+                    frozen_steering = float(r["nominal_steering"])
+                if r["guard_released"] == "true":
+                    guard_exits += 1
+                    assert previously_guarded and not guarded and abs(v) <= 0.02
+                    assert (
+                        float(r["preview_clearance_lower_bound"]) > margin + 0.05 - 2e-9
+                    )
+                    assert all(
+                        float(s["guard_release_evidence"]) >= 0.02 - 1e-8
+                        for s in track[i - 24 : i]
+                    )
+                if guarded:
+                    guard_seconds += 0.02
+                    assert float(r["target_speed"]) == 0
+                    assert (
+                        abs(float(r["steering"]) - (0 if paused else frozen_steering))
+                        < 2e-9
+                    )
+                else:
+                    assert r["target_speed"] == r["nominal_target_speed"]
+                    assert r["steering"] == r["nominal_steering"]
+            else:
+                assert not guarded
+            brake = paused or r["stop_latched"] == "true" or guarded
             expected = (
                 max(-1, min(0, -4 * v)) if brake else float(r["target_speed"]) - v
             )
@@ -291,6 +337,9 @@ for item in json.loads((run / "manifest.json").read_text()):
         events.append(
             dict(
                 variant=item["variant"],
+                guard_entries=guard_entries,
+                guard_exits=guard_exits,
+                guard_time_s=round(guard_seconds, 6),
                 mode=item["mode"],
                 seed=item["seed"],
                 scenario=key[0],
@@ -312,8 +361,12 @@ with (run / "control-events.csv").open("w", newline="") as f:
 golden_paths = [root / "results" / "all-results.csv"] + list(
     (root / "results" / "recovery-averaging").glob("*-results.csv")
 )
+if noise_tau != 0.0:
+    golden_paths = [
+        root / "results" / "correlated-noise" / f"tau-{noise_tau:g}-results.csv"
+    ]
 for golden_path in golden_paths:
-    if noise_tau != 0.0 or not golden_path.exists():
+    if not golden_path.exists():
         continue
     golden = {
         (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): r
@@ -327,7 +380,11 @@ for golden_path in golden_paths:
                 key,
             )
 for r in rows:
-    if r["variant"] != reference_variant and r["mode"] == "none":
+    if (
+        "guarded" not in variants
+        and r["variant"] != reference_variant
+        and r["mode"] == "none"
+    ):
         ref = next(
             a
             for a in rows
@@ -409,13 +466,22 @@ lines += [
     "予定された5秒周期の外部姿勢観測を受信できない時点で停止待機を開始します。受信可否の将来情報や真の位置・障害物距離は制御に使用しません。減速度は最大1、速度比例ゲイン4で、位置や速度を強制変更していません。停止中は操舵ゼロです。",
     "新しい観測を受信後、受信から1.5秒以内・計測速度0.02以下・推定姿勢から前方0.6の線分が既知の障害物と地図境界から離れている条件を1秒連続で満たせば再開します。距離の余裕は半径0.5に0.1＋2√2σ＋位置ドリフト速度×観測経過時間を加算します。この余裕は簡易的な仮定であり、安全保証ではありません。受信時に経路探索位置をリセットし、再開から5秒は速度0.4以下に制限します。",
     "成功条件は従来と同じ、停止指令中の真の目標距離0.25未満・真の速度0.02以下を10秒連続です。半径0.5の車体が移動区間で障害物に接触したら即終了します。全条件の上限180秒も同じです。待機による時間切れを成功扱いしません。",
-    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの初回実験はシード201〜210です。今回のシードは末尾に記録しています。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。相関時間0では保存済み結果の該当シードも照合します。",
+    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの初回実験はシード201〜210です。今回のシードは末尾に記録しています。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。同じノイズ条件の保存済み結果があるシードも照合します。",
     "CSVから全停止復帰試行の時間間隔、有限値、観測経過時間、停止・復帰条件、ブレーキ応答と移動、接触・保持判定、RMSと最小距離を検証しました。外部観測欠落中も局所姿勢推定は利用可能で、終端の精密観測は理想化しています。実機・EKF・全センサー停止への検証ではありません。",
     "",
+    (
+        "guardedは走行中の停止軌道予測による追加ブレーキです。瞬間の推定姿勢・既知の地図・計測速度に基づき、0.2秒の通常指令の後に制限付きブレーキをかける軌道を確認します。到達の真値条件は同じです。"
+        if "guarded" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
-    + (" --recovery-comparison" if "averaged" in variants else "")
+    + (
+        " --stopping-preview-comparison"
+        if "guarded" in variants
+        else " --recovery-comparison" if "averaged" in variants else ""
+    )
     + f" --noise-correlation-time {noise_tau}`（同じシードを指定）。",
     (
         "averagedは停止中の推定姿勢を最大25点、位置は平均・向きは円周平均にして再開判定に使用します。補正受信・欠落・移動・観測期限切れで窓を消去し、10点以上集まってから1秒の確認を始めます。距離余裕・有効時間・走行と保持の条件は変更しません。"
