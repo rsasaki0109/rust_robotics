@@ -1297,3 +1297,44 @@ Outputs are per-pose checkpoints, the full steering grid, independent geometry
 audits, paired pose errors/statuses, summary counts and `sources.json`. The plots
 compare best grid slack from true and filtered poses; they do not show recovery
 success rates. See the [aligned-stall arc diagnosis](results/aligned-arcs/report.md).
+
+## Compare uncertainty-aware arc selection on saved poses
+
+Use the tracked 497 paired checkpoints and map fixture directly; raw simulator
+trajectories and a Rust build are unnecessary for this offline comparison:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_robust_arc_selection.py \
+  --output /tmp/robust-arc-selection --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_robust_arc_selection.py
+```
+
+The output directory must be new. Only optional plots need Matplotlib; the
+analysis uses Python's standard library. Inputs, helpers and the
+[fixed protocol](results/robust-arc-selection/protocol.md) are hashed in
+`sources.json`. Repeat into a second new directory to compare the four CSVs
+and `sources.json` byte for byte.
+
+All rules retain the same true-side recovery target
+`M = 0.6 + E`, where `E = 2*sqrt(2)*sigma + 0.02*age` and sigma is 0.1.
+`nominal` reproduces the previous central-heading best steering. `yaw_min`
+maximizes the minimum distance over nine heading offsets from -4 to +4 degrees,
+minus `2*0.6*sin(radians(0.5)/2)` for headings between samples. `pose_bound`
+uses that same angle and subtracts E again from the clearance score. A rule
+accepts only when its score exceeds M by more than 1e-9; near ties retain the
+previous smaller-absolute-angle preference.
+
+The full pose score bounds true clearance only if position error is at most E
+and wrapped heading error is at most 4 degrees. This envelope is an assumption,
+with empirical coverage reported separately, not a Gaussian confidence claim.
+Retaining the full target M while subtracting E adds conservatism, so count
+abstentions and lost correct selections alongside mismatches. True poses never
+enter steering selection or acceptance. The analyzer checks selected arcs with
+full obstacle scans and independent chords and checks the conditional bound
+at every covered checkpoint.
+
+Outputs contain decisions, every candidate's scores, geometry audits, summary
+counts, provenance and optional figures. These are selected failed-run poses,
+with repeated checkpoints per run; no controller, release timer or hold outcome
+is simulated. See the [selection comparison](results/robust-arc-selection/report.md).
