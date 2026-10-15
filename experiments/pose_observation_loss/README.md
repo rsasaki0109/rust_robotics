@@ -608,3 +608,70 @@ numerics, deterministic random curves and the continuous steering bound.
 These checks do not cover varying steering, reversing, shorter moves, replanning,
 observation improvements or successful recovery. See the
 [forward-arc feasibility report](results/recovery-arcs/report.md).
+
+## Trace clearance loss before the final stops
+
+This offline diagnostic follows the same eight frozen `joint` cases through all
+180 seconds. It reads exactly the raw trajectory bytes hashed by the arc study:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_stop_entry.py \
+  --known-white /tmp/joint-known-white --reference /tmp/joint-reference \
+  --output /tmp/stop-entry --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_stop_entry_geometry.py
+```
+
+The two raw runs and their frozen simulator version are described in the arc
+study above. Python's standard library suffices without plotting. The script
+checks all 72,000 physical intervals, strong-brake decisions, and reconstruction
+of the observed pose. It compares the raw inputs and metadata with the frozen
+arc study and records trajectory and helper hashes in `sources.json`.
+
+The fixed diagnostic threshold is the minimum recovery margin at sigma=0.1 and
+observation age zero: `0.6 + 2*sqrt(2)*0.1`. This is a necessary center-clearance
+condition, not the complete recovery-line or guard condition. A down-crossing
+uses true center clearance before and after the physical update. The persistent
+crossing is the final down-crossing only if clearance remains below this
+threshold at the end; earlier temporary crossings are counted separately.
+
+The final stationary interval begins at the first post-update state after the
+last speed greater than 0.02 and ends at t=180. Its duration is `180 - start`.
+The terminal brake episode is the contiguous run of strong-brake commands that
+includes this onset, combining the speed cap, loss pause, guard and goal stop.
+It is the final such episode, not the first brake or guard in the trial. The
+script compares its start with the persistent center-clearance crossing; these
+may be far apart when earlier stop/release episodes already lost clearance.
+
+`checkpoints.csv` selects the first and persistent center crossings, one second
+before the persistent crossing, the terminal brake start and the final stationary
+onset, merging coincident events. Each independently recomputes the original
+0.2-second nominal-command stopping preview, both at observed pose and offline
+true pose. The logged preview lower bound and threshold classifications are
+checked against full geometry. `guard_margin` is the existing trigger margin;
+the diagnostic recovery threshold is 0.1 larger at the same observation age.
+
+A separate immediate-brake counterfactual starts from the pre-update pose and
+measured speed, holds that step's actual steering, and applies the existing
+`clamp(-4*v, -1, 0)` brake with DT=0.02. Its swept clearance is computed for both
+true and observed initial pose. It stops its rollout at speed <=0.001; the omitted
+strong-brake tail travels at most `abs(v_end)/4`. The `*_immediate_brake_lower`
+fields subtract that tail length and therefore bound clearance if the same
+brake continues. These bounds do not cover later acceleration or altered
+steering. `matching_actual_brake_steps` reports how many forecast steps match
+the logged trajectory before the actual steering or brake mode changes; no
+longer match is assumed.
+
+Center clearance uses exact expanding spatial cells; `center-audit.csv` compares
+its answers with full obstacle scans at one-second intervals and every selected
+event. `cases.csv` records the episode times and clearances. `traces.csv` keeps
+0.1-second samples, every selected event and full-resolution samples within five
+seconds of the final stationary onset. In the figure, time zero is that post-
+update onset; clearance and speed plotted at each logged decision are pre-update.
+The fixed axes show clearance 0..2 and speed 0..1.1; larger values are clipped.
+
+The seven geometry tests check indexed versus full-scan distances, empty-map
+boundaries, cell-corner search, the analytic linear-brake tail, stationary
+initial-point clearance, swept segment interiors and mirrored turning brakes.
+No control setting or simulator source is changed by this analysis. See the
+[stop-entry diagnosis](results/stop-entry/report.md).
