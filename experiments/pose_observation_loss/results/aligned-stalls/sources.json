@@ -1,0 +1,164 @@
+{
+  "known-white": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.682952+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        262,
+        263,
+        264
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "aligned-blackout-264/trajectories.csv": "3296d834b7520c77b0a0de80a7461cc0a59263e71e99a4436cdaa29075442125",
+      "entryline-blackout-264/trajectories.csv": "b43453747b4a250e57363c41bbb0b2a6486d0c58bf29cf4a3e452d71c86ac377",
+      "aligned-none-262/trajectories.csv": "32d6350338454c0d783c25112823cee992ee6897200178f6fca6ac87fdcc0a9a",
+      "entryline-none-262/trajectories.csv": "087ca8912f99dfe1143376511e045793b9acb7f0ad097e90f32677b19a219af2",
+      "aligned-none-263/trajectories.csv": "494a6e0a41f1c3a02460dcbb8023b17e5ebd0dc1fe3ab8f7eaff8994bac16eaa",
+      "entryline-none-263/trajectories.csv": "5189767f4a2a29998dc92897d6e4dc8210d7362f8bb006891b66b1ab65647dd8",
+      "aligned-none-264/trajectories.csv": "0c89cd9522353323b49478df4d0b4515ae708278b9c82ab9dfca8f9e7401425f",
+      "entryline-none-264/trajectories.csv": "b154159f6f1f7bc64e4327463a1bdbcc9887de2ac6141376fa17d02434998f65"
+    },
+    "summary_sha256": "6f0682182d539be6e0748eeb6a7d019f1dc26c4b90656abbc2232c653653c9b1"
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.708747+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        265,
+        266,
+        267
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "aligned-blackout-265/trajectories.csv": "74ee662eda89aaefec43b0b7a7e1a0493df34740fc4bb2df1b064d08aef416d9",
+      "aligned-blackout-266/trajectories.csv": "be4e49ea50d2fca029c41663b14b3211c1515777116d5d6ec7ff08e1629b365d",
+      "aligned-blackout-267/trajectories.csv": "c619373f5b4c4659e81b39e1e7de5b15738b6b341c4c69a38d334666d3103c2d",
+      "aligned-none-265/trajectories.csv": "0d3f374ee1f503d0bac64636ea2a0cd9dd87f0ea9b84a1936c82d73499eedcf1",
+      "aligned-none-266/trajectories.csv": "575614cde2a092c842554c04a9e79387c9e38968878e322e38cf0858ffb806d1",
+      "aligned-none-267/trajectories.csv": "3f3551cf3b8843ffdcbed040195f6e33fd38d4f76b3499eec8775966a589acc6",
+      "aligned-random-265/trajectories.csv": "44a4bd95495139664361da76206d728eb8c333361a503c658232b57ee07f06b6",
+      "aligned-random-266/trajectories.csv": "cd9b61141ea157fa06af12ccc387e89f0c24250f9fa3aa51d3cfa5c75500d606",
+      "aligned-random-267/trajectories.csv": "84b7e9ac1d07f0b59563c3128c8ee66514d7c65d9718a1eacbd586c63c22b4c0"
+    },
+    "summary_sha256": "c6d5f7223d15a0701fe474bdc0a9ef5363d43712b5df8117e29a14dddfd348af"
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.709068+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        265,
+        266,
+        267
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "aligned-blackout-265/trajectories.csv": "4a03e733cb5ac6f3bbc26e1d51956a5ca90901c3d92c44b88d574d66f39ab1de",
+      "aligned-blackout-266/trajectories.csv": "2d83895b6f56521fcd4647071aa8cb2ac2634b6d960ba6bab77a1b547cb5c7ef",
+      "aligned-blackout-267/trajectories.csv": "ff00108154facb7bda2e5601adf0e44c4dc1fb5d0cabcb2a4fa6923caf5baf40",
+      "aligned-none-265/trajectories.csv": "8701bf70bab1156b9197de19866db4ad3eb57e2f779735d5ffa40b15755a5a4b",
+      "aligned-none-266/trajectories.csv": "fffb84c1d549448a9f4384866b6170b9aee7fe87d78380a7770ef3b3907de87e",
+      "aligned-none-267/trajectories.csv": "c76c8f8187b35c8b8de3ea2c1b86a3a808913609e36423c7bea08f9537d2d36a",
+      "aligned-random-265/trajectories.csv": "3a2b0ff9be3ed9fb103403d08dfcc2db464967ac5592838203b723cabc98eb13",
+      "aligned-random-266/trajectories.csv": "6851d96d089afbc028226028926b736d3af241f3c4fa7d26fe033c707b60218b",
+      "aligned-random-267/trajectories.csv": "122f48aeb78b448b69a36b115c694148fb5ef90de52e9839dcce094df67ae6db"
+    },
+    "summary_sha256": "9482b64b69b4869e8cff2c0a01e3ecad893d708b5ec385af1267b99c1bd6144c"
+  },
+  "analysis": {
+    "script_sha256": "ec81d87b5a955be60e83ddad37cd64166228736c866ceaef3c3f0296d6726767",
+    "selection_sha256": "430432ae31bf8c68e84ebcae272b17175578af4915a28bcc0de595a8459556ef",
+    "helper_sha256": {
+      "analyze_entry_cycles.py": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_motion_filter.py": "e7e5de72dfd8e0f531de675071fc0f19e3f8ad30294fdf1e018d8720579c24b4",
+      "verify_stopping_preview.py": "4ca8620130ae92eb7f4e5c33a2496e726820f6f45070d4b53b801a8a66837434",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029"
+    },
+    "physical_intervals_checked": 901045,
+    "geometry_checkpoints": 897,
+    "selection": "all 93 new aligned timeouts and four known lost holds, plus their reference tracks",
+    "tail_start_exclusive_s": 150,
+    "tail_end_inclusive_s": 180,
+    "note": "Readiness runs clipped to tail window. True-pose forecasts retain logged command and margins; no policy replay."
+  }
+}

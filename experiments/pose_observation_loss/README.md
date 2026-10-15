@@ -1194,3 +1194,52 @@ The verifier audits both entry and release geometry, including same-instant
 entry clearance at all candidate releases and loss resumes. Event gap counts
 include zero-command releases and are checked against full trajectory exit
 counts. See the [comparison results](results/aligned-release/report.md).
+
+## Diagnose remaining aligned-release timeouts
+
+Use the saved aligned-release runs to diagnose all 93 new-seed candidate
+timeouts and the four known-seed lost holds, plus their reference tracks:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_aligned_stalls.py \
+  --known-white /tmp/aligned-release-known-white \
+  --white /tmp/aligned-release-white \
+  --correlated /tmp/aligned-release-correlated \
+  --output /tmp/aligned-stalls
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_aligned_stalls.py
+```
+
+The output directory must be new. The analyzer checks pinned summaries,
+provenance and fixture hashes and records raw trajectory hashes. It reconstructs
+both timers, filtered poses and bicycle integration. There is no policy change
+or simulator rerun; this analysis needs only Python's standard library.
+
+Classification uses first true goal entry, the maximum remaining hold budget
+(including the first qualifying endpoint's 0.02 s), and travel in the last 30 s.
+Release opportunities use pre-command guard/loss state. The triggering interval
+of an independent guard is excluded and the release interval included. The
+aligned terminal condition is `Dterminal > release_margin + 0.05`, equivalent
+to the terminal entry threshold; its stopping condition remains
+`Dstop > release_margin`. The combined entry metric is not used for release.
+
+Tail gate categories partition opportunities: other requirements fail, both
+geometries fail, stop only fails, terminal only fails, or everything passes.
+Per-requirement failure times overlap; nonapplicable independent-route
+requirements have zero recorded failure time. Consecutive readiness runs reset
+at route changes or ineligible intervals and are clipped to the last 30 s.
+Dropping the terminal requirement only from this calculation holds future
+recorded inputs fixed and does not simulate an alternative controller.
+
+Geometry checkpoints include the first occurrence of each tail route/category,
+fresh stationary samples at observation age 0.5 s, all tail releases/resumes and
+the final point. A second forecast substitutes only the true pre-command pose,
+retaining logged speed, command, steering and uncertainty margins. Its
+`true_pose_release_passes` field refers only to the geometric release condition;
+it does not check other release requirements or predict changed-policy success.
+Final true center and straight-line clearances are separate static references,
+not the forecast terminal pose or a proof of future recovery feasibility.
+
+Outputs include timeout cases, per-case tail gates, gate totals, geometry
+checkpoints, matched-horizon waits for lost pairs, classification totals and
+`sources.json`. See the [remaining-timeout diagnosis](results/aligned-stalls/report.md).

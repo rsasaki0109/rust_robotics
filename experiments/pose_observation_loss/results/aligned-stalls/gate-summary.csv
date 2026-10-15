@@ -1,0 +1,7 @@
+cohort,route,selected_cases,other_blocked_s,both_blocked_s,stop_only_s,terminal_only_s,ready_s,stationary_fail_s,fresh_fail_s,samples_fail_s,recovery_geometry_fail_s,positive_command_fail_s,stop_fail_s,terminal_fail_s,cases_with_actual_window,cases_with_without_terminal_window
+known-white,independent,4,2.22,25.44,0.0,87.3,2.96,2.22,0.0,0.0,0.0,0.0,25.44,113.24,2,4
+known-white,joint,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0
+white-validation,independent,52,11.22,149.56,0.0,607.84,13.56,11.22,0.0,0.0,0.0,0.0,149.56,761.5,6,29
+white-validation,joint,52,715.78,0.0,0.0,4.86,24.06,0.56,578.88,598.66,648.26,372.38,297.82,680.0,4,4
+correlated-validation,independent,41,9.78,145.44,0.0,445.42,9.18,9.78,0.0,0.0,0.0,0.0,146.62,597.06,9,25
+correlated-validation,joint,41,534.9,0.0,0.0,2.88,16.94,1.36,436.0,450.22,497.02,243.18,184.74,502.78,4,4
