@@ -1,0 +1,9 @@
+reason,pose_kind,margin_age,checkpoints,start_blocked,straight_passes,physical_grid_passes,buffer_grid_passes,grid_pass,all_fixed_steering_blocked,unresolved
+final,truth,zero_age,81,12,6,81,81,59,22,0
+final,truth,current_age,81,12,6,81,81,53,28,0
+final,filtered,zero_age,81,10,17,81,81,52,29,0
+final,filtered,current_age,81,14,11,81,81,47,34,0
+fresh_stationary,truth,zero_age,416,49,33,416,416,325,91,0
+fresh_stationary,truth,current_age,416,76,33,416,416,275,118,23
+fresh_stationary,filtered,zero_age,416,84,63,416,416,215,187,14
+fresh_stationary,filtered,current_age,416,86,55,416,416,210,204,2

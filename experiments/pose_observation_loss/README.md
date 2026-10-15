@@ -1243,3 +1243,57 @@ not the forecast terminal pose or a proof of future recovery feasibility.
 Outputs include timeout cases, per-case tail gates, gate totals, geometry
 checkpoints, matched-horizon waits for lost pairs, classification totals and
 `sources.json`. See the [remaining-timeout diagnosis](results/aligned-stalls/report.md).
+
+## Audit forward arcs at the aligned-release stalls
+
+This offline analysis selects the 81 new-seed `no_entry_stationary` cases from
+the pinned aligned-stall diagnosis. It uses the same raw trajectories and
+requires their hashes to match that diagnosis:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_aligned_arcs.py \
+  --white /tmp/aligned-release-white \
+  --correlated /tmp/aligned-release-correlated \
+  --output /tmp/aligned-arcs --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_aligned_arcs.py
+```
+
+The output directory must be new. This uses Python's standard library; optional
+plots require Matplotlib. Generate missing raw inputs with the aligned-release
+comparison above. No new simulator run or controller change is part of this
+analysis.
+
+At the final decision and fixed fresh stationary checkpoints
+(`150.5, 155.5, ..., 175.5` s with observation age 0.5 s and pre-command speed
+at most 0.02), compare the true pose and logged motion-filter pose at the same
+pre-command instant. A row at 180 s therefore uses the physical state at
+179.98 s, not its post-command endpoint. The filter and every physical interval
+are independently reconstructed; actual filter sample counts are retained.
+
+Reuse the tested analytic point-obstacle and wall distance for forward arcs of
+length 0.6, wheelbase 0.4 and fixed steering from -35 to 35 degrees in one-degree
+steps. The physical radius 0.5, buffered radius 0.6, and recovery margins
+`0.6 + 2*sqrt(2)*sigma` (age zero) and that margin plus `0.02*age` are separate.
+True-pose evaluation retains the logged sigma and age allowances.
+
+The continuous-steering maximum is bounded by the lesser of the starting
+clearance and the grid maximum plus 0.00585236, with a 1e-9 numerical allowance.
+Only a grid witness is called `grid_pass`; only an upper bound no greater than
+the margin is called `all_fixed_steering_blocked`. The intervening cases are
+`unresolved`. This bound covers fixed steering over the full interval, not
+steering switches, shorter motions, reversing or replanning. All final grid arcs
+and the straight, best-grid and recorded-steering arcs at fresh checkpoints are
+checked against independent 120-chord geometry with a sagitta error bound.
+
+The best angle selected in the filtered pose is also evaluated at the paired
+true pose and independently checked with chords. This distinguishes existence
+of some passing arc in each pose from passing with the same selected steering.
+Paired output fields retain the selected angle, its true clearance and the
+pass/fail result under both age margins. These diagnostics do not execute that
+command or evaluate its release timer.
+
+Outputs are per-pose checkpoints, the full steering grid, independent geometry
+audits, paired pose errors/statuses, summary counts and `sources.json`. The plots
+compare best grid slack from true and filtered poses; they do not show recovery
+success rates. See the [aligned-stall arc diagnosis](results/aligned-arcs/report.md).
