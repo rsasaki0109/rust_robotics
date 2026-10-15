@@ -1,0 +1,8 @@
+cohort,tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+reference,1.0,guarded,none,227,maze_50x50,A*,164.240000,10.0,10.0,0.4989159084679863,false,4.240000
+reference,1.0,guarded,none,227,maze_50x50,Theta*,164.120000,10.0,10.0,0.49777500919430195,false,4.120000
+reference,1.0,clearance,none,234,dense_50x50,Theta*,92.300000,30.0,32.0,0.4993692262373555,false,2.300000
+correlated-validation,1.0,guarded,none,241,maze_50x50,JPS,97.900000,10.0,10.0,0.499557785006977,false,2.900000
+correlated-validation,1.0,guarded,none,241,maze_50x50,Theta*,135.460000,10.0,10.0,0.4987348029671219,false,0.460000
+correlated-validation,1.0,clearance,none,243,maze_50x50,JPS,7.900000,10.0,10.0,0.4976494837782241,false,2.900000
+correlated-validation,1.0,clearance,blackout,243,maze_50x50,JPS,7.900000,10.0,10.0,0.4976494837782241,false,2.900000

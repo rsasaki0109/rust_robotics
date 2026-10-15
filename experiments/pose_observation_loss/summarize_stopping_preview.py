@@ -73,10 +73,13 @@ def plot(directory, summary, variants):
                 ylim=(0, max(r["trials"] for r in selected) * 1.12),
                 ylabel="Paired cases",
             )
+            labels = {v: v for v in variants}
+            if "clearance" in variants:
+                labels = {"guarded": "Nominal path", "clearance": "Padded path"}
             ax.set_xticks(
                 range(4),
                 [
-                    f"{noise}\n{variant}"
+                    f"{noise}\n{labels[variant]}"
                     for noise in ["White", "1 s"]
                     for variant in variants
                 ],
@@ -91,6 +94,8 @@ def plot(directory, summary, variants):
         prefix = (
             "restart-consistency" if "consistent" in variants else "stopping-preview"
         )
+        if "clearance" in variants:
+            title, prefix = "Planning clearance", "planning-clearance"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -108,10 +113,16 @@ def main():
     parser.add_argument("--correlated", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="New directory")
     parser.add_argument("--plot", action="store_true", help="Requires matplotlib")
-    parser.add_argument(
+    comparison = parser.add_mutually_exclusive_group()
+    comparison.add_argument(
         "--restart-consistency",
         action="store_true",
         help="Summarize guarded/consistent instead of averaged/guarded",
+    )
+    comparison.add_argument(
+        "--path-clearance",
+        action="store_true",
+        help="Summarize fine-grid nominal/padded paths",
     )
     args = parser.parse_args()
     variants = (
@@ -119,6 +130,8 @@ def main():
         if args.restart_consistency
         else ["averaged", "guarded"]
     )
+    if args.path_clearance:
+        variants = ["guarded", "clearance"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []

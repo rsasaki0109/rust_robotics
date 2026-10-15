@@ -3,6 +3,7 @@
 from pathlib import Path
 from collections import deque
 import csv
+import hashlib
 import json
 import math
 import sys
@@ -23,7 +24,7 @@ rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
 variants = [
     v
-    for v in ["baseline", "aware", "averaged", "guarded", "consistent"]
+    for v in ["baseline", "aware", "averaged", "guarded", "consistent", "clearance"]
     if any(r["variant"] == v for r in rows)
 ]
 assert variants in [
@@ -31,7 +32,18 @@ assert variants in [
     ["aware", "averaged"],
     ["averaged", "guarded"],
     ["guarded", "consistent"],
+    ["guarded", "clearance"],
 ]
+if "clearance" in variants:
+    from verify_clearance_paths import audit
+
+    audit(run / "planning-inputs")
+    for variant, name in [("guarded", "fine-nominal"), ("clearance", "fine-padding")]:
+        directory = run / "planning-inputs" / name
+        assert provenance["inputs_by_variant_sha256"][variant] == {
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in directory.glob("*.csv")
+        }
 reference_variant = variants[0]
 assert len(rows) == 9 * 3 * len(variants) * len(seeds)
 goals = {"open_50x50": (48, 48), "dense_50x50": (48, 48), "maze_50x50": (35, 45)}
@@ -142,7 +154,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 and not was_paused
             ):
                 pauses += 1
-            if item["variant"] in ["averaged", "guarded", "consistent"]:
+            if item["variant"] in ["averaged", "guarded", "consistent", "clearance"]:
                 if (
                     r["correction_received"] == "true"
                     or r["precision_activation"] == "true"
@@ -222,7 +234,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 paused_time += 0.02
                 assert float(r["target_speed"]) == 0 and float(r["steering"]) == 0
             guarded = r.get("guard_active", "false") == "true"
-            if item["variant"] in ["guarded", "consistent"]:
+            if item["variant"] in ["guarded", "consistent", "clearance"]:
                 margin = (
                     0.5
                     + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
@@ -372,6 +384,9 @@ if noise_tau != 0.0:
     ]
 if noise_tau in [0.0, 1.0]:
     golden_paths.append(root / "results" / "stopping-preview" / "all-results.csv")
+if "clearance" in variants:
+    # Snapshot keys include the path fixtures: these fine-grid paths differ.
+    golden_paths = []
 for golden_path in golden_paths:
     if not golden_path.exists():
         continue
@@ -491,16 +506,25 @@ lines += [
         if "consistent" in variants
         else ""
     ),
+    (
+        "clearanceは刻み幅0.125で計画半径0.5と0.99の経路を比較します。両方とも同じguarded制御です。全経路の線分距離を独立に監査しています。"
+        if "clearance" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --restart-consistency-comparison"
-        if "consistent" in variants
+        " --path-clearance-comparison FIXTURES"
+        if "clearance" in variants
         else (
-            " --stopping-preview-comparison"
-            if "guarded" in variants
-            else " --recovery-comparison" if "averaged" in variants else ""
+            " --restart-consistency-comparison"
+            if "consistent" in variants
+            else (
+                " --stopping-preview-comparison"
+                if "guarded" in variants
+                else " --recovery-comparison" if "averaged" in variants else ""
+            )
         )
     )
     + f" --noise-correlation-time {noise_tau}`（同じシードを指定）。",

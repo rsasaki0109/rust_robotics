@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import math
+import shutil
 from pathlib import Path
 import subprocess
 from datetime import datetime, timezone
@@ -36,6 +37,12 @@ def main():
         action="store_true",
         help="Compare stopping guard with fresh stationary correction consistency",
     )
+    comparison.add_argument(
+        "--path-clearance-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare fine-grid nominal/padded paths with the same stopping guard",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -56,12 +63,34 @@ def main():
         variants = ["averaged", "guarded"]
     if args.restart_consistency_comparison:
         variants = ["guarded", "consistent"]
+    if args.path_clearance_comparison:
+        variants = ["guarded", "clearance"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
     run = args.output or ROOT / "runs" / started.strftime("%Y%m%dT%H%M%S.%fZ")
     run = run.resolve()
     run.mkdir(parents=True, exist_ok=False)
+    inputs = {variant: ROOT / "inputs" for variant in variants}
+    if args.path_clearance_comparison:
+        from verify_clearance_paths import audit
+
+        shutil.copytree(args.path_clearance_comparison, run / "planning-inputs")
+        audited = audit(run / "planning-inputs")
+        assert all(
+            r["status"] == "planned" for r in audited
+        ), "Planning failure; see path-audit.csv"
+        inputs = {
+            "guarded": run / "planning-inputs/fine-nominal",
+            "clearance": run / "planning-inputs/fine-padding",
+        }
+    input_hashes = {
+        variant: {
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in directory.glob("*.csv")
+        }
+        for variant, directory in inputs.items()
+    }
     simulator_source = (
         REPOSITORY / "crates/rust_robotics_control/examples/pose_observation_loss.rs"
     )
@@ -111,7 +140,7 @@ def main():
                     subprocess.run(
                         [
                             str(binary),
-                            str(ROOT / "inputs"),
+                            str(inputs[variant]),
                             str(trial),
                             "1.0",
                             "0.1",
@@ -126,10 +155,13 @@ def main():
                             mode,
                             str(variant != "baseline").lower(),
                             str(
-                                variant in ["averaged", "guarded", "consistent"]
+                                variant
+                                in ["averaged", "guarded", "consistent", "clearance"]
                             ).lower(),
                             str(args.noise_correlation_time),
-                            str(variant in ["guarded", "consistent"]).lower(),
+                            str(
+                                variant in ["guarded", "consistent", "clearance"]
+                            ).lower(),
                             str(variant == "consistent").lower(),
                         ],
                         stdout=log,
@@ -177,12 +209,24 @@ def main():
             for p in (ROOT / "inputs").glob("*.csv")
         },
     )
+    if args.path_clearance_comparison:
+        provenance["inputs_by_variant_sha256"] = input_hashes
+        provenance["inputs_sha256"] = input_hashes[variants[0]]
+    for variant, directory in inputs.items():
+        assert input_hashes[variant] == {
+            p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in directory.glob("*.csv")
+        }, "inputs changed during run"
     assert (
         hashlib.sha256(simulator_source.read_bytes()).hexdigest() == simulator_sha256
     ), "simulator changed during run"
     (run / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     subprocess.run(["python3", str(ROOT / "verify.py"), str(run)], check=True)
-    if args.stopping_preview_comparison or args.restart_consistency_comparison:
+    if (
+        args.stopping_preview_comparison
+        or args.restart_consistency_comparison
+        or args.path_clearance_comparison
+    ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
         )

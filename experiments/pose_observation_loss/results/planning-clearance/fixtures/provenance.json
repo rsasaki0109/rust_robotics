@@ -1,0 +1,19 @@
+{
+  "started_utc": "2026-10-15T05:16:38.647510+00:00",
+  "commit": "2ae4a997ecb6bc5e180b7f03f6f04754bb5e4132",
+  "dirty": true,
+  "source_sha256": {
+    "crates/rust_robotics_planning/src/a_star.rs": "1384fb129dc9d5c23c7bd1fac7707e8db82aa2e758e6aa852edc4e71c553a80a",
+    "crates/rust_robotics_planning/src/jps.rs": "dcab450dbba07612aa4bfaa45abab380b4ad64abffaaa22cd47d6e3b289423d0",
+    "crates/rust_robotics_planning/src/theta_star.rs": "9ac0b2c836ac378d4304398ccdf30923f916eb187d0e1fa78e88f999a4aefd5f",
+    "crates/rust_robotics_planning/src/grid.rs": "bc5709a15fd220ea857e366a47d7eb173934169325f625f95d30e5ed49013d7d",
+    "crates/rust_robotics_planning/examples/export_clearance_paths.rs": "ce339b2b60be4316b5486cbc82560ca0da393c6dad02ddc44f037acbf16cdf88"
+  },
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "required_candidate_clearance": 0.9,
+  "inputs_sha256": {
+    "paths.csv": "ca5a83bdae03e52b6d4ac154eebdc8f7c6f09f38e64b8a957b022e19b66fbb0f",
+    "path-metrics.csv": "c8cc9bffa29fa43f43c08f5df722fb2f21cbb1906bb050aa4bfff1b0c73d1b10",
+    "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+  }
+}

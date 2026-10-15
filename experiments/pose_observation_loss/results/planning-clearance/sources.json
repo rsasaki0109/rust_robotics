@@ -1,0 +1,112 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T05:16:42.099416+00:00",
+      "variants": [
+        "guarded",
+        "clearance"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        227,
+        234
+      ],
+      "commit": "2ae4a997ecb6bc5e180b7f03f6f04754bb5e4132",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+      },
+      "inputs_by_variant_sha256": {
+        "guarded": {
+          "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+        },
+        "clearance": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 368
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T05:16:57.625349+00:00",
+      "variants": [
+        "guarded",
+        "clearance"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        241,
+        242,
+        243
+      ],
+      "commit": "2ae4a997ecb6bc5e180b7f03f6f04754bb5e4132",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+      },
+      "inputs_by_variant_sha256": {
+        "guarded": {
+          "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+        },
+        "clearance": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 578
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T05:16:57.618827+00:00",
+      "variants": [
+        "guarded",
+        "clearance"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        241,
+        242,
+        243
+      ],
+      "commit": "2ae4a997ecb6bc5e180b7f03f6f04754bb5e4132",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+      },
+      "inputs_by_variant_sha256": {
+        "guarded": {
+          "paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940"
+        },
+        "clearance": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 560
+  }
+}

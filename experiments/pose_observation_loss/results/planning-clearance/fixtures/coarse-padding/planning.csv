@@ -1,0 +1,10 @@
+scenario,planner,resolution,planning_radius,status,path_length,waypoints,jps_fallback
+dense_50x50,A*,1,0.9,planned,75.597979746,65,false
+dense_50x50,JPS,1,0.9,planned,75.597979746,65,false
+dense_50x50,Theta*,1,0.9,planned,71.594576582,15,false
+maze_50x50,A*,1,0.9,planned,56.526911935,48,false
+maze_50x50,JPS,1,0.9,planned,56.526911935,48,false
+maze_50x50,Theta*,1,0.9,planned,53.880929419,8,false
+open_50x50,A*,1,0.9,planned,65.053823869,47,false
+open_50x50,JPS,1,0.9,planned,65.053823869,47,false
+open_50x50,Theta*,1,0.9,planned,65.053823869,2,false
