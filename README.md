@@ -235,6 +235,10 @@ crates/
 
 ## More Examples
 
+The [pose-observation loss experiment](experiments/pose_observation_loss/README.md)
+compares Pure Pursuit pause/recovery behavior with paired simulation inputs and
+records both contacts and mission completion.
+
 ```bash
 # Regenerate every animated GIF in the gallery (pure Rust, no system deps)
 ./scripts/generate_gallery_gifs.sh

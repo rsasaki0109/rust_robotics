@@ -1,0 +1,10 @@
+scenario,planner,path_length,waypoints,turns,total_turn_deg,min_point_obstacle_distance,continuous_radius_check,jps_fallback
+open_50x50,A*,65.053823869,47,0,0.000000,2.000000000,true,false
+open_50x50,JPS,65.053823869,47,0,0.000000,2.000000000,true,false
+open_50x50,Theta*,65.053823869,2,0,-0.000000,2.000000000,true,false
+dense_50x50,A*,75.597979746,65,35,1755.000000,1.000000000,true,false
+dense_50x50,JPS,75.597979746,65,34,1845.000000,1.000000000,true,false
+dense_50x50,Theta*,71.594576582,15,13,497.615267,0.787838597,true,false
+maze_50x50,A*,56.526911935,48,17,810.000000,1.000000000,true,false
+maze_50x50,JPS,56.526911935,48,10,495.000000,1.000000000,true,false
+maze_50x50,Theta*,53.880929419,8,5,165.349976,0.780868809,true,false
