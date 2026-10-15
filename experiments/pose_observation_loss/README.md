@@ -367,3 +367,66 @@ resolution-1 fixtures. Larger path clearance does not bound pose error or preven
 Pure Pursuit from leaving the planned centerline. See the
 [planning clearance report](results/planning-clearance/report.md) for outcomes
 and remaining contacts.
+
+## Anticipatory speed comparison on padded paths
+
+This comparison holds the fine-grid padded paths fixed and pairs the previous
+`clearance` controller with `paced`, which additionally caps speed using an
+estimated geometric probe:
+
+```bash
+python3 experiments/pose_observation_loss/run.py \
+  --anticipatory-speed-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --noise-correlation-time 1 --seeds 234 243 --output /tmp/speed-reference
+python3 experiments/pose_observation_loss/run.py \
+  --anticipatory-speed-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 244 245 246 --output /tmp/speed-white
+python3 experiments/pose_observation_loss/run.py \
+  --anticipatory-speed-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --noise-correlation-time 1 --seeds 244 245 246 --output /tmp/speed-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --anticipatory-speed --reference /tmp/speed-reference \
+  --white /tmp/speed-white --correlated /tmp/speed-correlated \
+  --output /tmp/speed-analysis --plot
+```
+
+Both arms use the exact same `fine-padding` fixtures (resolution 0.125, planning
+radius 0.99) copied and hashed per run. Existing comparison modes and omitted
+simulator arguments retain their previous behavior. The simulator's new final
+optional Boolean argument is `ANTICIPATORY_SPEED`, requiring the stopping guard
+and averaged recovery, with correction-consistency restart disabled.
+
+At each decision, `paced` takes the nominal steering from the measured pose and
+probes a constant-curvature arc of length 2.0, represented by 0.05-length arc
+intervals joined by straight chords. Curvature is `tan(steering)/0.4`; zero
+curvature gives a straight line. It checks the original point obstacles and
+map boundaries against `0.5 + 0.1 + 2*sqrt(2)*position_sigma + 0.02*observation_age`.
+If the initial pose is inside that margin, the free distance D is zero. At the
+first unsafe chord, D is the arc length to its start; otherwise D is 2.0.
+
+The speed cap is `clamp(sqrt(0.0225 + D) - 0.15, 0, 1)`, solving
+`0.3*v + v*v/(2*0.5) <= D` before the global cap of 1. This reserves 0.3 s of
+travel and uses design deceleration 0.5. The nominal goal/recovery target is
+capped before the existing stopping preview. When measured speed exceeds the
+cap by more than 1e-9, the controller uses the existing bounded brake
+`clamp(-4*v, -1, 0)`; otherwise it retains the usual acceleration. Other stop
+conditions and frozen steering during a guard remain in force. This comparison
+combines target-speed capping and extra braking; it does not isolate their effects.
+
+The probe uses estimated pose and the known map, never true pose or future
+observations. Fixed steering, chord geometry and the heuristic noise margin
+do not bound future closed-loop motion or pose error. The 0.3 s term is a design
+reserve; no physical actuator delay is added. Collision radius, braking limit,
+goal hold criterion and the 180 s budget are unchanged.
+
+New trajectory fields are `speed_free_distance`, `speed_cap`, `speed_margin`,
+`speed_braking` and `uncapped_target_speed`. The generic verifier checks the cap,
+target and brake response at every step. The geometry auditor recomputes the
+full obstacle scan for the speed probe at the same fixed checkpoints as the
+stopping preview. `control-events.csv` includes speed-limited and extra-braking
+times outside goal stops, loss pauses and stopping guards; these exclude time
+already stopped by another condition. Applicable old padded-path summaries are
+also compared for the reference arm.
+
+See the [anticipatory speed report](results/anticipatory-speed/report.md) for
+contact outcomes and mission-completion costs.

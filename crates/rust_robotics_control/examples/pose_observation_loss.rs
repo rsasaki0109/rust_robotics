@@ -122,6 +122,57 @@ fn stopping_preview(
     clearance
 }
 
+// Find the first unsafe chord of a fixed-steering arc, in 0.05-unit intervals.
+// This is an estimated geometric probe, not a bound on future closed-loop motion.
+fn speed_free_distance(
+    sensed: VehicleState,
+    steering: f64,
+    margin: f64,
+    obstacles: &[Point2D],
+) -> f64 {
+    let start = Point2D::new(sensed.x, sensed.y);
+    let nearby: Vec<Point2D> = obstacles
+        .iter()
+        .copied()
+        .filter(|p| p.distance(&start) <= 2.0 + margin)
+        .collect();
+    if [start.x, start.y, 50.0 - start.x, 50.0 - start.y]
+        .iter()
+        .any(|&d| d <= margin)
+        || nearby.iter().any(|p| p.distance(&start) <= margin)
+    {
+        return 0.0;
+    }
+    let curvature = steering.tan() / WHEELBASE;
+    let mut previous = start;
+    for step in 1..=40 {
+        let length = step as f64 * 0.05;
+        let yaw = sensed.yaw + curvature * length;
+        let point = if curvature.abs() < 1e-9 {
+            Point2D::new(
+                start.x + length * sensed.yaw.cos(),
+                start.y + length * sensed.yaw.sin(),
+            )
+        } else {
+            Point2D::new(
+                start.x + (yaw.sin() - sensed.yaw.sin()) / curvature,
+                start.y - (yaw.cos() - sensed.yaw.cos()) / curvature,
+            )
+        };
+        if [point.x, point.y, 50.0 - point.x, 50.0 - point.y]
+            .iter()
+            .any(|&d| d <= margin)
+            || nearby
+                .iter()
+                .any(|&p| point_segment_distance(p, previous, point) <= margin)
+        {
+            return (step - 1) as f64 * 0.05;
+        }
+        previous = point;
+    }
+    2.0
+}
+
 // This gate compares measurements across a scheduled correction while stopped.
 // Agreement is only a heuristic: a common observation bias can pass it.
 #[derive(Default)]
@@ -195,8 +246,8 @@ impl RestartConsistency {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=19).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=20).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -236,6 +287,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<bool>())
         .transpose()?
         .unwrap_or(false);
+    let anticipatory_speed = args
+        .get(19)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
     assert!(!stopping_guard || averaged_recovery);
     assert!(!averaged_recovery || loss_aware);
@@ -285,7 +342,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -322,7 +379,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw}",
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1",
             initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
@@ -563,6 +620,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if loss_aware && safety_paused {
                 steering = 0.0;
             }
+            let uncapped_target_speed = target_speed;
+            let speed_margin = if anticipatory_speed {
+                RADIUS
+                    + 0.1
+                    + 2.0 * 2.0_f64.sqrt() * effective_position_sigma
+                    + drift_speed * observation_age
+            } else {
+                0.0
+            };
+            let speed_free_distance = if anticipatory_speed {
+                speed_free_distance(sensed, steering, speed_margin, obs)
+            } else {
+                2.0
+            };
+            // Reserve 0.3 s of travel and use design deceleration 0.5. Actual
+            // braking retains the existing bounded response (maximum 1.0).
+            let speed_cap = if anticipatory_speed {
+                (-0.15 + (0.15_f64.powi(2) + speed_free_distance).sqrt()).clamp(0.0, TARGET_SPEED)
+            } else {
+                TARGET_SPEED
+            };
+            let speed_braking = anticipatory_speed && sensed.v > speed_cap + 1e-9;
+            target_speed = target_speed.min(speed_cap);
             let nominal_target_speed = target_speed;
             let nominal_steering = steering;
             let preview_margin = RADIUS
@@ -634,12 +714,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            let acceleration =
-                if (stop_hold && stop_latched) || (loss_aware && safety_paused) || guard_active {
-                    (-4.0 * state.v).clamp(-1.0, 0.0)
-                } else {
-                    controller.compute_acceleration(target_speed, state.v)
-                };
+            let acceleration = if (stop_hold && stop_latched)
+                || (loss_aware && safety_paused)
+                || guard_active
+                || speed_braking
+            {
+                (-4.0 * state.v).clamp(-1.0, 0.0)
+            } else {
+                controller.compute_acceleration(target_speed, state.v)
+            };
             state.update(acceleration, steering, DT);
             state.yaw = state.yaw.sin().atan2(state.yaw.cos());
             assert!([state.x, state.y, state.yaw, state.v]
@@ -672,7 +755,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

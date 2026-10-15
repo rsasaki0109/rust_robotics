@@ -63,6 +63,42 @@ def exact_preview(before, row, obstacles):
     return clearance, len(points) - 1
 
 
+def exact_speed_distance(before, row, obstacles):
+    """Full obstacle scan, without the simulator's nearby-obstacle pruning."""
+    x, y, yaw = (
+        float(before[k]) + float(row[f"noise_{k}"]) + float(row[f"bias_{k}"])
+        for k in ["x", "y", "yaw"]
+    )
+    margin = float(row["speed_margin"])
+    start = x, y
+    if min(x, y, 50 - x, 50 - y, *(math.dist(start, p) for p in obstacles)) <= margin:
+        return 0.0
+    curvature = math.tan(float(row["nominal_steering"])) / 0.4
+    previous = start
+    for i in range(1, 41):
+        length = i / 20
+        angle = yaw + length * curvature
+        point = (
+            (x + length * math.cos(yaw), y + length * math.sin(yaw))
+            if abs(curvature) < 1e-9
+            else (
+                x + (math.sin(angle) - math.sin(yaw)) / curvature,
+                y + (math.cos(yaw) - math.cos(angle)) / curvature,
+            )
+        )
+        clearance = min(
+            point[0],
+            point[1],
+            50 - point[0],
+            50 - point[1],
+            *(segment_distance(p, previous, point) for p in obstacles),
+        )
+        if clearance <= margin:
+            return (i - 1) / 20
+        previous = point
+    return 2.0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run", type=Path)
@@ -77,6 +113,7 @@ def main():
         ["averaged", "guarded"],
         ["guarded", "consistent"],
         ["guarded", "clearance"],
+        ["clearance", "paced"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -139,19 +176,29 @@ def main():
                             i,
                             "wrong clearance classification",
                         )
-                audits.append(
-                    dict(
-                        mode=item["mode"],
-                        seed=item["seed"],
-                        scenario=key[0],
-                        planner=key[1],
-                        time_s=row["time_s"],
-                        preview_steps=steps,
-                        lower_bound=lower,
-                        exact_clearance=exact,
-                        margin=margin,
-                    )
+                record = dict(
+                    mode=item["mode"],
+                    seed=item["seed"],
+                    scenario=key[0],
+                    planner=key[1],
+                    time_s=row["time_s"],
+                    preview_steps=steps,
+                    lower_bound=lower,
+                    exact_clearance=exact,
+                    margin=margin,
                 )
+                if candidate == "paced":
+                    free = exact_speed_distance(track[i - 1], row, maps[key[0]])
+                    assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
+                        item,
+                        key,
+                        i,
+                        "speed probe",
+                        free,
+                        row["speed_free_distance"],
+                    )
+                    record["speed_free_distance_exact"] = free
+                audits.append(record)
     with (run / "preview-audit.csv").open("w", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=list(audits[0]), lineterminator="\n")
         writer.writeheader()

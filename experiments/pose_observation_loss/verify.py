@@ -24,7 +24,15 @@ rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
 variants = [
     v
-    for v in ["baseline", "aware", "averaged", "guarded", "consistent", "clearance"]
+    for v in [
+        "baseline",
+        "aware",
+        "averaged",
+        "guarded",
+        "consistent",
+        "clearance",
+        "paced",
+    ]
     if any(r["variant"] == v for r in rows)
 ]
 assert variants in [
@@ -33,17 +41,24 @@ assert variants in [
     ["averaged", "guarded"],
     ["guarded", "consistent"],
     ["guarded", "clearance"],
+    ["clearance", "paced"],
 ]
 if "clearance" in variants:
     from verify_clearance_paths import audit
 
     audit(run / "planning-inputs")
-    for variant, name in [("guarded", "fine-nominal"), ("clearance", "fine-padding")]:
+    for variant in variants:
+        name = "fine-nominal" if variant == "guarded" else "fine-padding"
         directory = run / "planning-inputs" / name
         assert provenance["inputs_by_variant_sha256"][variant] == {
             p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in directory.glob("*.csv")
         }
+if "paced" in variants:
+    assert (
+        provenance["inputs_by_variant_sha256"]["clearance"]
+        == provenance["inputs_by_variant_sha256"]["paced"]
+    )
 reference_variant = variants[0]
 assert len(rows) == 9 * 3 * len(variants) * len(seeds)
 goals = {"open_50x50": (48, 48), "dense_50x50": (48, 48), "maze_50x50": (35, 45)}
@@ -88,6 +103,8 @@ for item in json.loads((run / "manifest.json").read_text()):
         guard_entries = 0
         guard_exits = 0
         frozen_steering = 0.0
+        speed_limited_seconds = 0.0
+        speed_braking_seconds = 0.0
         for i, r in enumerate(track[1:], 1):
             before = track[i - 1]
             t = float(r["time_s"])
@@ -154,7 +171,13 @@ for item in json.loads((run / "manifest.json").read_text()):
                 and not was_paused
             ):
                 pauses += 1
-            if item["variant"] in ["averaged", "guarded", "consistent", "clearance"]:
+            if item["variant"] in [
+                "averaged",
+                "guarded",
+                "consistent",
+                "clearance",
+                "paced",
+            ]:
                 if (
                     r["correction_received"] == "true"
                     or r["precision_activation"] == "true"
@@ -234,7 +257,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 paused_time += 0.02
                 assert float(r["target_speed"]) == 0 and float(r["steering"]) == 0
             guarded = r.get("guard_active", "false") == "true"
-            if item["variant"] in ["guarded", "consistent", "clearance"]:
+            if item["variant"] in ["guarded", "consistent", "clearance", "paced"]:
                 margin = (
                     0.5
                     + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
@@ -269,7 +292,41 @@ for item in json.loads((run / "manifest.json").read_text()):
                     assert r["steering"] == r["nominal_steering"]
             else:
                 assert not guarded
-            brake = paused or r["stop_latched"] == "true" or guarded
+            speed_braking = r.get("speed_braking", "false") == "true"
+            if "speed_cap" in r:
+                free = float(r["speed_free_distance"])
+                cap = float(r["speed_cap"])
+                enabled = item["variant"] == "paced"
+                assert 0 <= free <= 2 and abs(free / 0.05 - round(free / 0.05)) < 2e-8
+                expected_cap = (
+                    min(1, max(0, math.sqrt(0.0225 + free) - 0.15)) if enabled else 1
+                )
+                assert abs(cap - expected_cap) < 2e-9
+                margin = (
+                    0.6
+                    + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
+                    + 0.02 * float(r["observation_age"])
+                    if enabled
+                    else 0
+                )
+                assert abs(float(r["speed_margin"]) - margin) < 3e-9
+                if abs(v - cap - 1e-9) > 2e-9:
+                    assert speed_braking == (enabled and v > cap + 1e-9)
+                assert (
+                    abs(
+                        float(r["nominal_target_speed"])
+                        - min(float(r["uncapped_target_speed"]), cap)
+                    )
+                    < 2e-9
+                )
+                if not enabled:
+                    assert free == 2 and not speed_braking
+                if not (guarded or paused or r["stop_latched"] == "true"):
+                    speed_limited_seconds += (
+                        0.02 if cap < float(r["uncapped_target_speed"]) - 1e-8 else 0.0
+                    )
+                    speed_braking_seconds += 0.02 if speed_braking else 0.0
+            brake = paused or r["stop_latched"] == "true" or guarded or speed_braking
             expected = (
                 max(-1, min(0, -4 * v)) if brake else float(r["target_speed"]) - v
             )
@@ -371,6 +428,11 @@ for item in json.loads((run / "manifest.json").read_text()):
                 last_observation_age=track[-1]["observation_age"],
             )
         )
+        if "paced" in variants:
+            events[-1].update(
+                speed_limited_time_s=round(speed_limited_seconds, 6),
+                speed_braking_time_s=round(speed_braking_seconds, 6),
+            )
 with (run / "control-events.csv").open("w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=list(events[0]), lineterminator="\n")
     w.writeheader()
@@ -387,6 +449,16 @@ if noise_tau in [0.0, 1.0]:
 if "clearance" in variants:
     # Snapshot keys include the path fixtures: these fine-grid paths differ.
     golden_paths = []
+if "paced" in variants and noise_tau in [0.0, 1.0]:
+    pinned_inputs = (
+        root / "results" / "planning-clearance" / "fixtures" / "fine-padding"
+    )
+    expected_hashes = {
+        p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in pinned_inputs.glob("*.csv")
+    }
+    if provenance["inputs_by_variant_sha256"]["clearance"] == expected_hashes:
+        golden_paths = [root / "results" / "planning-clearance" / "all-results.csv"]
 for golden_path in golden_paths:
     if not golden_path.exists():
         continue
@@ -397,7 +469,15 @@ for golden_path in golden_paths:
         for r in csv.DictReader(golden_path.open())
         if "cohort" not in r
         or r["cohort"]
-        == ("white-validation" if noise_tau == 0 else "correlated-validation")
+        in (
+            {"white-validation"}
+            if noise_tau == 0
+            else (
+                {"reference", "correlated-validation"}
+                if "paced" in variants
+                else {"correlated-validation"}
+            )
+        )
     }
     for r in rows:
         key = tuple(r[k] for k in ["variant", "mode", "seed", "scenario", "planner"])
@@ -408,7 +488,7 @@ for golden_path in golden_paths:
             )
 for r in rows:
     if (
-        "guarded" not in variants
+        not any(v in variants for v in ["guarded", "clearance", "paced"])
         and r["variant"] != reference_variant
         and r["mode"] == "none"
     ):
@@ -508,22 +588,31 @@ lines += [
     ),
     (
         "clearanceは刻み幅0.125で計画半径0.5と0.99の経路を比較します。両方とも同じguarded制御です。全経路の線分距離を独立に監査しています。"
-        if "clearance" in variants
+        if "clearance" in variants and "paced" not in variants
+        else ""
+    ),
+    (
+        "pacedは同じ広い経路で、推定姿勢から前方2の固定操舵の弧を調べ、余裕を満たす距離から速度を制限します。真の姿勢は制御に使いません。"
+        if "paced" in variants
         else ""
     ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --path-clearance-comparison FIXTURES"
-        if "clearance" in variants
+        " --anticipatory-speed-comparison FIXTURES"
+        if "paced" in variants
         else (
-            " --restart-consistency-comparison"
-            if "consistent" in variants
+            " --path-clearance-comparison FIXTURES"
+            if "clearance" in variants
             else (
-                " --stopping-preview-comparison"
-                if "guarded" in variants
-                else " --recovery-comparison" if "averaged" in variants else ""
+                " --restart-consistency-comparison"
+                if "consistent" in variants
+                else (
+                    " --stopping-preview-comparison"
+                    if "guarded" in variants
+                    else " --recovery-comparison" if "averaged" in variants else ""
+                )
             )
         )
     )
