@@ -1,0 +1,192 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.400300+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "filtered-none-254/trajectories.csv": "943cd6f0eb0283abd2e8ba19190a35dff09383f391b7df150f618eda6f6809d5",
+      "joint-none-254/trajectories.csv": "33aaf3d2b885e90d25e80d42f0379502fcfb12ad3e46939529cff10707c06e35",
+      "filtered-blackout-253/trajectories.csv": "ed9189b319ef897d01cf45f37c437d19e72d3883f17b1b7832c84f60ee9bc7cf",
+      "joint-blackout-253/trajectories.csv": "6114cabc5a8cd06ece858adac19083c7f7479661d174511a4d58e9ba716798f0"
+    },
+    "summary_sha256": "80892cf3c4f2de392889cb8345e068cf1f50e29ba682656a53465a9630f04914"
+  },
+  "known-white": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.241033+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {},
+    "summary_sha256": "48d1ea75b679c8137d8487d1064812a59daacfa6eb28de350e56a3bcafca2fa1"
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.428701+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        256,
+        257,
+        258
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "filtered-blackout-257/trajectories.csv": "80c81861c7a4e6bd221e4300daacd9eeeaaf63491df08e528e42ea51c95b6270",
+      "joint-blackout-257/trajectories.csv": "1856fb02e99adaf7c2112b6cff3395ecaa42ffa8422fa771c791e4ea28ab0379"
+    },
+    "summary_sha256": "a1799a9ee8a2fb615c250ce754e3ad327f8750d315c50dcda5f89a2f010e548c"
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.709291+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        256,
+        257,
+        258
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "filtered-none-256/trajectories.csv": "e1ec41a68533aa4d61e3956db78e66fc36f3f58be5175813478f2cc7612d0862",
+      "filtered-none-257/trajectories.csv": "5563672bb9a10e93f292e1059155259af5678715860eb31c825e44d9a75e2bea",
+      "filtered-none-258/trajectories.csv": "1f6b414c4d9e40122714e18c61f9fb5b2724641fceed3eb65caa6f9386742f95",
+      "joint-none-258/trajectories.csv": "d724b5980b04d5d63ea596610849bbc3ef0f4ed7d93a579b4d5abbafd017fea7",
+      "filtered-random-256/trajectories.csv": "a5966e93e1494b6bb90e4f47bc398dab098e153a5d4707ba265da257084f2585",
+      "filtered-random-257/trajectories.csv": "17422c5cd092ff6fd64bfde4e81039ad394ed0c36f29b01373260c585343c3cd",
+      "filtered-random-258/trajectories.csv": "c3a7823098a8134286d67bf330f43dda730783f8a9b3c1ea72fd34d7885acf8a",
+      "filtered-blackout-256/trajectories.csv": "4d4bf8646e73eaec3a7d0526d13aa11687024edef31f99b4ba57a3c350050a1a",
+      "filtered-blackout-257/trajectories.csv": "861532110881b8e23c17fba60fe7def59abe3fe605ead70fb6c04571e205794f",
+      "filtered-blackout-258/trajectories.csv": "f6a966e0139a369fc955b8d463f9d612437a1c2bcab4621fee71662a3b13ab89"
+    },
+    "summary_sha256": "da1733e41198358874553c198149fa70bcfcc30c4a848877ac4c93c08bad484a"
+  },
+  "analysis": {
+    "script_sha256": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+    "selection_sha256": "e7eaf498abe7b00d742d9ab8c238e081cd679d41abcc5cea8669795b5ad1bb70",
+    "helper_sha256": {
+      "analyze_entry_cycles.py": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "verify_joint_recovery.py": "6e4fa0b92cafc8c72272e96a6a7826e8d171a0797c59ad66afebefb9ee9bfb5e",
+      "verify_motion_filter.py": "e7e5de72dfd8e0f531de675071fc0f19e3f8ad30294fdf1e018d8720579c24b4",
+      "verify_stopping_preview.py": "13372b48afbaf1741caa9cb02f96319a7411315e4f692feee4cc5294f25d750c",
+      "summarize_stopping_preview.py": "2e22e543467626b7ce84ffb551daed712e090118d549ec59e1034022d3962a62"
+    },
+    "physical_intervals_checked": 326504,
+    "geometry_checkpoints": 237,
+    "selection": "four lost holds plus all thirty new correlated filtered timeouts (one overlap)",
+    "tail_start_exclusive_s": 150,
+    "tail_end_inclusive_s": 180,
+    "near_stationary_max_travel_exclusive": 0.1,
+    "hold_budget_includes_first_endpoint_dt": 0.02
+  }
+}

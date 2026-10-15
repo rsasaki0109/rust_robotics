@@ -926,3 +926,42 @@ Counts cover each run until termination; successful and timed-out runs have
 different observation durations. The fixed comparison uses known seeds 253–255
 and new seeds 256–258, both noise models and all loss modes: 648 cases.
 See the [motion-filter comparison](results/motion-filter/report.md).
+
+## Diagnose remaining motion-filter timeouts
+
+This offline study selects all four pairs that lost a hold with `filtered`,
+plus all 30 new-seed correlated-noise candidate timeouts from the preceding
+study. One case overlaps, giving 33 unique candidate tracks and four successful
+`joint` counterparts. It adds no policy, validation seeds or simulation runs.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_filter_stalls.py \
+  --reference /tmp/filter-reference --known-white /tmp/filter-known-white \
+  --white /tmp/filter-white --correlated /tmp/filter-correlated \
+  --output /tmp/filter-stalls --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_filter_stalls.py
+```
+
+Use the same historical runs or recreate them with the engine from commit
+`8707566`. The analyzer checks the pinned summaries, simulator, seeds and
+fixtures, then records raw-track and helper hashes. It reconstructs filtered
+poses, guard/recovery states and physical motion for the selected trajectories.
+For each lost pair, waits use a common horizon ending at `joint`'s successful
+termination. Candidate tail diagnostics cover command intervals (150, 180].
+
+Timeouts are classified by first true goal entry and tail travel. The maximum
+possible hold budget is `180 - first_entry + 0.02`: the original simulator
+credits a timestep at the first qualifying endpoint. Thus first entry at
+170.02 s can still allow 10 s; 170.04 s cannot. No-entry tracks use the existing
+strict tail-travel threshold <0.1 to distinguish near-stationary from moving.
+
+Geometry checkpoints include stationary observation age 0.5 s, the first
+stationary zero-speed-probe wait, all guard/loss releases and the final decision
+in the tail. At each point, an offline counterfactual substitutes the filtered
+pose into the speed probe while keeping its original steering and margin.
+The resulting target speed is passed through a new stopping forecast before
+checking joint readiness. Existing freshness, sample and recovery-line gates
+remain required. These snapshots cannot establish continuous one-second
+admission or the behavior of a changed policy. Optional plots require Matplotlib.
+See the [remaining-timeout diagnosis](results/filter-stalls/report.md).
