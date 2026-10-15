@@ -1,0 +1,4 @@
+cohort,classification,cases
+correlated-validation,late_entry,2
+correlated-validation,no_entry_moving,9
+correlated-validation,no_entry_stationary,19
