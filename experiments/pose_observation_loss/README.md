@@ -828,3 +828,34 @@ selected guard/recovery transitions, checks physical integration for both
 arms, and records raw-track and helper hashes. Optional plotting requires
 Matplotlib; the analysis and seven interval/censoring tests use the standard
 library. See the [entry-cycle diagnosis](results/entry-cycles/report.md).
+
+## Decompose the inputs behind short guard re-entries
+
+This second offline diagnosis freezes all 27 short re-entries selected above.
+Use the same historical raw runs; their candidate track hashes must match the
+recorded entry-cycle diagnosis. New runtime timestamps and commit metadata are
+accepted, while simulator, seeds, fixtures and recorded track contents are pinned.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reentry_inputs.py \
+  --white /tmp/entry-white --correlated /tmp/entry-correlated \
+  --output /tmp/reentry-inputs
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_reentry_inputs.py
+```
+
+For each release/entry pair, the script evaluates all 16 combinations of the
+release and entry physical pose, observation error (noise plus drift), initial
+speed and planned target/steering. It averages each factor's clearance change
+over all 24 replacement orders (Shapley allocation), then adds the independent
+base-margin and speed-reserve threshold changes. The six contributions sum to
+the change in exact clearance minus entry threshold. Initial-speed geometry
+and its speed-dependent reserve are separate terms.
+
+The analysis also freezes one input at its release value while retaining the
+other entry inputs. These are synthetic endpoint evaluations, not reachable
+trajectories or runnable policies. The 432 forecasts include 54 recorded
+endpoints, which are checked against the previous exact audit. No controller
+change, new validation seeds or success-rate claim follows from this analysis.
+The [input diagnosis](results/reentry-inputs/report.md) records the results,
+limitations and the next candidate to evaluate.

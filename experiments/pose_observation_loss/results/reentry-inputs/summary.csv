@@ -1,0 +1,7 @@
+term,mean_slack_change,largest_closing_count,freeze_restores_entry_pass
+physical_pose,0.001086232378421902,0,7
+observation_error,-0.20161870012384234,24,27
+initial_speed,-0.005686908941378084,0,5
+planned_command,0.004506796376020829,0,0
+base_margin,-0.004696296296296302,0,12
+speed_reserve,-0.04802760274074074,3,21

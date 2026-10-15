@@ -1,0 +1,109 @@
+{
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T08:48:46.000970+00:00",
+      "variants": [
+        "joint",
+        "entry"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "237fd3d4584022712f45e783d641f658b62c1fb3",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "d57b89d607d71347980b6bebe9f2f9bdbdb0a58f72711f6947ce1a1aec41275b",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "entry": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "entry-blackout-253/trajectories.csv": "633eda7620ec7fd04445a1079753fe624742a79b6bb17fff2e8a3f3bd0c719ae",
+      "entry-blackout-254/trajectories.csv": "e3254866d1c68f1e1bb96022d26f5d252ddf06bc83b3c88bb4c6d6bd35f9f990"
+    }
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T08:48:45.974092+00:00",
+      "variants": [
+        "joint",
+        "entry"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "237fd3d4584022712f45e783d641f658b62c1fb3",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "d57b89d607d71347980b6bebe9f2f9bdbdb0a58f72711f6947ce1a1aec41275b",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "entry": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "entry-none-254/trajectories.csv": "d7fc9e27c0361505402be6e8fe2db822ab982ce22119c600ef631754aed6b330",
+      "entry-random-254/trajectories.csv": "873d9b210e9f87da1693075305287824f767f617564bc25d6f38234355c7f700",
+      "entry-random-255/trajectories.csv": "0ffccd57db42d09488fa2037223945df3c0dadb6a725b5972905645ca3cc465d",
+      "entry-blackout-253/trajectories.csv": "bee8090d2098626c02c43b07756e6b1d6d791d0e4a2adea9bcdace56bf7ce380"
+    }
+  },
+  "analysis": {
+    "script_sha256": "88418f27d2d29af916643343242d1cb13bcc786b29125fb3f95443b975e3308b",
+    "helper_sha256": {
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "summarize_stopping_preview.py": "1cba65fc4597a70f225283c4f0ba2b420dc95ec68b92b8c269ad1ac40c725491",
+      "verify_stopping_preview.py": "36966efbd30d2b69f70e8e337de413d81fe839cbcb4dc2878caed5445b8655f6"
+    },
+    "pinned_sha256": {
+      "sources.json": "0971f0bd952acc384a1e48d584e8ebd411256c08440fa982805014fd8b72e2cb",
+      "release-bouts.csv": "b6223fc3ea208d401e34f4c0ad7a34d47e16abe0899464678dedd365d7616100",
+      "guard-events.csv": "6e636d7534c1c47c2c1213d2b47948fcaf51d73783cae973589e9e5073034fc1"
+    },
+    "selection": "all 27 recorded short reentries in the ten lost-hold pairs",
+    "hybrid_geometry_count": 432,
+    "endpoint_count": 54,
+    "max_endpoint_clearance_error": 1.2926734127560735e-09,
+    "geometry_factor_order": [
+      "physical_pose",
+      "observation_error",
+      "initial_speed",
+      "planned_command"
+    ],
+    "attribution": "mean of all 24 replacement orders; margin changes are additive",
+    "pass_tolerance": 2e-08
+  }
+}
