@@ -1,0 +1,14 @@
+{
+  "coarse-nominal/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "coarse-nominal/paths.csv": "ca50aebd073859a9c9a54bd12b97f560cd4285c398af2412fe57d4512f522c89",
+  "coarse-nominal/planning.csv": "63405030d646c20b0359cf5700a2776d04529f78ffe1a65114bbd4ce4d7a31dd",
+  "coarse-padding/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "coarse-padding/paths.csv": "ca50aebd073859a9c9a54bd12b97f560cd4285c398af2412fe57d4512f522c89",
+  "coarse-padding/planning.csv": "bd9d28e18cc146aeb1ad5f2906057b835908bc08857e79d1d32841b89d73fb2e",
+  "fine-nominal/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "fine-nominal/paths.csv": "187c9ca4f2dc819b25c77bc811206000979e02dce819092057e0f3b77fabd577",
+  "fine-nominal/planning.csv": "0c6075d18b4794ab48d63f9c1ac3e7e32818a5c23b226f337aeca206a2c36940",
+  "fine-padding/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "fine-padding/paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+  "fine-padding/planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+}

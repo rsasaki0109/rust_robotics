@@ -310,3 +310,60 @@ retain the previous behavior.
 
 See the [restart consistency report](results/restart-consistency/report.md) for
 the known counterexample, new-seed comparison and completion cost.
+
+## Planning clearance comparison
+
+Generate and audit paths before comparing the same `guarded` controller with
+two planning radii at a fixed grid resolution of 0.125:
+
+```bash
+python3 experiments/pose_observation_loss/prepare_clearance_paths.py \
+  --output /tmp/planning-clearance-inputs
+python3 experiments/pose_observation_loss/run.py \
+  --path-clearance-comparison /tmp/planning-clearance-inputs \
+  --noise-correlation-time 1 --seeds 227 234 --output /tmp/clearance-reference
+python3 experiments/pose_observation_loss/run.py \
+  --path-clearance-comparison /tmp/planning-clearance-inputs \
+  --seeds 241 242 243 --output /tmp/clearance-white
+python3 experiments/pose_observation_loss/run.py \
+  --path-clearance-comparison /tmp/planning-clearance-inputs \
+  --noise-correlation-time 1 --seeds 241 242 243 --output /tmp/clearance-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --path-clearance --reference /tmp/clearance-reference \
+  --white /tmp/clearance-white --correlated /tmp/clearance-correlated \
+  --output /tmp/clearance-analysis --plot
+```
+
+All output directories must be new. Cargo exports paths using the existing A*,
+JPS and Theta* implementations and the original obstacle CSV and endpoints.
+No GUI is needed. Preparation records planner source hashes and exports four
+sets: resolution 1 with planning radius 0.5 or 0.9, and resolution 0.125 with
+radius 0.5 or 0.99. Planning failures remain recorded failures; simulation does
+not substitute a nominal path for them.
+
+The coarse sets demonstrate that node inflation does not imply the same
+continuous segment clearance. On these integer-coordinate maps, increasing
+radius from 0.5 to 0.9 leaves occupancy unchanged. The finer padded set uses
+0.99 (above 0.9 plus half the cell diagonal) and is admitted to the comparison
+only after every segment clears all original point obstacles and map boundaries
+by at least 0.9. This audit concerns these exported paths, not a general theorem
+about all future planner outputs. `path-audit.csv` records both planning radius
+and independently measured clearance, including coarse paths that miss their
+requested radius.
+
+For simulation, `guarded` uses `fine-nominal` (planning radius 0.5), and
+`clearance` uses `fine-padding` (0.99). Both use resolution 0.125 and exactly the
+same stopping guard, observation-loss recovery, noise and goal controller. The
+stationary correction consistency option is off. The vehicle's physical radius
+stays 0.5; padding affects planning only. Inputs are copied into each run and
+hashed separately by variant. Verification recomputes path geometry and checks
+these hashes. Golden results from different path fixtures are not compared.
+The trajectory, paired-noise, hold/contact and exact preview audits still run.
+
+The fine-grid reference changes the paths from earlier studies, so its results
+cannot be treated as replays of those coarse paths. In particular, improving
+over the fine nominal arm alone does not establish improvement over the original
+resolution-1 fixtures. Larger path clearance does not bound pose error or prevent
+Pure Pursuit from leaving the planned centerline. See the
+[planning clearance report](results/planning-clearance/report.md) for outcomes
+and remaining contacts.

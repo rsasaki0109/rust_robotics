@@ -73,7 +73,11 @@ def main():
     provenance = json.loads((run / "provenance.json").read_text())
     results = list(csv.DictReader((run / "all-results.csv").open()))
     variants = provenance["variants"]
-    assert variants in [["averaged", "guarded"], ["guarded", "consistent"]]
+    assert variants in [
+        ["averaged", "guarded"],
+        ["guarded", "consistent"],
+        ["guarded", "clearance"],
+    ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
     maps = {}
