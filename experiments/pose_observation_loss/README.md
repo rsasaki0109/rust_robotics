@@ -787,3 +787,44 @@ Comparing `entry` against the earlier `buffered` arm changes both the
 speed dependence of entry and the release threshold. It cannot isolate the
 effect of release alone. See the [entry-buffer comparison](results/entry-buffer/report.md)
 for results, limitations and the decision to keep this option disabled by default.
+
+## Diagnose the entry-buffer study's lost holds
+
+This offline analysis selects all ten previously unused-seed pairs in the
+recorded entry-buffer study where `joint` held the goal and `entry` timed out.
+It changes no policy and provides no additional validation seeds. Use the raw
+white/correlated runs from the preceding section, or recreate just those two
+runs with seeds 253–255. Their simulator SHA-256 must match the recorded study
+(the engine in commit `0262ea4`). Later simulator changes require regenerating
+these historical tracks with that engine before running the current analysis.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_entry_cycles.py \
+  --white /tmp/entry-white --correlated /tmp/entry-correlated \
+  --output /tmp/entry-cycles --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_entry_cycles.py
+```
+
+Within each pair, wait and travel are compared through the successful `joint`
+run's termination time, so both arms have the same observation duration.
+The candidate's final 30 seconds are analyzed separately. A completed release
+bout runs from a guard release decision to its next guard entry decision.
+Distance includes the release command interval and excludes the new entry's
+braking interval. Initial entries and final releases without a later entry
+are omitted from completed bouts. A short re-entry requires a positive release
+command, no intervening loss pause, lag <=1 second and travel <0.1.
+
+Exact stopping geometry is recomputed at every selected candidate guard entry,
+guard release and loss resume, and at each final decision. A reserve-only entry
+means that the exact clearance at that candidate state passes the original
+entry threshold but fails the added reserve. It does not recreate `joint`'s
+diverged trajectory. Tail gate-failure durations use the recorded predicates
+while loss recovery is pending; they overlap and must not be summed. The
+continuous-ready duration is restricted to the final 30-second window.
+
+The script validates pinned summaries and fixture hashes, reconstructs all
+selected guard/recovery transitions, checks physical integration for both
+arms, and records raw-track and helper hashes. Optional plotting requires
+Matplotlib; the analysis and seven interval/censoring tests use the standard
+library. See the [entry-cycle diagnosis](results/entry-cycles/report.md).
