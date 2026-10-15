@@ -1,0 +1,6 @@
+cohort,classification,cases
+white-validation,no_entry_moving,8
+white-validation,no_entry_stationary,44
+correlated-validation,late_entry,1
+correlated-validation,no_entry_moving,3
+correlated-validation,no_entry_stationary,37
