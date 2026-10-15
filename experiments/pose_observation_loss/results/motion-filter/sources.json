@@ -1,0 +1,150 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.400300+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1244
+  },
+  "known-white": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.241033+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 797
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.428701+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        256,
+        257,
+        258
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 734
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T10:09:38.709291+00:00",
+      "variants": [
+        "joint",
+        "filtered"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        256,
+        257,
+        258
+      ],
+      "commit": "900a89fbd38a02a1dd7f8d3df63cbb00a945b7b8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "77250ddb3cde486fba952508de3b6f67258f0ac554332ce01369fa6fc1071e53",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1128
+  }
+}

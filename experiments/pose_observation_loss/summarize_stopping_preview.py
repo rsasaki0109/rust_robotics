@@ -84,6 +84,8 @@ def plot(directory, summary, variants):
                 labels = {"joint": "Original guard", "buffered": "Guard +0.1"}
             if "entry" in variants:
                 labels = {"joint": "Original guard", "entry": "Entry reserve"}
+            if "filtered" in variants:
+                labels = {"joint": "Original guard", "filtered": "Filtered pose"}
             ax.set_xticks(
                 range(4),
                 [
@@ -112,6 +114,8 @@ def plot(directory, summary, variants):
             title, prefix = "Recovery guard buffer", "guard-buffer"
         if "entry" in variants:
             title, prefix = "Motion entry buffer", "entry-buffer"
+        if "filtered" in variants:
+            title, prefix = "Motion-compensated preview", "motion-filter"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -163,12 +167,20 @@ def main():
         action="store_true",
         help="Summarize motion-dependent entry buffer with original release",
     )
+    comparison.add_argument(
+        "--motion-filter",
+        action="store_true",
+        help="Summarize motion-compensated stopping-preview poses",
+    )
     args = parser.parse_args()
     if args.known_white and not (
-        args.joint_recovery or args.guard_buffer or args.entry_buffer
+        args.joint_recovery
+        or args.guard_buffer
+        or args.entry_buffer
+        or args.motion_filter
     ):
         parser.error(
-            "--known-white requires --joint-recovery, --guard-buffer or --entry-buffer"
+            "--known-white requires --joint-recovery, --guard-buffer, --entry-buffer or --motion-filter"
         )
     variants = (
         ["guarded", "consistent"]
@@ -185,6 +197,8 @@ def main():
         variants = ["joint", "buffered"]
     if args.entry_buffer:
         variants = ["joint", "entry"]
+    if args.motion_filter:
+        variants = ["joint", "filtered"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -206,7 +220,12 @@ def main():
         assert provenance["variants"] == variants
         rows = list(csv.DictReader((run / "all-results.csv").open()))
         events = list(csv.DictReader((run / "control-events.csv").open()))
-        if args.joint_recovery or args.guard_buffer or args.entry_buffer:
+        if (
+            args.joint_recovery
+            or args.guard_buffer
+            or args.entry_buffer
+            or args.motion_filter
+        ):
             assert all(
                 r.get(k, "") != ""
                 for r in events
@@ -278,7 +297,7 @@ def main():
                     )
                 )
                 if "paced" in variants or any(
-                    v in variants for v in ["buffered", "entry"]
+                    v in variants for v in ["buffered", "entry", "filtered"]
                 ):
                     summary[-1].update(
                         mean_speed_limited_time_s=statistics.mean(
@@ -288,7 +307,12 @@ def main():
                             float(r["speed_braking_time_s"]) for r in ev
                         ),
                     )
-                if args.joint_recovery or args.guard_buffer or args.entry_buffer:
+                if (
+                    args.joint_recovery
+                    or args.guard_buffer
+                    or args.entry_buffer
+                    or args.motion_filter
+                ):
                     summary[-1].update(
                         {
                             k: sum(int(r[k]) for r in ev)
@@ -305,7 +329,7 @@ def main():
                         and float(r["final_window_travel"]) < 0.1
                         for r in ev
                     )
-                if args.guard_buffer or args.entry_buffer:
+                if args.guard_buffer or args.entry_buffer or args.motion_filter:
                     summary[-1].update(
                         mean_wait_time_s=statistics.mean(
                             float(r["total_wait_time_s"]) for r in ev
@@ -313,6 +337,10 @@ def main():
                         mean_stationary_wait_time_s=statistics.mean(
                             float(r["stationary_wait_time_s"]) for r in ev
                         ),
+                    )
+                if args.motion_filter:
+                    summary[-1]["short_reentries"] = sum(
+                        int(r["short_reentries"]) for r in ev
                     )
                 if variant == variants[-1]:
                     for r in selected:
@@ -324,7 +352,12 @@ def main():
             transitions.append(
                 dict(cohort=cohort, mode=mode, gained_holds=gained, lost_holds=lost)
             )
-    if args.joint_recovery or args.guard_buffer or args.entry_buffer:
+    if (
+        args.joint_recovery
+        or args.guard_buffer
+        or args.entry_buffer
+        or args.motion_filter
+    ):
         known = {
             r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]
         }

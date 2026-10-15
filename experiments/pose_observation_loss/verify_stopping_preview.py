@@ -9,6 +9,7 @@ from pathlib import Path
 
 from compare_correlations import check_contacts
 from verify_restart_consistency import check_restart_track
+from verify_motion_filter import check_motion_filter_track
 
 
 def segment_distance(point, start, end):
@@ -117,6 +118,7 @@ def main():
         ["paced", "joint"],
         ["joint", "buffered"],
         ["joint", "entry"],
+        ["joint", "filtered"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -136,10 +138,13 @@ def main():
                 groups.setdefault((row["scenario"], row["planner"]), []).append(row)
         for key, track in groups.items():
             if "consistency_ready" in track[0]:
-                check_restart_track(track, candidate == "consistent")
+                check_restart_track(
+                    track, candidate == "consistent", candidate == "filtered"
+                )
+            check_motion_filter_track(track, candidate == "filtered")
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
-            if candidate in ["joint", "buffered", "entry"]:
+            if candidate in ["joint", "buffered", "entry", "filtered"]:
                 flags.append("resumed")
             for flag in flags:
                 first = next(
@@ -161,11 +166,11 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
-            if candidate in ["joint", "buffered", "entry"]:
+            if candidate in ["joint", "buffered", "entry", "filtered"]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
                 )
-            if candidate in ["buffered", "entry"]:
+            if candidate in ["buffered", "entry", "filtered"]:
                 selected.extend(
                     i
                     for i, r in enumerate(track[1:], 1)
@@ -206,7 +211,7 @@ def main():
                     release_margin=release,
                     entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate in ["paced", "joint", "buffered", "entry"]:
+                if candidate in ["paced", "joint", "buffered", "entry", "filtered"]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
                         item,
@@ -217,7 +222,7 @@ def main():
                         row["speed_free_distance"],
                     )
                     record["speed_free_distance_exact"] = free
-                if candidate in ["joint", "buffered", "entry"]:
+                if candidate in ["joint", "buffered", "entry", "filtered"]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
                         segment_distance(

@@ -67,6 +67,12 @@ def main():
         metavar="FIXTURES",
         help="Compare joint recovery with speed-dependent entry reserve and original release",
     )
+    comparison.add_argument(
+        "--motion-filter-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare joint recovery with motion-compensated stopping-preview poses",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -97,6 +103,8 @@ def main():
         variants = ["joint", "buffered"]
     if args.entry_buffer_comparison:
         variants = ["joint", "entry"]
+    if args.motion_filter_comparison:
+        variants = ["joint", "filtered"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -110,6 +118,7 @@ def main():
         or args.joint_recovery_comparison
         or args.guard_buffer_comparison
         or args.entry_buffer_comparison
+        or args.motion_filter_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -206,6 +215,7 @@ def main():
                                     "joint",
                                     "buffered",
                                     "entry",
+                                    "filtered",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
@@ -219,15 +229,20 @@ def main():
                                     "joint",
                                     "buffered",
                                     "entry",
+                                    "filtered",
                                 ]
                             ).lower(),
                             str(variant == "consistent").lower(),
                             str(
-                                variant in ["paced", "joint", "buffered", "entry"]
+                                variant
+                                in ["paced", "joint", "buffered", "entry", "filtered"]
                             ).lower(),
-                            str(variant in ["joint", "buffered", "entry"]).lower(),
+                            str(
+                                variant in ["joint", "buffered", "entry", "filtered"]
+                            ).lower(),
                             str(variant == "buffered").lower(),
                             str(variant == "entry").lower(),
+                            str(variant == "filtered").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -295,6 +310,7 @@ def main():
         or args.joint_recovery_comparison
         or args.guard_buffer_comparison
         or args.entry_buffer_comparison
+        or args.motion_filter_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True

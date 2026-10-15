@@ -195,6 +195,41 @@ fn mean_pose(samples: &VecDeque<(f64, f64, f64)>) -> (f64, f64, f64) {
     )
 }
 
+#[derive(Default)]
+struct MotionPoseFilter {
+    samples: VecDeque<(f64, f64, f64)>,
+    previous_speed: f64,
+}
+
+impl MotionPoseFilter {
+    fn observe(
+        &mut self,
+        sensed: VehicleState,
+        previous_steering: f64,
+        reset: bool,
+    ) -> VehicleState {
+        if reset {
+            self.samples.clear();
+        }
+        // Transport each old observation through the last applied motion,
+        // using measured speed and our steering command, never true pose.
+        let distance = self.previous_speed * DT;
+        let turn = distance / WHEELBASE * previous_steering.tan();
+        for (x, y, yaw) in &mut self.samples {
+            *x += distance * yaw.cos();
+            *y += distance * yaw.sin();
+            *yaw = (*yaw + turn).sin().atan2((*yaw + turn).cos());
+        }
+        self.samples.push_back((sensed.x, sensed.y, sensed.yaw));
+        if self.samples.len() > 25 {
+            self.samples.pop_front();
+        }
+        self.previous_speed = sensed.v;
+        let (x, y, yaw) = mean_pose(&self.samples);
+        VehicleState::new(x, y, yaw, sensed.v, WHEELBASE)
+    }
+}
+
 struct ObservationEvent {
     time: f64,
     correction: bool,
@@ -244,10 +279,87 @@ impl RestartConsistency {
     }
 }
 
+#[cfg(test)]
+mod motion_filter_tests {
+    use super::*;
+
+    #[test]
+    fn compensates_straight_motion_and_cancels_alternating_errors() {
+        let mut filter = MotionPoseFilter::default();
+        let mut estimate = VehicleState::new(0.0, 0.0, 0.0, 1.0, WHEELBASE);
+        for i in 0..24 {
+            let error = if i % 2 == 0 { 0.1 } else { -0.1 };
+            estimate = filter.observe(
+                VehicleState::new(i as f64 * DT + error, 0.0, 0.0, 1.0, WHEELBASE),
+                0.0,
+                false,
+            );
+        }
+        assert!((estimate.x - 23.0 * DT).abs() < 1e-12);
+        assert!(estimate.y.abs() < 1e-12);
+    }
+
+    #[test]
+    fn curved_motion_transports_old_heading_before_averaging() {
+        let mut filter = MotionPoseFilter::default();
+        filter.observe(VehicleState::new(0.0, 0.0, 0.0, 1.0, WHEELBASE), 0.0, false);
+        filter.observe(
+            VehicleState::new(0.02, 0.0, 0.02, 1.0, WHEELBASE),
+            0.4_f64.atan(),
+            false,
+        );
+        let x = 0.02 + 0.02 * 0.02_f64.cos();
+        let y = 0.02 * 0.02_f64.sin();
+        let estimate = filter.observe(
+            VehicleState::new(x, y, 0.04, 1.0, WHEELBASE),
+            0.4_f64.atan(),
+            false,
+        );
+        assert!((estimate.x - x).abs() < 1e-12);
+        assert!((estimate.y - y).abs() < 1e-12);
+        assert!((estimate.yaw - 0.04).abs() < 1e-12);
+    }
+
+    #[test]
+    fn circular_heading_mean_respects_wraparound() {
+        let mut filter = MotionPoseFilter::default();
+        let pi = std::f64::consts::PI;
+        filter.observe(
+            VehicleState::new(0.0, 0.0, pi - 0.1, 0.0, WHEELBASE),
+            0.0,
+            false,
+        );
+        let estimate = filter.observe(
+            VehicleState::new(0.0, 0.0, -pi + 0.1, 0.0, WHEELBASE),
+            0.0,
+            false,
+        );
+        assert!((estimate.yaw.abs() - pi).abs() < 1e-12);
+    }
+
+    #[test]
+    fn window_is_bounded_and_correction_discards_old_bias() {
+        let mut filter = MotionPoseFilter::default();
+        for _ in 0..40 {
+            filter.observe(
+                VehicleState::new(10.0, 0.0, 0.0, 0.0, WHEELBASE),
+                0.0,
+                false,
+            );
+        }
+        assert_eq!(filter.samples.len(), 25);
+        let estimate = filter.observe(VehicleState::new(2.0, 3.0, 0.4, 0.0, WHEELBASE), 0.0, true);
+        assert_eq!(filter.samples.len(), 1);
+        assert!((estimate.x - 2.0).abs() < 1e-12);
+        assert!((estimate.y - 3.0).abs() < 1e-12);
+        assert!((estimate.yaw - 0.4).abs() < 1e-12);
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=23).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=24).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -309,6 +421,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(false);
     assert!(!motion_entry_buffer || (joint_recovery && !recovery_guard_buffer));
+    let motion_filter = args
+        .get(23)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!motion_filter || (joint_recovery && !motion_entry_buffer && !recovery_guard_buffer));
     assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
@@ -360,7 +478,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -397,7 +515,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0",
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0",
             initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
@@ -429,6 +547,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut guard_steering = 0.0;
         let mut guard_release_evidence = 0.0;
         let mut consistency = RestartConsistency::default();
+        let mut pose_filter = MotionPoseFilter::default();
+        let mut previous_steering = 0.0;
         let mut recovery_samples: VecDeque<(f64, f64, f64)> = VecDeque::new();
         for step in 1..=(MAX_TIME / DT) as usize {
             let from = Point2D::new(state.x, state.y);
@@ -708,9 +828,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let preview_pose = if consistency_ready {
                 let (x, y, yaw) = mean_pose(&consistency.samples);
                 VehicleState::new(x, y, yaw, sensed.v, WHEELBASE)
+            } else if motion_filter {
+                pose_filter.observe(
+                    sensed,
+                    previous_steering,
+                    correction || precision_activation,
+                )
             } else {
                 sensed
             };
+            let motion_filter_sample_count = pose_filter.samples.len();
             let (preview_pose_x, preview_pose_y, preview_pose_yaw) =
                 (preview_pose.x, preview_pose.y, preview_pose.yaw);
             let preview_clearance_lower_bound = if stopping_guard {
@@ -784,6 +911,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 controller.compute_acceleration(target_speed, state.v)
             };
             state.update(acceleration, steering, DT);
+            previous_steering = steering;
             state.yaw = state.yaw.sin().atan2(state.yaw.cos());
             assert!([state.x, state.y, state.yaw, state.v]
                 .iter()
@@ -815,7 +943,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

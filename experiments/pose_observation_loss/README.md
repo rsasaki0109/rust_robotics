@@ -859,3 +859,70 @@ endpoints, which are checked against the previous exact audit. No controller
 change, new validation seeds or success-rate claim follows from this analysis.
 The [input diagnosis](results/reentry-inputs/report.md) records the results,
 limitations and the next candidate to evaluate.
+
+## Compare motion-compensated stopping-preview observations
+
+This study compares the original `joint` policy with `filtered`. Only the
+stopping-preview pose changes: both guard entry and release, including the
+joint release gate, use the same motion-compensated local pose average.
+The nominal steering/goal command, arc speed probe, stationary recovery line,
+guard distance thresholds and release timers retain their previous rules.
+The speed-dependent entry reserve is disabled in both arms.
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --motion-filter-comparison "$fixtures" --seeds 253 254 255 \
+  --noise-correlation-time 1 --output /tmp/filter-reference
+python3 experiments/pose_observation_loss/run.py \
+  --motion-filter-comparison "$fixtures" --seeds 253 254 255 \
+  --noise-correlation-time 0 --output /tmp/filter-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --motion-filter-comparison "$fixtures" --seeds 256 257 258 \
+  --noise-correlation-time 0 --output /tmp/filter-white
+python3 experiments/pose_observation_loss/run.py \
+  --motion-filter-comparison "$fixtures" --seeds 256 257 258 \
+  --noise-correlation-time 1 --output /tmp/filter-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --motion-filter --reference /tmp/filter-reference \
+  --known-white /tmp/filter-known-white --white /tmp/filter-white \
+  --correlated /tmp/filter-correlated --output /tmp/filter-summary --plot
+```
+
+Before adding the latest local observation, the filter transports each stored
+pose through the previous applied command interval using its own estimated yaw,
+the previous measured speed, and the actual previous steering command. It uses
+the simulator's discrete bicycle motion model. It keeps at most 25 observations
+(about 0.5 s), averages aligned positions and uses a circular heading mean.
+Every scheduled external correction, including a missed one, and every terminal
+precision activation resets the window. Local pose observations continue during
+external correction loss, as in the original model. No true position or yaw is
+available to this filter. The experiment assumes measured speed and the applied
+steering are exact; it does not add wheel-slip or actuator-model error.
+
+The appended `MOTION_FILTER` simulator flag defaults to false, requires joint
+recovery, and excludes the two optional guard-buffer flags. The trajectory adds
+`motion_filter_sample_count`; `preview_pose_*` exposes the actual filtered pose.
+The initial row has count zero. All margins retain their original noise sigma
+and drift allowance; averaging does not reduce the claimed uncertainty margin.
+
+The Python verifier independently reconstructs each average using anchors in a
+dead-reckoning frame, rather than incrementally transporting every old pose as
+the Rust filter does. It checks all samples and preview poses, physical motion,
+paired randomness, guard states and release timers. The geometry audit covers
+every candidate guard entry, release and loss resume, plus fixed checkpoints.
+Known `joint` summaries match the prior entry-buffer study; the seed-201 original
+default pair is checked separately. Filter fixtures run with:
+
+```bash
+cargo test --locked -p rust_robotics_control --no-default-features \
+  --example pose_observation_loss
+```
+
+In addition to waits and holds, `control-events.csv` and the summary count short
+re-entries using the preceding diagnosis's definition: positive release command,
+no intervening loss wait, lag <=1 s and travel <0.1 before the next entry command.
+Counts cover each run until termination; successful and timed-out runs have
+different observation durations. The fixed comparison uses known seeds 253–255
+and new seeds 256–258, both noise models and all loss modes: 648 cases.
+See the [motion-filter comparison](results/motion-filter/report.md).
