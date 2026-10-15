@@ -1,0 +1,33 @@
+{
+  "inputs_sha256": {
+    "checkpoints.csv": "6d4c4b3c9d016af0833c8f44320b49cf18c794f41f975e25d2b75616f015750d",
+    "paired-poses.csv": "88d3519d0ab69c9605f6f8eda32b5f4accaf54998031cf0eab36ab955edf1012",
+    "sources.json": "61b12a4b239d1c29768e007b0855cfd0de27225f2ac198d89dd2a35494c3df81"
+  },
+  "obstacles_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "script_sha256": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+  "helpers_sha256": {
+    "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+    "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+    "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+    "verify_stopping_preview.py": "4ca8620130ae92eb7f4e5c33a2496e726820f6f45070d4b53b801a8a66837434"
+  },
+  "protocol_sha256": "54db0b4de56bc3c9e12c4dfb88f70389e9738752b79b3d2921628ec697cd7853",
+  "heading_offsets_degrees": [
+    -4,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "heading_error_limit_degrees": 4,
+  "heading_grid_error_bound": 0.005235971141695885,
+  "checkpoints": 497,
+  "grid_rows": 35287,
+  "geometry_audits": 1160,
+  "note": "Truth used only for evaluation and envelope coverage; no controller or probability guarantee."
+}
