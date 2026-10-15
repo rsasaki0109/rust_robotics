@@ -49,6 +49,12 @@ def main():
         metavar="FIXTURES",
         help="Compare padded paths with and without an estimated arc-based speed cap",
     )
+    comparison.add_argument(
+        "--joint-recovery-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare paced control with simultaneous loss/guard recovery",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -73,6 +79,8 @@ def main():
         variants = ["guarded", "clearance"]
     if args.anticipatory_speed_comparison:
         variants = ["clearance", "paced"]
+    if args.joint_recovery_comparison:
+        variants = ["paced", "joint"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -81,7 +89,9 @@ def main():
     run.mkdir(parents=True, exist_ok=False)
     inputs = {variant: ROOT / "inputs" for variant in variants}
     fixture_source = (
-        args.path_clearance_comparison or args.anticipatory_speed_comparison
+        args.path_clearance_comparison
+        or args.anticipatory_speed_comparison
+        or args.joint_recovery_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -175,15 +185,23 @@ def main():
                                     "consistent",
                                     "clearance",
                                     "paced",
+                                    "joint",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
                             str(
                                 variant
-                                in ["guarded", "consistent", "clearance", "paced"]
+                                in [
+                                    "guarded",
+                                    "consistent",
+                                    "clearance",
+                                    "paced",
+                                    "joint",
+                                ]
                             ).lower(),
                             str(variant == "consistent").lower(),
-                            str(variant == "paced").lower(),
+                            str(variant in ["paced", "joint"]).lower(),
+                            str(variant == "joint").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -248,6 +266,7 @@ def main():
         or args.restart_consistency_comparison
         or args.path_clearance_comparison
         or args.anticipatory_speed_comparison
+        or args.joint_recovery_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True

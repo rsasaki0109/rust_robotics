@@ -9,6 +9,7 @@ import math
 import sys
 
 from verify_restart_consistency import check_restart_track
+from verify_joint_recovery import check_joint_track
 
 if not __debug__:
     raise RuntimeError("Run the verifier without Python -O; assertions are required")
@@ -32,6 +33,7 @@ variants = [
         "consistent",
         "clearance",
         "paced",
+        "joint",
     ]
     if any(r["variant"] == v for r in rows)
 ]
@@ -42,8 +44,9 @@ assert variants in [
     ["guarded", "consistent"],
     ["guarded", "clearance"],
     ["clearance", "paced"],
+    ["paced", "joint"],
 ]
-if "clearance" in variants:
+if "clearance" in variants or "joint" in variants:
     from verify_clearance_paths import audit
 
     audit(run / "planning-inputs")
@@ -56,8 +59,8 @@ if "clearance" in variants:
         }
 if "paced" in variants:
     assert (
-        provenance["inputs_by_variant_sha256"]["clearance"]
-        == provenance["inputs_by_variant_sha256"]["paced"]
+        provenance["inputs_by_variant_sha256"][variants[0]]
+        == provenance["inputs_by_variant_sha256"][variants[1]]
     )
 reference_variant = variants[0]
 assert len(rows) == 9 * 3 * len(variants) * len(seeds)
@@ -89,6 +92,18 @@ for item in json.loads((run / "manifest.json").read_text()):
         )
         if "consistency_ready" in track[0]:
             check_restart_track(track, item["variant"] == "consistent")
+        if item["variant"] == "joint":
+            check_joint_track(track)
+            # Before the first missed correction the candidate is identical.
+            if item["mode"] == "none":
+                assert len(pairs[key]) == len(track), (item, key, "no-loss length")
+            for reference, candidate in zip(pairs[key], track):
+                if (
+                    candidate["correction"] == "true"
+                    and candidate["correction_received"] == "false"
+                ):
+                    break
+                assert reference == candidate, (item, key, "pre-loss regression")
         goal = goals[key[0]]
         hold = 0.0
         pauses = 0
@@ -177,6 +192,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 "consistent",
                 "clearance",
                 "paced",
+                "joint",
             ]:
                 if (
                     r["correction_received"] == "true"
@@ -257,7 +273,13 @@ for item in json.loads((run / "manifest.json").read_text()):
                 paused_time += 0.02
                 assert float(r["target_speed"]) == 0 and float(r["steering"]) == 0
             guarded = r.get("guard_active", "false") == "true"
-            if item["variant"] in ["guarded", "consistent", "clearance", "paced"]:
+            if item["variant"] in [
+                "guarded",
+                "consistent",
+                "clearance",
+                "paced",
+                "joint",
+            ]:
                 margin = (
                     0.5
                     + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
@@ -277,7 +299,12 @@ for item in json.loads((run / "manifest.json").read_text()):
                         float(r["preview_clearance_lower_bound"]) > margin + 0.05 - 2e-9
                     )
                     assert all(
-                        float(s["guard_release_evidence"]) >= 0.02 - 1e-8
+                        float(
+                            s["recovery_evidence"]
+                            if item["variant"] == "joint" and r["resumed"] == "true"
+                            else s["guard_release_evidence"]
+                        )
+                        >= 0.02 - 1e-8
                         for s in track[i - 24 : i]
                     )
                 if guarded:
@@ -287,7 +314,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                         abs(float(r["steering"]) - (0 if paused else frozen_steering))
                         < 2e-9
                     )
-                else:
+                elif not paused or item["variant"] != "joint":
                     assert r["target_speed"] == r["nominal_target_speed"]
                     assert r["steering"] == r["nominal_steering"]
             else:
@@ -296,7 +323,7 @@ for item in json.loads((run / "manifest.json").read_text()):
             if "speed_cap" in r:
                 free = float(r["speed_free_distance"])
                 cap = float(r["speed_cap"])
-                enabled = item["variant"] == "paced"
+                enabled = item["variant"] in ["paced", "joint"]
                 assert 0 <= free <= 2 and abs(free / 0.05 - round(free / 0.05)) < 2e-8
                 expected_cap = (
                     min(1, max(0, math.sqrt(0.0225 + free) - 0.15)) if enabled else 1
@@ -428,6 +455,49 @@ for item in json.loads((run / "manifest.json").read_text()):
                 last_observation_age=track[-1]["observation_age"],
             )
         )
+        if "joint" in variants:
+            tail = [
+                (a, b)
+                for a, b in zip(track, track[1:])
+                if float(b["time_s"]) > float(track[-1]["time_s"]) - 30 + 1e-8
+            ]
+            events[-1].update(
+                guard_releases_while_loss_paused=sum(
+                    r["guard_released"] == "true" and r["safety_paused"] == "true"
+                    for r in track[1:]
+                ),
+                guard_releases_with_zero_nominal=sum(
+                    r["guard_released"] == "true"
+                    and float(r["nominal_target_speed"]) == 0
+                    for r in track[1:]
+                ),
+                loss_resumes_with_guard=sum(
+                    r["resumed"] == "true" and r["guard_active"] == "true"
+                    for r in track[1:]
+                ),
+                simultaneous_releases=sum(
+                    r["resumed"] == "true" and r["guard_released"] == "true"
+                    for r in track[1:]
+                ),
+                final_window_s=round(len(tail) * 0.02, 6),
+                final_window_travel=round(
+                    sum(
+                        math.hypot(
+                            float(b["x"]) - float(a["x"]), float(b["y"]) - float(a["y"])
+                        )
+                        for a, b in tail
+                    ),
+                    9,
+                ),
+                final_window_wait_s=round(
+                    sum(
+                        b["safety_paused"] == "true" or b["guard_active"] == "true"
+                        for a, b in tail
+                    )
+                    * 0.02,
+                    6,
+                ),
+            )
         if "paced" in variants:
             events[-1].update(
                 speed_limited_time_s=round(speed_limited_seconds, 6),
@@ -446,7 +516,7 @@ if noise_tau != 0.0:
     ]
 if noise_tau in [0.0, 1.0]:
     golden_paths.append(root / "results" / "stopping-preview" / "all-results.csv")
-if "clearance" in variants:
+if "clearance" in variants or "joint" in variants:
     # Snapshot keys include the path fixtures: these fine-grid paths differ.
     golden_paths = []
 if "paced" in variants and noise_tau in [0.0, 1.0]:
@@ -457,8 +527,13 @@ if "paced" in variants and noise_tau in [0.0, 1.0]:
         p.name: hashlib.sha256(p.read_bytes()).hexdigest()
         for p in pinned_inputs.glob("*.csv")
     }
-    if provenance["inputs_by_variant_sha256"]["clearance"] == expected_hashes:
-        golden_paths = [root / "results" / "planning-clearance" / "all-results.csv"]
+    if provenance["inputs_by_variant_sha256"][reference_variant] == expected_hashes:
+        golden_paths = [
+            root
+            / "results"
+            / ("anticipatory-speed" if "joint" in variants else "planning-clearance")
+            / "all-results.csv"
+        ]
 for golden_path in golden_paths:
     if not golden_path.exists():
         continue
@@ -596,22 +671,31 @@ lines += [
         if "paced" in variants
         else ""
     ),
+    (
+        "jointは欠落待機中に解除後の指令で停止予測し、既存の復帰条件と1秒間同時に満たした場合だけ欠落待機とガードを同時に解除します。"
+        if "joint" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --anticipatory-speed-comparison FIXTURES"
-        if "paced" in variants
+        " --joint-recovery-comparison FIXTURES"
+        if "joint" in variants
         else (
-            " --path-clearance-comparison FIXTURES"
-            if "clearance" in variants
+            " --anticipatory-speed-comparison FIXTURES"
+            if "paced" in variants
             else (
-                " --restart-consistency-comparison"
-                if "consistent" in variants
+                " --path-clearance-comparison FIXTURES"
+                if "clearance" in variants
                 else (
-                    " --stopping-preview-comparison"
-                    if "guarded" in variants
-                    else " --recovery-comparison" if "averaged" in variants else ""
+                    " --restart-consistency-comparison"
+                    if "consistent" in variants
+                    else (
+                        " --stopping-preview-comparison"
+                        if "guarded" in variants
+                        else " --recovery-comparison" if "averaged" in variants else ""
+                    )
                 )
             )
         )

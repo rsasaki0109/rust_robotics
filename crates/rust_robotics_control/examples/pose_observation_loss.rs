@@ -246,8 +246,8 @@ impl RestartConsistency {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=20).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=21).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -292,6 +292,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<bool>())
         .transpose()?
         .unwrap_or(false);
+    let joint_recovery = args
+        .get(20)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
     assert!(!stopping_guard || averaged_recovery);
@@ -554,13 +560,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .iter()
                 .all(|p| (recovery_margin..=(50.0 - recovery_margin)).contains(p));
             let mut resumed = false;
-            if loss_aware && safety_paused {
-                let ready = observation_age <= 1.5
-                    && sensed.v.abs() <= 0.02
-                    && recovery_clearance > recovery_margin
-                    && recovery_bounds
-                    && (!averaged_recovery || recovery_sample_count >= 10);
-                recovery_evidence = if ready { recovery_evidence + DT } else { 0.0 };
+            let recovery_ready = observation_age <= 1.5
+                && sensed.v.abs() <= 0.02
+                && recovery_clearance > recovery_margin
+                && recovery_bounds
+                && (!averaged_recovery || recovery_sample_count >= 10);
+            if loss_aware && safety_paused && !joint_recovery {
+                recovery_evidence = if recovery_ready {
+                    recovery_evidence + DT
+                } else {
+                    0.0
+                };
                 if recovery_evidence + 1e-9 >= 1.0 {
                     safety_paused = false;
                     recovery_evidence = 0.0;
@@ -568,9 +578,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     recovery_limit_until = observation_time + 5.0;
                     resumed = true;
                 }
-            }
-            if safety_paused {
-                paused_time_s += DT;
             }
             let sensed_goal_distance = Point2D::new(sensed.x, sensed.y).distance(&goal);
             let alpha = DT / (0.25 + DT);
@@ -608,16 +615,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 TARGET_SPEED
             };
-            if loss_aware && safety_paused {
+            // In joint mode, probe the command that would follow recovery.
+            // The actual paused command is still zero, applied below.
+            let joint_pending = joint_recovery && safety_paused;
+            if loss_aware && safety_paused && !joint_pending {
                 target_speed = 0.0;
             }
-            if loss_aware && observation_time < recovery_limit_until {
+            if loss_aware && (observation_time < recovery_limit_until || joint_pending) {
                 target_speed = target_speed.min(0.4);
             }
             let mut steering = controller
                 .compute_steering(&sensed)
                 .clamp(-MAX_STEERING, MAX_STEERING);
-            if loss_aware && safety_paused {
+            if loss_aware && safety_paused && !joint_pending {
                 steering = 0.0;
             }
             let uncapped_target_speed = target_speed;
@@ -692,7 +702,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     guard_steering = steering;
                     guard_release_evidence = 0.0;
                     guard_triggered = true;
-                } else if guard_active {
+                } else if guard_active && !joint_pending {
                     let ready = sensed.v.abs() <= 0.02
                         && (!consistent_restart || consistency_ready)
                         && preview_clearance_lower_bound > preview_margin + 0.05;
@@ -707,12 +717,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         guard_released = true;
                     }
                 }
+                if joint_pending {
+                    // The old recovery line, freshness and stationary sample
+                    // requirements remain necessary. Confirm the nonzero
+                    // post-release command against the guard at the same time.
+                    let ready = recovery_ready
+                        && nominal_target_speed > 0.0
+                        && preview_clearance_lower_bound > preview_margin + 0.05;
+                    recovery_evidence = if ready { recovery_evidence + DT } else { 0.0 };
+                    guard_release_evidence = 0.0;
+                    if recovery_evidence + 1e-9 >= 1.0 {
+                        safety_paused = false;
+                        recovery_evidence = 0.0;
+                        resume_count += 1;
+                        recovery_limit_until = observation_time + 5.0;
+                        resumed = true;
+                        guard_released = guard_active;
+                        guard_active = false;
+                    }
+                }
+                if safety_paused {
+                    target_speed = 0.0;
+                    steering = 0.0;
+                }
                 if guard_active {
                     target_speed = 0.0;
                     if !safety_paused {
                         steering = guard_steering;
                     }
                 }
+            }
+            if safety_paused {
+                paused_time_s += DT;
             }
             let acceleration = if (stop_hold && stop_latched)
                 || (loss_aware && safety_paused)
