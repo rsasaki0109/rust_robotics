@@ -122,10 +122,81 @@ fn stopping_preview(
     clearance
 }
 
+// This gate compares measurements across a scheduled correction while stopped.
+// Agreement is only a heuristic: a common observation bias can pass it.
+#[derive(Default)]
+struct RestartConsistency {
+    samples: VecDeque<(f64, f64, f64)>,
+    previous: Option<(f64, f64, f64)>,
+    epoch: Option<f64>,
+}
+
+fn mean_pose(samples: &VecDeque<(f64, f64, f64)>) -> (f64, f64, f64) {
+    let n = samples.len() as f64;
+    (
+        samples.iter().map(|p| p.0).sum::<f64>() / n,
+        samples.iter().map(|p| p.1).sum::<f64>() / n,
+        samples
+            .iter()
+            .map(|p| p.2.sin())
+            .sum::<f64>()
+            .atan2(samples.iter().map(|p| p.2.cos()).sum::<f64>()),
+    )
+}
+
+struct ObservationEvent {
+    time: f64,
+    correction: bool,
+    received: bool,
+    precision_activation: bool,
+}
+
+impl RestartConsistency {
+    fn observe(&mut self, sensed: VehicleState, active: bool, event: ObservationEvent) {
+        if !active || sensed.v.abs() > 0.02 || event.precision_activation {
+            *self = Self::default();
+        } else if event.correction {
+            self.previous =
+                (event.received && self.samples.len() == 25).then(|| mean_pose(&self.samples));
+            self.samples.clear();
+            self.epoch = event.received.then_some(event.time);
+        }
+        if active && sensed.v.abs() <= 0.02 && !event.precision_activation {
+            self.samples.push_back((sensed.x, sensed.y, sensed.yaw));
+            if self.samples.len() > 25 {
+                self.samples.pop_front();
+            }
+        }
+    }
+
+    fn deltas(&self) -> (f64, f64) {
+        match (self.previous, self.samples.is_empty()) {
+            (Some(before), false) => {
+                let after = mean_pose(&self.samples);
+                let yaw = after.2 - before.2;
+                (
+                    (after.0 - before.0).hypot(after.1 - before.1),
+                    yaw.sin().atan2(yaw.cos()).abs(),
+                )
+            }
+            _ => (-1.0, -1.0),
+        }
+    }
+
+    fn ready(&self, time: f64) -> bool {
+        let (position, yaw) = self.deltas();
+        self.previous.is_some()
+            && self.samples.len() >= 10
+            && self.epoch.is_some_and(|epoch| time - epoch <= 1.5)
+            && (0.0..=0.2).contains(&position)
+            && (0.0..=5.0_f64.to_radians()).contains(&yaw)
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=18).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=19).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -160,6 +231,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<bool>())
         .transpose()?
         .unwrap_or(false);
+    let consistent_restart = args
+        .get(18)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!consistent_restart || stopping_guard);
     assert!(!stopping_guard || averaged_recovery);
     assert!(!averaged_recovery || loss_aware);
     assert!(["none", "random", "blackout"].contains(&loss_mode));
@@ -208,7 +285,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -245,8 +322,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0",
-            initial.x, initial.y, initial.x, initial.y
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw}",
+            initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
         let mut previous_error = 0.0;
@@ -276,6 +353,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut guard_active = false;
         let mut guard_steering = 0.0;
         let mut guard_release_evidence = 0.0;
+        let mut consistency = RestartConsistency::default();
         let mut recovery_samples: VecDeque<(f64, f64, f64)> = VecDeque::new();
         for step in 1..=(MAX_TIME / DT) as usize {
             let from = Point2D::new(state.x, state.y);
@@ -490,8 +568,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let preview_margin = RADIUS
                 + 2.0 * 2.0_f64.sqrt() * effective_position_sigma
                 + drift_speed * observation_age;
+            if consistent_restart {
+                consistency.observe(
+                    sensed,
+                    guard_active,
+                    ObservationEvent {
+                        time: observation_time,
+                        correction,
+                        received: correction_received,
+                        precision_activation,
+                    },
+                );
+            }
+            let consistency_ready = consistent_restart && consistency.ready(observation_time);
+            let pre_sample_count = if consistency.previous.is_some() {
+                25
+            } else {
+                0
+            };
+            let stationary_sample_count = consistency.samples.len();
+            let consistency_age = consistency
+                .epoch
+                .map_or(-1.0, |epoch| observation_time - epoch);
+            let (position_delta, yaw_delta_rad) = consistency.deltas();
+            let preview_pose = if consistency_ready {
+                let (x, y, yaw) = mean_pose(&consistency.samples);
+                VehicleState::new(x, y, yaw, sensed.v, WHEELBASE)
+            } else {
+                sensed
+            };
+            let (preview_pose_x, preview_pose_y, preview_pose_yaw) =
+                (preview_pose.x, preview_pose.y, preview_pose.yaw);
             let preview_clearance_lower_bound = if stopping_guard {
-                stopping_preview(sensed, target_speed, steering, preview_margin, obs)
+                stopping_preview(preview_pose, target_speed, steering, preview_margin, obs)
             } else {
                 0.0
             };
@@ -505,6 +614,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     guard_triggered = true;
                 } else if guard_active {
                     let ready = sensed.v.abs() <= 0.02
+                        && (!consistent_restart || consistency_ready)
                         && preview_clearance_lower_bound > preview_margin + 0.05;
                     guard_release_evidence = if ready {
                         guard_release_evidence + DT
@@ -562,7 +672,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

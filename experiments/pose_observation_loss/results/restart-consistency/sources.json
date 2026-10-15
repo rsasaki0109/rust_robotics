@@ -1,0 +1,89 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T04:49:20.268657+00:00",
+      "variants": [
+        "guarded",
+        "consistent"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        227
+      ],
+      "commit": "99b4d7bd91af430b4f909f3c9c214fb3a1df52b6",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "ca5a83bdae03e52b6d4ac154eebdc8f7c6f09f38e64b8a957b022e19b66fbb0f",
+        "path-metrics.csv": "c8cc9bffa29fa43f43c08f5df722fb2f21cbb1906bb050aa4bfff1b0c73d1b10",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+      }
+    },
+    "geometry_checkpoints": 188
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T04:50:05.421534+00:00",
+      "variants": [
+        "guarded",
+        "consistent"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240
+      ],
+      "commit": "99b4d7bd91af430b4f909f3c9c214fb3a1df52b6",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "ca5a83bdae03e52b6d4ac154eebdc8f7c6f09f38e64b8a957b022e19b66fbb0f",
+        "path-metrics.csv": "c8cc9bffa29fa43f43c08f5df722fb2f21cbb1906bb050aa4bfff1b0c73d1b10",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+      }
+    },
+    "geometry_checkpoints": 1947
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T04:50:05.439414+00:00",
+      "variants": [
+        "guarded",
+        "consistent"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240
+      ],
+      "commit": "99b4d7bd91af430b4f909f3c9c214fb3a1df52b6",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "25ed8c503317e78c9fa75185449e4f05ca8bfb77689fe7afed6b759c825a1870",
+      "inputs_sha256": {
+        "paths.csv": "ca5a83bdae03e52b6d4ac154eebdc8f7c6f09f38e64b8a957b022e19b66fbb0f",
+        "path-metrics.csv": "c8cc9bffa29fa43f43c08f5df722fb2f21cbb1906bb050aa4bfff1b0c73d1b10",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+      }
+    },
+    "geometry_checkpoints": 1924
+  }
+}

@@ -188,7 +188,7 @@ study, not an unseen evaluation or a fitted sensor-noise model.
 
 The optional `--stopping-preview-comparison` compares `averaged` recovery with
 `guarded`: the same controller plus a stopping-preview brake during ordinary
-tracking. It is mutually exclusive with `--recovery-comparison`.
+tracking. It is mutually exclusive with the other comparison switches.
 
 ```bash
 python3 experiments/pose_observation_loss/run.py --stopping-preview-comparison \
@@ -249,3 +249,64 @@ python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
   --reference REFERENCE_RUN --white WHITE_RUN --correlated CORRELATED_RUN \
   --output NEW_ANALYSIS_DIRECTORY --plot
 ```
+
+## Stationary correction consistency before restart
+
+The optional `--restart-consistency-comparison` pairs the previous `guarded`
+controller with `consistent`. All comparison switches are mutually exclusive.
+The new candidate keeps the driving commands and trigger rule, and adds a
+confirmation gate while the stopping guard is already active:
+
+- Retain up to 25 stationary measured poses (speed at most 0.02). At a received
+  scheduled correction, retain the pre-correction mean only if all 25 samples
+  exist, then start a new window. Position uses arithmetic means; heading uses
+  circular means.
+- Require 10–25 post-correction samples, correction age at most 1.5 s, position
+  difference at most 0.2, and wrapped heading difference at most 5 degrees.
+- When these checks pass, use the post-correction mean pose in the stopping
+  preview. Release still requires clearance above the existing margin plus 0.05
+  continuously for 0.5 s. Speed, radius, margins and the mission budget stay fixed.
+
+Motion, a missed scheduled correction, a terminal precision activation, or an
+inactive guard invalidates the comparison. Stationary windows may accumulate
+while the correction is stale, so the next received correction can have a full
+pre-window; release cannot use a stale comparison. A terminal precision
+activation alone does not qualify as the scheduled correction. After release,
+driving and previews again use the instantaneous measured pose. The new option
+combines confirmation with release-only averaging; its comparison does not
+isolate these two effects. The observation-loss pause remains a separate gate.
+
+This compares observations, not their error against truth. A shared bias can
+pass, and a useful correction of a bad earlier estimate can fail. In particular,
+averaging correlated samples does not make them independent. No covariance or
+probabilistic accuracy claim follows from these thresholds.
+
+```bash
+# Known counterexample from the previous study, then separate fixed new seeds.
+python3 experiments/pose_observation_loss/run.py --restart-consistency-comparison \
+  --noise-correlation-time 1 --seeds 227 --output /tmp/restart-reference
+python3 experiments/pose_observation_loss/run.py --restart-consistency-comparison \
+  --noise-correlation-time 0 --seeds 231 232 233 234 235 236 237 238 239 240 \
+  --output /tmp/restart-white
+python3 experiments/pose_observation_loss/run.py --restart-consistency-comparison \
+  --noise-correlation-time 1 --seeds 231 232 233 234 235 236 237 238 239 240 \
+  --output /tmp/restart-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --restart-consistency --reference /tmp/restart-reference \
+  --white /tmp/restart-white --correlated /tmp/restart-correlated \
+  --output /tmp/restart-analysis --plot
+```
+
+The runner reconstructs pre/post windows, freshness, heading wrap, preview pose
+and release evidence from logged measurements, in addition to the existing
+physics, noise pairing, hold and contact checks. The exact geometry audit checks
+the candidate variant (`consistent` in this mode). New telemetry includes
+`consistency_ready`, `pre_sample_count`, `stationary_sample_count`,
+`consistency_age`, `position_delta`, `yaw_delta_rad`, and `preview_pose_{x,y,yaw}`.
+Unavailable ages/deltas use -1; a missing pre-window has sample count 0.
+The simulator's new final optional argument is `CONSISTENT_RESTART`, requiring
+the earlier `STOPPING_GUARD` and `AVERAGED_RECOVERY` options. Omitted arguments
+retain the previous behavior.
+
+See the [restart consistency report](results/restart-consistency/report.md) for
+the known counterexample, new-seed comparison and completion cost.

@@ -7,6 +7,8 @@ import json
 import math
 import sys
 
+from verify_restart_consistency import check_restart_track
+
 if not __debug__:
     raise RuntimeError("Run the verifier without Python -O; assertions are required")
 
@@ -21,13 +23,14 @@ rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
 variants = [
     v
-    for v in ["baseline", "aware", "averaged", "guarded"]
+    for v in ["baseline", "aware", "averaged", "guarded", "consistent"]
     if any(r["variant"] == v for r in rows)
 ]
 assert variants in [
     ["baseline", "aware"],
     ["aware", "averaged"],
     ["averaged", "guarded"],
+    ["guarded", "consistent"],
 ]
 reference_variant = variants[0]
 assert len(rows) == 9 * 3 * len(variants) * len(seeds)
@@ -57,6 +60,8 @@ for item in json.loads((run / "manifest.json").read_text()):
             and int(r["seed"]) == item["seed"]
             and (r["scenario"], r["planner"]) == key
         )
+        if "consistency_ready" in track[0]:
+            check_restart_track(track, item["variant"] == "consistent")
         goal = goals[key[0]]
         hold = 0.0
         pauses = 0
@@ -137,7 +142,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 and not was_paused
             ):
                 pauses += 1
-            if item["variant"] in ["averaged", "guarded"]:
+            if item["variant"] in ["averaged", "guarded", "consistent"]:
                 if (
                     r["correction_received"] == "true"
                     or r["precision_activation"] == "true"
@@ -217,7 +222,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 paused_time += 0.02
                 assert float(r["target_speed"]) == 0 and float(r["steering"]) == 0
             guarded = r.get("guard_active", "false") == "true"
-            if item["variant"] == "guarded":
+            if item["variant"] in ["guarded", "consistent"]:
                 margin = (
                     0.5
                     + 2 * math.sqrt(2) * float(r["effective_position_sigma"])
@@ -365,12 +370,19 @@ if noise_tau != 0.0:
     golden_paths = [
         root / "results" / "correlated-noise" / f"tau-{noise_tau:g}-results.csv"
     ]
+if noise_tau in [0.0, 1.0]:
+    golden_paths.append(root / "results" / "stopping-preview" / "all-results.csv")
 for golden_path in golden_paths:
     if not golden_path.exists():
         continue
     golden = {
-        (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): r
+        (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): {
+            k: v for k, v in r.items() if k != "cohort"
+        }
         for r in csv.DictReader(golden_path.open())
+        if "cohort" not in r
+        or r["cohort"]
+        == ("white-validation" if noise_tau == 0 else "correlated-validation")
     }
     for r in rows:
         key = tuple(r[k] for k in ["variant", "mode", "seed", "scenario", "planner"])
@@ -474,13 +486,22 @@ lines += [
         if "guarded" in variants
         else ""
     ),
+    (
+        "consistentは停止中の予定補正前25点と補正後10〜25点を比較し、位置差0.2以下・向きの差5度以下・補正後1.5秒以内の場合に平均姿勢で停止予測を確認します。既存の0.5秒連続確認も必要です。共通の偏りは検出できないため、安全保証ではありません。"
+        if "consistent" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --stopping-preview-comparison"
-        if "guarded" in variants
-        else " --recovery-comparison" if "averaged" in variants else ""
+        " --restart-consistency-comparison"
+        if "consistent" in variants
+        else (
+            " --stopping-preview-comparison"
+            if "guarded" in variants
+            else " --recovery-comparison" if "averaged" in variants else ""
+        )
     )
     + f" --noise-correlation-time {noise_tau}`（同じシードを指定）。",
     (

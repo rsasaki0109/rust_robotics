@@ -8,6 +8,7 @@ import math
 from pathlib import Path
 
 from compare_correlations import check_contacts
+from verify_restart_consistency import check_restart_track
 
 
 def segment_distance(point, start, end):
@@ -28,6 +29,9 @@ def exact_preview(before, row, obstacles):
     x = float(before["x"]) + float(row["noise_x"]) + float(row["bias_x"])
     y = float(before["y"]) + float(row["noise_y"]) + float(row["bias_y"])
     yaw = float(before["yaw"]) + float(row["noise_yaw"]) + float(row["bias_yaw"])
+    if "preview_pose_x" in row:
+        # These fields are independently reconstructed by verify.py first.
+        x, y, yaw = (float(row[f"preview_pose_{axis}"]) for axis in ["x", "y", "yaw"])
     v = float(before["v"])
     target = float(row["nominal_target_speed"])
     steering = float(row["nominal_steering"])
@@ -68,7 +72,10 @@ def main():
     run = args.run
     provenance = json.loads((run / "provenance.json").read_text())
     results = list(csv.DictReader((run / "all-results.csv").open()))
-    assert {r["variant"] for r in results} == {"averaged", "guarded"}
+    variants = provenance["variants"]
+    assert variants in [["averaged", "guarded"], ["guarded", "consistent"]]
+    candidate = variants[-1]
+    assert {r["variant"] for r in results} == set(variants)
     maps = {}
     with (
         Path(__file__).resolve().parent / "inputs" / "obstacles.csv"
@@ -77,13 +84,15 @@ def main():
             maps.setdefault(r["scenario"], []).append((float(r["x"]), float(r["y"])))
     audits = []
     for item in json.loads((run / "manifest.json").read_text()):
-        if item["variant"] != "guarded":
+        if item["variant"] != candidate:
             continue
         groups = {}
         with (run / item["directory"] / "trajectories.csv").open() as source:
             for row in csv.DictReader(source):
                 groups.setdefault((row["scenario"], row["planner"]), []).append(row)
         for key, track in groups.items():
+            if "consistency_ready" in track[0]:
+                check_restart_track(track, candidate == "consistent")
             selected = [1]
             for flag in ["guard_triggered", "guard_released"]:
                 first = next(
@@ -94,7 +103,7 @@ def main():
             result = next(
                 r
                 for r in results
-                if r["variant"] == "guarded"
+                if r["variant"] == candidate
                 and r["seed"] == str(item["seed"])
                 and r["mode"] == item["mode"]
                 and (r["scenario"], r["planner"]) == key
