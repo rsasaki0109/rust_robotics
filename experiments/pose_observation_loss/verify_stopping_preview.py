@@ -114,6 +114,7 @@ def main():
         ["guarded", "consistent"],
         ["guarded", "clearance"],
         ["clearance", "paced"],
+        ["paced", "joint"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -135,7 +136,10 @@ def main():
             if "consistency_ready" in track[0]:
                 check_restart_track(track, candidate == "consistent")
             selected = [1]
-            for flag in ["guard_triggered", "guard_released"]:
+            flags = ["guard_triggered", "guard_released"]
+            if candidate == "joint":
+                flags.append("resumed")
+            for flag in flags:
                 first = next(
                     (i for i, r in enumerate(track[1:], 1) if r[flag] == "true"), None
                 )
@@ -155,6 +159,10 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
+            if candidate == "joint":
+                selected.extend(
+                    i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
+                )
             for i in sorted(set(selected)):
                 row = track[i]
                 exact, steps = exact_preview(track[i - 1], row, maps[key[0]])
@@ -187,7 +195,7 @@ def main():
                     exact_clearance=exact,
                     margin=margin,
                 )
-                if candidate == "paced":
+                if candidate in ["paced", "joint"]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
                         item,
@@ -198,6 +206,19 @@ def main():
                         row["speed_free_distance"],
                     )
                     record["speed_free_distance_exact"] = free
+                if candidate == "joint":
+                    x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
+                    line = min(
+                        segment_distance(
+                            p,
+                            (x, y),
+                            (x + 0.6 * math.cos(yaw), y + 0.6 * math.sin(yaw)),
+                        )
+                        for p in maps[key[0]]
+                    )
+                    assert abs(line - float(row["recovery_clearance"])) < 2e-8
+                    record["recovery_clearance_exact"] = line
+                    record["resumed"] = row["resumed"]
                 audits.append(record)
     with (run / "preview-audit.csv").open("w", newline="") as target:
         writer = csv.DictWriter(target, fieldnames=list(audits[0]), lineterminator="\n")

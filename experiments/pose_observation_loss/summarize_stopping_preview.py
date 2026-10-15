@@ -78,6 +78,8 @@ def plot(directory, summary, variants):
                 labels = {"guarded": "Nominal path", "clearance": "Padded path"}
             if "paced" in variants:
                 labels = {"clearance": "Original speed", "paced": "Arc speed cap"}
+            if "joint" in variants:
+                labels = {"paced": "Separate gates", "joint": "Joint recovery"}
             ax.set_xticks(
                 range(4),
                 [
@@ -100,6 +102,8 @@ def plot(directory, summary, variants):
             title, prefix = "Planning clearance", "planning-clearance"
         if "paced" in variants:
             title, prefix = "Anticipatory speed", "anticipatory-speed"
+        if "joint" in variants:
+            title, prefix = "Joint recovery", "joint-recovery"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -113,6 +117,9 @@ def plot(directory, summary, variants):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference", type=Path, required=True)
+    parser.add_argument(
+        "--known-white", type=Path, help="Optional known white-noise joint run"
+    )
     parser.add_argument("--white", type=Path, required=True)
     parser.add_argument("--correlated", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="New directory")
@@ -133,7 +140,14 @@ def main():
         action="store_true",
         help="Summarize padded paths with/without arc-based speed capping",
     )
+    comparison.add_argument(
+        "--joint-recovery",
+        action="store_true",
+        help="Summarize paced control with/without joint recovery",
+    )
     args = parser.parse_args()
+    if args.known_white and not args.joint_recovery:
+        parser.error("--known-white requires --joint-recovery")
     variants = (
         ["guarded", "consistent"]
         if args.restart_consistency
@@ -143,6 +157,8 @@ def main():
         variants = ["guarded", "clearance"]
     if args.anticipatory_speed:
         variants = ["clearance", "paced"]
+    if args.joint_recovery:
+        variants = ["paced", "joint"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -151,16 +167,33 @@ def main():
     combined_events, combined_audits, combined_contacts = [], [], []
     sources = {}
     validation_seeds = None
-    for cohort, run, tau in [
+    cohorts = [
         ("reference", args.reference, 1),
         ("white-validation", args.white, 0),
         ("correlated-validation", args.correlated, 1),
-    ]:
+    ]
+    if args.known_white:
+        cohorts.insert(1, ("known-white", args.known_white, 0))
+    for cohort, run, tau in cohorts:
         provenance = json.loads((run / "provenance.json").read_text())
         assert provenance["noise_correlation_time_s"] == tau
         assert provenance["variants"] == variants
         rows = list(csv.DictReader((run / "all-results.csv").open()))
         events = list(csv.DictReader((run / "control-events.csv").open()))
+        if args.joint_recovery:
+            assert all(
+                r.get(k, "") != ""
+                for r in events
+                for k in [
+                    "guard_releases_while_loss_paused",
+                    "guard_releases_with_zero_nominal",
+                    "loss_resumes_with_guard",
+                    "simultaneous_releases",
+                    "final_window_s",
+                    "final_window_travel",
+                    "final_window_wait_s",
+                ]
+            ), "Rerun verify.py to produce joint recovery event metrics"
         audits = list(csv.DictReader((run / "preview-audit.csv").open()))
         contacts = (
             list(csv.DictReader((run / "contacts.csv").open()))
@@ -170,7 +203,7 @@ def main():
         assert len(contacts) == sum(r["collision"] == "true" for r in rows)
         seeds = sorted({r["seed"] for r in rows})
         assert len(rows) == 54 * len(seeds) and audits
-        if cohort != "reference":
+        if cohort in ["white-validation", "correlated-validation"]:
             if validation_seeds is None:
                 validation_seeds = seeds
             else:
@@ -227,6 +260,23 @@ def main():
                             float(r["speed_braking_time_s"]) for r in ev
                         ),
                     )
+                if args.joint_recovery:
+                    summary[-1].update(
+                        {
+                            k: sum(int(r[k]) for r in ev)
+                            for k in [
+                                "guard_releases_while_loss_paused",
+                                "guard_releases_with_zero_nominal",
+                                "loss_resumes_with_guard",
+                                "simultaneous_releases",
+                            ]
+                        }
+                    )
+                    summary[-1]["near_stationary_timeouts"] = sum(
+                        r["status"] == "timeout"
+                        and float(r["final_window_travel"]) < 0.1
+                        for r in ev
+                    )
                 if variant == variants[-1]:
                     for r in selected:
                         ref = lookup[
@@ -237,6 +287,11 @@ def main():
             transitions.append(
                 dict(cohort=cohort, mode=mode, gained_holds=gained, lost_holds=lost)
             )
+    if args.joint_recovery:
+        known = {
+            r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]
+        }
+        assert not known.intersection(validation_seeds), "Known and new seeds overlap"
     args.output.mkdir(parents=True, exist_ok=False)
     for name, rows in [
         ("all-results.csv", combined),

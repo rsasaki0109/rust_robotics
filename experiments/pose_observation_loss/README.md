@@ -445,7 +445,9 @@ python3 experiments/pose_observation_loss/analyze_recovery_stalls.py \
 
 The raw run directories must contain their trajectories and copied planning
 inputs. If needed, regenerate `/tmp/speed-white` and `/tmp/speed-correlated`
-using the corresponding commands above with seeds 244–246. The diagnostic
+using the corresponding commands above with seeds 244–246 and the simulator
+version at commit `07f0ea4` (before the joint-recovery option). The source hash
+is intentionally pinned; a newer simulator must not be substituted. The diagnostic
 requires the recorded result rows, simulator hash and paired path hashes to
 match; it is a post-hoc analysis of that frozen dataset. Python's standard
 library suffices without `--plot`; plotting requires Matplotlib.
@@ -476,3 +478,63 @@ geometric conditions at the final pose, not a deployable localization method
 or a prediction that changing margins would recover a mission. It also does
 not establish safety of an alternative steering or restart policy. See the
 [recovery-stall diagnosis](results/recovery-stalls/report.md).
+
+## Compare simultaneous loss and stopping-guard recovery
+
+`--joint-recovery-comparison FIXTURES` compares the existing `paced` arm with
+opt-in `joint`, using the same pinned fine-padding paths, noise innovations,
+corrections and speed-cap policy. For example:
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --joint-recovery-comparison "$fixtures" --seeds 244 245 \
+  --noise-correlation-time 1 --output /tmp/joint-reference
+python3 experiments/pose_observation_loss/run.py \
+  --joint-recovery-comparison "$fixtures" --seeds 245 \
+  --noise-correlation-time 0 --output /tmp/joint-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --joint-recovery-comparison "$fixtures" --seeds 247 248 249 \
+  --noise-correlation-time 0 --output /tmp/joint-white
+python3 experiments/pose_observation_loss/run.py \
+  --joint-recovery-comparison "$fixtures" --seeds 247 248 249 \
+  --noise-correlation-time 1 --output /tmp/joint-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --joint-recovery --reference /tmp/joint-reference \
+  --known-white /tmp/joint-known-white \
+  --white /tmp/joint-white --correlated /tmp/joint-correlated \
+  --output /tmp/joint-summary --plot
+```
+
+The appended simulator flag `JOINT_RECOVERY` defaults to false and requires
+`ANTICIPATORY_SPEED=true`. During a loss pause, `joint` probes the command
+that would follow release: the ordinary goal command capped at 0.4, raw sensed
+Pure Pursuit steering, then the existing arc speed cap. Actual paused target
+and steering remain zero. `nominal_target_speed`, `nominal_steering` and
+`uncapped_target_speed` describe this prospective command during such pauses;
+their meaning differs from the zero-command probe in `paced`.
+
+The existing averaged forward-0.6 recovery line, map bounds, sample count,
+stationary speed and observation age requirements must all pass. In addition,
+the prospective target must be positive and its stopping-preview clearance
+must exceed the existing guard release margin. Both sets of conditions must
+hold for the same continuous second, using `recovery_evidence`. Then the loss
+pause and any active guard clear together. While a loss pause remains, the
+independent guard-release timer is zero. Guard entry uses the prospective
+probe; a guard by itself retains its original 0.5-second release rule. The
+five-second recovery speed limit remains. Goal stops retain priority.
+
+This comparison jointly changes the paused probe command and synchronizes
+release confirmation. It does not isolate either change, replace the forward
+line with a curved recovery path, change uncertainty margins, or use true pose
+for decisions. Atomic release does not imply subsequent progress or a safe
+future closed-loop trajectory.
+
+The verifier reconstructs the common timer and post-release command at every
+step, checks atomic release, and compares all trajectory columns before the
+first missed correction. No-loss trajectories must match in full. Applicable
+`paced` result rows must match the recorded speed-cap study. The geometry
+auditor scans the full obstacle set for both the speed probe and recovery line
+at its fixed checkpoints and every joint loss resume, and independently checks
+stopping-preview clearance. Original default results are also regression
+checked separately with seed 201. See the [joint recovery report](results/joint-recovery/report.md).

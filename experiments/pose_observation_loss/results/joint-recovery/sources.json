@@ -1,0 +1,147 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T06:52:53.739000+00:00",
+      "variants": [
+        "paced",
+        "joint"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        244,
+        245
+      ],
+      "commit": "07f0ea4f8dee6264b802def5d52d33b937beeab8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "7e08b4dae74ce7b179f8f9a5adaf7b340ec6c43c842ba84893c7d2ea18797440",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "paced": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 384
+  },
+  "known-white": {
+    "provenance": {
+      "started_utc": "2026-10-15T06:52:24.033332+00:00",
+      "variants": [
+        "paced",
+        "joint"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        245
+      ],
+      "commit": "07f0ea4f8dee6264b802def5d52d33b937beeab8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "7e08b4dae74ce7b179f8f9a5adaf7b340ec6c43c842ba84893c7d2ea18797440",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "paced": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 193
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T06:53:12.697824+00:00",
+      "variants": [
+        "paced",
+        "joint"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        247,
+        248,
+        249
+      ],
+      "commit": "07f0ea4f8dee6264b802def5d52d33b937beeab8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "7e08b4dae74ce7b179f8f9a5adaf7b340ec6c43c842ba84893c7d2ea18797440",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "paced": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 664
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T06:53:12.705855+00:00",
+      "variants": [
+        "paced",
+        "joint"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        247,
+        248,
+        249
+      ],
+      "commit": "07f0ea4f8dee6264b802def5d52d33b937beeab8",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "7e08b4dae74ce7b179f8f9a5adaf7b340ec6c43c842ba84893c7d2ea18797440",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "paced": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 657
+  }
+}
