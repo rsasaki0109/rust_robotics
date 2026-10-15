@@ -733,3 +733,57 @@ until termination, including the 10-second goal hold for successful trials.
 These fixed margins remain heuristics for noisy poses. A larger margin can
 increase waiting and prevent completion; evaluate contacts and holds together.
 See the [guard-buffer comparison](results/guard-buffer/report.md).
+
+## Compare a motion-dependent entry reserve with unchanged release
+
+The previous study raised both guard thresholds. This study compares `joint`
+with `entry`, which only changes the entry rule. Let
+`base = 0.5 + 2*sqrt(2)*sigma + drift_speed*observation_age`. The new entry
+threshold is `base + 0.1*min(abs(measured_speed)/0.4, 1)`; both the independent
+guard release and joint loss/guard release still use `base + 0.05`.
+A flat entry increment of 0.1 would exceed the unchanged release threshold
+at rest. Tapering the increment avoids that inversion: at release-eligible
+speed <=0.02 the release threshold exceeds entry by at least 0.045 for the
+same observation. This does not guarantee release under changing noisy poses.
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --entry-buffer-comparison "$fixtures" --seeds 250 251 252 \
+  --noise-correlation-time 1 --output /tmp/entry-reference
+python3 experiments/pose_observation_loss/run.py \
+  --entry-buffer-comparison "$fixtures" --seeds 250 251 252 \
+  --noise-correlation-time 0 --output /tmp/entry-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --entry-buffer-comparison "$fixtures" --seeds 253 254 255 \
+  --noise-correlation-time 0 --output /tmp/entry-white
+python3 experiments/pose_observation_loss/run.py \
+  --entry-buffer-comparison "$fixtures" --seeds 253 254 255 \
+  --noise-correlation-time 1 --output /tmp/entry-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --entry-buffer --reference /tmp/entry-reference \
+  --known-white /tmp/entry-known-white --white /tmp/entry-white \
+  --correlated /tmp/entry-correlated --output /tmp/entry-summary --plot
+```
+
+The appended simulator flag `MOTION_ENTRY_BUFFER` defaults to false, requires
+`JOINT_RECOVERY=true`, and cannot be combined with `RECOVERY_GUARD_BUFFER`.
+All other control rules and paired inputs are unchanged. Distant-obstacle
+pruning uses the actual entry threshold. The trajectory adds
+`guard_release_margin` and `guard_entry_extra`; `preview_margin` remains the
+entry threshold. Initial rows have zero sentinels for these decision fields.
+Verifiers accept older trajectories without the new fields by using their
+original `preview_margin + 0.05` release rule.
+
+The fixed design is evaluated on known seeds 250–252 and previously unused
+seeds 253–255, with both noise models: 648 comparison cases. Every step's
+thresholds, guard transitions and both release timers are checked; geometry
+audits cover all candidate guard entries, releases and loss resumes, plus
+fixed checkpoints. Known `joint` summaries match the previous guard-buffer
+study, and the original seed-201 default pair is checked separately.
+Wait duration uses the union of loss and guard waits as defined above.
+
+Comparing `entry` against the earlier `buffered` arm changes both the
+speed dependence of entry and the release threshold. It cannot isolate the
+effect of release alone. See the [entry-buffer comparison](results/entry-buffer/report.md)
+for results, limitations and the decision to keep this option disabled by default.
