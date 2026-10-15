@@ -79,6 +79,12 @@ def main():
         metavar="FIXTURES",
         help="Compare filtered stopping preview with a terminal forward recovery segment",
     )
+    comparison.add_argument(
+        "--terminal-entry-only-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Keep terminal entry check; compare combined release with original stop-only release",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -113,6 +119,8 @@ def main():
         variants = ["joint", "filtered"]
     if args.recovery_preview_comparison:
         variants = ["filtered", "recoverable"]
+    if args.terminal_entry_only_comparison:
+        variants = ["recoverable", "entryline"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -128,6 +136,7 @@ def main():
         or args.entry_buffer_comparison
         or args.motion_filter_comparison
         or args.recovery_preview_comparison
+        or args.terminal_entry_only_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -226,6 +235,7 @@ def main():
                                     "entry",
                                     "filtered",
                                     "recoverable",
+                                    "entryline",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
@@ -241,6 +251,7 @@ def main():
                                     "entry",
                                     "filtered",
                                     "recoverable",
+                                    "entryline",
                                 ]
                             ).lower(),
                             str(variant == "consistent").lower(),
@@ -253,6 +264,7 @@ def main():
                                     "entry",
                                     "filtered",
                                     "recoverable",
+                                    "entryline",
                                 ]
                             ).lower(),
                             str(
@@ -263,12 +275,16 @@ def main():
                                     "entry",
                                     "filtered",
                                     "recoverable",
+                                    "entryline",
                                 ]
                             ).lower(),
                             str(variant == "buffered").lower(),
                             str(variant == "entry").lower(),
-                            str(variant in ["filtered", "recoverable"]).lower(),
-                            str(variant == "recoverable").lower(),
+                            str(
+                                variant in ["filtered", "recoverable", "entryline"]
+                            ).lower(),
+                            str(variant in ["recoverable", "entryline"]).lower(),
+                            str(variant == "entryline").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -338,6 +354,7 @@ def main():
         or args.entry_buffer_comparison
         or args.motion_filter_comparison
         or args.recovery_preview_comparison
+        or args.terminal_entry_only_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True

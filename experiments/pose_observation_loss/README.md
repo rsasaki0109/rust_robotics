@@ -1074,3 +1074,67 @@ CSV outputs contain cases, route episodes, short re-entries, independent geometr
 checkpoints, matched-horizon waits for lost pairs and route totals. `sources.json`
 records provenance and hashes. See the [release-gate diagnosis](results/preview-gates/report.md)
 for results and interpretation limits.
+
+## Compare terminal entry with stop-only release
+
+This ablation keeps `recoverable`'s terminal-line entry rule in both arms.
+Candidate `entryline` changes both independent and joint release to the original
+stopping-footprint check. The fixed [protocol](results/terminal-entry-only/protocol.md)
+uses known seeds 259–261 and new seeds 262–264, independently paired in each
+noise/loss condition (648 runs):
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-entry-only-comparison "$fixtures" --seeds 259 260 261 \
+  --noise-correlation-time 1 --output /tmp/terminal-entry-reference
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-entry-only-comparison "$fixtures" --seeds 259 260 261 \
+  --noise-correlation-time 0 --output /tmp/terminal-entry-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-entry-only-comparison "$fixtures" --seeds 262 263 264 \
+  --noise-correlation-time 0 --output /tmp/terminal-entry-white
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-entry-only-comparison "$fixtures" --seeds 262 263 264 \
+  --noise-correlation-time 1 --output /tmp/terminal-entry-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --terminal-entry-only --reference /tmp/terminal-entry-reference \
+  --known-white /tmp/terminal-entry-known-white \
+  --white /tmp/terminal-entry-white \
+  --correlated /tmp/terminal-entry-correlated \
+  --output /tmp/terminal-entry-summary --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_terminal_entry_release.py
+```
+
+With `m` as defined above, both arms enter when
+`min(Dstop, Dterminal - 0.1) <= m`. The reference requires the same minimum to
+exceed `m + 0.05` for release, while the candidate only requires
+`Dstop > m + 0.05`. Independent release still needs stationary speed and 0.5 s
+of evidence. Joint recovery still needs the original measured recovery line,
+freshness, stationary observations and positive planned command for 1 s.
+The entry condition may fail again immediately after a stop-only release; no
+extra latch, threshold or steering change prevents this in the experiment.
+
+Append `TERMINAL_ENTRY_ONLY=true` after `RECOVERY_PREVIEW=true` to invoke the
+candidate directly. The new flag defaults to false and requires the terminal
+preview. The trajectory adds `terminal_entry_only` and
+`release_preview_clearance_lower_bound`: the latter is the stopping metric for
+`entryline`, and the existing combined metric for `recoverable`. The existing
+`preview_clearance_lower_bound` remains the entry metric. Initial rows use
+false/zero sentinels. Verification independently checks both metrics and timers;
+old logs without a release column retain their original preview-based release rule.
+
+Paired trajectories must agree until the first differing release action, apart
+from the two mode/metric columns and the two evidence counters. The known
+reference summaries are checked against the prior terminal-preview comparison.
+Every candidate entry, release and loss resume is geometrically audited along
+with fixed checkpoints. Plotting requires Matplotlib; the simulation and other
+verification use Cargo and Python's standard library.
+
+`release-entry-gaps.csv` also describes candidate guard releases whose entry
+condition already fails, and guard entries on the immediately following 0.02 s
+interval. This event diagnosis was added after observing the re-entry increase;
+it includes zero-command releases and has a different denominator from short
+re-entries. Counts of audited releases must match the full-trajectory verifier.
+See the [release ablation results](results/terminal-entry-only/report.md).

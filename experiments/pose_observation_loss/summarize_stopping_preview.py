@@ -17,6 +17,41 @@ def save_rows(path, rows):
         writer.writerows(rows)
 
 
+def release_entry_gaps(audits):
+    """Describe audited candidate guard events; includes zero-speed releases."""
+    key_fields = ["mode", "seed", "scenario", "planner"]
+    groups = {}
+    for row in audits:
+        groups.setdefault(tuple(row[k] for k in key_fields), []).append(row)
+    records = []
+    for key, rows in groups.items():
+        record = dict(zip(key_fields, key))
+        record.update(
+            guard_releases=0,
+            entry_blocked_at_release=0,
+            immediate_reentries=0,
+            blocked_release_then_immediate_entry=0,
+        )
+        release = None
+        for row in sorted(rows, key=lambda r: float(r["time_s"])):
+            if row["guard_triggered"] == "true" and release is not None:
+                lag = float(row["time_s"]) - release[0]
+                assert lag > 0
+                immediate = abs(lag - 0.02) < 1e-8
+                record["immediate_reentries"] += immediate
+                record["blocked_release_then_immediate_entry"] += (
+                    immediate and release[1]
+                )
+                release = None
+            if row["guard_released"] == "true":
+                blocked = float(row["lower_bound"]) <= float(row["margin"])
+                record["guard_releases"] += 1
+                record["entry_blocked_at_release"] += blocked
+                release = float(row["time_s"]), blocked
+        records.append(record)
+    return records
+
+
 def plot(directory, summary, variants):
     with tempfile.TemporaryDirectory(prefix="preview-plot-") as cache:
         os.environ.setdefault("MPLCONFIGDIR", cache)
@@ -91,6 +126,11 @@ def plot(directory, summary, variants):
                     "filtered": "Filtered stop",
                     "recoverable": "Recovery line",
                 }
+            if "entryline" in variants:
+                labels = {
+                    "recoverable": "Combined",
+                    "entryline": "Stop only",
+                }
             ax.set_xticks(
                 range(4),
                 [
@@ -123,6 +163,8 @@ def plot(directory, summary, variants):
             title, prefix = "Motion-compensated preview", "motion-filter"
         if "recoverable" in variants:
             title, prefix = "Terminal recovery preview", "recovery-preview"
+        if "entryline" in variants:
+            title, prefix = "Terminal entry, stop-only release", "terminal-entry-only"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -184,6 +226,11 @@ def main():
         action="store_true",
         help="Summarize filtered terminal recovery previews",
     )
+    comparison.add_argument(
+        "--terminal-entry-only",
+        action="store_true",
+        help="Summarize terminal entry with stop-only release",
+    )
     args = parser.parse_args()
     if args.known_white and not (
         args.joint_recovery
@@ -191,6 +238,7 @@ def main():
         or args.entry_buffer
         or args.motion_filter
         or args.recovery_preview
+        or args.terminal_entry_only
     ):
         parser.error(
             "--known-white requires --joint-recovery, --guard-buffer, --entry-buffer, --motion-filter or --recovery-preview"
@@ -214,12 +262,15 @@ def main():
         variants = ["joint", "filtered"]
     if args.recovery_preview:
         variants = ["filtered", "recoverable"]
+    if args.terminal_entry_only:
+        variants = ["recoverable", "entryline"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
     summary = []
     transitions = []
     combined_events, combined_audits, combined_contacts = [], [], []
+    combined_release_gaps = []
     sources = {}
     validation_seeds = None
     cohorts = [
@@ -241,6 +292,7 @@ def main():
             or args.entry_buffer
             or args.motion_filter
             or args.recovery_preview
+            or args.terminal_entry_only
         ):
             assert all(
                 r.get(k, "") != ""
@@ -256,6 +308,19 @@ def main():
                 ]
             ), "Rerun verify.py to produce joint recovery event metrics"
         audits = list(csv.DictReader((run / "preview-audit.csv").open()))
+        if args.terminal_entry_only:
+            gaps = release_entry_gaps(audits)
+            for gap in gaps:
+                event = next(
+                    r
+                    for r in events
+                    if r["variant"] == "entryline"
+                    and all(
+                        r[k] == gap[k] for k in ["mode", "seed", "scenario", "planner"]
+                    )
+                )
+                assert gap["guard_releases"] == int(event["guard_exits"])
+            combined_release_gaps.extend(dict(cohort=cohort, **r) for r in gaps)
         contacts = (
             list(csv.DictReader((run / "contacts.csv").open()))
             if (run / "contacts.csv").exists()
@@ -314,7 +379,13 @@ def main():
                 )
                 if "paced" in variants or any(
                     v in variants
-                    for v in ["buffered", "entry", "filtered", "recoverable"]
+                    for v in [
+                        "buffered",
+                        "entry",
+                        "filtered",
+                        "recoverable",
+                        "entryline",
+                    ]
                 ):
                     summary[-1].update(
                         mean_speed_limited_time_s=statistics.mean(
@@ -330,6 +401,7 @@ def main():
                     or args.entry_buffer
                     or args.motion_filter
                     or args.recovery_preview
+                    or args.terminal_entry_only
                 ):
                     summary[-1].update(
                         {
@@ -352,6 +424,7 @@ def main():
                     or args.entry_buffer
                     or args.motion_filter
                     or args.recovery_preview
+                    or args.terminal_entry_only
                 ):
                     summary[-1].update(
                         mean_wait_time_s=statistics.mean(
@@ -361,11 +434,15 @@ def main():
                             float(r["stationary_wait_time_s"]) for r in ev
                         ),
                     )
-                if args.motion_filter or args.recovery_preview:
+                if (
+                    args.motion_filter
+                    or args.recovery_preview
+                    or args.terminal_entry_only
+                ):
                     summary[-1]["short_reentries"] = sum(
                         int(r["short_reentries"]) for r in ev
                     )
-                if args.recovery_preview:
+                if args.recovery_preview or args.terminal_entry_only:
                     summary[-1]["terminal_only_guard_entries"] = sum(
                         int(r["terminal_only_guard_entries"]) for r in ev
                     )
@@ -385,6 +462,7 @@ def main():
         or args.entry_buffer
         or args.motion_filter
         or args.recovery_preview
+        or args.terminal_entry_only
     ):
         known = {
             r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]
@@ -401,6 +479,8 @@ def main():
         save_rows(args.output / name, rows)
     if combined_contacts:
         save_rows(args.output / "contacts.csv", combined_contacts)
+    if combined_release_gaps:
+        save_rows(args.output / "release-entry-gaps.csv", combined_release_gaps)
     (args.output / "sources.json").write_text(json.dumps(sources, indent=2) + "\n")
     if args.plot:
         plot(args.output, summary, variants)

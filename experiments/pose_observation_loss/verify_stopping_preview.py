@@ -135,6 +135,7 @@ def main():
         ["joint", "entry"],
         ["joint", "filtered"],
         ["filtered", "recoverable"],
+        ["recoverable", "entryline"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -157,12 +158,21 @@ def main():
                 check_restart_track(
                     track,
                     candidate == "consistent",
-                    candidate in ["filtered", "recoverable"],
+                    candidate in ["filtered", "recoverable", "entryline"],
                 )
-            check_motion_filter_track(track, candidate in ["filtered", "recoverable"])
+            check_motion_filter_track(
+                track, candidate in ["filtered", "recoverable", "entryline"]
+            )
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
-            if candidate in ["joint", "buffered", "entry", "filtered", "recoverable"]:
+            if candidate in [
+                "joint",
+                "buffered",
+                "entry",
+                "filtered",
+                "recoverable",
+                "entryline",
+            ]:
                 flags.append("resumed")
             for flag in flags:
                 first = next(
@@ -184,11 +194,24 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
-            if candidate in ["joint", "buffered", "entry", "filtered", "recoverable"]:
+            if candidate in [
+                "joint",
+                "buffered",
+                "entry",
+                "filtered",
+                "recoverable",
+                "entryline",
+            ]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
                 )
-            if candidate in ["buffered", "entry", "filtered", "recoverable"]:
+            if candidate in [
+                "buffered",
+                "entry",
+                "filtered",
+                "recoverable",
+                "entryline",
+            ]:
                 selected.extend(
                     i
                     for i, r in enumerate(track[1:], 1)
@@ -201,7 +224,7 @@ def main():
                 )
                 exact = (
                     min(stop_exact, terminal_exact - 0.1)
-                    if candidate == "recoverable"
+                    if candidate in ["recoverable", "entryline"]
                     else stop_exact
                 )
                 if "stop_preview_clearance_lower_bound" in row:
@@ -252,10 +275,17 @@ def main():
                     release_margin=release,
                     entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate == "recoverable":
+                if candidate in ["recoverable", "entryline"]:
                     record.update(
                         stop_exact=stop_exact, terminal_recovery_exact=terminal_exact
                     )
+                    if candidate == "entryline":
+                        record.update(
+                            release_exact=stop_exact,
+                            release_lower_bound=row[
+                                "release_preview_clearance_lower_bound"
+                            ],
+                        )
                     record.update(
                         guard_triggered=row["guard_triggered"],
                         guard_released=row["guard_released"],
@@ -269,6 +299,7 @@ def main():
                     "entry",
                     "filtered",
                     "recoverable",
+                    "entryline",
                 ]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
@@ -286,6 +317,7 @@ def main():
                     "entry",
                     "filtered",
                     "recoverable",
+                    "entryline",
                 ]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
