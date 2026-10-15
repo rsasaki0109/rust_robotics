@@ -3,6 +3,35 @@
 import math
 
 
+def check_guard_track(track):
+    """Reconstruct every guard transition, including the shared loss release."""
+    active = False
+    evidence = 0.0
+    for before, row in zip(track, track[1:]):
+        pending = before["safety_paused"] == "true" or (
+            row["correction"] == "true" and row["correction_received"] == "false"
+        )
+        lower, margin = float(row["preview_clearance_lower_bound"]), float(
+            row["preview_margin"]
+        )
+        triggered = released = False
+        if not active and lower <= margin:
+            active, triggered, evidence = True, True, 0.0
+        elif active and not pending:
+            ready = abs(float(before["v"])) <= 0.02 and lower > margin + 0.05
+            evidence = evidence + 0.02 if ready else 0.0
+            if evidence + 1e-9 >= 0.5:
+                active, released, evidence = False, True, 0.0
+        if pending:
+            evidence = 0.0
+            if row["resumed"] == "true":
+                released, active = active, False
+        assert (row["guard_active"] == "true") == active
+        assert (row["guard_triggered"] == "true") == triggered
+        assert (row["guard_released"] == "true") == released
+        assert abs(float(row["guard_release_evidence"]) - evidence) < 1e-8
+
+
 def check_joint_track(track):
     evidence = 0.0
     guarded = False

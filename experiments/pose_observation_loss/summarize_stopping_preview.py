@@ -80,6 +80,8 @@ def plot(directory, summary, variants):
                 labels = {"clearance": "Original speed", "paced": "Arc speed cap"}
             if "joint" in variants:
                 labels = {"paced": "Separate gates", "joint": "Joint recovery"}
+            if "buffered" in variants:
+                labels = {"joint": "Original guard", "buffered": "Guard +0.1"}
             ax.set_xticks(
                 range(4),
                 [
@@ -104,6 +106,8 @@ def plot(directory, summary, variants):
             title, prefix = "Anticipatory speed", "anticipatory-speed"
         if "joint" in variants:
             title, prefix = "Joint recovery", "joint-recovery"
+        if "buffered" in variants:
+            title, prefix = "Recovery guard buffer", "guard-buffer"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -145,9 +149,14 @@ def main():
         action="store_true",
         help="Summarize paced control with/without joint recovery",
     )
+    comparison.add_argument(
+        "--guard-buffer",
+        action="store_true",
+        help="Summarize joint recovery with/without the extra guard buffer",
+    )
     args = parser.parse_args()
-    if args.known_white and not args.joint_recovery:
-        parser.error("--known-white requires --joint-recovery")
+    if args.known_white and not (args.joint_recovery or args.guard_buffer):
+        parser.error("--known-white requires --joint-recovery or --guard-buffer")
     variants = (
         ["guarded", "consistent"]
         if args.restart_consistency
@@ -159,6 +168,8 @@ def main():
         variants = ["clearance", "paced"]
     if args.joint_recovery:
         variants = ["paced", "joint"]
+    if args.guard_buffer:
+        variants = ["joint", "buffered"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -180,7 +191,7 @@ def main():
         assert provenance["variants"] == variants
         rows = list(csv.DictReader((run / "all-results.csv").open()))
         events = list(csv.DictReader((run / "control-events.csv").open()))
-        if args.joint_recovery:
+        if args.joint_recovery or args.guard_buffer:
             assert all(
                 r.get(k, "") != ""
                 for r in events
@@ -251,7 +262,7 @@ def main():
                         ),
                     )
                 )
-                if "paced" in variants:
+                if "paced" in variants or "buffered" in variants:
                     summary[-1].update(
                         mean_speed_limited_time_s=statistics.mean(
                             float(r["speed_limited_time_s"]) for r in ev
@@ -260,7 +271,7 @@ def main():
                             float(r["speed_braking_time_s"]) for r in ev
                         ),
                     )
-                if args.joint_recovery:
+                if args.joint_recovery or args.guard_buffer:
                     summary[-1].update(
                         {
                             k: sum(int(r[k]) for r in ev)
@@ -277,6 +288,15 @@ def main():
                         and float(r["final_window_travel"]) < 0.1
                         for r in ev
                     )
+                if args.guard_buffer:
+                    summary[-1].update(
+                        mean_wait_time_s=statistics.mean(
+                            float(r["total_wait_time_s"]) for r in ev
+                        ),
+                        mean_stationary_wait_time_s=statistics.mean(
+                            float(r["stationary_wait_time_s"]) for r in ev
+                        ),
+                    )
                 if variant == variants[-1]:
                     for r in selected:
                         ref = lookup[
@@ -287,7 +307,7 @@ def main():
             transitions.append(
                 dict(cohort=cohort, mode=mode, gained_holds=gained, lost_holds=lost)
             )
-    if args.joint_recovery:
+    if args.joint_recovery or args.guard_buffer:
         known = {
             r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]
         }
