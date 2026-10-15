@@ -1,0 +1,2 @@
+cohort,tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+correlated-validation,1.0,joint,random,258,maze_50x50,JPS,109.280000,30.0,29.0,0.49903268604774154,false,4.280000

@@ -9,7 +9,9 @@ import math
 import sys
 
 from verify_restart_consistency import check_restart_track
+from verify_motion_filter import check_motion_filter_track
 from verify_joint_recovery import check_joint_track, check_guard_track
+from analyze_entry_cycles import release_bouts
 
 if not __debug__:
     raise RuntimeError("Run the verifier without Python -O; assertions are required")
@@ -36,6 +38,7 @@ variants = [
         "joint",
         "buffered",
         "entry",
+        "filtered",
     ]
     if any(r["variant"] == v for r in rows)
 ]
@@ -49,6 +52,7 @@ assert variants in [
     ["paced", "joint"],
     ["joint", "buffered"],
     ["joint", "entry"],
+    ["joint", "filtered"],
 ]
 if "clearance" in variants or "joint" in variants:
     from verify_clearance_paths import audit
@@ -61,7 +65,7 @@ if "clearance" in variants or "joint" in variants:
             p.name: hashlib.sha256(p.read_bytes()).hexdigest()
             for p in directory.glob("*.csv")
         }
-if "paced" in variants or any(v in variants for v in ["buffered", "entry"]):
+if "paced" in variants or any(v in variants for v in ["buffered", "entry", "filtered"]):
     assert (
         provenance["inputs_by_variant_sha256"][variants[0]]
         == provenance["inputs_by_variant_sha256"][variants[1]]
@@ -95,8 +99,11 @@ for item in json.loads((run / "manifest.json").read_text()):
             and (r["scenario"], r["planner"]) == key
         )
         if "consistency_ready" in track[0]:
-            check_restart_track(track, item["variant"] == "consistent")
-        if item["variant"] in ["joint", "buffered", "entry"]:
+            check_restart_track(
+                track, item["variant"] == "consistent", item["variant"] == "filtered"
+            )
+        check_motion_filter_track(track, item["variant"] == "filtered")
+        if item["variant"] in ["joint", "buffered", "entry", "filtered"]:
             check_joint_track(track)
             check_guard_track(track)
         if variants == ["paced", "joint"] and item["variant"] == "joint":
@@ -201,6 +208,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 "joint",
                 "buffered",
                 "entry",
+                "filtered",
             ]:
                 if (
                     r["correction_received"] == "true"
@@ -289,6 +297,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 "joint",
                 "buffered",
                 "entry",
+                "filtered",
             ]:
                 margin = (
                     0.5
@@ -325,7 +334,8 @@ for item in json.loads((run / "manifest.json").read_text()):
                     assert all(
                         float(
                             s["recovery_evidence"]
-                            if item["variant"] in ["joint", "buffered", "entry"]
+                            if item["variant"]
+                            in ["joint", "buffered", "entry", "filtered"]
                             and r["resumed"] == "true"
                             else s["guard_release_evidence"]
                         )
@@ -343,6 +353,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                     "joint",
                     "buffered",
                     "entry",
+                    "filtered",
                 ]:
                     assert r["target_speed"] == r["nominal_target_speed"]
                     assert r["steering"] == r["nominal_steering"]
@@ -352,7 +363,13 @@ for item in json.loads((run / "manifest.json").read_text()):
             if "speed_cap" in r:
                 free = float(r["speed_free_distance"])
                 cap = float(r["speed_cap"])
-                enabled = item["variant"] in ["paced", "joint", "buffered", "entry"]
+                enabled = item["variant"] in [
+                    "paced",
+                    "joint",
+                    "buffered",
+                    "entry",
+                    "filtered",
+                ]
                 assert 0 <= free <= 2 and abs(free / 0.05 - round(free / 0.05)) < 2e-8
                 expected_cap = (
                     min(1, max(0, math.sqrt(0.0225 + free) - 0.15)) if enabled else 1
@@ -527,7 +544,18 @@ for item in json.loads((run / "manifest.json").read_text()):
                     6,
                 ),
             )
-        if any(v in variants for v in ["buffered", "entry"]):
+        if "filtered" in variants:
+            travel = [0.0]
+            for a, r in zip(track, track[1:]):
+                travel.append(
+                    travel[-1]
+                    + math.hypot(
+                        float(r["x"]) - float(a["x"]), float(r["y"]) - float(a["y"])
+                    )
+                )
+            bouts = release_bouts(track, travel)
+            events[-1].update(short_reentries=sum(b["short_reentry"] for b in bouts))
+        if any(v in variants for v in ["buffered", "entry", "filtered"]):
             events[-1].update(
                 total_wait_time_s=round(
                     sum(
@@ -547,7 +575,9 @@ for item in json.loads((run / "manifest.json").read_text()):
                     6,
                 ),
             )
-        if "paced" in variants or any(v in variants for v in ["buffered", "entry"]):
+        if "paced" in variants or any(
+            v in variants for v in ["buffered", "entry", "filtered"]
+        ):
             events[-1].update(
                 speed_limited_time_s=round(speed_limited_seconds, 6),
                 speed_braking_time_s=round(speed_braking_seconds, 6),
@@ -569,7 +599,7 @@ if "clearance" in variants or "joint" in variants:
     # Snapshot keys include the path fixtures: these fine-grid paths differ.
     golden_paths = []
 if (
-    "paced" in variants or any(v in variants for v in ["buffered", "entry"])
+    "paced" in variants or any(v in variants for v in ["buffered", "entry", "filtered"])
 ) and noise_tau in [0.0, 1.0]:
     pinned_inputs = (
         root / "results" / "planning-clearance" / "fixtures" / "fine-padding"
@@ -583,15 +613,19 @@ if (
             root
             / "results"
             / (
-                "guard-buffer"
-                if "entry" in variants
+                "entry-buffer"
+                if "filtered" in variants
                 else (
-                    "joint-recovery"
-                    if "buffered" in variants
+                    "guard-buffer"
+                    if "entry" in variants
                     else (
-                        "anticipatory-speed"
-                        if "joint" in variants
-                        else "planning-clearance"
+                        "joint-recovery"
+                        if "buffered" in variants
+                        else (
+                            "anticipatory-speed"
+                            if "joint" in variants
+                            else "planning-clearance"
+                        )
                     )
                 )
             )
@@ -610,14 +644,14 @@ for golden_path in golden_paths:
         in (
             (
                 {"white-validation", "known-white"}
-                if any(v in variants for v in ["buffered", "entry"])
+                if any(v in variants for v in ["buffered", "entry", "filtered"])
                 else {"white-validation"}
             )
             if noise_tau == 0
             else (
                 {"reference", "correlated-validation"}
                 if "paced" in variants
-                or any(v in variants for v in ["buffered", "entry"])
+                or any(v in variants for v in ["buffered", "entry", "filtered"])
                 else {"correlated-validation"}
             )
         )
@@ -757,34 +791,43 @@ lines += [
         if "entry" in variants
         else ""
     ),
+    (
+        "filteredは停止予測の姿勢だけを、測定速度と適用済み操舵で現在へ補正した最大25観測の平均にします。余裕と速度制限はjointと同じです。"
+        if "filtered" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --entry-buffer-comparison FIXTURES"
-        if "entry" in variants
+        " --motion-filter-comparison FIXTURES"
+        if "filtered" in variants
         else (
-            " --guard-buffer-comparison FIXTURES"
-            if "buffered" in variants
+            " --entry-buffer-comparison FIXTURES"
+            if "entry" in variants
             else (
-                " --joint-recovery-comparison FIXTURES"
-                if "joint" in variants
+                " --guard-buffer-comparison FIXTURES"
+                if "buffered" in variants
                 else (
-                    " --anticipatory-speed-comparison FIXTURES"
-                    if "paced" in variants
+                    " --joint-recovery-comparison FIXTURES"
+                    if "joint" in variants
                     else (
-                        " --path-clearance-comparison FIXTURES"
-                        if "clearance" in variants
+                        " --anticipatory-speed-comparison FIXTURES"
+                        if "paced" in variants
                         else (
-                            " --restart-consistency-comparison"
-                            if "consistent" in variants
+                            " --path-clearance-comparison FIXTURES"
+                            if "clearance" in variants
                             else (
-                                " --stopping-preview-comparison"
-                                if "guarded" in variants
+                                " --restart-consistency-comparison"
+                                if "consistent" in variants
                                 else (
-                                    " --recovery-comparison"
-                                    if "averaged" in variants
-                                    else ""
+                                    " --stopping-preview-comparison"
+                                    if "guarded" in variants
+                                    else (
+                                        " --recovery-comparison"
+                                        if "averaged" in variants
+                                        else ""
+                                    )
                                 )
                             )
                         )

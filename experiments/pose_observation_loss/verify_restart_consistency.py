@@ -14,7 +14,7 @@ def average(poses):
     )
 
 
-def check_restart_track(track, enabled):
+def check_restart_track(track, enabled, preview_filtered=False):
     window = deque(maxlen=25)
     pre = None
     epoch = None
@@ -66,7 +66,7 @@ def check_restart_track(track, enabled):
             assert abs(float(row[name]) - value) < 4e-9, (name, t, value, row[name])
         assert (row["consistency_ready"] == "true") == ready
         pose = average(window) if ready else observed
-        for axis, value in zip(["x", "y", "yaw"], pose):
+        for axis, value in ([] if preview_filtered else zip(["x", "y", "yaw"], pose)):
             delta = float(row[f"preview_pose_{axis}"]) - value
             if axis == "yaw":
                 delta = math.atan2(math.sin(delta), math.cos(delta))
