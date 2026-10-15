@@ -5,6 +5,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 from pathlib import Path
 import subprocess
 from datetime import datetime, timezone
@@ -24,7 +25,19 @@ def main():
         action="store_true",
         help="Compare original pause/recovery with stationary pose averaging",
     )
+    parser.add_argument(
+        "--noise-correlation-time",
+        type=float,
+        default=0.0,
+        metavar="SECONDS",
+        help="Local pose noise correlation time (0 preserves independent noise)",
+    )
     args = parser.parse_args()
+    if (
+        not math.isfinite(args.noise_correlation_time)
+        or args.noise_correlation_time < 0
+    ):
+        parser.error("noise correlation time must be finite and nonnegative")
     variants = (
         ["aware", "averaged"] if args.recovery_comparison else ["baseline", "aware"]
     )
@@ -98,6 +111,7 @@ def main():
                             mode,
                             str(variant != "baseline").lower(),
                             str(variant == "averaged").lower(),
+                            str(args.noise_correlation_time),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -127,6 +141,7 @@ def main():
     provenance = dict(
         started_utc=started.isoformat(),
         variants=variants,
+        noise_correlation_time_s=args.noise_correlation_time,
         seeds=args.seeds,
         commit=subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=REPOSITORY, text=True
