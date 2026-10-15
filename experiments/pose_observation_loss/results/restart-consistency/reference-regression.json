@@ -1,0 +1,8 @@
+{
+  "cases": 27,
+  "matched_summary_fields": "all",
+  "source": "results/stopping-preview/all-results.csv",
+  "cohort": "correlated-validation",
+  "variant": "guarded",
+  "seed": 227
+}

@@ -17,7 +17,7 @@ def save_rows(path, rows):
         writer.writerows(rows)
 
 
-def plot(directory, summary):
+def plot(directory, summary, variants):
     with tempfile.TemporaryDirectory(prefix="preview-plot-") as cache:
         os.environ.setdefault("MPLCONFIGDIR", cache)
         os.environ.setdefault("XDG_CACHE_HOME", cache)
@@ -39,7 +39,7 @@ def plot(directory, summary):
                     and r["variant"] == variant
                 )
                 for cohort in ["white-validation", "correlated-validation"]
-                for variant in ["averaged", "guarded"]
+                for variant in variants
             ]
             bottom = [0] * 4
             for field, color, label in [
@@ -71,23 +71,33 @@ def plot(directory, summary):
             ax.set(
                 title=mode,
                 ylim=(0, max(r["trials"] for r in selected) * 1.12),
-                ylabel="Cases (same 90 inputs per row)",
+                ylabel="Paired cases",
             )
             ax.set_xticks(
                 range(4),
-                ["White\nAverage", "White\nPreview", "1 s\nAverage", "1 s\nPreview"],
+                [
+                    f"{noise}\n{variant}"
+                    for noise in ["White", "1 s"]
+                    for variant in variants
+                ],
                 fontsize=8,
             )
         axes[-1].legend(
             loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=3, fontsize=8
         )
-        fig.suptitle("Stopping preview: fixed settings, paired new seeds, 180 s budget")
-        svg = directory / "stopping-preview.svg"
+        title = (
+            "Restart consistency" if "consistent" in variants else "Stopping preview"
+        )
+        prefix = (
+            "restart-consistency" if "consistent" in variants else "stopping-preview"
+        )
+        fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
+        svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
         svg.write_text(
             "\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n"
         )
-        fig.savefig(directory / "stopping-preview.png", dpi=160)
+        fig.savefig(directory / f"{prefix}.png", dpi=160)
         plt.close(fig)
 
 
@@ -98,12 +108,23 @@ def main():
     parser.add_argument("--correlated", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True, help="New directory")
     parser.add_argument("--plot", action="store_true", help="Requires matplotlib")
+    parser.add_argument(
+        "--restart-consistency",
+        action="store_true",
+        help="Summarize guarded/consistent instead of averaged/guarded",
+    )
     args = parser.parse_args()
+    variants = (
+        ["guarded", "consistent"]
+        if args.restart_consistency
+        else ["averaged", "guarded"]
+    )
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
     summary = []
     transitions = []
+    combined_events, combined_audits, combined_contacts = [], [], []
     sources = {}
     validation_seeds = None
     for cohort, run, tau in [
@@ -113,10 +134,16 @@ def main():
     ]:
         provenance = json.loads((run / "provenance.json").read_text())
         assert provenance["noise_correlation_time_s"] == tau
-        assert provenance["variants"] == ["averaged", "guarded"]
+        assert provenance["variants"] == variants
         rows = list(csv.DictReader((run / "all-results.csv").open()))
         events = list(csv.DictReader((run / "control-events.csv").open()))
         audits = list(csv.DictReader((run / "preview-audit.csv").open()))
+        contacts = (
+            list(csv.DictReader((run / "contacts.csv").open()))
+            if (run / "contacts.csv").exists()
+            else []
+        )
+        assert len(contacts) == sum(r["collision"] == "true" for r in rows)
         seeds = sorted({r["seed"] for r in rows})
         assert len(rows) == 54 * len(seeds) and audits
         if cohort != "reference":
@@ -126,13 +153,16 @@ def main():
                 assert seeds == validation_seeds
         sources[cohort] = dict(provenance=provenance, geometry_checkpoints=len(audits))
         combined.extend(dict(cohort=cohort, **r) for r in rows)
+        combined_events.extend(dict(cohort=cohort, **r) for r in events)
+        combined_audits.extend(dict(cohort=cohort, **r) for r in audits)
+        combined_contacts.extend(dict(cohort=cohort, **r) for r in contacts)
         lookup = {
             (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): r
             for r in rows
         }
         for mode in ["none", "random", "blackout"]:
             gained = lost = 0
-            for variant in ["averaged", "guarded"]:
+            for variant in variants:
                 selected = [
                     r for r in rows if r["mode"] == mode and r["variant"] == variant
                 ]
@@ -164,10 +194,10 @@ def main():
                         ),
                     )
                 )
-                if variant == "guarded":
+                if variant == variants[-1]:
                     for r in selected:
                         ref = lookup[
-                            ("averaged", mode, r["seed"], r["scenario"], r["planner"])
+                            (variants[0], mode, r["seed"], r["scenario"], r["planner"])
                         ]
                         gained += ref["held"] == "false" and r["held"] == "true"
                         lost += ref["held"] == "true" and r["held"] == "false"
@@ -179,11 +209,15 @@ def main():
         ("all-results.csv", combined),
         ("summary.csv", summary),
         ("paired-holds.csv", transitions),
+        ("control-events.csv", combined_events),
+        ("preview-audit.csv", combined_audits),
     ]:
         save_rows(args.output / name, rows)
+    if combined_contacts:
+        save_rows(args.output / "contacts.csv", combined_contacts)
     (args.output / "sources.json").write_text(json.dumps(sources, indent=2) + "\n")
     if args.plot:
-        plot(args.output, summary)
+        plot(args.output, summary, variants)
     for row in summary:
         print(row)
 

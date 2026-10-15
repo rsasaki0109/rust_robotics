@@ -1,0 +1,4 @@
+cohort,tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+reference,1.0,guarded,none,227,maze_50x50,Theta*,164.180000,24.0,25.0,0.4990582996693942,false,4.180000
+correlated-validation,1.0,consistent,none,234,dense_50x50,A*,91.780000,9.0,15.0,0.49806554253794766,false,1.780000
+correlated-validation,1.0,consistent,none,234,dense_50x50,JPS,91.780000,9.0,15.0,0.49806554253794766,false,1.780000

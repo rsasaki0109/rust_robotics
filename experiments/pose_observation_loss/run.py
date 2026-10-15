@@ -31,6 +31,11 @@ def main():
         action="store_true",
         help="Compare averaged recovery with an always-on stopping preview guard",
     )
+    comparison.add_argument(
+        "--restart-consistency-comparison",
+        action="store_true",
+        help="Compare stopping guard with fresh stationary correction consistency",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -49,6 +54,8 @@ def main():
     )
     if args.stopping_preview_comparison:
         variants = ["averaged", "guarded"]
+    if args.restart_consistency_comparison:
+        variants = ["guarded", "consistent"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -118,9 +125,12 @@ def main():
                             "true",
                             mode,
                             str(variant != "baseline").lower(),
-                            str(variant in ["averaged", "guarded"]).lower(),
+                            str(
+                                variant in ["averaged", "guarded", "consistent"]
+                            ).lower(),
                             str(args.noise_correlation_time),
-                            str(variant == "guarded").lower(),
+                            str(variant in ["guarded", "consistent"]).lower(),
+                            str(variant == "consistent").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -172,7 +182,7 @@ def main():
     ), "simulator changed during run"
     (run / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     subprocess.run(["python3", str(ROOT / "verify.py"), str(run)], check=True)
-    if args.stopping_preview_comparison:
+    if args.stopping_preview_comparison or args.restart_consistency_comparison:
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
         )
