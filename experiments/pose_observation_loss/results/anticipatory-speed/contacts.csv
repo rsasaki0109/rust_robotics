@@ -1,0 +1,4 @@
+cohort,tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+reference,1.0,clearance,none,234,dense_50x50,Theta*,92.300000,30.0,32.0,0.4993692262373555,false,2.300000
+reference,1.0,clearance,none,243,maze_50x50,JPS,7.900000,10.0,10.0,0.4976494837782241,false,2.900000
+reference,1.0,clearance,blackout,243,maze_50x50,JPS,7.900000,10.0,10.0,0.4976494837782241,false,2.900000

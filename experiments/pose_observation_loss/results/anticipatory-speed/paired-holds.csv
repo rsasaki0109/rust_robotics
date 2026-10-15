@@ -1,0 +1,10 @@
+cohort,mode,gained_holds,lost_holds
+reference,none,0,4
+reference,random,0,0
+reference,blackout,1,4
+white-validation,none,0,2
+white-validation,random,0,3
+white-validation,blackout,0,1
+correlated-validation,none,0,5
+correlated-validation,random,0,3
+correlated-validation,blackout,0,6

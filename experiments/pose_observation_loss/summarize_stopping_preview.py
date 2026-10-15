@@ -76,6 +76,8 @@ def plot(directory, summary, variants):
             labels = {v: v for v in variants}
             if "clearance" in variants:
                 labels = {"guarded": "Nominal path", "clearance": "Padded path"}
+            if "paced" in variants:
+                labels = {"clearance": "Original speed", "paced": "Arc speed cap"}
             ax.set_xticks(
                 range(4),
                 [
@@ -96,6 +98,8 @@ def plot(directory, summary, variants):
         )
         if "clearance" in variants:
             title, prefix = "Planning clearance", "planning-clearance"
+        if "paced" in variants:
+            title, prefix = "Anticipatory speed", "anticipatory-speed"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -124,6 +128,11 @@ def main():
         action="store_true",
         help="Summarize fine-grid nominal/padded paths",
     )
+    comparison.add_argument(
+        "--anticipatory-speed",
+        action="store_true",
+        help="Summarize padded paths with/without arc-based speed capping",
+    )
     args = parser.parse_args()
     variants = (
         ["guarded", "consistent"]
@@ -132,6 +141,8 @@ def main():
     )
     if args.path_clearance:
         variants = ["guarded", "clearance"]
+    if args.anticipatory_speed:
+        variants = ["clearance", "paced"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -207,6 +218,15 @@ def main():
                         ),
                     )
                 )
+                if "paced" in variants:
+                    summary[-1].update(
+                        mean_speed_limited_time_s=statistics.mean(
+                            float(r["speed_limited_time_s"]) for r in ev
+                        ),
+                        mean_speed_braking_time_s=statistics.mean(
+                            float(r["speed_braking_time_s"]) for r in ev
+                        ),
+                    )
                 if variant == variants[-1]:
                     for r in selected:
                         ref = lookup[

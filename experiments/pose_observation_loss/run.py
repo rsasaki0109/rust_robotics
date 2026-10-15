@@ -43,6 +43,12 @@ def main():
         metavar="FIXTURES",
         help="Compare fine-grid nominal/padded paths with the same stopping guard",
     )
+    comparison.add_argument(
+        "--anticipatory-speed-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare padded paths with and without an estimated arc-based speed cap",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -65,6 +71,8 @@ def main():
         variants = ["guarded", "consistent"]
     if args.path_clearance_comparison:
         variants = ["guarded", "clearance"]
+    if args.anticipatory_speed_comparison:
+        variants = ["clearance", "paced"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -72,17 +80,22 @@ def main():
     run = run.resolve()
     run.mkdir(parents=True, exist_ok=False)
     inputs = {variant: ROOT / "inputs" for variant in variants}
-    if args.path_clearance_comparison:
+    fixture_source = (
+        args.path_clearance_comparison or args.anticipatory_speed_comparison
+    )
+    if fixture_source:
         from verify_clearance_paths import audit
 
-        shutil.copytree(args.path_clearance_comparison, run / "planning-inputs")
+        shutil.copytree(fixture_source, run / "planning-inputs")
         audited = audit(run / "planning-inputs")
         assert all(
             r["status"] == "planned" for r in audited
         ), "Planning failure; see path-audit.csv"
         inputs = {
-            "guarded": run / "planning-inputs/fine-nominal",
-            "clearance": run / "planning-inputs/fine-padding",
+            v: run
+            / "planning-inputs"
+            / ("fine-nominal" if v == "guarded" else "fine-padding")
+            for v in variants
         }
     input_hashes = {
         variant: {
@@ -156,13 +169,21 @@ def main():
                             str(variant != "baseline").lower(),
                             str(
                                 variant
-                                in ["averaged", "guarded", "consistent", "clearance"]
+                                in [
+                                    "averaged",
+                                    "guarded",
+                                    "consistent",
+                                    "clearance",
+                                    "paced",
+                                ]
                             ).lower(),
                             str(args.noise_correlation_time),
                             str(
-                                variant in ["guarded", "consistent", "clearance"]
+                                variant
+                                in ["guarded", "consistent", "clearance", "paced"]
                             ).lower(),
                             str(variant == "consistent").lower(),
+                            str(variant == "paced").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -209,7 +230,7 @@ def main():
             for p in (ROOT / "inputs").glob("*.csv")
         },
     )
-    if args.path_clearance_comparison:
+    if fixture_source:
         provenance["inputs_by_variant_sha256"] = input_hashes
         provenance["inputs_sha256"] = input_hashes[variants[0]]
     for variant, directory in inputs.items():
@@ -226,6 +247,7 @@ def main():
         args.stopping_preview_comparison
         or args.restart_consistency_comparison
         or args.path_clearance_comparison
+        or args.anticipatory_speed_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
