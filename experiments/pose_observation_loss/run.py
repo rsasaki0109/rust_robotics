@@ -19,7 +19,15 @@ def main():
         "--output", type=Path, help="New directory for raw trajectories"
     )
     parser.add_argument("--seeds", type=int, nargs="+", default=list(range(201, 211)))
+    parser.add_argument(
+        "--recovery-comparison",
+        action="store_true",
+        help="Compare original pause/recovery with stationary pose averaging",
+    )
     args = parser.parse_args()
+    variants = (
+        ["aware", "averaged"] if args.recovery_comparison else ["baseline", "aware"]
+    )
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -66,7 +74,7 @@ def main():
         / "pose_observation_loss"
     )
     all_rows, manifest = [], []
-    for variant in ["baseline", "aware"]:
+    for variant in variants:
         for mode in ["none", "random", "blackout"]:
             for seed in args.seeds:
                 trial = run / f"{variant}-{mode}-{seed}"
@@ -88,7 +96,8 @@ def main():
                             "true",
                             "true",
                             mode,
-                            str(variant == "aware").lower(),
+                            str(variant != "baseline").lower(),
+                            str(variant == "averaged").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -117,6 +126,8 @@ def main():
     (run / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     provenance = dict(
         started_utc=started.isoformat(),
+        variants=variants,
+        seeds=args.seeds,
         commit=subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=REPOSITORY, text=True
         ).strip(),

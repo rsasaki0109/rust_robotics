@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="420" viewBox="0 0 980 420">
+<rect width="980" height="420" fill="white"/>
+<style>text {font-family: sans-serif; font-size: 14px}</style>
+<text x="30" y="30">none: 90 paired trials</text>
+<rect x="30" y="60.0" width="100" height="280.0" fill="#16a34a"/>
+<text x="80" y="205.0" text-anchor="middle">90</text>
+<rect x="30" y="60.0" width="100" height="0.0" fill="#dc2626"/>
+<rect x="30" y="60.0" width="100" height="0.0" fill="#94a3b8"/>
+<text x="80" y="365" text-anchor="middle">aware</text>
+<rect x="170" y="60.0" width="100" height="280.0" fill="#16a34a"/>
+<text x="220" y="205.0" text-anchor="middle">90</text>
+<rect x="170" y="60.0" width="100" height="0.0" fill="#dc2626"/>
+<rect x="170" y="60.0" width="100" height="0.0" fill="#94a3b8"/>
+<text x="220" y="365" text-anchor="middle">averaged</text>
+<text x="350" y="30">random: 90 paired trials</text>
+<rect x="350" y="190.66666666666666" width="100" height="149.33333333333334" fill="#16a34a"/>
+<text x="400" y="270.3333333333333" text-anchor="middle">48</text>
+<rect x="350" y="190.66666666666666" width="100" height="0.0" fill="#dc2626"/>
+<rect x="350" y="60.0" width="100" height="130.66666666666666" fill="#94a3b8"/>
+<text x="400" y="130.33333333333331" text-anchor="middle">42</text>
+<text x="400" y="365" text-anchor="middle">aware</text>
+<rect x="490" y="147.11111111111111" width="100" height="192.88888888888889" fill="#16a34a"/>
+<text x="540" y="248.55555555555554" text-anchor="middle">62</text>
+<rect x="490" y="147.11111111111111" width="100" height="0.0" fill="#dc2626"/>
+<rect x="490" y="60.0" width="100" height="87.11111111111111" fill="#94a3b8"/>
+<text x="540" y="108.55555555555556" text-anchor="middle">28</text>
+<text x="540" y="365" text-anchor="middle">averaged</text>
+<text x="670" y="30">blackout: 90 paired trials</text>
+<rect x="670" y="72.44444444444446" width="100" height="267.55555555555554" fill="#16a34a"/>
+<text x="720" y="211.22222222222223" text-anchor="middle">86</text>
+<rect x="670" y="72.44444444444446" width="100" height="0.0" fill="#dc2626"/>
+<rect x="670" y="60.000000000000014" width="100" height="12.444444444444445" fill="#94a3b8"/>
+<text x="720" y="71.22222222222224" text-anchor="middle">4</text>
+<text x="720" y="365" text-anchor="middle">aware</text>
+<rect x="810" y="63.111111111111086" width="100" height="276.8888888888889" fill="#16a34a"/>
+<text x="860" y="206.55555555555554" text-anchor="middle">89</text>
+<rect x="810" y="63.111111111111086" width="100" height="0.0" fill="#dc2626"/>
+<rect x="810" y="59.99999999999997" width="100" height="3.111111111111111" fill="#94a3b8"/>
+<text x="860" y="66.55555555555553" text-anchor="middle">1</text>
+<text x="860" y="365" text-anchor="middle">averaged</text>
+<rect x="20" y="390" width="15" height="15" fill="#16a34a"/>
+<text x="45" y="403">held</text>
+<rect x="250" y="390" width="15" height="15" fill="#dc2626"/>
+<text x="275" y="403">collision</text>
+<rect x="480" y="390" width="15" height="15" fill="#94a3b8"/>
+<text x="505" y="403">timeout</text>
+</svg>

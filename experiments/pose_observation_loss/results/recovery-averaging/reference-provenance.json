@@ -1,0 +1,28 @@
+{
+  "started_utc": "2026-10-15T02:43:07.100536+00:00",
+  "variants": [
+    "aware",
+    "averaged"
+  ],
+  "seeds": [
+    201,
+    202,
+    203,
+    204,
+    205,
+    206,
+    207,
+    208,
+    209,
+    210
+  ],
+  "commit": "2078bd8b073094a46ae2bfb062f4a52a3da9c963",
+  "dirty": true,
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "simulator_sha256": "96b915b6528639f0ad12c2be725bd243bc3780e48bfdc6a7071e238bdbc3afe7",
+  "inputs_sha256": {
+    "paths.csv": "ca5a83bdae03e52b6d4ac154eebdc8f7c6f09f38e64b8a957b022e19b66fbb0f",
+    "path-metrics.csv": "c8cc9bffa29fa43f43c08f5df722fb2f21cbb1906bb050aa4bfff1b0c73d1b10",
+    "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+  }
+}

@@ -6,7 +6,7 @@
 
 use rust_robotics_control::pure_pursuit::{PurePursuitConfig, PurePursuitController, VehicleState};
 use rust_robotics_core::{Path2D, Point2D};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -77,8 +77,8 @@ impl NoiseRng {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 15 {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE; see experiments/pose_observation_loss/run.py".into());
+    if args.len() != 15 && args.len() != 16 {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -91,6 +91,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let precise_terminal: bool = args[12].parse()?;
     let loss_mode = args[13].as_str();
     let loss_aware: bool = args[14].parse()?;
+    let averaged_recovery = args
+        .get(15)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!averaged_recovery || loss_aware);
     assert!(["none", "random", "blackout"].contains(&loss_mode));
     let drift_speed: f64 = args[7].parse()?;
     let drift_yaw_rate: f64 = args[8].parse::<f64>()?.to_radians();
@@ -137,7 +143,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -173,8 +179,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0",
-            initial.x, initial.y
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0",
+            initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
         let mut previous_error = 0.0;
@@ -201,6 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut resume_count = 0;
         let mut paused_time_s = 0.0;
         let mut recovery_limit_until = 0.0;
+        let mut recovery_samples: VecDeque<(f64, f64, f64)> = VecDeque::new();
         for step in 1..=(MAX_TIME / DT) as usize {
             let from = Point2D::new(state.x, state.y);
             if step == 1 || (correction_steps > 0 && step % correction_steps == 0) {
@@ -282,20 +289,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if loss_aware && safety_paused && correction_received {
                 controller.set_path(dense.clone());
             }
+            if averaged_recovery {
+                // Only measured stationary poses from the current correction epoch.
+                // A correction, missed observation, motion, or an expired observation
+                // invalidates this window. No samples span a bias reset.
+                if correction_received
+                    || precision_activation
+                    || (correction && !correction_received)
+                    || sensed.v.abs() > 0.02
+                    || observation_age > 1.5
+                {
+                    recovery_samples.clear();
+                }
+                if safety_paused && sensed.v.abs() <= 0.02 && observation_age <= 1.5 {
+                    recovery_samples.push_back((sensed.x, sensed.y, sensed.yaw));
+                    if recovery_samples.len() > 25 {
+                        recovery_samples.pop_front();
+                    }
+                }
+            }
+            let recovery_sample_count = recovery_samples.len();
+            let (recovery_x, recovery_y, recovery_yaw) =
+                if averaged_recovery && recovery_sample_count > 0 {
+                    let n = recovery_sample_count as f64;
+                    let x = recovery_samples.iter().map(|p| p.0).sum::<f64>() / n;
+                    let y = recovery_samples.iter().map(|p| p.1).sum::<f64>() / n;
+                    let sin_yaw = recovery_samples.iter().map(|p| p.2.sin()).sum::<f64>();
+                    let cos_yaw = recovery_samples.iter().map(|p| p.2.cos()).sum::<f64>();
+                    (x, y, sin_yaw.atan2(cos_yaw))
+                } else {
+                    (sensed.x, sensed.y, sensed.yaw)
+                };
             let preview_end = Point2D::new(
-                sensed.x + 0.6 * sensed.yaw.cos(),
-                sensed.y + 0.6 * sensed.yaw.sin(),
+                recovery_x + 0.6 * recovery_yaw.cos(),
+                recovery_y + 0.6 * recovery_yaw.sin(),
             );
             // This uses estimated pose and the known map, never the true clearance.
             let recovery_clearance = obs
                 .iter()
-                .map(|&p| point_segment_distance(p, Point2D::new(sensed.x, sensed.y), preview_end))
+                .map(|&p| {
+                    point_segment_distance(p, Point2D::new(recovery_x, recovery_y), preview_end)
+                })
                 .fold(f64::INFINITY, f64::min);
             let recovery_margin = RADIUS
                 + 0.1
                 + 2.0 * 2.0_f64.sqrt() * effective_position_sigma
                 + drift_speed * observation_age;
-            let recovery_bounds = [sensed.x, sensed.y, preview_end.x, preview_end.y]
+            let recovery_bounds = [recovery_x, recovery_y, preview_end.x, preview_end.y]
                 .iter()
                 .all(|p| (recovery_margin..=(50.0 - recovery_margin)).contains(p));
             let mut resumed = false;
@@ -303,7 +343,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let ready = observation_age <= 1.5
                     && sensed.v.abs() <= 0.02
                     && recovery_clearance > recovery_margin
-                    && recovery_bounds;
+                    && recovery_bounds
+                    && (!averaged_recovery || recovery_sample_count >= 10);
                 recovery_evidence = if ready { recovery_evidence + DT } else { 0.0 };
                 if recovery_evidence + 1e-9 >= 1.0 {
                     safety_paused = false;
@@ -401,7 +442,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9}", state.x, state.y, state.yaw, state.v)?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count}", state.x, state.y, state.yaw, state.v)?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

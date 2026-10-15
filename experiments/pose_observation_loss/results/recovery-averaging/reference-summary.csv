@@ -1,0 +1,7 @@
+mode,variant,trials,held,collision,timeout,out_of_bounds
+none,aware,90,90,0,0,0
+none,averaged,90,90,0,0,0
+random,aware,90,48,0,42,0
+random,averaged,90,62,0,28,0
+blackout,aware,90,86,0,4,0
+blackout,averaged,90,89,0,1,0
