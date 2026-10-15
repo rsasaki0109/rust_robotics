@@ -101,3 +101,40 @@ check or replanner. The uncertainty margin is heuristic and Gaussian errors
 are unbounded. Zero observed contacts in these fixtures is not a safety
 guarantee. Conservative waiting can prevent mission completion within 180 s.
 See the [recorded report](results/report.md) for that tradeoff and validation.
+
+## Average stationary poses before recovery
+
+An optional comparison keeps the original pause policy as `aware` and adds an
+`averaged` arm:
+
+```bash
+python3 experiments/pose_observation_loss/run.py --recovery-comparison
+python3 experiments/pose_observation_loss/run.py --recovery-comparison \
+  --seeds 211 212 213 214 215 216 217 218 219 220
+```
+
+The first command repeats the reference seeds 201–210. The second evaluates the
+same fixed setting on new seeds. Each command runs 540 cases. The existing
+command without `--recovery-comparison` still compares `baseline` and `aware`.
+
+While paused, the new arm averages at most 25 consecutive measured poses
+(0.5 s): arithmetic means for x/y and a circular mean for yaw. A correction,
+missed scheduled observation, measured speed above 0.02, or observation age
+above 1.5 s clears the window. Only stationary samples within the current
+correction epoch are admitted. At least ten samples are required before
+starting the existing one-second confirmation. The averaged pose is used only
+for the recovery clearance/boundary check; driving and goal control still use
+the original pose estimates. The distance margin, observation age limit,
+braking response, speed cap, and true ten-second hold criterion are unchanged.
+
+This targets a failure in the original recovery check: one noisy clearance
+estimate can reset the one-second confirmation, leaving the vehicle waiting
+through another observation cycle. Averaging reduces independent white noise;
+it does not eliminate the shared correction residual or accumulated bias, and
+the uncertainty margin is not reduced. The verifier checks sample provenance,
+window resets, warmup, and the circular mean against logged measurements.
+
+See [the averaging comparison](results/recovery-averaging/report.md), which
+separates the reference seeds from the new-seed evaluation. All maps remain the
+same. Independent noise every 0.02 s is a model assumption; correlated sensor
+errors could reduce the benefit of averaging.

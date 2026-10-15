@@ -1,6 +1,7 @@
 """Check paired trajectories, physical invariants, and recorded outcomes."""
 
 from pathlib import Path
+from collections import deque
 import csv
 import json
 import math
@@ -13,25 +14,34 @@ run = Path(sys.argv[1]).resolve()
 root = Path(__file__).resolve().parent
 rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
-assert len(rows) == 54 * len(seeds)
+variants = [
+    v for v in ["baseline", "aware", "averaged"] if any(r["variant"] == v for r in rows)
+]
+assert variants in [["baseline", "aware"], ["aware", "averaged"]]
+reference_variant = variants[0]
+assert len(rows) == 9 * 3 * len(variants) * len(seeds)
 goals = {"open_50x50": (48, 48), "dense_50x50": (48, 48), "maze_50x50": (35, 45)}
 events = []
 for item in json.loads((run / "manifest.json").read_text()):
-    if item["variant"] != "aware":
+    if item["variant"] == "baseline":
         continue
     groups = {}
     pairs = {}
     for r in csv.DictReader((run / item["directory"] / "trajectories.csv").open()):
         groups.setdefault((r["scenario"], r["planner"]), []).append(r)
     for r in csv.DictReader(
-        (run / f'baseline-{item["mode"]}-{item["seed"]}' / "trajectories.csv").open()
+        (
+            run
+            / f'{reference_variant}-{item["mode"]}-{item["seed"]}'
+            / "trajectories.csv"
+        ).open()
     ):
         pairs.setdefault((r["scenario"], r["planner"]), []).append(r)
     for key, track in groups.items():
         m = next(
             r
             for r in rows
-            if r["variant"] == "aware"
+            if r["variant"] == item["variant"]
             and r["mode"] == item["mode"]
             and int(r["seed"]) == item["seed"]
             and (r["scenario"], r["planner"]) == key
@@ -44,6 +54,7 @@ for item in json.loads((run / "manifest.json").read_text()):
         last_observation = 0.0
         rms_integral = 0.0
         clearance = float(track[0]["step_min_obstacle_distance"])
+        recovery_samples = deque(maxlen=25)
         for i, r in enumerate(track[1:], 1):
             before = track[i - 1]
             t = float(r["time_s"])
@@ -86,6 +97,64 @@ for item in json.loads((run / "manifest.json").read_text()):
                 and not was_paused
             ):
                 pauses += 1
+            if item["variant"] == "averaged":
+                if (
+                    r["correction_received"] == "true"
+                    or r["precision_activation"] == "true"
+                    or (
+                        r["correction"] == "true"
+                        and r["correction_received"] == "false"
+                    )
+                    or abs(v) > 0.02
+                    or float(r["observation_age"]) > 1.5
+                ):
+                    recovery_samples.clear()
+                # The row contains the control decision before its physical update.
+                entering_pause = (
+                    r["correction"] == "true"
+                    and r["correction_received"] == "false"
+                    and not was_paused
+                )
+                if (
+                    (was_paused or entering_pause)
+                    and abs(v) <= 0.02
+                    and float(r["observation_age"]) <= 1.5
+                ):
+                    recovery_samples.append(
+                        (
+                            float(before["x"])
+                            + float(r["noise_x"])
+                            + float(r["bias_x"]),
+                            float(before["y"])
+                            + float(r["noise_y"])
+                            + float(r["bias_y"]),
+                            float(before["yaw"])
+                            + float(r["noise_yaw"])
+                            + float(r["bias_yaw"]),
+                        )
+                    )
+                assert len(recovery_samples) == int(r["recovery_sample_count"])
+                if recovery_samples:
+                    mean_x = sum(p[0] for p in recovery_samples) / len(recovery_samples)
+                    mean_y = sum(p[1] for p in recovery_samples) / len(recovery_samples)
+                    yaw_mean = math.atan2(
+                        sum(math.sin(p[2]) for p in recovery_samples),
+                        sum(math.cos(p[2]) for p in recovery_samples),
+                    )
+                    assert abs(mean_x - float(r["recovery_x"])) < 2e-9
+                    assert abs(mean_y - float(r["recovery_y"])) < 2e-9
+                    assert (
+                        abs(
+                            math.atan2(
+                                math.sin(yaw_mean - float(r["recovery_yaw"])),
+                                math.cos(yaw_mean - float(r["recovery_yaw"])),
+                            )
+                        )
+                        < 2e-9
+                    )
+                if r["resumed"] == "true":
+                    assert len(recovery_samples) >= 10
+                    assert float(track[i - 49]["recovery_evidence"]) >= 0.02 - 1e-8
             if r["resumed"] == "true":
                 resumes += 1
                 assert (
@@ -186,6 +255,7 @@ for item in json.loads((run / "manifest.json").read_text()):
             assert clearance <= 0.5
         events.append(
             dict(
+                variant=item["variant"],
                 mode=item["mode"],
                 seed=item["seed"],
                 scenario=key[0],
@@ -204,8 +274,12 @@ with (run / "control-events.csv").open("w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=list(events[0]), lineterminator="\n")
     w.writeheader()
     w.writerows(events)
-golden_path = root / "results" / "all-results.csv"
-if golden_path.exists():
+golden_paths = [root / "results" / "all-results.csv"] + list(
+    (root / "results" / "recovery-averaging").glob("*-results.csv")
+)
+for golden_path in golden_paths:
+    if not golden_path.exists():
+        continue
     golden = {
         (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): r
         for r in csv.DictReader(golden_path.open())
@@ -218,11 +292,11 @@ if golden_path.exists():
                 key,
             )
 for r in rows:
-    if r["variant"] == "aware" and r["mode"] == "none":
+    if r["variant"] != reference_variant and r["mode"] == "none":
         ref = next(
             a
             for a in rows
-            if a["variant"] == "baseline"
+            if a["variant"] == reference_variant
             and a["mode"] == "none"
             and all(a[k] == r[k] for k in ["seed", "scenario", "planner"])
         )
@@ -233,7 +307,7 @@ for r in rows:
 
 summary = []
 for mode in ["none", "random", "blackout"]:
-    for variant in ["baseline", "aware"]:
+    for variant in variants:
         selected = [r for r in rows if r["mode"] == mode and r["variant"] == variant]
         assert len(selected) == 9 * len(seeds)
         summary.append(
@@ -261,7 +335,7 @@ colors = [("held", "#16a34a"), ("collision", "#dc2626"), ("timeout", "#94a3b8")]
 for panel, mode in enumerate(["none", "random", "blackout"]):
     x0 = panel * 320 + 30
     svg.append(f'<text x="{x0}" y="30">{mode}: {9*len(seeds)} paired trials</text>')
-    for col, variant in enumerate(["baseline", "aware"]):
+    for col, variant in enumerate(variants):
         result = next(
             r for r in summary if r["mode"] == mode and r["variant"] == variant
         )
@@ -300,12 +374,19 @@ lines += [
     "予定された5秒周期の外部姿勢観測を受信できない時点で停止待機を開始します。受信可否の将来情報や真の位置・障害物距離は制御に使用しません。減速度は最大1、速度比例ゲイン4で、位置や速度を強制変更していません。停止中は操舵ゼロです。",
     "新しい観測を受信後、受信から1.5秒以内・計測速度0.02以下・推定姿勢から前方0.6の線分が既知の障害物と地図境界から離れている条件を1秒連続で満たせば再開します。距離の余裕は半径0.5に0.1＋2√2σ＋位置ドリフト速度×観測経過時間を加算します。この余裕は簡易的な仮定であり、安全保証ではありません。受信時に経路探索位置をリセットし、再開から5秒は速度0.4以下に制限します。",
     "成功条件は従来と同じ、停止指令中の真の目標距離0.25未満・真の速度0.02以下を10秒連続です。半径0.5の車体が移動区間で障害物に接触したら即終了します。全条件の上限180秒も同じです。待機による時間切れを成功扱いしません。",
-    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの実験はシード201〜210です。これらのシードは以前の実験にも使用したもので、未知条件の検証ではありません。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。保存済み結果の該当シードも照合します。",
+    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの初回実験はシード201〜210です。今回のシードは末尾に記録しています。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。保存済み結果の該当シードも照合します。",
     "CSVから全停止復帰試行の時間間隔、有限値、観測経過時間、停止・復帰条件、ブレーキ応答と移動、接触・保持判定、RMSと最小距離を検証しました。外部観測欠落中も局所姿勢推定は利用可能で、終端の精密観測は理想化しています。実機・EKF・全センサー停止への検証ではありません。",
     "",
     "![比較](control-comparison.svg)",
     "",
-    "再実行: `python3 experiments/pose_observation_loss/run.py`",
+    "再実行: `python3 experiments/pose_observation_loss/run.py"
+    + (" --recovery-comparison" if "averaged" in variants else "")
+    + "`（同じシードを指定）。",
+    (
+        "averagedは停止中の推定姿勢を最大25点、位置は平均・向きは円周平均にして再開判定に使用します。補正受信・欠落・移動・観測期限切れで窓を消去し、10点以上集まってから1秒の確認を始めます。距離余裕・有効時間・走行と保持の条件は変更しません。"
+        if "averaged" in variants
+        else ""
+    ),
     "",
     "生データ: all-results.csv / control-events.csv / 各条件のtrajectories.csv。",
     f"実行情報: provenance.json。検証したシード: {sorted(seeds)}。",
