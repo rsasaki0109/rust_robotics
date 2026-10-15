@@ -1,0 +1,3 @@
+cohort,lost_holds,near_stationary,fully_stop_gated,inside_min_guard_margin,near_stationary_forward_blocked,mean_travel_distance,min_fresh_time_s
+white-validation,6,2,2,2,2,4.744823527534776,7.6
+correlated-validation,14,6,4,5,6,4.386278079355478,7.6
