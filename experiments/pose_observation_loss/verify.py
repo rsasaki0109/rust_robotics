@@ -10,7 +10,11 @@ import sys
 
 from verify_restart_consistency import check_restart_track
 from verify_motion_filter import check_motion_filter_track
-from verify_joint_recovery import check_joint_track, check_guard_track
+from verify_joint_recovery import (
+    check_joint_track,
+    check_guard_track,
+    release_clearance,
+)
 from analyze_entry_cycles import release_bouts
 
 if not __debug__:
@@ -40,6 +44,7 @@ variants = [
         "entry",
         "filtered",
         "recoverable",
+        "entryline",
     ]
     if any(r["variant"] == v for r in rows)
 ]
@@ -55,6 +60,7 @@ assert variants in [
     ["joint", "entry"],
     ["joint", "filtered"],
     ["filtered", "recoverable"],
+    ["recoverable", "entryline"],
 ]
 if "clearance" in variants or ("joint" in variants or "recoverable" in variants):
     from verify_clearance_paths import audit
@@ -68,7 +74,7 @@ if "clearance" in variants or ("joint" in variants or "recoverable" in variants)
             for p in directory.glob("*.csv")
         }
 if "paced" in variants or any(
-    v in variants for v in ["buffered", "entry", "filtered", "recoverable"]
+    v in variants for v in ["buffered", "entry", "filtered", "recoverable", "entryline"]
 ):
     assert (
         provenance["inputs_by_variant_sha256"][variants[0]]
@@ -106,10 +112,19 @@ for item in json.loads((run / "manifest.json").read_text()):
             check_restart_track(
                 track,
                 item["variant"] == "consistent",
-                item["variant"] in ["filtered", "recoverable"],
+                item["variant"] in ["filtered", "recoverable", "entryline"],
             )
-        check_motion_filter_track(track, item["variant"] in ["filtered", "recoverable"])
-        if item["variant"] in ["joint", "buffered", "entry", "filtered", "recoverable"]:
+        check_motion_filter_track(
+            track, item["variant"] in ["filtered", "recoverable", "entryline"]
+        )
+        if item["variant"] in [
+            "joint",
+            "buffered",
+            "entry",
+            "filtered",
+            "recoverable",
+            "entryline",
+        ]:
             check_joint_track(track)
             check_guard_track(track)
         if variants == ["paced", "joint"] and item["variant"] == "joint":
@@ -123,6 +138,33 @@ for item in json.loads((run / "manifest.json").read_text()):
                 ):
                     break
                 assert reference == candidate, (item, key, "pre-loss regression")
+        if variants == ["recoverable", "entryline"] and item["variant"] == "entryline":
+            # Only evidence can differ before the first different release action.
+            ignored = {
+                "terminal_entry_only",
+                "release_preview_clearance_lower_bound",
+                "guard_release_evidence",
+                "recovery_evidence",
+            }
+            for reference, candidate in zip(pairs[key], track):
+                changed = any(
+                    reference[k] != candidate[k] for k in ["guard_released", "resumed"]
+                )
+                if changed:
+                    assert (
+                        candidate["guard_released"] == "true"
+                        or candidate["resumed"] == "true"
+                    )
+                    break
+                assert all(
+                    reference[k] == candidate[k] for k in reference if k not in ignored
+                ), (item, key, "pre-release regression")
+            else:
+                assert len(pairs[key]) == len(track), (
+                    item,
+                    key,
+                    "unchanged release length",
+                )
         goal = goals[key[0]]
         hold = 0.0
         pauses = 0
@@ -144,8 +186,16 @@ for item in json.loads((run / "manifest.json").read_text()):
             t = float(r["time_s"])
             v = float(before["v"])
             speed = float(r["v"])
+            if item["variant"] == "entryline":
+                assert {
+                    "terminal_entry_only",
+                    "release_preview_clearance_lower_bound",
+                    "recovery_preview_active",
+                    "stop_preview_clearance_lower_bound",
+                    "terminal_recovery_clearance",
+                } <= r.keys()
             if "recovery_preview_active" in r:
-                active = item["variant"] == "recoverable"
+                active = item["variant"] in ["recoverable", "entryline"]
                 assert (r["recovery_preview_active"] == "true") == active
                 stop = float(r["stop_preview_clearance_lower_bound"])
                 terminal = float(r["terminal_recovery_clearance"])
@@ -153,6 +203,12 @@ for item in json.loads((run / "manifest.json").read_text()):
                 assert abs(combined - float(r["preview_clearance_lower_bound"])) < 3e-9
                 if not active:
                     assert terminal == 0
+                if "terminal_entry_only" in r:
+                    entry_only = item["variant"] == "entryline"
+                    assert (r["terminal_entry_only"] == "true") == entry_only
+                    assert not entry_only or active
+                    expected_release = stop if entry_only else combined
+                    assert abs(release_clearance(r) - expected_release) < 3e-9
             assert abs(t - float(before["time_s"]) - 0.02) < 1e-8
             if "noise_rho" in r:
                 assert abs(float(r["noise_rho"]) - noise_rho) < 1e-12
@@ -225,6 +281,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 "entry",
                 "filtered",
                 "recoverable",
+                "entryline",
             ]:
                 if (
                     r["correction_received"] == "true"
@@ -315,6 +372,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                 "entry",
                 "filtered",
                 "recoverable",
+                "entryline",
             ]:
                 margin = (
                     0.5
@@ -344,15 +402,19 @@ for item in json.loads((run / "manifest.json").read_text()):
                 if r["guard_released"] == "true":
                     guard_exits += 1
                     assert previously_guarded and not guarded and abs(v) <= 0.02
-                    assert (
-                        float(r["preview_clearance_lower_bound"])
-                        > release_margin - 2e-9
-                    )
+                    assert release_clearance(r) > release_margin - 2e-9
                     assert all(
                         float(
                             s["recovery_evidence"]
                             if item["variant"]
-                            in ["joint", "buffered", "entry", "filtered", "recoverable"]
+                            in [
+                                "joint",
+                                "buffered",
+                                "entry",
+                                "filtered",
+                                "recoverable",
+                                "entryline",
+                            ]
                             and r["resumed"] == "true"
                             else s["guard_release_evidence"]
                         )
@@ -372,6 +434,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                     "entry",
                     "filtered",
                     "recoverable",
+                    "entryline",
                 ]:
                     assert r["target_speed"] == r["nominal_target_speed"]
                     assert r["steering"] == r["nominal_steering"]
@@ -388,6 +451,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                     "entry",
                     "filtered",
                     "recoverable",
+                    "entryline",
                 ]
                 assert 0 <= free <= 2 and abs(free / 0.05 - round(free / 0.05)) < 2e-8
                 expected_cap = (
@@ -563,7 +627,7 @@ for item in json.loads((run / "manifest.json").read_text()):
                     6,
                 ),
             )
-        if "filtered" in variants:
+        if "filtered" in variants or "entryline" in variants:
             travel = [0.0]
             for a, r in zip(track, track[1:]):
                 travel.append(
@@ -582,10 +646,13 @@ for item in json.loads((run / "manifest.json").read_text()):
                     > float(r["preview_margin"])
                     for r in track[1:]
                 )
-                if item["variant"] == "recoverable"
+                if item["variant"] in ["recoverable", "entryline"]
                 else 0
             )
-        if any(v in variants for v in ["buffered", "entry", "filtered", "recoverable"]):
+        if any(
+            v in variants
+            for v in ["buffered", "entry", "filtered", "recoverable", "entryline"]
+        ):
             events[-1].update(
                 total_wait_time_s=round(
                     sum(
@@ -606,7 +673,8 @@ for item in json.loads((run / "manifest.json").read_text()):
                 ),
             )
         if "paced" in variants or any(
-            v in variants for v in ["buffered", "entry", "filtered", "recoverable"]
+            v in variants
+            for v in ["buffered", "entry", "filtered", "recoverable", "entryline"]
         ):
             events[-1].update(
                 speed_limited_time_s=round(speed_limited_seconds, 6),
@@ -630,7 +698,10 @@ if "clearance" in variants or ("joint" in variants or "recoverable" in variants)
     golden_paths = []
 if (
     "paced" in variants
-    or any(v in variants for v in ["buffered", "entry", "filtered", "recoverable"])
+    or any(
+        v in variants
+        for v in ["buffered", "entry", "filtered", "recoverable", "entryline"]
+    )
 ) and noise_tau in [0.0, 1.0]:
     pinned_inputs = (
         root / "results" / "planning-clearance" / "fixtures" / "fine-padding"
@@ -644,21 +715,27 @@ if (
             root
             / "results"
             / (
-                "motion-filter"
-                if "recoverable" in variants
+                "recovery-preview"
+                if "entryline" in variants
                 else (
-                    "entry-buffer"
-                    if "filtered" in variants
+                    "motion-filter"
+                    if "recoverable" in variants
                     else (
-                        "guard-buffer"
-                        if "entry" in variants
+                        "entry-buffer"
+                        if "filtered" in variants
                         else (
-                            "joint-recovery"
-                            if "buffered" in variants
+                            "guard-buffer"
+                            if "entry" in variants
                             else (
-                                "anticipatory-speed"
-                                if ("joint" in variants or "recoverable" in variants)
-                                else "planning-clearance"
+                                "joint-recovery"
+                                if "buffered" in variants
+                                else (
+                                    "anticipatory-speed"
+                                    if (
+                                        "joint" in variants or "recoverable" in variants
+                                    )
+                                    else "planning-clearance"
+                                )
                             )
                         )
                     )
@@ -681,7 +758,13 @@ for golden_path in golden_paths:
                 {"white-validation", "known-white"}
                 if any(
                     v in variants
-                    for v in ["buffered", "entry", "filtered", "recoverable"]
+                    for v in [
+                        "buffered",
+                        "entry",
+                        "filtered",
+                        "recoverable",
+                        "entryline",
+                    ]
                 )
                 else {"white-validation"}
             )
@@ -691,7 +774,13 @@ for golden_path in golden_paths:
                 if "paced" in variants
                 or any(
                     v in variants
-                    for v in ["buffered", "entry", "filtered", "recoverable"]
+                    for v in [
+                        "buffered",
+                        "entry",
+                        "filtered",
+                        "recoverable",
+                        "entryline",
+                    ]
                 )
                 else {"correlated-validation"}
             )
@@ -716,6 +805,7 @@ for r in rows:
                 "buffered",
                 "filtered",
                 "recoverable",
+                "entryline",
             ]
         )
         and r["variant"] != reference_variant
@@ -850,40 +940,49 @@ lines += [
         if "recoverable" in variants
         else ""
     ),
+    (
+        "entrylineはrecoverableの開始条件を保ち、単独解除と同時復帰の停止予測を元の停止軌道だけに戻します。実際の欠落復帰条件とタイマーは同じです。"
+        if "entryline" in variants
+        else ""
+    ),
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (
-        " --recovery-preview-comparison FIXTURES"
-        if "recoverable" in variants
+        " --terminal-entry-only-comparison FIXTURES"
+        if "entryline" in variants
         else (
-            " --motion-filter-comparison FIXTURES"
-            if "filtered" in variants
+            " --recovery-preview-comparison FIXTURES"
+            if "recoverable" in variants
             else (
-                " --entry-buffer-comparison FIXTURES"
-                if "entry" in variants
+                " --motion-filter-comparison FIXTURES"
+                if "filtered" in variants
                 else (
-                    " --guard-buffer-comparison FIXTURES"
-                    if "buffered" in variants
+                    " --entry-buffer-comparison FIXTURES"
+                    if "entry" in variants
                     else (
-                        " --joint-recovery-comparison FIXTURES"
-                        if ("joint" in variants or "recoverable" in variants)
+                        " --guard-buffer-comparison FIXTURES"
+                        if "buffered" in variants
                         else (
-                            " --anticipatory-speed-comparison FIXTURES"
-                            if "paced" in variants
+                            " --joint-recovery-comparison FIXTURES"
+                            if ("joint" in variants or "recoverable" in variants)
                             else (
-                                " --path-clearance-comparison FIXTURES"
-                                if "clearance" in variants
+                                " --anticipatory-speed-comparison FIXTURES"
+                                if "paced" in variants
                                 else (
-                                    " --restart-consistency-comparison"
-                                    if "consistent" in variants
+                                    " --path-clearance-comparison FIXTURES"
+                                    if "clearance" in variants
                                     else (
-                                        " --stopping-preview-comparison"
-                                        if "guarded" in variants
+                                        " --restart-consistency-comparison"
+                                        if "consistent" in variants
                                         else (
-                                            " --recovery-comparison"
-                                            if "averaged" in variants
-                                            else ""
+                                            " --stopping-preview-comparison"
+                                            if "guarded" in variants
+                                            else (
+                                                " --recovery-comparison"
+                                                if "averaged" in variants
+                                                else ""
+                                            )
                                         )
                                     )
                                 )
