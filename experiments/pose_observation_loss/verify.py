@@ -12,6 +12,11 @@ if not __debug__:
 
 run = Path(sys.argv[1]).resolve()
 root = Path(__file__).resolve().parent
+provenance = json.loads((run / "provenance.json").read_text())
+noise_tau = provenance.get("noise_correlation_time_s", 0.0)
+assert math.isfinite(noise_tau) and noise_tau >= 0.0
+noise_rho = math.exp(-0.02 / noise_tau) if noise_tau > 0 else 0.0
+innovation_scale = math.sqrt(1.0 - noise_rho * noise_rho)
 rows = list(csv.DictReader((run / "all-results.csv").open()))
 seeds = {int(r["seed"]) for r in rows}
 variants = [
@@ -55,12 +60,37 @@ for item in json.loads((run / "manifest.json").read_text()):
         rms_integral = 0.0
         clearance = float(track[0]["step_min_obstacle_distance"])
         recovery_samples = deque(maxlen=25)
+        previous_normalized_noise = [0.0, 0.0, 0.0]
         for i, r in enumerate(track[1:], 1):
             before = track[i - 1]
             t = float(r["time_s"])
             v = float(before["v"])
             speed = float(r["v"])
             assert abs(t - float(before["time_s"]) - 0.02) < 1e-8
+            if "noise_rho" in r:
+                assert abs(float(r["noise_rho"]) - noise_rho) < 1e-12
+                precise = r["precision_active"] == "true"
+                for axis, (field, sigma) in enumerate(
+                    [
+                        ("x", 0.03 if precise else 0.1),
+                        ("y", 0.03 if precise else 0.1),
+                        ("yaw", math.radians(0.6 if precise else 2)),
+                    ]
+                ):
+                    latent = float(r[f"noise_{field}"]) / sigma
+                    innovation = float(r[f"noise_innovation_{field}"])
+                    expected = (
+                        innovation
+                        if i == 1 or noise_rho == 0
+                        else (
+                            noise_rho * previous_normalized_noise[axis]
+                            + innovation_scale * innovation
+                        )
+                    )
+                    assert abs(latent - expected) < 2e-7
+                    previous_normalized_noise[axis] = latent
+            else:
+                assert noise_tau == 0.0
             available = (
                 float(r["loss_uniform"]) >= 0.3
                 if item["mode"] == "random"
@@ -230,6 +260,11 @@ for item in json.loads((run / "manifest.json").read_text()):
                         abs(float(r[field]) / sigma(r) - float(ref[field]) / sigma(ref))
                         < 2e-7
                     )
+                    if "noise_rho" in r and "noise_rho" in ref:
+                        assert (
+                            r[f"noise_innovation_{field.removeprefix('noise_')}"]
+                            == ref[f"noise_innovation_{field.removeprefix('noise_')}"]
+                        )
                     if r["correction_received"] == "true":
                         bias_field = field.replace("noise_", "bias_")
                         assert (
@@ -278,7 +313,7 @@ golden_paths = [root / "results" / "all-results.csv"] + list(
     (root / "results" / "recovery-averaging").glob("*-results.csv")
 )
 for golden_path in golden_paths:
-    if not golden_path.exists():
+    if noise_tau != 0.0 or not golden_path.exists():
         continue
     golden = {
         (r["variant"], r["mode"], r["seed"], r["scenario"], r["planner"]): r
@@ -374,14 +409,14 @@ lines += [
     "予定された5秒周期の外部姿勢観測を受信できない時点で停止待機を開始します。受信可否の将来情報や真の位置・障害物距離は制御に使用しません。減速度は最大1、速度比例ゲイン4で、位置や速度を強制変更していません。停止中は操舵ゼロです。",
     "新しい観測を受信後、受信から1.5秒以内・計測速度0.02以下・推定姿勢から前方0.6の線分が既知の障害物と地図境界から離れている条件を1秒連続で満たせば再開します。距離の余裕は半径0.5に0.1＋2√2σ＋位置ドリフト速度×観測経過時間を加算します。この余裕は簡易的な仮定であり、安全保証ではありません。受信時に経路探索位置をリセットし、再開から5秒は速度0.4以下に制限します。",
     "成功条件は従来と同じ、停止指令中の真の目標距離0.25未満・真の速度0.02以下を10秒連続です。半径0.5の車体が移動区間で障害物に接触したら即終了します。全条件の上限180秒も同じです。待機による時間切れを成功扱いしません。",
-    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの初回実験はシード201〜210です。今回のシードは末尾に記録しています。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。保存済み結果の該当シードも照合します。",
+    "同じ3地図×3経路で、指定したシードの対比較を行いました。保存済みの初回実験はシード201〜210です。今回のシードは末尾に記録しています。欠落可否と正規化した観測ノイズの共通区間一致を確認しました。相関時間0では保存済み結果の該当シードも照合します。",
     "CSVから全停止復帰試行の時間間隔、有限値、観測経過時間、停止・復帰条件、ブレーキ応答と移動、接触・保持判定、RMSと最小距離を検証しました。外部観測欠落中も局所姿勢推定は利用可能で、終端の精密観測は理想化しています。実機・EKF・全センサー停止への検証ではありません。",
     "",
     "![比較](control-comparison.svg)",
     "",
     "再実行: `python3 experiments/pose_observation_loss/run.py"
     + (" --recovery-comparison" if "averaged" in variants else "")
-    + "`（同じシードを指定）。",
+    + f" --noise-correlation-time {noise_tau}`（同じシードを指定）。",
     (
         "averagedは停止中の推定姿勢を最大25点、位置は平均・向きは円周平均にして再開判定に使用します。補正受信・欠落・移動・観測期限切れで窓を消去し、10点以上集まってから1秒の確認を始めます。距離余裕・有効時間・走行と保持の条件は変更しません。"
         if "averaged" in variants
@@ -389,6 +424,7 @@ lines += [
     ),
     "",
     "生データ: all-results.csv / control-events.csv / 各条件のtrajectories.csv。",
+    f"局所姿勢ノイズの相関時間: {noise_tau}秒、隣接相関ρ={noise_rho:.6f}。σと制御条件は同じです。",
     f"実行情報: provenance.json。検証したシード: {sorted(seeds)}。",
 ]
 (run / "report.md").write_text("\n".join(lines) + "\n")

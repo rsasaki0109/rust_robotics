@@ -77,8 +77,8 @@ impl NoiseRng {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 15 && args.len() != 16 {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=17).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -96,6 +96,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<bool>())
         .transpose()?
         .unwrap_or(false);
+    let noise_correlation_time_s = args
+        .get(16)
+        .map(|s| s.parse::<f64>())
+        .transpose()?
+        .unwrap_or(0.0);
+    assert!(noise_correlation_time_s.is_finite() && noise_correlation_time_s >= 0.0);
+    let noise_rho = if noise_correlation_time_s == 0.0 {
+        0.0
+    } else {
+        (-DT / noise_correlation_time_s).exp()
+    };
+    let innovation_scale = (1.0 - noise_rho * noise_rho).sqrt();
     assert!(!averaged_recovery || loss_aware);
     assert!(["none", "random", "blackout"].contains(&loss_mode));
     let drift_speed: f64 = args[7].parse()?;
@@ -143,7 +155,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -164,6 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         controller.set_path(dense.clone());
         let mut state = VehicleState::new(initial.x, initial.y, yaw, 0.0, WHEELBASE);
         let mut rng = NoiseRng(seed);
+        let mut correlated_normals = [0.0; 3];
         let mut anchor_rng = NoiseRng(seed ^ 0xe7037ed1a0b428db);
         let mut terminal_anchor_rng = NoiseRng(seed ^ 0x8ebc6af09c88c6e3);
         let mut precision_active = false;
@@ -179,7 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0",
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12}",
             initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
@@ -234,9 +247,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 yaw_sigma
             };
-            let noise_x = effective_position_sigma * rng.normal();
-            let noise_y = effective_position_sigma * rng.normal();
-            let noise_yaw = effective_yaw_sigma * rng.normal();
+            // Unit stationary variance for all correlation times. The first
+            // sample is stationary, rather than ramping up from a zero state.
+            // Consume exactly the legacy three draws even in correlated runs.
+            let innovations = [rng.normal(), rng.normal(), rng.normal()];
+            for axis in 0..3 {
+                correlated_normals[axis] = if step == 1 || noise_rho == 0.0 {
+                    innovations[axis]
+                } else {
+                    noise_rho * correlated_normals[axis] + innovation_scale * innovations[axis]
+                };
+            }
+            let noise_x = effective_position_sigma * correlated_normals[0];
+            let noise_y = effective_position_sigma * correlated_normals[1];
+            let noise_yaw = effective_yaw_sigma * correlated_normals[2];
             bias_x += drift_speed * drift_angle.cos() * DT;
             bias_y += drift_speed * drift_angle.sin() * DT;
             bias_yaw += yaw_sign * drift_yaw_rate * DT;
@@ -442,7 +466,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count}", state.x, state.y, state.yaw, state.v)?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

@@ -138,3 +138,48 @@ See [the averaging comparison](results/recovery-averaging/report.md), which
 separates the reference seeds from the new-seed evaluation. All maps remain the
 same. Independent noise every 0.02 s is a model assumption; correlated sensor
 errors could reduce the benefit of averaging.
+
+## Temporally correlated local pose noise
+
+Use `--noise-correlation-time SECONDS` to keep each sample's marginal σ fixed
+while varying temporal persistence. Zero is the original independent-noise
+model and remains the default. For example, with the previous evaluation seeds:
+
+```bash
+python3 experiments/pose_observation_loss/run.py --recovery-comparison \
+  --noise-correlation-time 0.2 --seeds 211 212 213 214 215 216 217 218 219 220
+python3 experiments/pose_observation_loss/run.py --recovery-comparison \
+  --noise-correlation-time 1 --seeds 211 212 213 214 215 216 217 218 219 220
+```
+
+For each normalized x/y/yaw component, `z[1] = epsilon[1]` and subsequent samples
+follow `z[t] = rho*z[t-1] + sqrt(1-rho²)*epsilon[t]`, where
+`rho = exp(-0.02/correlation_time)` and epsilon is independent standard normal.
+This starts with stationary unit variance. The current position/yaw σ scales
+z; normalized state persists when the idealized precision mode changes σ.
+The same three Gaussian innovations are consumed at each step in every arm.
+The zero-time branch uses exactly the legacy independent samples.
+
+Only the local measurement-noise component changes. External correction
+residuals, drift, availability, maps, policies, recovery margins, and success
+criteria are fixed. Temporal correlation is not passed to the control policy;
+the policy continues to use its original instantaneous σ-based margin. This
+experiment measures sensitivity of the fixed policy rather than adapting it
+to a known noise model.
+
+The verifier checks the AR recurrence, stationary initialization, paired
+innovations, and the existing motion/recovery/hold invariants. The optional
+standard-library analysis below compares completed runs, including a white
+run, and checks a fixed 50 s open-map noise prefix for all seeds. It checks
+innovation pairing across correlation times and reports empirical mean,
+variance, lag-one correlation, and the theoretical SD of a 25-sample mean.
+Broad statistical sanity bounds are not confidence intervals.
+
+```bash
+python3 experiments/pose_observation_loss/compare_correlations.py \
+  WHITE_RUN CORRELATED_RUN_02 CORRELATED_RUN_1 --output NEW_ANALYSIS_DIRECTORY
+```
+
+See the [recorded correlation study](results/correlated-noise/report.md).
+The same maps and previously evaluated seeds are reused; this is a sensitivity
+study, not an unseen evaluation or a fitted sensor-noise model.
