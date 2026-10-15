@@ -430,3 +430,49 @@ also compared for the reference arm.
 
 See the [anticipatory speed report](results/anticipatory-speed/report.md) for
 contact outcomes and mission-completion costs.
+
+## Diagnose lost holds and interacting recovery gates
+
+The offline diagnostic below reads the recorded speed-cap study's two new-seed
+runs, selects cases held by `clearance` but not by `paced`, and examines
+`150 < time <= 180`. It does not change or run a control policy:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_recovery_stalls.py \
+  --white /tmp/speed-white --correlated /tmp/speed-correlated \
+  --output /tmp/recovery-stall-analysis --plot
+```
+
+The raw run directories must contain their trajectories and copied planning
+inputs. If needed, regenerate `/tmp/speed-white` and `/tmp/speed-correlated`
+using the corresponding commands above with seeds 244–246. The diagnostic
+requires the recorded result rows, simulator hash and paired path hashes to
+match; it is a post-hoc analysis of that frozen dataset. Python's standard
+library suffices without `--plot`; plotting requires Matplotlib.
+
+Outputs include case-level command durations and actual travel, selected
+checkpoints, source trajectory hashes, and an optional stacked duration plot.
+Each of the 1,500 intervals per case belongs to one exclusive command state:
+both loss pause and guard, loss only, guard only, goal stop, zero speed cap,
+speed-limited target, or ordinary target. Stop states take priority over speed
+states. A guard includes braking time, so these are command durations rather
+than stationary durations. The separate moving time uses the pre-update
+measured speed threshold 0.02. Travel sums the true logged center displacement
+over each interval. `near_stationary` means travel below 0.1 during this window.
+The plot stacks totals; it is not a chronological timeline.
+
+The script distinguishes guard release while a loss pause remains from actual
+movement, and loss recovery while a guard remains. Checkpoints include every
+release, stationary observations aged 0.5 s, and the final decision.
+`guard_ready` and `recovery_ready` are instantaneous predicates before the
+0.5 s and 1 s continuous-evidence requirements; they do not imply release.
+Recovery line geometry is independently recomputed at every checkpoint, and
+the physical response is checked across all 30,000 selected intervals.
+
+Truth is used only for offline attribution: minimum center clearance and the
+forward 0.6 line from the true pose are compared with the existing margins,
+keeping sigma fixed and using zero observation age. This tests necessary
+geometric conditions at the final pose, not a deployable localization method
+or a prediction that changing margins would recover a mission. It also does
+not establish safety of an alternative steering or restart policy. See the
+[recovery-stall diagnosis](results/recovery-stalls/report.md).
