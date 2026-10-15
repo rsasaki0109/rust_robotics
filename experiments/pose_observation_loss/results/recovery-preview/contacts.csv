@@ -1,0 +1,3 @@
+cohort,tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+correlated-validation,1.0,filtered,none,260,dense_50x50,JPS,129.280000,9.0,15.0,0.49994088417773386,false,4.280000
+correlated-validation,1.0,filtered,none,260,maze_50x50,JPS,128.940000,19.0,20.0,0.4983998637756135,false,3.940000

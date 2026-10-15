@@ -23,7 +23,7 @@ def segment_distance(point, start, end):
     return math.hypot(point[0] - start[0] - t * dx, point[1] - start[1] - t * dy)
 
 
-def exact_preview(before, row, obstacles):
+def preview_components(before, row, obstacles):
     # Reconstruct only the observed pose from the prior physical state and the
     # logged errors. Recalculate the full geometry, rather than reusing the
     # simulator's optimized clearance lower bound.
@@ -61,7 +61,22 @@ def exact_preview(before, row, obstacles):
             clearance,
             *(segment_distance(point, a, b) for a, b in zip(points, points[1:])),
         )
-    return clearance, len(points) - 1
+    terminal = 0.0
+    if row.get("recovery_preview_active") == "true":
+        start = points[-1]
+        end = x + 0.6 * math.cos(yaw), y + 0.6 * math.sin(yaw)
+        terminal = min(
+            *(min(px, py, 50 - px, 50 - py) for px, py in [start, end]),
+            *(segment_distance(p, start, end) for p in obstacles),
+        )
+    return clearance, terminal, len(points) - 1
+
+
+def exact_preview(before, row, obstacles):
+    clearance, terminal, steps = preview_components(before, row, obstacles)
+    if row.get("recovery_preview_active") == "true":
+        clearance = min(clearance, terminal - 0.1)
+    return clearance, steps
 
 
 def exact_speed_distance(before, row, obstacles):
@@ -119,6 +134,7 @@ def main():
         ["joint", "buffered"],
         ["joint", "entry"],
         ["joint", "filtered"],
+        ["filtered", "recoverable"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -139,12 +155,14 @@ def main():
         for key, track in groups.items():
             if "consistency_ready" in track[0]:
                 check_restart_track(
-                    track, candidate == "consistent", candidate == "filtered"
+                    track,
+                    candidate == "consistent",
+                    candidate in ["filtered", "recoverable"],
                 )
-            check_motion_filter_track(track, candidate == "filtered")
+            check_motion_filter_track(track, candidate in ["filtered", "recoverable"])
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
-            if candidate in ["joint", "buffered", "entry", "filtered"]:
+            if candidate in ["joint", "buffered", "entry", "filtered", "recoverable"]:
                 flags.append("resumed")
             for flag in flags:
                 first = next(
@@ -166,11 +184,11 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
-            if candidate in ["joint", "buffered", "entry", "filtered"]:
+            if candidate in ["joint", "buffered", "entry", "filtered", "recoverable"]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
                 )
-            if candidate in ["buffered", "entry", "filtered"]:
+            if candidate in ["buffered", "entry", "filtered", "recoverable"]:
                 selected.extend(
                     i
                     for i, r in enumerate(track[1:], 1)
@@ -178,7 +196,30 @@ def main():
                 )
             for i in sorted(set(selected)):
                 row = track[i]
-                exact, steps = exact_preview(track[i - 1], row, maps[key[0]])
+                stop_exact, terminal_exact, steps = preview_components(
+                    track[i - 1], row, maps[key[0]]
+                )
+                exact = (
+                    min(stop_exact, terminal_exact - 0.1)
+                    if candidate == "recoverable"
+                    else stop_exact
+                )
+                if "stop_preview_clearance_lower_bound" in row:
+                    stop_lower = float(row["stop_preview_clearance_lower_bound"])
+                    assert stop_lower <= stop_exact + 2e-8
+                    assert (
+                        abs(float(row["terminal_recovery_clearance"]) - terminal_exact)
+                        < 2e-8
+                    )
+                    for threshold in [
+                        float(row["preview_margin"]),
+                        float(row["guard_release_margin"]),
+                    ]:
+                        if (
+                            abs(stop_exact - threshold) > 2e-8
+                            and abs(stop_lower - threshold) > 2e-8
+                        ):
+                            assert (stop_exact > threshold) == (stop_lower > threshold)
                 lower = float(row["preview_clearance_lower_bound"])
                 margin = float(row["preview_margin"])
                 assert lower <= exact + 2e-8, (
@@ -211,7 +252,24 @@ def main():
                     release_margin=release,
                     entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate in ["paced", "joint", "buffered", "entry", "filtered"]:
+                if candidate == "recoverable":
+                    record.update(
+                        stop_exact=stop_exact, terminal_recovery_exact=terminal_exact
+                    )
+                    record.update(
+                        guard_triggered=row["guard_triggered"],
+                        guard_released=row["guard_released"],
+                        terminal_only_trigger=row["guard_triggered"] == "true"
+                        and stop_exact > margin,
+                    )
+                if candidate in [
+                    "paced",
+                    "joint",
+                    "buffered",
+                    "entry",
+                    "filtered",
+                    "recoverable",
+                ]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
                         item,
@@ -222,7 +280,13 @@ def main():
                         row["speed_free_distance"],
                     )
                     record["speed_free_distance_exact"] = free
-                if candidate in ["joint", "buffered", "entry", "filtered"]:
+                if candidate in [
+                    "joint",
+                    "buffered",
+                    "entry",
+                    "filtered",
+                    "recoverable",
+                ]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
                         segment_distance(
