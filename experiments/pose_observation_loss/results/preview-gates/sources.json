@@ -1,0 +1,131 @@
+{
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T11:58:53.567587+00:00",
+      "variants": [
+        "filtered",
+        "recoverable"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        259,
+        260,
+        261
+      ],
+      "commit": "1eeb554d537baa45ad8fda7b84513d32d1600e60",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "c108d0e20cdac94d8cd2fe54125db1b426598e785af7700bbcc0819bd5abf7f1",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "recoverable": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "recoverable-blackout-259/trajectories.csv": "f7f629a35fecd5c3f4f4e6f8e8e6504734b1f3a9fbd9231ef4cd3ec2c923b400",
+      "filtered-blackout-259/trajectories.csv": "2bc6d696a23443a372815ecf221b35c0ebc8e4bb2c35611d9c9aea91b03295c4",
+      "recoverable-blackout-260/trajectories.csv": "fb69bfab085ec50256dd089d416c5e6975f70a17a700edcdd38f68c566968293",
+      "filtered-blackout-260/trajectories.csv": "7140ba23f091adcbac60e6f9ce039e08536599db3667ecf4ddbf5c00cfca7239",
+      "recoverable-blackout-261/trajectories.csv": "74e0fc874501c9aff5597da47604814b05caf5b31af0e49581ccbdb8b999ae0c",
+      "filtered-blackout-261/trajectories.csv": "639d7f71eb15462e3ca908fe683847ed17d6f450149345d03b810b8e26b14f40",
+      "recoverable-none-259/trajectories.csv": "f7e319b93c8b29e57947cbf1a7e7bd074cd33f0ae26883f40188b82ea9d761a8",
+      "filtered-none-259/trajectories.csv": "e8685edf7d41df61c8be268ee43473b87b06cfb49efe2ed14e3930145f7fa37a",
+      "recoverable-none-260/trajectories.csv": "dce6fc7b1c5c70cb7301850e8741d02cd408563e1e22e005b01b0e2697bca822",
+      "filtered-none-260/trajectories.csv": "2f35d1079ed0ab620abf6e9f1627e5382aadc25d2f40446ead916c0ae1920e20",
+      "recoverable-none-261/trajectories.csv": "af4d7617a52f2ffb35cbd521ce02794ed86ec1e6e2098cb44165fca32015b4ed",
+      "filtered-none-261/trajectories.csv": "9d54d7a3ad397f5d455d9716bcaea61560586e493dbd2327df5ec316a4d1c5bc",
+      "recoverable-random-259/trajectories.csv": "9f5a45ad8433fe53410e2d7da81ee971daadcb9c870a5f082f7032542a6ead2f",
+      "filtered-random-259/trajectories.csv": "2340a1765fd1d265286dc947c916b8df85083566c8ef6d575d16a9ded5d8e53d",
+      "recoverable-random-260/trajectories.csv": "e736d2bb05f27b0fedaad90871043b4401b6090bf764409a26594da5f1b6ef5f",
+      "filtered-random-260/trajectories.csv": "9ffae860d8321ec482d51e9085f7ea29399f535b330e413ffa6c997cdb520975",
+      "recoverable-random-261/trajectories.csv": "91bf19d4251dc20ab1886e76bb2f9193ad5c81913e785e8e9d84db68a98e2a5a",
+      "filtered-random-261/trajectories.csv": "8e48b690395a9dd2dc50c364446fa324edb639f80997df444f90de7cfeaa50d4"
+    },
+    "summary_sha256": "a88d17b0e76019ba9ed1fa0989648e9ab110309accf48b36df0cc21860bc1f9c"
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T11:58:53.542648+00:00",
+      "variants": [
+        "filtered",
+        "recoverable"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        259,
+        260,
+        261
+      ],
+      "commit": "1eeb554d537baa45ad8fda7b84513d32d1600e60",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "c108d0e20cdac94d8cd2fe54125db1b426598e785af7700bbcc0819bd5abf7f1",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "filtered": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "recoverable": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "recoverable-blackout-259/trajectories.csv": "0fc9db809026313691e66e39fcd6a002ccd5da5d5aaa1985ab6b9edb6803a854",
+      "filtered-blackout-259/trajectories.csv": "465f4c5c28904614d04baed7f53761bf9ba3243cb95654caaafab111cbedcbe5",
+      "recoverable-blackout-260/trajectories.csv": "7625ed633213f44cb73279c278fd5b8cd278d296d007fb1896ae8121364cab01",
+      "recoverable-blackout-261/trajectories.csv": "50e9d50702e63e0a8050de34ba60fdef40f54ba98d5262cea5e434cbb45245cc",
+      "filtered-blackout-261/trajectories.csv": "ce9a58fa8b31e4944f09922276ed82f94c34f8a63abac0b290b3fdac3c0f8e53",
+      "recoverable-none-259/trajectories.csv": "0e146af9d04bbb5ad092c6e91c8e02964d791bf162ea15f9e505ccdfd62ac7a0",
+      "filtered-none-259/trajectories.csv": "0a3d0f457be5451dfa8ed1adaefdfb5247bce38656887a8527ffd78d726e812a",
+      "recoverable-none-260/trajectories.csv": "aeb4a158a6ff3eaf33b12f462bae468bd4f854ab33d6025d6855fee01ae4cfc1",
+      "recoverable-none-261/trajectories.csv": "2ab12bdcd59caf6e74fef32a3781606d3a2be74a6b93f26cb2fd92314e1df4e1",
+      "filtered-none-261/trajectories.csv": "bf410ef230ef780d8c051cbc8fe80d4ef2d78b8aeeebb6ca6c9ab7ebc9673290",
+      "recoverable-random-259/trajectories.csv": "225d148e2f0e0fae72646af18e737723e7f7ae31cceb56be2df5cf6aa2ec9713",
+      "filtered-random-259/trajectories.csv": "edb0d17fea64a47a640f733b6f06e09e9015a0e7dbd60fcbd1fca41980574aee",
+      "recoverable-random-260/trajectories.csv": "5977007ad198899370f8e59d83e73e217de975bf8f0f59069362a71942486418",
+      "filtered-random-260/trajectories.csv": "71b8829a8c720a5db95bc9c7db8e99c7a7041fd432d51111f334eeae52a48efc",
+      "recoverable-random-261/trajectories.csv": "0db2114e5c96d5f41af427713d24a8f8e8068331dbce98403087c5a53b01487d"
+    },
+    "summary_sha256": "e5846e7121c40bea03587720b0f9927bb19792e8ddfd0e41c5c68e606e45b884"
+  },
+  "analysis": {
+    "script_sha256": "0995c49d2f42fdb0543c5a3a667b426a8b7eef45fcfe3f7110625d54affb758e",
+    "selection_sha256": "9a5513c6d0690099a1036cc535a3c6eca01fc9eab068e10108d600e06e220671",
+    "helper_sha256": {
+      "analyze_entry_cycles.py": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "verify_joint_recovery.py": "6e4fa0b92cafc8c72272e96a6a7826e8d171a0797c59ad66afebefb9ee9bfb5e",
+      "verify_motion_filter.py": "e7e5de72dfd8e0f531de675071fc0f19e3f8ad30294fdf1e018d8720579c24b4",
+      "verify_stopping_preview.py": "5ea103f094f17254ba7ce2c54a4be33c0170d5c58a3275eb5a7917a1c155c008",
+      "summarize_stopping_preview.py": "fd8ae82716b82cc76e8b749ab5bf8f5efa28dc541a53556f99d1d79eb938af9a"
+    },
+    "physical_intervals_checked": 1424915,
+    "geometry_checkpoints": 474,
+    "selection": "all 162 new-seed recoverable tracks and filtered counterparts for 34 lost holds",
+    "terminal_extra": 0.1,
+    "note": "Readiness on fixed recorded inputs; removing a gate changes later inputs and is not replayed."
+  }
+}

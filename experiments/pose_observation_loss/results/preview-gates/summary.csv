@@ -1,0 +1,5 @@
+cohort,route,episodes,old_window_reached,new_window_reached,old_window_without_new,other_blocked_s,both_blocked_s,stop_only_s,terminal_only_s,ready_s
+white-validation,independent,293,286,207,79,241.62,859.76,0,3764.56,188.68
+white-validation,joint,145,118,116,2,4284.9,0,0,72.06,173.82
+correlated-validation,independent,332,323,259,64,234.58,408.88,0,3141.58,180.24
+correlated-validation,joint,155,130,128,2,3926.62,0,0,74.28,172.52

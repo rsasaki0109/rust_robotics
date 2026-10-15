@@ -1038,3 +1038,39 @@ python3 -m unittest discover -s experiments/pose_observation_loss \
 
 See the [terminal-recovery comparison](results/recovery-preview/report.md) for
 results, waits, holds, contacts and limitations.
+
+## Diagnose terminal-preview release gates
+
+After generating the two new-seed runs above, diagnose all 162 `recoverable`
+tracks and the `filtered` counterparts for the 34 lost holds:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_preview_gates.py \
+  --white /tmp/recovery-preview-white \
+  --correlated /tmp/recovery-preview-correlated \
+  --output /tmp/preview-gates
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_preview_gates.py
+```
+
+The output directory must be new. This analysis uses the pinned
+`results/recovery-preview/all-results.csv` and provenance, checks planning-input
+hashes and records trajectory hashes. It verifies every candidate guard/loss
+release and filtered pose, bicycle integration on all selected tracks, and exact
+geometry at both ends of every short re-entry. No simulator rerun or Matplotlib
+installation is needed for this analysis; generating the inputs still requires
+the Rust workflow above.
+
+Release opportunities use the pre-command guard/loss state, include the actual
+release interval and exclude an independent guard's triggering interval. Each
+contiguous release route forms one episode. Time categories first separate
+failures of non-preview requirements, then failures of the stopping footprint,
+terminal line, both or neither. These categories partition release opportunities,
+not the full waiting-time union. Independent and joint evidence windows are
+0.5 s and 1 s. Removing the terminal test only from the recorded readiness
+calculation keeps all later inputs fixed; it does not replay a different policy.
+
+CSV outputs contain cases, route episodes, short re-entries, independent geometry
+checkpoints, matched-horizon waits for lost pairs and route totals. `sources.json`
+records provenance and hashes. See the [release-gate diagnosis](results/preview-gates/report.md)
+for results and interpretation limits.
