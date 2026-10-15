@@ -1,0 +1,7 @@
+mode,variant,trials,held,collision,timeout,out_of_bounds
+none,baseline,90,90,0,0,0
+none,aware,90,90,0,0,0
+random,baseline,90,73,3,14,0
+random,aware,90,48,0,42,0
+blackout,baseline,90,27,14,49,0
+blackout,aware,90,86,0,4,0
