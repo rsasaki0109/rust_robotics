@@ -675,3 +675,61 @@ boundaries, cell-corner search, the analytic linear-brake tail, stationary
 initial-point clearance, swept segment interiors and mirrored turning brakes.
 No control setting or simulator source is changed by this analysis. See the
 [stop-entry diagnosis](results/stop-entry/report.md).
+
+## Compare stopping-guard and recovery distance buffers
+
+This paired study changes the stopping-preview margin of `joint`, the policy
+used by the frozen diagnoses. `buffered` adds 0.1 to that guard margin:
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --guard-buffer-comparison "$fixtures" --seeds 244 245 \
+  --noise-correlation-time 1 --output /tmp/buffer-reference
+python3 experiments/pose_observation_loss/run.py \
+  --guard-buffer-comparison "$fixtures" --seeds 245 \
+  --noise-correlation-time 0 --output /tmp/buffer-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --guard-buffer-comparison "$fixtures" --seeds 250 251 252 \
+  --noise-correlation-time 0 --output /tmp/buffer-white
+python3 experiments/pose_observation_loss/run.py \
+  --guard-buffer-comparison "$fixtures" --seeds 250 251 252 \
+  --noise-correlation-time 1 --output /tmp/buffer-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --guard-buffer --reference /tmp/buffer-reference \
+  --known-white /tmp/buffer-known-white --white /tmp/buffer-white \
+  --correlated /tmp/buffer-correlated --output /tmp/buffer-summary --plot
+```
+
+The appended simulator flag `RECOVERY_GUARD_BUFFER` defaults to false and
+requires `JOINT_RECOVERY=true`. Both arms retain the same paths, speed cap,
+recovery line, pose averaging, common recovery timer, braking and goal holds.
+In `buffered`, stopping-preview entry uses
+`0.6 + 2*sqrt(2)*sigma + drift_speed*observation_age`, matching the existing
+speed-probe and recovery buffer. Release uses that margin plus the unchanged
+0.05 hysteresis. This raises both entry and release thresholds by 0.1; the
+shared recovery gate also uses this higher guard release threshold. The
+preview's distant-point pruning uses the new margin too. Simply comparing
+old logged lower bounds against a larger threshold is not this experiment.
+The recorded `preview_margin` exposes the actual threshold; no true pose
+enters a control decision. The library controller is unchanged.
+
+The verifier independently reconstructs the margin at every step, all guard
+state transitions and both release timers, then checks physical responses and
+paired noise. Applicable `joint` rows match the recorded joint-recovery study.
+The geometry auditor checks every `buffered` guard entry, guard release and loss
+resume, plus its fixed checkpoints, using exact stopping geometry and full
+obstacle scans for the speed probe and recovery line. The original seed-201
+default pair is checked separately as a regression.
+
+For this comparison, `control-events.csv` includes `total_wait_time_s`, the
+union of loss-pause and stopping-guard command durations, and
+`stationary_wait_time_s`, the same union restricted to pre-update speed <=0.02.
+The first includes braking; the second is a measured-speed classification.
+Neither sums overlapping waits or includes goal stops as a separate wait.
+The summary reports their means over each mode/cohort. Durations are observed
+until termination, including the 10-second goal hold for successful trials.
+
+These fixed margins remain heuristics for noisy poses. A larger margin can
+increase waiting and prevent completion; evaluate contacts and holds together.
+See the [guard-buffer comparison](results/guard-buffer/report.md).

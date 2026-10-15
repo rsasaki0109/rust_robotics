@@ -115,6 +115,7 @@ def main():
         ["guarded", "clearance"],
         ["clearance", "paced"],
         ["paced", "joint"],
+        ["joint", "buffered"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -137,7 +138,7 @@ def main():
                 check_restart_track(track, candidate == "consistent")
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
-            if candidate == "joint":
+            if candidate in ["joint", "buffered"]:
                 flags.append("resumed")
             for flag in flags:
                 first = next(
@@ -159,9 +160,15 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
-            if candidate == "joint":
+            if candidate in ["joint", "buffered"]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
+                )
+            if candidate == "buffered":
+                selected.extend(
+                    i
+                    for i, r in enumerate(track[1:], 1)
+                    if r["guard_triggered"] == "true" or r["guard_released"] == "true"
                 )
             for i in sorted(set(selected)):
                 row = track[i]
@@ -195,7 +202,7 @@ def main():
                     exact_clearance=exact,
                     margin=margin,
                 )
-                if candidate in ["paced", "joint"]:
+                if candidate in ["paced", "joint", "buffered"]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
                         item,
@@ -206,7 +213,7 @@ def main():
                         row["speed_free_distance"],
                     )
                     record["speed_free_distance_exact"] = free
-                if candidate == "joint":
+                if candidate in ["joint", "buffered"]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
                         segment_distance(

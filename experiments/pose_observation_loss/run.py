@@ -55,6 +55,12 @@ def main():
         metavar="FIXTURES",
         help="Compare paced control with simultaneous loss/guard recovery",
     )
+    comparison.add_argument(
+        "--guard-buffer-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare joint recovery with an extra 0.1 stopping-guard margin",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -81,6 +87,8 @@ def main():
         variants = ["clearance", "paced"]
     if args.joint_recovery_comparison:
         variants = ["paced", "joint"]
+    if args.guard_buffer_comparison:
+        variants = ["joint", "buffered"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -92,6 +100,7 @@ def main():
         args.path_clearance_comparison
         or args.anticipatory_speed_comparison
         or args.joint_recovery_comparison
+        or args.guard_buffer_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -186,6 +195,7 @@ def main():
                                     "clearance",
                                     "paced",
                                     "joint",
+                                    "buffered",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
@@ -197,11 +207,13 @@ def main():
                                     "clearance",
                                     "paced",
                                     "joint",
+                                    "buffered",
                                 ]
                             ).lower(),
                             str(variant == "consistent").lower(),
-                            str(variant in ["paced", "joint"]).lower(),
-                            str(variant == "joint").lower(),
+                            str(variant in ["paced", "joint", "buffered"]).lower(),
+                            str(variant in ["joint", "buffered"]).lower(),
+                            str(variant == "buffered").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -267,6 +279,7 @@ def main():
         or args.path_clearance_comparison
         or args.anticipatory_speed_comparison
         or args.joint_recovery_comparison
+        or args.guard_buffer_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True

@@ -246,8 +246,8 @@ impl RestartConsistency {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=21).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY]]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=22).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER]]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -297,6 +297,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|s| s.parse::<bool>())
         .transpose()?
         .unwrap_or(false);
+    let recovery_guard_buffer = args
+        .get(21)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!recovery_guard_buffer || joint_recovery);
     assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
@@ -656,6 +662,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let nominal_target_speed = target_speed;
             let nominal_steering = steering;
             let preview_margin = RADIUS
+                // Match the recovery/speed-probe buffer in this optional arm.
+                // Release keeps its existing additional hysteresis of 0.05.
+                + if recovery_guard_buffer { 0.1 } else { 0.0 }
                 + 2.0 * 2.0_f64.sqrt() * effective_position_sigma
                 + drift_speed * observation_age;
             if consistent_restart {
