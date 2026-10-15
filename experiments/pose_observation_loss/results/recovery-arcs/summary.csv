@@ -1,0 +1,6 @@
+reason,pose_kind,checkpoints,start_blocked,straight_passes,grid_passes,all_fixed_steering_blocked,unresolved
+final,truth,8,7,0,0,8,0
+final,raw_observed,8,6,0,0,8,0
+fresh_stationary,truth,45,39,0,0,45,0
+fresh_stationary,raw_observed,45,29,5,12,33,0
+fresh_stationary,recovery_mean,33,22,4,5,28,0
