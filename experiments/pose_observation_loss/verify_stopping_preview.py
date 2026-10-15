@@ -116,6 +116,7 @@ def main():
         ["clearance", "paced"],
         ["paced", "joint"],
         ["joint", "buffered"],
+        ["joint", "entry"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -138,7 +139,7 @@ def main():
                 check_restart_track(track, candidate == "consistent")
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
-            if candidate in ["joint", "buffered"]:
+            if candidate in ["joint", "buffered", "entry"]:
                 flags.append("resumed")
             for flag in flags:
                 first = next(
@@ -160,11 +161,11 @@ def main():
                 if len(set(selected)) >= 8:
                     break
                 selected.append(i)
-            if candidate in ["joint", "buffered"]:
+            if candidate in ["joint", "buffered", "entry"]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
                 )
-            if candidate == "buffered":
+            if candidate in ["buffered", "entry"]:
                 selected.extend(
                     i
                     for i, r in enumerate(track[1:], 1)
@@ -183,7 +184,8 @@ def main():
                     lower,
                     exact,
                 )
-                for threshold in [margin, margin + 0.05]:
+                release = float(row.get("guard_release_margin", margin + 0.05))
+                for threshold in [margin, release]:
                     if abs(exact - threshold) > 2e-8 and abs(lower - threshold) > 2e-8:
                         assert (lower > threshold) == (exact > threshold), (
                             item,
@@ -201,8 +203,10 @@ def main():
                     lower_bound=lower,
                     exact_clearance=exact,
                     margin=margin,
+                    release_margin=release,
+                    entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate in ["paced", "joint", "buffered"]:
+                if candidate in ["paced", "joint", "buffered", "entry"]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
                         item,
@@ -213,7 +217,7 @@ def main():
                         row["speed_free_distance"],
                     )
                     record["speed_free_distance_exact"] = free
-                if candidate in ["joint", "buffered"]:
+                if candidate in ["joint", "buffered", "entry"]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
                         segment_distance(

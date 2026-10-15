@@ -3,6 +3,14 @@
 import math
 
 
+def release_margin(row):
+    return (
+        float(row["guard_release_margin"])
+        if "guard_release_margin" in row
+        else float(row["preview_margin"]) + 0.05
+    )
+
+
 def check_guard_track(track):
     """Reconstruct every guard transition, including the shared loss release."""
     active = False
@@ -18,7 +26,7 @@ def check_guard_track(track):
         if not active and lower <= margin:
             active, triggered, evidence = True, True, 0.0
         elif active and not pending:
-            ready = abs(float(before["v"])) <= 0.02 and lower > margin + 0.05
+            ready = abs(float(before["v"])) <= 0.02 and lower > release_margin(row)
             evidence = evidence + 0.02 if ready else 0.0
             if evidence + 1e-9 >= 0.5:
                 active, released, evidence = False, True, 0.0
@@ -68,8 +76,7 @@ def check_joint_track(track):
                 and float(row["recovery_clearance"]) > margin
                 and bounds
                 and float(row["nominal_target_speed"]) > 0
-                and float(row["preview_clearance_lower_bound"])
-                > float(row["preview_margin"]) + 0.05
+                and float(row["preview_clearance_lower_bound"]) > release_margin(row)
             )
             evidence = evidence + 0.02 if ready else 0.0
             release = evidence + 1e-9 >= 1
