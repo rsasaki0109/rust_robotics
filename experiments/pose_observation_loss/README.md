@@ -1338,3 +1338,36 @@ Outputs contain decisions, every candidate's scores, geometry audits, summary
 counts, provenance and optional figures. These are selected failed-run poses,
 with repeated checkpoints per run; no controller, release timer or hold outcome
 is simulated. See the [selection comparison](results/robust-arc-selection/report.md).
+
+## Separate position and heading effects at fixed selected angles
+
+Reuse the tracked paired poses, map and nominal/yaw_min decisions from the
+comparison above. Keep every selected angle and acceptance decision fixed:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_arc_pose_components.py \
+  --output /tmp/arc-pose-components --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_arc_pose_components.py
+```
+
+The output directory must be new. This uses Python's standard library, with
+Matplotlib needed only for optional plots; no Rust build or raw trajectories
+are required. The [fixed protocol](results/arc-pose-components/protocol.md)
+defines four poses: filtered position/heading (FF), true position with filtered
+heading (TF), filtered position with true heading (FT), and true position/heading
+(TT). These truth substitutions are diagnostic references, not an estimator.
+
+For accepted candidates failing the unchanged true-side recovery margin,
+partition failures by which substitutions already fail: position alone, heading
+alone, either alone, or both required. Also count failures forced by true starting
+clearance alone. Decompose signed clearance loss FF-TT by averaging both
+substitution orders: position is `((FF-TF)+(FT-TT))/2`, heading is
+`((FF-FT)+(TF-TT))/2`. Negative contributions remain negative. These describe
+fixed-angle geometry and do not measure attainable control improvement.
+
+Each distinct checkpoint/angle/pose has a full obstacle scan and independent
+chord audit. Outputs include `components.csv`, `geometry-audit.csv`, `summary.csv`
+and `sources.json`, plus optional figures. Repeat into another new directory to
+compare all three CSVs and provenance byte for byte. See the
+[pose-component diagnosis](results/arc-pose-components/report.md).
