@@ -538,3 +538,73 @@ auditor scans the full obstacle set for both the speed probe and recovery line
 at its fixed checkpoints and every joint loss resume, and independently checks
 stopping-preview clearance. Original default results are also regression
 checked separately with seed 201. See the [joint recovery report](results/joint-recovery/report.md).
+
+## Audit forward recovery arcs at the frozen stalls
+
+The arc diagnostic below selects the eight near-stationary cases from the
+recorded recovery-stall analysis and reads their `joint` trajectories in the
+two known-case joint-recovery runs. It is an offline geometry study; no simulator
+or controller policy is changed:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_recovery_arcs.py \
+  --known-white /tmp/joint-known-white --reference /tmp/joint-reference \
+  --output /tmp/recovery-arcs --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_recovery_arc_geometry.py
+```
+
+Use the `--seeds 245 --noise-correlation-time 0` and
+`--seeds 244 245 --noise-correlation-time 1` joint-comparison commands above to
+regenerate missing raw runs. The diagnostic requires their result rows,
+planning inputs and simulator hash to match the recorded study. Its simulator
+version is available at commit `e1821b0`; a future changed simulator is not a
+substitute for these frozen inputs. Python's standard library suffices without
+`--plot`; plotting requires Matplotlib. Raw trajectory hashes, helper/source
+hashes and the selection hash are saved in `sources.json`.
+
+The probe follows the vehicle center forward for arc length 0.6 with fixed
+steering from -35 to 35 degrees in one-degree increments and wheelbase 0.4.
+It computes exact point-to-circular-arc clearance, including endpoints, radial
+projections and interior extrema against all four map boundaries. This spatial
+arc is a counterfactual kinematic curve, not a new rollout of the simulator's
+0.02-second integration, braking, controller or release timers.
+
+Checkpoints are before the final t=180 physical update and each stationary
+observation aged exactly 0.5 s at t=150.5, 155.5, ..., 175.5. A missed correction
+or motion excludes that fresh checkpoint. Each includes true pose for offline
+evaluation and reconstructed raw observed pose. Recovery means are included
+only when at least ten same-epoch stationary samples exist; no raw-pose fallback
+is labeled as an average. The window is independently reconstructed. The
+physical updates of all 12,000 final-window intervals and final summary values
+are also checked.
+
+`checkpoints.csv` separates physical radius 0.5, radius plus buffer 0.6, and the
+existing recovery margin `0.6 + 2*sqrt(2)*sigma + 0.02*observation_age`.
+The age-zero version keeps sigma fixed and removes only observation age. Truth
+is never treated as a realizable observation. Sigma limits in the CSV are
+algebraic thresholds for the same fixed pose, not evidence that localization
+can achieve those values or that lowering the configured sigma is safe.
+
+A curve includes its starting point, so starting clearance already within the
+margin excludes every curve containing that point. For the remaining cases,
+the maximum over continuous fixed steering is bounded above by the grid maximum
+plus `0.6^2/2 * sec(35 deg)^2/0.4 * radians(0.5)` (about 0.005853).
+This follows from the position sensitivity to curvature, at most `s^2/2`, and
+the maximum curvature derivative over the steering interval. The upper bound
+also cannot exceed starting clearance; a numeric allowance of 1e-9 is added.
+`all_fixed_steering_blocked` requires this upper bound to be no larger than the
+margin. `grid_pass` requires a grid clearance greater than the margin plus
+1e-9; all other cases are `unresolved`. Thus a failed grid alone is not used as
+a proof about intermediate steering angles.
+
+`steering-grid.csv` contains every tested angle. `geometry-audit.csv` compares
+all final-pose grid arcs and straight/best/current-steering arcs at the fresh
+checkpoints with independent 120-chord geometry. The analytic/polyline gap must
+not exceed the circular sagitta plus 1e-9. The geometry tests exercise analytic
+fixtures, wall extrema, clockwise and counterclockwise wrap, near-straight
+numerics, deterministic random curves and the continuous steering bound.
+
+These checks do not cover varying steering, reversing, shorter moves, replanning,
+observation improvements or successful recovery. See the
+[forward-arc feasibility report](results/recovery-arcs/report.md).
