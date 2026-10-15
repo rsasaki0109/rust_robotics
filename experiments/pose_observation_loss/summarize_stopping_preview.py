@@ -131,6 +131,8 @@ def plot(directory, summary, variants):
                     "recoverable": "Combined",
                     "entryline": "Stop only",
                 }
+            if "aligned" in variants:
+                labels = {"entryline": "Stop only", "aligned": "Aligned"}
             ax.set_xticks(
                 range(4),
                 [
@@ -165,6 +167,8 @@ def plot(directory, summary, variants):
             title, prefix = "Terminal recovery preview", "recovery-preview"
         if "entryline" in variants:
             title, prefix = "Terminal entry, stop-only release", "terminal-entry-only"
+        if "aligned" in variants:
+            title, prefix = "Entry-compatible terminal release", "aligned-release"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -231,6 +235,11 @@ def main():
         action="store_true",
         help="Summarize terminal entry with stop-only release",
     )
+    comparison.add_argument(
+        "--aligned-release",
+        action="store_true",
+        help="Summarize entry-compatible terminal release",
+    )
     args = parser.parse_args()
     if args.known_white and not (
         args.joint_recovery
@@ -239,6 +248,7 @@ def main():
         or args.motion_filter
         or args.recovery_preview
         or args.terminal_entry_only
+        or args.aligned_release
     ):
         parser.error(
             "--known-white requires --joint-recovery, --guard-buffer, --entry-buffer, --motion-filter or --recovery-preview"
@@ -264,6 +274,8 @@ def main():
         variants = ["filtered", "recoverable"]
     if args.terminal_entry_only:
         variants = ["recoverable", "entryline"]
+    if args.aligned_release:
+        variants = ["entryline", "aligned"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -293,6 +305,7 @@ def main():
             or args.motion_filter
             or args.recovery_preview
             or args.terminal_entry_only
+            or args.aligned_release
         ):
             assert all(
                 r.get(k, "") != ""
@@ -308,13 +321,13 @@ def main():
                 ]
             ), "Rerun verify.py to produce joint recovery event metrics"
         audits = list(csv.DictReader((run / "preview-audit.csv").open()))
-        if args.terminal_entry_only:
+        if args.terminal_entry_only or args.aligned_release:
             gaps = release_entry_gaps(audits)
             for gap in gaps:
                 event = next(
                     r
                     for r in events
-                    if r["variant"] == "entryline"
+                    if r["variant"] == variants[-1]
                     and all(
                         r[k] == gap[k] for k in ["mode", "seed", "scenario", "planner"]
                     )
@@ -385,6 +398,7 @@ def main():
                         "filtered",
                         "recoverable",
                         "entryline",
+                        "aligned",
                     ]
                 ):
                     summary[-1].update(
@@ -402,6 +416,7 @@ def main():
                     or args.motion_filter
                     or args.recovery_preview
                     or args.terminal_entry_only
+                    or args.aligned_release
                 ):
                     summary[-1].update(
                         {
@@ -425,6 +440,7 @@ def main():
                     or args.motion_filter
                     or args.recovery_preview
                     or args.terminal_entry_only
+                    or args.aligned_release
                 ):
                     summary[-1].update(
                         mean_wait_time_s=statistics.mean(
@@ -438,11 +454,16 @@ def main():
                     args.motion_filter
                     or args.recovery_preview
                     or args.terminal_entry_only
+                    or args.aligned_release
                 ):
                     summary[-1]["short_reentries"] = sum(
                         int(r["short_reentries"]) for r in ev
                     )
-                if args.recovery_preview or args.terminal_entry_only:
+                if (
+                    args.recovery_preview
+                    or args.terminal_entry_only
+                    or args.aligned_release
+                ):
                     summary[-1]["terminal_only_guard_entries"] = sum(
                         int(r["terminal_only_guard_entries"]) for r in ev
                     )
@@ -463,6 +484,7 @@ def main():
         or args.motion_filter
         or args.recovery_preview
         or args.terminal_entry_only
+        or args.aligned_release
     ):
         known = {
             r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]

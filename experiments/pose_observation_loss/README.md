@@ -1138,3 +1138,59 @@ interval. This event diagnosis was added after observing the re-entry increase;
 it includes zero-command releases and has a different denominator from short
 re-entries. Counts of audited releases must match the full-trajectory verifier.
 See the [release ablation results](results/terminal-entry-only/report.md).
+
+## Compare entry-compatible terminal release
+
+Candidate `aligned` retains the terminal entry rule and requires that same
+terminal clearance at release. The stop-only reference is `entryline`.
+The fixed [protocol](results/aligned-release/protocol.md) uses known seeds
+262–264 and new seeds 265–267 (648 comparison runs):
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 262 263 264 \
+  --noise-correlation-time 1 --output /tmp/aligned-release-reference
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 262 263 264 \
+  --noise-correlation-time 0 --output /tmp/aligned-release-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 265 266 267 \
+  --noise-correlation-time 0 --output /tmp/aligned-release-white
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 265 266 267 \
+  --noise-correlation-time 1 --output /tmp/aligned-release-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --aligned-release --reference /tmp/aligned-release-reference \
+  --known-white /tmp/aligned-release-known-white \
+  --white /tmp/aligned-release-white \
+  --correlated /tmp/aligned-release-correlated \
+  --output /tmp/aligned-release-summary --plot
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_aligned_release.py
+```
+
+Both arms enter if `min(Dstop, Dterminal - 0.1) <= m`. Reference release requires
+`Dstop > m + 0.05`; candidate release requires both `Dstop > m + 0.05` and
+`Dterminal > m + 0.1`. Thus the candidate release metric is
+`min(Dstop, Dterminal - 0.05)`, compared with `m + 0.05`. It retains the stopping
+hysteresis while requiring the same terminal clearance as entry. The original
+`recoverable` required a stricter `Dterminal > m + 0.15` at release.
+
+The candidate changes both independent and joint release; 0.5 s/1 s evidence
+windows and all other requirements remain. Release now implies entry clearance
+on the same inputs, but motion, observations and planned commands may change
+before the next interval. No entry suppression or extra dwell is added.
+
+Append `ALIGNED_TERMINAL_RELEASE=true` after `TERMINAL_ENTRY_ONLY=true` to invoke
+this mode directly. It defaults to false and requires that preceding flag.
+The trajectory adds `aligned_terminal_release` (false initially); the existing
+release metric column records the new minimum. Existing modes retain their
+release rules. Known reference summaries are checked against the previous
+stop-only comparison. Paired tracks agree until the first different release
+action, apart from the three mode/metric columns and two evidence counters.
+
+The verifier audits both entry and release geometry, including same-instant
+entry clearance at all candidate releases and loss resumes. Event gap counts
+include zero-command releases and are checked against full trajectory exit
+counts. See the [comparison results](results/aligned-release/report.md).

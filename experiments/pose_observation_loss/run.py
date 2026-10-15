@@ -85,6 +85,12 @@ def main():
         metavar="FIXTURES",
         help="Keep terminal entry check; compare combined release with original stop-only release",
     )
+    comparison.add_argument(
+        "--aligned-release-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare stop-only release with release requiring the terminal entry clearance",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -121,6 +127,8 @@ def main():
         variants = ["filtered", "recoverable"]
     if args.terminal_entry_only_comparison:
         variants = ["recoverable", "entryline"]
+    if args.aligned_release_comparison:
+        variants = ["entryline", "aligned"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -137,6 +145,7 @@ def main():
         or args.motion_filter_comparison
         or args.recovery_preview_comparison
         or args.terminal_entry_only_comparison
+        or args.aligned_release_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -236,6 +245,7 @@ def main():
                                     "filtered",
                                     "recoverable",
                                     "entryline",
+                                    "aligned",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
@@ -252,6 +262,7 @@ def main():
                                     "filtered",
                                     "recoverable",
                                     "entryline",
+                                    "aligned",
                                 ]
                             ).lower(),
                             str(variant == "consistent").lower(),
@@ -265,6 +276,7 @@ def main():
                                     "filtered",
                                     "recoverable",
                                     "entryline",
+                                    "aligned",
                                 ]
                             ).lower(),
                             str(
@@ -276,15 +288,20 @@ def main():
                                     "filtered",
                                     "recoverable",
                                     "entryline",
+                                    "aligned",
                                 ]
                             ).lower(),
                             str(variant == "buffered").lower(),
                             str(variant == "entry").lower(),
                             str(
-                                variant in ["filtered", "recoverable", "entryline"]
+                                variant
+                                in ["filtered", "recoverable", "entryline", "aligned"]
                             ).lower(),
-                            str(variant in ["recoverable", "entryline"]).lower(),
-                            str(variant == "entryline").lower(),
+                            str(
+                                variant in ["recoverable", "entryline", "aligned"]
+                            ).lower(),
+                            str(variant in ["entryline", "aligned"]).lower(),
+                            str(variant == "aligned").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -355,6 +372,7 @@ def main():
         or args.motion_filter_comparison
         or args.recovery_preview_comparison
         or args.terminal_entry_only_comparison
+        or args.aligned_release_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
