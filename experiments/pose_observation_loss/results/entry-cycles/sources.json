@@ -1,0 +1,114 @@
+{
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T08:48:46.000970+00:00",
+      "variants": [
+        "joint",
+        "entry"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "237fd3d4584022712f45e783d641f658b62c1fb3",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "d57b89d607d71347980b6bebe9f2f9bdbdb0a58f72711f6947ce1a1aec41275b",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "entry": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "joint-random-254/trajectories.csv": "12d706316cadfe9b5c4b1df194d0f3d093d78d9b2618eb3574a1ae934922d8bd",
+      "entry-random-254/trajectories.csv": "9fd6d607bb72da9aec4ddc2765b8f890bf85e22b47d246874806707831cc8aca",
+      "joint-blackout-253/trajectories.csv": "d08c2b6183173c51b6fa0cd8ae4ecfa833d381e845d74d9036526fde7d764cbe",
+      "entry-blackout-253/trajectories.csv": "633eda7620ec7fd04445a1079753fe624742a79b6bb17fff2e8a3f3bd0c719ae",
+      "joint-blackout-254/trajectories.csv": "fb4a1b561adb680ce343178c34102a34d6319b17e70b124c35f707ab879385af",
+      "entry-blackout-254/trajectories.csv": "e3254866d1c68f1e1bb96022d26f5d252ddf06bc83b3c88bb4c6d6bd35f9f990"
+    },
+    "summary_sha256": "52bb2fb349be63a25b0aa6b7fe1e1c3883a1975baa06d0cc41f49261b30b7033"
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T08:48:45.974092+00:00",
+      "variants": [
+        "joint",
+        "entry"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        253,
+        254,
+        255
+      ],
+      "commit": "237fd3d4584022712f45e783d641f658b62c1fb3",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "d57b89d607d71347980b6bebe9f2f9bdbdb0a58f72711f6947ce1a1aec41275b",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "joint": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "entry": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "raw_sha256": {
+      "joint-none-254/trajectories.csv": "adda1efc07637bf901cf21c822666de755d2a6a12f941bfc4e513746160f4648",
+      "entry-none-254/trajectories.csv": "d7fc9e27c0361505402be6e8fe2db822ab982ce22119c600ef631754aed6b330",
+      "joint-random-253/trajectories.csv": "0e7983574789b2d56326838a5880b6116115b9d6aab0d3e6ba46a2cb7dc43d56",
+      "entry-random-253/trajectories.csv": "8faa61be75dc8df490e0384143368a99fd075e3accad0efaee0cedd0a30d34d6",
+      "joint-random-254/trajectories.csv": "f755f986b398188ecc3948d1f7b1c31acad94da9a4e11bcc418f989de27769ca",
+      "entry-random-254/trajectories.csv": "873d9b210e9f87da1693075305287824f767f617564bc25d6f38234355c7f700",
+      "joint-random-255/trajectories.csv": "17876be795e6b197df664ec3f1117a67d1186daade3ae859f4a106e3d8af7ea9",
+      "entry-random-255/trajectories.csv": "0ffccd57db42d09488fa2037223945df3c0dadb6a725b5972905645ca3cc465d",
+      "joint-blackout-253/trajectories.csv": "cf51fc36ce7efc45f0abda82620cce3fc18685e959d24b7bd3d4ec161b0e3888",
+      "entry-blackout-253/trajectories.csv": "bee8090d2098626c02c43b07756e6b1d6d791d0e4a2adea9bcdace56bf7ce380"
+    },
+    "summary_sha256": "fc5321785c60c8428adeed264fa6fc85d2d53aabb74156d1fc91683129106cd6"
+  },
+  "analysis": {
+    "script_sha256": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+    "helper_sha256": {
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "summarize_stopping_preview.py": "1cba65fc4597a70f225283c4f0ba2b420dc95ec68b92b8c269ad1ac40c725491",
+      "verify_joint_recovery.py": "6e4fa0b92cafc8c72272e96a6a7826e8d171a0797c59ad66afebefb9ee9bfb5e",
+      "verify_stopping_preview.py": "36966efbd30d2b69f70e8e337de413d81fe839cbcb4dc2878caed5445b8655f6"
+    },
+    "selection_snapshot_sha256": "37b58f14d35a600626e9ac73f1a72323e07d4faa8d3ea9b950b9cfd61e21acf4",
+    "physical_intervals_checked": 158266,
+    "exact_geometry_events": 274,
+    "terminal_geometry_checkpoints": 10,
+    "short_reentry_max_lag_s": 1,
+    "short_reentry_max_travel_exclusive": 0.1,
+    "tail_start_exclusive_s": 150,
+    "tail_end_inclusive_s": 180,
+    "matched_horizon": "joint successful termination"
+  }
+}
