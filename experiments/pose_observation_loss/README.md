@@ -183,3 +183,69 @@ python3 experiments/pose_observation_loss/compare_correlations.py \
 See the [recorded correlation study](results/correlated-noise/report.md).
 The same maps and previously evaluated seeds are reused; this is a sensitivity
 study, not an unseen evaluation or a fitted sensor-noise model.
+
+## Always-on stopping-preview comparison
+
+The optional `--stopping-preview-comparison` compares `averaged` recovery with
+`guarded`: the same controller plus a stopping-preview brake during ordinary
+tracking. It is mutually exclusive with `--recovery-comparison`.
+
+```bash
+python3 experiments/pose_observation_loss/run.py --stopping-preview-comparison \
+  --noise-correlation-time 1 --seeds 221 222 223 224 225 226 227 228 229 230
+python3 experiments/pose_observation_loss/run.py --stopping-preview-comparison \
+  --seeds 221 222 223 224 225 226 227 228 229 230
+```
+
+Each command runs 540 cases. The preview starts at the measured pose and speed,
+holds the proposed steering, applies the proposed speed controller for 0.2 s,
+then applies the existing `clamp(-4*v, -1, 0)` brake until speed is at most 0.001
+(up to 4 s). The actual simulator responds to braking immediately; the initial
+0.2 s of nominal motion is a conservative assumption of the preview rather
+than added actuator latency in the simulation.
+
+A brake triggers when the predicted center path comes within
+`0.5 + 2*sqrt(2)*position_sigma + 0.02*observation_age` of point obstacles or map
+boundaries. The optimized check returns a conservative clearance lower bound:
+near obstacles use all swept segments, while distant obstacles use the triangle
+inequality with total predicted travel. While the guard is active, target speed
+is zero and steering is held at its triggering value. The existing loss pause
+still takes priority and requires zero steering. On a received external
+correction while either pause is active, the path cursor resets as before.
+
+Release requires measured speed at most 0.02 and predicted clearance exceeding
+the trigger margin by another 0.05, continuously for 0.5 s. Prediction on a
+release probe uses the nominal command that would apply after release. Goal
+hold conditions and the 180 s budget are unchanged. Guard time is logged
+separately and can overlap the existing observation-loss pause time.
+
+The preview uses estimated pose and the known map. True position is used for
+physics and evaluation only. It is a fixed-steering, deterministic prediction
+with a heuristic positional margin, not a reachable-set or probabilistic safety
+guarantee. It does not account for all future steering changes or propagate yaw
+uncertainty through the curve. Conservative stopping may also prevent completion
+on paths planned using only the nominal radius of 0.5.
+
+The runner performs the regular trajectory checks, then audits exact stopping
+geometry at up to eight deterministic checkpoints per guarded case: the first
+step, first trigger/release, contact endpoint if any, and fixed later intervals.
+This independently checks the optimized lower bound and threshold classification
+using exact obstacle geometry. All contact rows are independently recomputed.
+The audit can also be run directly:
+
+```bash
+python3 experiments/pose_observation_loss/verify_stopping_preview.py RUN_DIRECTORY
+```
+
+See the [stopping-preview report](results/stopping-preview/report.md) for both
+contacts and mission completion. The guard is an experiment option; the default
+runner and library controller behavior are unchanged.
+
+To combine the reference and two new-seed runs into case/summary CSVs and the
+recorded plot (optional matplotlib dependency for `--plot`):
+
+```bash
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --reference REFERENCE_RUN --white WHITE_RUN --correlated CORRELATED_RUN \
+  --output NEW_ANALYSIS_DIRECTORY --plot
+```

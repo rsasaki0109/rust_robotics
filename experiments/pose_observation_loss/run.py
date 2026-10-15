@@ -20,10 +20,16 @@ def main():
         "--output", type=Path, help="New directory for raw trajectories"
     )
     parser.add_argument("--seeds", type=int, nargs="+", default=list(range(201, 211)))
-    parser.add_argument(
+    comparison = parser.add_mutually_exclusive_group()
+    comparison.add_argument(
         "--recovery-comparison",
         action="store_true",
         help="Compare original pause/recovery with stationary pose averaging",
+    )
+    comparison.add_argument(
+        "--stopping-preview-comparison",
+        action="store_true",
+        help="Compare averaged recovery with an always-on stopping preview guard",
     )
     parser.add_argument(
         "--noise-correlation-time",
@@ -41,6 +47,8 @@ def main():
     variants = (
         ["aware", "averaged"] if args.recovery_comparison else ["baseline", "aware"]
     )
+    if args.stopping_preview_comparison:
+        variants = ["averaged", "guarded"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -110,8 +118,9 @@ def main():
                             "true",
                             mode,
                             str(variant != "baseline").lower(),
-                            str(variant == "averaged").lower(),
+                            str(variant in ["averaged", "guarded"]).lower(),
                             str(args.noise_correlation_time),
+                            str(variant == "guarded").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -163,6 +172,10 @@ def main():
     ), "simulator changed during run"
     (run / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
     subprocess.run(["python3", str(ROOT / "verify.py"), str(run)], check=True)
+    if args.stopping_preview_comparison:
+        subprocess.run(
+            ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
+        )
     print(f"Verified results: {run}")
 
 

@@ -1,0 +1,5 @@
+tau_s,variant,mode,seed,scenario,planner,time_s,obstacle_x,obstacle_y,recomputed_swept_distance,safety_paused,observation_age
+1.0,averaged,random,228,maze_50x50,A*,40.020000,18.0,20.0,0.49114305295745786,true,5.020000
+1.0,averaged,random,228,maze_50x50,Theta*,40.420000,19.0,20.0,0.4970615238098324,true,5.420000
+1.0,averaged,random,230,dense_50x50,JPS,82.120000,20.0,26.0,0.4951317685542104,false,2.120000
+1.0,guarded,none,227,maze_50x50,Theta*,164.180000,24.0,25.0,0.4990582996693942,false,4.180000
