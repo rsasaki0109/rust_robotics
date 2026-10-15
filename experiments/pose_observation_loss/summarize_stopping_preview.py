@@ -86,6 +86,11 @@ def plot(directory, summary, variants):
                 labels = {"joint": "Original guard", "entry": "Entry reserve"}
             if "filtered" in variants:
                 labels = {"joint": "Original guard", "filtered": "Filtered pose"}
+            if "recoverable" in variants:
+                labels = {
+                    "filtered": "Filtered stop",
+                    "recoverable": "Recovery line",
+                }
             ax.set_xticks(
                 range(4),
                 [
@@ -116,6 +121,8 @@ def plot(directory, summary, variants):
             title, prefix = "Motion entry buffer", "entry-buffer"
         if "filtered" in variants:
             title, prefix = "Motion-compensated preview", "motion-filter"
+        if "recoverable" in variants:
+            title, prefix = "Terminal recovery preview", "recovery-preview"
         fig.suptitle(f"{title}: fixed settings, paired new seeds, 180 s budget")
         svg = directory / f"{prefix}.svg"
         fig.savefig(svg, metadata={"Date": None})
@@ -172,15 +179,21 @@ def main():
         action="store_true",
         help="Summarize motion-compensated stopping-preview poses",
     )
+    comparison.add_argument(
+        "--recovery-preview",
+        action="store_true",
+        help="Summarize filtered terminal recovery previews",
+    )
     args = parser.parse_args()
     if args.known_white and not (
         args.joint_recovery
         or args.guard_buffer
         or args.entry_buffer
         or args.motion_filter
+        or args.recovery_preview
     ):
         parser.error(
-            "--known-white requires --joint-recovery, --guard-buffer, --entry-buffer or --motion-filter"
+            "--known-white requires --joint-recovery, --guard-buffer, --entry-buffer, --motion-filter or --recovery-preview"
         )
     variants = (
         ["guarded", "consistent"]
@@ -199,6 +212,8 @@ def main():
         variants = ["joint", "entry"]
     if args.motion_filter:
         variants = ["joint", "filtered"]
+    if args.recovery_preview:
+        variants = ["filtered", "recoverable"]
     if not __debug__:
         parser.error("Run without Python -O")
     combined = []
@@ -225,6 +240,7 @@ def main():
             or args.guard_buffer
             or args.entry_buffer
             or args.motion_filter
+            or args.recovery_preview
         ):
             assert all(
                 r.get(k, "") != ""
@@ -297,7 +313,8 @@ def main():
                     )
                 )
                 if "paced" in variants or any(
-                    v in variants for v in ["buffered", "entry", "filtered"]
+                    v in variants
+                    for v in ["buffered", "entry", "filtered", "recoverable"]
                 ):
                     summary[-1].update(
                         mean_speed_limited_time_s=statistics.mean(
@@ -312,6 +329,7 @@ def main():
                     or args.guard_buffer
                     or args.entry_buffer
                     or args.motion_filter
+                    or args.recovery_preview
                 ):
                     summary[-1].update(
                         {
@@ -329,7 +347,12 @@ def main():
                         and float(r["final_window_travel"]) < 0.1
                         for r in ev
                     )
-                if args.guard_buffer or args.entry_buffer or args.motion_filter:
+                if (
+                    args.guard_buffer
+                    or args.entry_buffer
+                    or args.motion_filter
+                    or args.recovery_preview
+                ):
                     summary[-1].update(
                         mean_wait_time_s=statistics.mean(
                             float(r["total_wait_time_s"]) for r in ev
@@ -338,9 +361,13 @@ def main():
                             float(r["stationary_wait_time_s"]) for r in ev
                         ),
                     )
-                if args.motion_filter:
+                if args.motion_filter or args.recovery_preview:
                     summary[-1]["short_reentries"] = sum(
                         int(r["short_reentries"]) for r in ev
+                    )
+                if args.recovery_preview:
+                    summary[-1]["terminal_only_guard_entries"] = sum(
+                        int(r["terminal_only_guard_entries"]) for r in ev
                     )
                 if variant == variants[-1]:
                     for r in selected:
@@ -357,6 +384,7 @@ def main():
         or args.guard_buffer
         or args.entry_buffer
         or args.motion_filter
+        or args.recovery_preview
     ):
         known = {
             r["seed"] for r in combined if r["cohort"] in ["reference", "known-white"]

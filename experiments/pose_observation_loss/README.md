@@ -965,3 +965,76 @@ checking joint readiness. Existing freshness, sample and recovery-line gates
 remain required. These snapshots cannot establish continuous one-second
 admission or the behavior of a changed policy. Optional plots require Matplotlib.
 See the [remaining-timeout diagnosis](results/filter-stalls/report.md).
+
+## Compare a terminal recovery preview
+
+This comparison retains the motion filter in both arms. `recoverable` adds a
+forward recovery segment at the predicted stopping pose, while `filtered`
+retains the original stopping footprint. The fixed settings are evaluated on
+known seeds 256–258 and new seeds 259–261, with independent and 1 s correlated
+noise, all loss modes, maps and planners: 648 comparison cases.
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --recovery-preview-comparison "$fixtures" --seeds 256 257 258 \
+  --noise-correlation-time 1 --output /tmp/recovery-preview-reference
+python3 experiments/pose_observation_loss/run.py \
+  --recovery-preview-comparison "$fixtures" --seeds 256 257 258 \
+  --noise-correlation-time 0 --output /tmp/recovery-preview-known-white
+python3 experiments/pose_observation_loss/run.py \
+  --recovery-preview-comparison "$fixtures" --seeds 259 260 261 \
+  --noise-correlation-time 0 --output /tmp/recovery-preview-white
+python3 experiments/pose_observation_loss/run.py \
+  --recovery-preview-comparison "$fixtures" --seeds 259 260 261 \
+  --noise-correlation-time 1 --output /tmp/recovery-preview-correlated
+python3 experiments/pose_observation_loss/summarize_stopping_preview.py \
+  --recovery-preview --reference /tmp/recovery-preview-reference \
+  --known-white /tmp/recovery-preview-known-white \
+  --white /tmp/recovery-preview-white \
+  --correlated /tmp/recovery-preview-correlated \
+  --output /tmp/recovery-preview-summary --plot
+```
+
+Let `m = 0.5 + 2*sqrt(2)*sigma + drift_speed*observation_age`. The existing
+forecast applies 0.2 s of nominal command then bounded braking until speed
+<=0.001. From its terminal pose and heading, the candidate checks a further
+straight segment of length 0.6 against every obstacle and map boundary.
+With stopping clearance `Dstop` and terminal segment clearance `Drecovery`,
+the combined lower bound is `min(Dstop, Drecovery - 0.1)`.
+
+Entry compares this combined value with `m`; both ordinary and joint release
+compare it with `m + 0.05`. Thus entry additionally requires terminal clearance
+> `m + 0.1`, matching the original recovery distance allowance, and release
+requires > `m + 0.15`. The original 0.5 s/1 s timers apply to the combined rule.
+This changes both entry and release. It does not isolate an earlier-braking
+effect from extra release waiting, or guarantee the later measured recovery
+line is clear. The terminal pose is estimated; the actual guard applies braking
+immediately, whereas the forecast contains the existing 0.2 s command phase.
+
+The appended `RECOVERY_PREVIEW` flag defaults to false and requires
+`MOTION_FILTER=true`. The trajectory adds `recovery_preview_active`,
+`stop_preview_clearance_lower_bound` and `terminal_recovery_clearance`.
+For this arm `preview_clearance_lower_bound` is the combined decision metric,
+not a physical clearance from one path. The terminal column includes boundaries
+and is zero when disabled; initial rows have false/zero sentinels.
+The stopping-path pruning retains its original threshold. The terminal segment
+uses a full obstacle scan. Actual recovery, speed capping, filtering, paired
+randomness and goal holding retain their previous rules.
+
+The verifier checks the combination at every step and independently recalculates
+both geometries at all candidate guard entries, releases, loss resumes and fixed
+checkpoints. `terminal_only_guard_entries` counts entries that pass the original
+stopping-distance test. Baseline `filtered` summaries match the previous study,
+and the seed-201 original defaults are checked separately. Analytic geometry
+fixtures cover segment interiors, terminal headings, boundaries and symmetry:
+
+```bash
+cargo test --locked -p rust_robotics_control --no-default-features \
+  --example pose_observation_loss
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_recovery_preview_geometry.py
+```
+
+See the [terminal-recovery comparison](results/recovery-preview/report.md) for
+results, waits, holds, contacts and limitations.
