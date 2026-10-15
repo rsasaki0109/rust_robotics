@@ -1,0 +1,150 @@
+{
+  "reference": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.674775+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        262,
+        263,
+        264
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1386
+  },
+  "known-white": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.682952+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        262,
+        263,
+        264
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1360
+  },
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.708747+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        265,
+        266,
+        267
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1414
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-15T13:30:20.709068+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        265,
+        266,
+        267
+      ],
+      "commit": "6ea62fa177b348955c9c270d8e7b6964a61b6164",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+        }
+      }
+    },
+    "geometry_checkpoints": 1308
+  }
+}

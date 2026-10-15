@@ -148,6 +148,10 @@ fn stopping_preview(
     (clearance, recovery_clearance)
 }
 
+fn aligned_release_preview(stop: f64, terminal: f64) -> f64 {
+    stop.min(terminal - 0.05)
+}
+
 // Find the first unsafe chord of a fixed-steering arc, in 0.05-unit intervals.
 // This is an estimated geometric probe, not a bound on future closed-loop motion.
 fn speed_free_distance(
@@ -310,6 +314,31 @@ mod motion_filter_tests {
     use super::*;
 
     #[test]
+    fn aligned_release_rejects_a_clear_stop_with_blocked_terminal_entry() {
+        let margin = 0.5;
+        assert!(1.0 > margin + 0.05);
+        assert!(aligned_release_preview(1.0, 0.58) <= margin + 0.05);
+        assert!(aligned_release_preview(1.0, 0.60) <= margin + 0.05);
+        assert!(aligned_release_preview(1.0, 0.600001) > margin + 0.05);
+    }
+
+    #[test]
+    fn aligned_release_implies_entry_clearance_and_keeps_stopping_hysteresis() {
+        for margin in [0.5, 0.6, 0.8, 1.0] {
+            for i in -20..=30 {
+                for j in -20..=30 {
+                    let stop = margin + i as f64 * 0.01 + 0.0001;
+                    let terminal = margin + j as f64 * 0.01 + 0.0001;
+                    if aligned_release_preview(stop, terminal) > margin + 0.05 {
+                        assert!(stop > margin + 0.05);
+                        assert!(stop.min(terminal - 0.1) > margin);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn stationary_stop_can_be_clear_while_forward_recovery_is_blocked() {
         let state = VehicleState::new(25.0, 25.0, 0.0, 0.0, WHEELBASE);
         let obstacles = [Point2D::new(26.2, 25.0)];
@@ -414,8 +443,8 @@ mod motion_filter_tests {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=26).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=27).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -495,6 +524,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(false);
     assert!(!terminal_entry_only || recovery_preview);
+    let aligned_terminal_release = args
+        .get(26)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!aligned_terminal_release || terminal_entry_only);
     assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
@@ -546,7 +581,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound,aligned_terminal_release"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -583,7 +618,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0",
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0,false",
             initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
@@ -929,7 +964,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 stop_preview_clearance_lower_bound
             };
-            let release_preview_clearance_lower_bound = if terminal_entry_only {
+            let release_preview_clearance_lower_bound = if aligned_terminal_release {
+                // Keep the original stopping hysteresis; the terminal line must
+                // pass the entry threshold at this same decision instant.
+                aligned_release_preview(
+                    stop_preview_clearance_lower_bound,
+                    terminal_recovery_clearance,
+                )
+            } else if terminal_entry_only {
                 stop_preview_clearance_lower_bound
             } else {
                 preview_clearance_lower_bound
@@ -1032,7 +1074,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

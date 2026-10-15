@@ -79,6 +79,18 @@ def exact_preview(before, row, obstacles):
     return clearance, steps
 
 
+def exact_release_preview(stop, terminal, row):
+    if row.get("aligned_terminal_release") == "true":
+        return min(stop, terminal - 0.05)
+    if row.get("terminal_entry_only") == "true":
+        return stop
+    return (
+        min(stop, terminal - 0.1)
+        if row.get("recovery_preview_active") == "true"
+        else stop
+    )
+
+
 def exact_speed_distance(before, row, obstacles):
     """Full obstacle scan, without the simulator's nearby-obstacle pruning."""
     x, y, yaw = (
@@ -136,6 +148,7 @@ def main():
         ["joint", "filtered"],
         ["filtered", "recoverable"],
         ["recoverable", "entryline"],
+        ["entryline", "aligned"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -158,10 +171,10 @@ def main():
                 check_restart_track(
                     track,
                     candidate == "consistent",
-                    candidate in ["filtered", "recoverable", "entryline"],
+                    candidate in ["filtered", "recoverable", "entryline", "aligned"],
                 )
             check_motion_filter_track(
-                track, candidate in ["filtered", "recoverable", "entryline"]
+                track, candidate in ["filtered", "recoverable", "entryline", "aligned"]
             )
             selected = [1]
             flags = ["guard_triggered", "guard_released"]
@@ -172,6 +185,7 @@ def main():
                 "filtered",
                 "recoverable",
                 "entryline",
+                "aligned",
             ]:
                 flags.append("resumed")
             for flag in flags:
@@ -201,6 +215,7 @@ def main():
                 "filtered",
                 "recoverable",
                 "entryline",
+                "aligned",
             ]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
@@ -211,6 +226,7 @@ def main():
                 "filtered",
                 "recoverable",
                 "entryline",
+                "aligned",
             ]:
                 selected.extend(
                     i
@@ -224,7 +240,7 @@ def main():
                 )
                 exact = (
                     min(stop_exact, terminal_exact - 0.1)
-                    if candidate in ["recoverable", "entryline"]
+                    if candidate in ["recoverable", "entryline", "aligned"]
                     else stop_exact
                 )
                 if "stop_preview_clearance_lower_bound" in row:
@@ -254,6 +270,20 @@ def main():
                     exact,
                 )
                 release = float(row.get("guard_release_margin", margin + 0.05))
+                if candidate == "aligned":
+                    release_exact = exact_release_preview(
+                        stop_exact, terminal_exact, row
+                    )
+                    release_lower = float(row["release_preview_clearance_lower_bound"])
+                    assert release_lower <= release_exact + 2e-8
+                    if (
+                        abs(release_exact - release) > 2e-8
+                        and abs(release_lower - release) > 2e-8
+                    ):
+                        assert (release_lower > release) == (release_exact > release)
+                    if row["guard_released"] == "true" or row["resumed"] == "true":
+                        assert release_exact > release - 2e-8
+                        assert exact > margin - 2e-8
                 for threshold in [margin, release]:
                     if abs(exact - threshold) > 2e-8 and abs(lower - threshold) > 2e-8:
                         assert (lower > threshold) == (exact > threshold), (
@@ -275,13 +305,15 @@ def main():
                     release_margin=release,
                     entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate in ["recoverable", "entryline"]:
+                if candidate in ["recoverable", "entryline", "aligned"]:
                     record.update(
                         stop_exact=stop_exact, terminal_recovery_exact=terminal_exact
                     )
-                    if candidate == "entryline":
+                    if candidate in ["entryline", "aligned"]:
                         record.update(
-                            release_exact=stop_exact,
+                            release_exact=exact_release_preview(
+                                stop_exact, terminal_exact, row
+                            ),
                             release_lower_bound=row[
                                 "release_preview_clearance_lower_bound"
                             ],
@@ -300,6 +332,7 @@ def main():
                     "filtered",
                     "recoverable",
                     "entryline",
+                    "aligned",
                 ]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
@@ -318,6 +351,7 @@ def main():
                     "filtered",
                     "recoverable",
                     "entryline",
+                    "aligned",
                 ]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(
