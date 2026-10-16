@@ -1900,3 +1900,38 @@ optional Matplotlib figure compares fixed age-0.5 2D error/component RMS by nois
 type, arm and actual input estimator, with explicit denominators. Component RMS
 values are not additive. See the
 [epoch-position decomposition](results/epoch-position-components/report.md).
+
+### Compare model-based three-way admission envelopes
+
+Keep the same 648-case accounting, 368 timeout cases and 2,120 checkpoints.
+Compare the original central gate with fixed position/heading envelopes using
+the exported observation-noise model, then noise plus shared correction anchors.
+Both straight and recorded-steering .6 m paths keep the same full margin.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_model_admission_envelopes.py \
+  --output /tmp/model-admission-envelopes
+python3 experiments/pose_observation_loss/plot_model_admission_envelopes.py \
+  --results /tmp/model-admission-envelopes --output /tmp/model-admission-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. Analysis uses only tracked tables and map geometry;
+input, source, helper and protocol fingerprints are retained. Raw trajectory
+validation and observation-window reconstruction are inherited. Every distinct
+estimated heading/steering geometry is checked against independent 120 chords.
+
+The [fixed protocol](results/model-admission-envelopes/protocol.md) preserves
+strict obstacle clearance and inclusive wall bounds. Lower component bounds
+permit, upper bounds block, and overlapping bounds remain unresolved. A wider
+envelope can defer either definite decision but cannot reverse it. Truth is
+evaluation-only: empirical pose coverage and the conditional geometry bound
+are distinct from statistical guarantees. Drift and transport uncertainty are
+excluded from the model, and Gaussian tails remain unbounded.
+
+Repeat aggregation to compare four CSVs and `sources.json` byte for byte. The
+optional Matplotlib figure exports counts, SVG and fingerprints for all three
+states at age 0.5 s, including both paths, inputs and recorded arms. Unresolved
+decisions are counted separately; they do not establish blocking, resumed
+movement or held-goal outcomes. See the
+[model-based admission comparison](results/model-admission-envelopes/report.md).
