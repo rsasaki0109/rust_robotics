@@ -2228,3 +2228,31 @@ Repeat eight CSVs and provenance byte for byte. The optional figure keeps
 all 550 loss rows and separately all audited clear-conflict spans, with
 signed projections and state-weighted span moments. See the
 [error-component results](results/speed-probe-error-components/report.md).
+
+## Shared information and position agreement
+
+Compare all three raw/recovery/preview pairings at every audited state. Use
+the recorded observation weights, actual sample spacing and shared anchor IDs
+to calculate partial noise-plus-anchor covariance and difference uncertainty.
+Position agreement at .02, .05 and .10 m is kept separate from each input's
+.10 m position error relative to truth.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_shared_information.py \
+  --output /tmp/speed-probe-shared-information
+python3 experiments/pose_observation_loss/plot_speed_probe_shared_information.py \
+  --results /tmp/speed-probe-shared-information --output /tmp/speed-probe-shared-information-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories; the pinned tracked components and group metadata suffice.
+The [fixed protocol](results/speed-probe-shared-information/protocol.md) retains
+all 6,610 states and all 550/509 loss members for every pairing, including
+shared-single-anchor and three-epoch preview modes. The full three-input
+covariance matrix is checked at each state. The model excludes drift and
+nonlinear transport; it is not a calibrated posterior or a release condition.
+
+Seven CSVs and provenance repeat byte for byte. Per-anchor weights and source
+pose IDs make shared offsets explicit; loss links retain original transition
+and event IDs. The figure uses the entire 550-loss population in both arms.
+See the [shared-information results](results/speed-probe-shared-information/report.md).
