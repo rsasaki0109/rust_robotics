@@ -148,7 +148,6 @@ for item in json.loads((run / "manifest.json").read_text()):
             item["variant"]
             in ["filtered", "recoverable", "entryline", "aligned", "epoch", "curved"],
             item["variant"] in ["epoch", "curved"],
-            "curved",
         )
         if variants == ["aligned", "epoch"] and item["variant"] == "epoch":
             check_epoch_pair(pairs[key], track)

@@ -199,7 +199,6 @@ def main():
                     "curved",
                 ],
                 candidate in ["epoch", "curved"],
-                "curved",
             )
             selected = [1]
             if candidate == "curved":
