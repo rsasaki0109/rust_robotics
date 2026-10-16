@@ -1,0 +1,17 @@
+{
+  "comparisons": 104988,
+  "verification_script_sha256": "65fe247141f6bbb326b5c99e2debb85418d896d0030b2a0bd805401ce4ef47d4",
+  "analysis_sources_sha256": "1fcb5cde097933e76dceb736266609725f0d64336cd4331f20bdf953fba4adb3",
+  "raw_fresh_event_matches": 1414,
+  "historical_events": 2583,
+  "accounting_cases": 972,
+  "events": 3997,
+  "case_support_rows": 6804,
+  "summary_rows": 1344,
+  "fresh_pairs": 162,
+  "fresh_outcome_rows": 64,
+  "fresh_intervals": {
+    "fresh-white": 1278484,
+    "fresh-correlated": 1202069
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "analysis_sha256": "1fcb5cde097933e76dceb736266609725f0d64336cd4331f20bdf953fba4adb3",
+  "summary_sha256": "970db84d7d2241651ff56d32b59104af8d8246f522e91928a8a33530ef823736",
+  "script_sha256": "a43ff2f0019f74a197f6670358c373c6f30e341d2f013c004fb8fa73df6535ba",
+  "analyzer_sha256": "544a0b843ec7d6554e1a96584354a884ae4a96bb3dec21f51caaa4ddd15d8c8c",
+  "primary_event_groups": [
+    "all",
+    "received_any"
+  ],
+  "rows": 72,
+  "fresh_cohorts": [
+    "fresh-white",
+    "fresh-correlated"
+  ],
+  "outputs_sha256": {
+    "fresh-seed-modes-all.png": "0a7fc1508aa105835fd072af8abc2d5e42e89ef8591a7c45d585e8ce3b05f7c1",
+    "fresh-seed-modes-all.svg": "2e5d47f90093a2f018bb73a85aaabad65fc6b97ef1e937c1ede0609c7722a341",
+    "fresh-seed-modes-received-any.png": "00d83e7a73d7ec0e598fc00fcbb9fed94d8712d68da8510dde544324b1aa3f3c",
+    "fresh-seed-modes-received-any.svg": "3e654923129d3e2fd3733875320167b4b1219ea76c1f593534e79c4e8f9a67af",
+    "plot-values.csv": "2d992a95fd3aa5e4de9f20286c88198ba2da238dc47568d42ddfd9f2e3ccbc11"
+  },
+  "matplotlib": "3.10.8"
+}

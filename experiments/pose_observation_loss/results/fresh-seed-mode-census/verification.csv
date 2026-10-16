@@ -1,0 +1,3 @@
+cohort,cases,physical_intervals,timeout_replayed_intervals,shared_prefix_intervals,preview_checkpoints,max_event_pose_reconstruction_error
+fresh-white,162,1278484,999000,168675,1541,1.2533334370345983e-09
+fresh-correlated,162,1202069,819000,198358,1377,1.133329874392075e-09
