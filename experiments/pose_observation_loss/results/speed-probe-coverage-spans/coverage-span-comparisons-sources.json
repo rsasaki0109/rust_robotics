@@ -1,0 +1,26 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "bc7a40a8da19e573d443c09fec79d4cb5fa1023de74b0bfbcfad2d4d40b07274",
+    "chains.csv": "2bdacbd6e17706455901c601a57d4041f8ca2b112d7fac40e88b75753f22ea61",
+    "members.csv": "fe6db79ea0af46dbc0953a8fabb7c27ac58b8c31b2a7766747efb154d9a3fda9",
+    "spans.csv": "8e61c2b73174facbe26cd6ec2278fe09cedd94fff7e94856a66ce28dc5e54f6d",
+    "loss-memberships.csv": "3c28f5a36e41279c3dceae50983868b54fb8ed5652617aa4ec527008e98ead07",
+    "coverage-summary.csv": "539ab8c1d37193867c8cd07d4d7cd60b91cd531ac8bd67b77b90235b30ecf6d3",
+    "span-summary.csv": "9b7cfc2e42b0dd72c6032be9214fd69a4e0f99a3ac4524c0740b78da4c495516",
+    "sources.json": "19bf2b76e72b4e05549902e8414909c1a6e497c58c6118c7ddcc87082a395cd9"
+  },
+  "script_sha256": "9f38699f583972cd781e9c20c2acf45a94abe56c6560368c71e43192bd127fda",
+  "analysis_sha256": "132f0e0e02851f73ac6cc3f4cb95cad1f7b4015173c09711a4707f1680ebf7e2",
+  "matplotlib_version": "3.10.8",
+  "numeric_rows": 432,
+  "radius_m": 0.1,
+  "yaw_bound_deg": 4,
+  "span_bins_by_states": [
+    "1",
+    "2..5",
+    "6..25",
+    ">=26"
+  ],
+  "svg_normalization": "strip trailing whitespace from generated XML lines"
+}

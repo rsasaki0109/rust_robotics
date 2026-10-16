@@ -2165,3 +2165,33 @@ individual decisions retain original loss transition/event IDs. Summaries
 include all audited states, both fixed loss populations and empty event kinds.
 The optional figure shows the entire 550-loss population in both arms and
 all three inputs. See the [envelope and truth comparison](results/speed-probe-envelopes/report.md).
+
+## Envelope coverage components and audited persistence
+
+Separate position-only, heading-only and simultaneous coverage failures for
+every prior pose/setting. Measure persistence using explicit audited adjacent
+pairs, keeping gaps and case boundaries. Each run's elapsed support is its
+last minus first decision time; audit boundaries truncate the observation.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_coverage_spans.py \
+  --output /tmp/speed-probe-coverage-spans
+python3 experiments/pose_observation_loss/plot_speed_probe_coverage_spans.py \
+  --results /tmp/speed-probe-coverage-spans --output /tmp/speed-probe-coverage-spans-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and the tracked pinned inputs. The [fixed protocol](results/speed-probe-coverage-spans/protocol.md)
+keeps all 6,610 states, six radii, two heading bounds and both fixed loss
+populations. It preserves every prior certificate and coverage marginal.
+Missing audit edges split chains even at consecutive selected timestamps;
+repeated references to the same physical edge count time once.
+
+Loss membership rows join original transition/event/pose IDs to coverage and
+clear-conflict spans. Each span family separately partitions every chain.
+The full span is retained for event-kind union summaries; these groups can
+overlap. No_conflict runs and empty groups remain explicit.
+
+Repeat eight CSVs and provenance byte for byte. The optional figure compares
+the entire 550-loss coverage population and all audited conflict spans at
+.10 m / +/-4 degrees. See the [coverage and persistence results](results/speed-probe-coverage-spans/report.md).
