@@ -2377,3 +2377,29 @@ coverage, raw counts, case mass, missing data and both error outcomes. Retained
 diagnostic rows are not released actions. Lagged contrast is an offline oracle
 quantity. Model sigmas are uncalibrated. Repeat seven CSVs/provenance and both
 figures byte for byte. See the [risk-transfer results](results/contrast-risk-transfer/report.md).
+
+## Estimator composition and cutoff transfer
+
+Decompose the preceding simultaneous fixed-cutoff transfer by the recorded
+Recovery, filter and three-anchor fusion modes. Reuse every fitted cutoff;
+keep the parent case weights within strata and after selection. Report the
+change in estimator mixture separately from within-mode rate changes, with
+explicit support checks and both error targets. These are descriptive,
+order-dependent comparisons of previously observed seed cohorts.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_estimator_mode_transfer.py \
+  --output /tmp/estimator-mode-transfer
+python3 experiments/pose_observation_loss/plot_estimator_mode_transfer.py \
+  --results /tmp/estimator-mode-transfer --output /tmp/estimator-mode-transfer-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and the pinned tracked inputs. The
+[protocol](results/estimator-mode-transfer/protocol.md) retains all three
+simultaneous views, noise types, arms, event kinds, scores, budgets and both
+midpoint/residual outcomes. Lagged references remain inherited outside this
+stratification. All parent retention aggregates must match the preceding
+study. Repeat seven CSVs/provenance and both SVG/PNG figures with their numeric
+series/provenance byte for byte. See the
+[estimator-mode results](results/estimator-mode-transfer/report.md).
