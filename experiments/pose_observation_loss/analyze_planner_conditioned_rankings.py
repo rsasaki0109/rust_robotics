@@ -434,7 +434,13 @@ def main():
         planner_blocks=len(data[3]),
         seed_support_rows=len(data[4]),
         prior_field_comparisons=comparisons,
-        reconstruction=reconstruction,
+        reconstruction_rows=len(reconstruction),
+        max_vector_closure_m=max(
+            a[t + "_vector_closure_m"] for a in reconstruction for t in previous.TARGETS
+        ),
+        max_residual_component_difference_m=max(
+            a["residual_component_difference_m"] for a in reconstruction
+        ),
     )
     sources = dict(
         input_sha256=PINNED,
