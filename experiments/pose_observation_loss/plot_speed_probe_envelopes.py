@@ -200,7 +200,11 @@ def main():
     )
     args.output.mkdir(parents=True)
     save_rows(args.output / "probe-envelope-comparisons.csv", series)
-    fig.savefig(args.output / "probe-envelope-comparisons.svg", metadata={"Date": None})
+    svg = args.output / "probe-envelope-comparisons.svg"
+    fig.savefig(svg, metadata={"Date": None})
+    svg.write_text(
+        "\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n"
+    )
     fig.savefig(
         args.output / "probe-envelope-comparisons.png",
         dpi=160,
@@ -225,6 +229,7 @@ def main():
         matplotlib_version=matplotlib.__version__,
         plotted_population="all 550 raw-zero-loss pairs, separately by arm and input",
         plotted_yaw_bound_deg=4,
+        svg_normalization="strip trailing whitespace from generated XML lines",
     )
     (args.output / "probe-envelope-comparisons-sources.json").write_text(
         json.dumps(provenance, indent=2) + "\n"
