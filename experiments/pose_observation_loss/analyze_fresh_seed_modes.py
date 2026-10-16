@@ -593,6 +593,7 @@ def main():
         "verify_joint_recovery.py",
         "analyze_terminal_arc_live.py",
         "analyze_correction_centre_transitions.py",
+        "repeat_fresh_seed_case.py",
     ]:
         helpers[name] = digest(ROOT / name)
     sources = dict(
