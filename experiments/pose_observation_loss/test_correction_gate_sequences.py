@@ -201,6 +201,15 @@ class CorrectionGateSequenceTests(unittest.TestCase):
         self.assertEqual(spans[1]["end_reason"], "independent_release")
         self.assertEqual(spans[2]["end_reason"], "recorded_end")
 
+    def test_carried_evidence_that_fails_at_first_interval_is_not_a_continuing_span(
+        self,
+    ):
+        spans = []
+        analysis.make_spans(
+            event(), [interval(1, failed=["terminal"], carried=0.4)], spans
+        )
+        self.assertFalse(spans[0]["continues_at_left_boundary"])
+
     def test_final_event_is_censored_with_no_fabricated_post_decisions(self):
         e = event(censored=True)
         e.update(event_time_s="180.000000", **analysis.ActionWindow(9000).record())

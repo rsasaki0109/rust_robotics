@@ -288,6 +288,7 @@ def make_spans(event, rows, output):
                 first_timer_before_s=first["timer_before_s"],
                 last_timer_after_s=last["timer_after_s"],
                 continues_at_left_boundary=first["offset_steps"] == 1
+                and first["active_ready"]
                 and first["timer_before_s"] != ""
                 and first["timer_before_s"] > 0,
                 end_reason=reason,
