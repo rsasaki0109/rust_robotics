@@ -1,0 +1,27 @@
+{
+  "script_sha256": "27271b6c1105ace204fc6037504cb7b61eb0dc297dcd1f8cabcbe27d834298e8",
+  "input_sha256": {
+    "component-summary.csv": "fc29821c98ffb1e5a43eb815fc8ab4e03eb1fea66b79f6b20fa9269cf9809565",
+    "sources.json": "ffc790d6c7722fb72cbe6f0579a454b5721f7e69e01e39a68afc239b9348aa10"
+  },
+  "numeric_rows": 64,
+  "targets": [
+    "midpoint",
+    "residual"
+  ],
+  "filters": {
+    "view": "sim_recovery_preview",
+    "event_kind": "all",
+    "score": "residual_sigma",
+    "budgets": [
+      "all",
+      "q50"
+    ],
+    "strata": [
+      "filter_single",
+      "fusion_three"
+    ]
+  },
+  "energy_unit": "cm^2 in figures, m^2 in numeric source",
+  "retrospective": true
+}

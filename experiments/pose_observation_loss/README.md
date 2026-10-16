@@ -2403,3 +2403,28 @@ stratification. All parent retention aggregates must match the preceding
 study. Repeat seven CSVs/provenance and both SVG/PNG figures with their numeric
 series/provenance byte for byte. See the
 [estimator-mode results](results/estimator-mode-transfer/report.md).
+
+## Observed error components within estimator modes
+
+Apply the existing midpoint/residual weights to each input's recorded noise,
+anchor, drift and transport vectors. Compare observed error energies with the
+partial model's two-axis 2V reference, preserving signed cancellation terms,
+source estimator strata, parent case weights and every existing score cutoff.
+The additional component-only outside labels are arithmetic diagnostics in
+the saved frame; they do not simulate a different controller trajectory.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_estimator_mode_components.py \
+  --output /tmp/estimator-mode-components
+python3 experiments/pose_observation_loss/plot_estimator_mode_components.py \
+  --results /tmp/estimator-mode-components --output /tmp/estimator-mode-components-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and pinned tracked inputs. The
+[protocol](results/estimator-mode-components/protocol.md) keeps both targets,
+all simultaneous views, scores, cutoffs, event kinds and pooled/structural
+strata. Original observed risks/AUC must reproduce the preceding tables.
+Repeat eight CSVs/provenance and both SVG/PNG figures/numeric series/provenance
+byte for byte. See the
+[component results](results/estimator-mode-components/report.md).
