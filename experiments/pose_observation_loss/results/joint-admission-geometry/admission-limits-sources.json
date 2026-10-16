@@ -1,0 +1,13 @@
+{
+  "script_sha256": "36317566be06abfa76ef77796aa532e64672bee8edf955320e137150c44dfbf2",
+  "inputs_sha256": {
+    "readiness.csv": "b358862fb06c2e4aa1bafbfa0bf0dfba9710ee6b608c69eab5d3252289ed713e",
+    "geometry.csv": "1a3b1ba7e07654c09dcb1354f92f29e1f2ea39adb31c72a4c4164a70d638f08b",
+    "sources.json": "ccd59c809aa90313f8f96af8857dca180ce8b3b92600b57fb14757a0edca4da4"
+  },
+  "artifacts_sha256": {
+    "admission-limits.csv": "aa826cebbc159f709d4a59932dfb734d6c1a6ea1aa5ab3916108370a51781835",
+    "admission-limits.svg": "7405dd64541bd348b9cdc15d44dc29f081103094bdd50b92e53e8c00b3c73c43"
+  },
+  "matplotlib_version": "3.10.8"
+}
