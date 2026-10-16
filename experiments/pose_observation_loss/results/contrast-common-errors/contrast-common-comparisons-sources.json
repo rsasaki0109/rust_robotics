@@ -1,0 +1,10 @@
+{
+  "script_sha256": "524c736100172651e92987750d5ba4014ab845093668419acdcd33f0d8620992",
+  "input_sha256": {
+    "simultaneous-summary.csv": "6de7bee0e8d524f06ec2c1d00e7adfd24282cfa662d7dfc7253b1e2ee15ed8ff",
+    "lagged-summary.csv": "d5e73b6892b24e956c7712f761859214f43020d84edce18f88daeb165b0b6448",
+    "sources.json": "6603a1e1960b94a83ef0f4b2a7e844ed18bbe2722a1d22df0465e7a5f3a10aa2"
+  },
+  "numeric_rows": 396,
+  "weighting": "one matched source reference; simultaneous raw-zero-loss and lagged all-request denominators retained"
+}
