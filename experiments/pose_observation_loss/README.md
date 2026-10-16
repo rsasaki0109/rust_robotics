@@ -2137,3 +2137,31 @@ and 509 command-only pairs. Non-audited opportunities remain explicit.
 Repeat seven CSVs and `sources.json` byte for byte. The optional figure keeps
 the complete raw-zero-loss denominator in both arms; its numeric data includes
 empty event-kind groups. See the [start and first-chord comparison](results/speed-probe-starts/report.md).
+
+## First-chord position and heading envelopes
+
+Audit conditional first-chord certificates over a position disk and heading
+interval at all 6,610 recorded states. Freeze six disk radii (0 to .30 m) and
+two heading bounds (0 and 4 degrees), retaining every raw/recovery/preview
+input and the fixed 550 raw-zero-loss / 509 command-only pairs.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_envelopes.py \
+  --output /tmp/speed-probe-envelopes
+python3 experiments/pose_observation_loss/plot_speed_probe_envelopes.py \
+  --results /tmp/speed-probe-envelopes --output /tmp/speed-probe-envelopes-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories; the pinned tracked artifacts suffice. The
+[fixed protocol](results/speed-probe-envelopes/protocol.md) defines conservative
+Lipschitz bounds, separate clear/blocked/unresolved classifications and exact
+position/heading coverage. A certificate applies to its specified pose set;
+these radii have no calibrated confidence level. True errors provide a
+separately labeled oracle diagnostic, unavailable to an online controller.
+
+Repeat five CSVs and provenance byte for byte. Pose IDs join speed-probe-starts;
+individual decisions retain original loss transition/event IDs. Summaries
+include all audited states, both fixed loss populations and empty event kinds.
+The optional figure shows the entire 550-loss population in both arms and
+all three inputs. See the [envelope and truth comparison](results/speed-probe-envelopes/report.md).
