@@ -1,0 +1,258 @@
+{
+  "prior_sha256": {
+    "cases.csv": "a99ebb8073828d1c300b5a025a3e5640950f17aeb2c7b75b16cfe93c57c77b63",
+    "pairs.csv": "fc53ccab5ef561e2433e555904f355a948e663dc2c3e685cdd8603dc3c26ecd7",
+    "sources.json": "ceea11fd0eaaa4b992140caf2e8a9a62233ef4b38202ec0c33b6970e41362c28"
+  },
+  "cohorts": {
+    "known-white": {
+      "path": "/workspace/scratch/epoch-preview/verified/known-white",
+      "provenance": {
+        "started_utc": "2026-10-16T04:42:33.397293+00:00",
+        "variants": [
+          "aligned",
+          "epoch"
+        ],
+        "noise_correlation_time_s": 0.0,
+        "seeds": [
+          268,
+          269,
+          270
+        ],
+        "commit": "20a32b7fde28c8498a348b88579aad9238e5f025",
+        "dirty": false,
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+        "inputs_sha256": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "inputs_by_variant_sha256": {
+          "aligned": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          },
+          "epoch": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          }
+        }
+      },
+      "provenance_sha256": "44ddf54cdc75a6a314832cde99b98c106c7583ada1ae918806bfd2220ad6f812",
+      "raw_sha256": {
+        "aligned-none-268/trajectories.csv": "b0da25b292cbfa9a30aefd20e44b2902234d762bb1bfe77a8a229c535fe8ed1e",
+        "epoch-none-268/trajectories.csv": "6af741b082a78b300f184de65441dfea1f93489bb395e89f6ebddfe7a82598ad",
+        "aligned-none-269/trajectories.csv": "dab2811655dc5bc06e5900252205c09fcc815fcf9bf92eaac8813de97b453e52",
+        "epoch-none-269/trajectories.csv": "a5ef0530e78d728a3535b86f31e956761bcaa4a39383b93a5752183ba0128fc2",
+        "aligned-none-270/trajectories.csv": "c1dcc1c0e4ad92285c8ef75062bedaa8697eebfa8e48d1d7f9fc547372145ad5",
+        "epoch-none-270/trajectories.csv": "b181b90a08b80889e6fecc08eca25208a9b4cfecc7d47c3bfdd713a343ca6f4c",
+        "aligned-random-268/trajectories.csv": "7bcac87f274a6fc0e1d2d0f79c2a96b799648048a04da37a35bc35f58bb905f7",
+        "epoch-random-268/trajectories.csv": "41ac91ebb91ee650190bc4131fa132310a0872b48c14c101f6dd38aad3b14a32",
+        "aligned-random-269/trajectories.csv": "6a69bd0b3bc754a7e81cc748a48d755892a151af14b842ee37cb5c66f1273160",
+        "epoch-random-269/trajectories.csv": "6f0b0a36c1ffe230e9fc104c836d7dbca4ac4b837d161f487f9cd6d3aaf3c55c",
+        "aligned-random-270/trajectories.csv": "4da66f7e8acc42dfdae9ce0db01f5d092582535541492875a9a4cfd424bbcb90",
+        "epoch-random-270/trajectories.csv": "22ce6d33c80841c602e2fb821475f73e6113c904a5bffee97d28362f6c27fc5f",
+        "aligned-blackout-268/trajectories.csv": "5c5704a0b850095b8e159e03e5b11a0f70580aa18eb2dc362a3ef6bd3873510d",
+        "epoch-blackout-268/trajectories.csv": "893d7cf56f5d9d0b6c5075c65de53a4efc768482be212d0c744ac3f0e329a37a",
+        "aligned-blackout-269/trajectories.csv": "56b7b96f2a14ef81f42dc61c5399de2102382dc7eb23ad4a25788f4742636704",
+        "epoch-blackout-269/trajectories.csv": "97795e19ad2567aed7f984c5b9a521291680cba062cd44e4ef6f29c015998b11",
+        "aligned-blackout-270/trajectories.csv": "96300c0ff427bff94cb1e46311ae1ad024026cc21ffbbe5b834a58e604f559a3",
+        "epoch-blackout-270/trajectories.csv": "d7fd9c9c40c546d500b8890b2bfb36eb33a3f36e44b82c081380501b028b20ad"
+      },
+      "selected_pairs": 31,
+      "selected_intervals": 554893,
+      "shared_prefix_steps": 131659
+    },
+    "known-correlated": {
+      "path": "/workspace/scratch/epoch-preview/verified/known-correlated",
+      "provenance": {
+        "started_utc": "2026-10-16T04:42:33.399524+00:00",
+        "variants": [
+          "aligned",
+          "epoch"
+        ],
+        "noise_correlation_time_s": 1.0,
+        "seeds": [
+          268,
+          269,
+          270
+        ],
+        "commit": "20a32b7fde28c8498a348b88579aad9238e5f025",
+        "dirty": false,
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+        "inputs_sha256": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "inputs_by_variant_sha256": {
+          "aligned": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          },
+          "epoch": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          }
+        }
+      },
+      "provenance_sha256": "f1acbdb00bdb4248828de8325327344d2b6bd5414aa9929bc1670b0d69cff5ee",
+      "raw_sha256": {
+        "aligned-none-268/trajectories.csv": "384710cd37efb8d5277502c39ab147b3ce44ef125a1ad3a03fcd738dc7069ec9",
+        "epoch-none-268/trajectories.csv": "c08f4ad965e7d7721946b5768d6c92778ac8be598d88cc73c1305be395ebf716",
+        "aligned-none-269/trajectories.csv": "5ed4130083ab22cd5d51c2174b887d95ea8f3662275d39c19d5ee95b6a7d717e",
+        "epoch-none-269/trajectories.csv": "841dd9797217b92af08f337b8770333ffe948637e5ddc7e081e54bc61c16da4e",
+        "aligned-none-270/trajectories.csv": "00b4c87e571e7960dcace5e43450ddbe09dd528d15433a02b38a2bc7442385b7",
+        "epoch-none-270/trajectories.csv": "73e5f5dc89d110249b29d5c21070b66fd9d7836e4f92295f54a3131de8305108",
+        "aligned-random-268/trajectories.csv": "1cb3a71524f025d8978400d98e7b08334c924ccd5e360187b7ea50d71553a672",
+        "epoch-random-268/trajectories.csv": "82a37bebbcca83daf6fdaabd0bf2cb4a2261c7a38816a19f67f0ca528ed0b74f",
+        "aligned-random-269/trajectories.csv": "52c2644216c658857d49180db2381d98d2282657a1baa2b726ed5022218068fd",
+        "epoch-random-269/trajectories.csv": "166e9d0a4de4b388185af67edfffac08af363afc0b39e3b3e352a79ba844c4f3",
+        "aligned-blackout-268/trajectories.csv": "e22dcc0ff3363f7a89176dc466186134c8e18e0ada4e6f98f99b5ca0e40ad9e4",
+        "epoch-blackout-268/trajectories.csv": "28b0eea80ecffec6dc725c5e6cd0a97b5ebbcd8b9b313c0f733f6c0116501be0",
+        "aligned-blackout-269/trajectories.csv": "cd0aa9a30333c0972111d637f624c9f4fd6a9be5b77aea2fffa83a84ffa7a273",
+        "epoch-blackout-269/trajectories.csv": "12cc2e51206cbab23463bd5f8ce6bdd2ca7ca2b6a85bc4d087414cdd583667f0",
+        "aligned-blackout-270/trajectories.csv": "9890a58f033abf6c81fe64d3a07f21ea3200e9c782f71e38930421fa4f0981e4",
+        "epoch-blackout-270/trajectories.csv": "22fa49dfd07b03b00180889ccdbdb1766293f12c94f495eb31fa0bfba2241661"
+      },
+      "selected_pairs": 31,
+      "selected_intervals": 541675,
+      "shared_prefix_steps": 102208
+    },
+    "new-white": {
+      "path": "/workspace/scratch/epoch-preview/verified/new-white",
+      "provenance": {
+        "started_utc": "2026-10-16T04:42:33.379680+00:00",
+        "variants": [
+          "aligned",
+          "epoch"
+        ],
+        "noise_correlation_time_s": 0.0,
+        "seeds": [
+          271,
+          272,
+          273
+        ],
+        "commit": "20a32b7fde28c8498a348b88579aad9238e5f025",
+        "dirty": false,
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+        "inputs_sha256": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "inputs_by_variant_sha256": {
+          "aligned": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          },
+          "epoch": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          }
+        }
+      },
+      "provenance_sha256": "10f693c3d7c6f3d2efdb17c721d422a992e5669ba164e25ca06bc67507468900",
+      "raw_sha256": {
+        "aligned-none-271/trajectories.csv": "1605495204cc6f0b3dfee491587af01df64b1956d385f1256f28675b77074782",
+        "epoch-none-271/trajectories.csv": "45da785b19b142aaa282c51e728fb5d893427b241ad261ce42a937a7ad0df0c2",
+        "aligned-none-272/trajectories.csv": "6ba108c23e971926d8acc2717e9e17a073e16f25f678866df5fcf0b0481b55bd",
+        "epoch-none-272/trajectories.csv": "909b521d2e2f6a76ecec7122a7718f8708b90f080d3c8bcf5b310081ac897959",
+        "aligned-none-273/trajectories.csv": "116e2bb3335172a6f5362c0300c7303ba886d0c7e8a444a75b345c0030c8f4e5",
+        "epoch-none-273/trajectories.csv": "78dd94c23428071e098ec4462d93470ca2a8c7ddb3f1720a2694baeab9835af4",
+        "aligned-random-271/trajectories.csv": "57190c5fad1db1c9a6be9748b8a002f7341cf02b86f1b4f3d661f93f7985abfa",
+        "epoch-random-271/trajectories.csv": "5c3e3542c582fcdb8b00682219b47df6f53e0cf75320ae734318de4e7267ecae",
+        "aligned-random-272/trajectories.csv": "d6a8be2b3aee17711385e961c65311a55d68745ea0d2c2836f4a7c96af8e8e77",
+        "epoch-random-272/trajectories.csv": "3733e703994236fbfe5f2e39e0096b7184ed14dde87fb1bc49f1411e0e95b054",
+        "aligned-random-273/trajectories.csv": "12f5971fa5aad488f724e7be6fafb08b6ad6e7e0c81692dd7d65086ae4f0d828",
+        "epoch-random-273/trajectories.csv": "480182e2784e2e57d4390317882e3fd9a13dd89097cb49495bdfd7adc43a148d",
+        "aligned-blackout-271/trajectories.csv": "ce285e61865356536c8bbed00754a343fa1e7ef6da0b9bf9d78b443102060ffe",
+        "epoch-blackout-271/trajectories.csv": "d0ad8535d7d626d1697ab7418fc699b99f63d83ee0fded80734feb79d1cfc14b",
+        "aligned-blackout-272/trajectories.csv": "835d013df80a8aaa0967c506e1967f620839f6deee3a6b9301444b37be831d70",
+        "epoch-blackout-272/trajectories.csv": "a8a2dc4a9b35122c6e4dd8db1b83f6f347acce8a5d41eb77c33448e037edd522",
+        "aligned-blackout-273/trajectories.csv": "dc142486f34c5a54966c51579482fe232f15372a10332f7901a24338d3074cf1",
+        "epoch-blackout-273/trajectories.csv": "499035bf8920f3a7524fb61cf9875384f3df6dcea03fb6608142a2c3643bf87d"
+      },
+      "selected_pairs": 34,
+      "selected_intervals": 608946,
+      "shared_prefix_steps": 86227
+    },
+    "new-correlated": {
+      "path": "/workspace/scratch/epoch-preview/verified/new-correlated",
+      "provenance": {
+        "started_utc": "2026-10-16T04:42:33.377521+00:00",
+        "variants": [
+          "aligned",
+          "epoch"
+        ],
+        "noise_correlation_time_s": 1.0,
+        "seeds": [
+          271,
+          272,
+          273
+        ],
+        "commit": "20a32b7fde28c8498a348b88579aad9238e5f025",
+        "dirty": false,
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+        "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+        "inputs_sha256": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "inputs_by_variant_sha256": {
+          "aligned": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          },
+          "epoch": {
+            "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+            "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+            "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+          }
+        }
+      },
+      "provenance_sha256": "38bdd51100b32b3609de798a76f1ab025e41ad9d8022687f03d4b6e6226607bc",
+      "raw_sha256": {
+        "aligned-none-271/trajectories.csv": "6606414ed1c08d6142553680e3380cde6272f9bb11cd97a08ae91125e9978696",
+        "epoch-none-271/trajectories.csv": "4c5a03d19d5c1ea573ca4bbd868d709ccb616962551dba0df953f7f8b252c45b",
+        "aligned-none-272/trajectories.csv": "78c0573c13e9e8404cde4507f7d5988a3bceb5bda11e91e50b5c4cb414e7b4b6",
+        "epoch-none-272/trajectories.csv": "f2f0a0ec34487b950bd0639acb3351e5db188d4b9a6bd3f3454fbe33541981ab",
+        "aligned-none-273/trajectories.csv": "13904ec0aaa2193aa22e23ba4d9da615bd4dd6ce77acc9b38c6bb38b69afda53",
+        "epoch-none-273/trajectories.csv": "28d465ca653968d9665a2289dee201503ed6fe08b30be8f7b84d5e555edf66d5",
+        "aligned-blackout-271/trajectories.csv": "2da9cd5f0a6891665000d60fb050a909f30a8a91b78df51420d40907a31b1bdf",
+        "epoch-blackout-271/trajectories.csv": "fd690deb6b70300cbcaa2c2e40c0c2cce25a6587fe378205b5082430285ed524",
+        "aligned-blackout-272/trajectories.csv": "b146fa3cd4310fb50412cd44955319f35683a5a9a18bc8aae60677882452c4d0",
+        "epoch-blackout-272/trajectories.csv": "d1ef4938c06a5f8f685a0ae0ae6c162a06eac5dd799549c67313504f8f9a31d4",
+        "aligned-blackout-273/trajectories.csv": "786111af880b4f192757b56ac7a262ca7475d18b6b3e25e1111a18869acb3946",
+        "epoch-blackout-273/trajectories.csv": "b7c95c220858dc6f56d7eff09ced97c05bdecf6caf035403620532fc13a639d0"
+      },
+      "selected_pairs": 25,
+      "selected_intervals": 445714,
+      "shared_prefix_steps": 82499
+    }
+  },
+  "analysis": {
+    "script_sha256": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+    "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+    "protocol_sha256": "35fa434e8a0a78b081c213b0970f3069e0d72c764db3fd9ae8eff4e24f2c279f",
+    "helpers_sha256": {
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "5dc42a52d77e4fbe239356d9bf3b5b608936a68d27b7119895eaea1211be7a85",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029"
+    }
+  }
+}

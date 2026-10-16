@@ -1592,3 +1592,56 @@ four CSVs and `sources.json` byte for byte.
 Historical replay analyzers deliberately pin source hashes. To regenerate their
 archived inputs or reports, use the commit named in the corresponding report.
 The live estimator remains an opt-in simulation experiment.
+
+## Diagnose where the live epoch-preview commands diverge
+
+Reuse the verified live trajectories and the published epoch-preview case tables:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_epoch_divergence.py \
+  --output /tmp/epoch-divergence
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_epoch_divergence.py
+```
+
+The default raw paths come from the prior report's provenance. To use regenerated
+live runs, pass `--raw-root DIR`, where DIR contains `known-white`,
+`known-correlated`, `new-white` and `new-correlated` from the four preceding
+runner commands. The analyzer checks raw trajectory hashes, simulator, fixtures,
+seeds and noise settings; a new start time or Git commit does not invalidate
+otherwise identical raw observations. An output directory must be new.
+
+The [fixed diagnostic protocol](results/epoch-divergence/protocol.md) retains all
+324 pairs in its accounting and examines all 121 with changed applied commands,
+including unchanged outcomes. It checks shared physical state and nominal inputs
+through the first different guard/loss action. It records the first different
+readiness/evidence and traces release evidence back to its last equal value,
+so a difference that was subsequently reset is not attributed to that release.
+Because unequal timer values can change which arm leads, it also locates the
+later arm's last failed requirement within the earlier arm's uninterrupted
+ready run. That checkpoint explains the immediate release difference.
+
+Selected checkpoints compare the logged pose, original filtered position,
+true position with the estimated heading, and full true pose, using the same
+speed, proposed commands and margins. Endpoint and final-window checkpoints
+remain local diagnostic substitutions after trajectories separate. They do not
+predict a different closed-loop outcome. Tail tables show the final 30 seconds
+at each arm's endpoint and at the shorter common endpoint, including overlapping
+release failures and maximum consecutive readiness under fixed requirement masks.
+
+Outputs are accounting, first forks, prefix events, geometry, tails, requirements,
+cohort/outcome summaries and source fingerprints. Repeat aggregation to compare
+seven CSVs and `sources.json` byte for byte. This analysis changes no controller
+or estimator. See the [divergence diagnosis](results/epoch-divergence/report.md).
+
+To render the recorded shared-history release example (Matplotlib required):
+
+```bash
+python3 experiments/pose_observation_loss/plot_epoch_release_example.py \
+  --diagnosis /tmp/epoch-divergence --output /tmp/epoch-release-example
+```
+
+This fixed example shows the first new-seed lost-hold case without observation
+loss. The numerical series, SVG and provenance are deterministic. The plot uses
+confirmation evidence immediately before the controller resets it on release,
+and checks those values against the original logged counters.
