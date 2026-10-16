@@ -1721,3 +1721,39 @@ are cases, pairs, cohort/loss-mode summaries, verification counts and source/raw
 fingerprints. Repeat aggregation to compare four CSVs and `sources.json` byte
 for byte; figure data, SVG and source fingerprints are deterministic as well.
 See the [live terminal-arc results](results/terminal-arc-live/report.md).
+
+### Diagnose terminal-arc control divergences
+
+Reuse the pinned live records to locate the first different guard/loss action,
+applied command and physical state in every one of the 211 command-changing
+pairs, retaining all 324 pairs in accounting. The six gained and six lost holds
+are reported alongside unchanged outcomes. No new control rollout is involved.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_terminal_arc_divergence.py \
+  --output /tmp/terminal-arc-divergence
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+python3 experiments/pose_observation_loss/plot_terminal_arc_divergence.py \
+  --diagnosis /tmp/terminal-arc-divergence --output /tmp/terminal-arc-example
+```
+
+The default raw paths are recorded in the previous live report. Both scripts
+accept `--raw-root DIR` for relocated or identically regenerated cohorts. Input,
+simulator/helper and raw hashes are checked; a different run start time or Git
+commit is allowed when the controls and raw bytes match. Use new output folders.
+
+The [fixed diagnostic protocol](results/terminal-arc-divergence/protocol.md)
+separates an earlier guard entry from an earlier release and finds the failed
+readiness check that survives timer resets or lead reversals. Exact stopping
+geometry and both terminal paths are compared at logged, true-x/y and true poses,
+using the same nominal controls and margins. Independent chord checks cover the
+terminal geometry. Post-fork 5s/30s windows and own/common final windows describe
+recorded motion, waits and readiness requirements, without predicting outcomes
+under masked requirements or attributing the final hold to a single early gate.
+
+Repeat aggregation to compare seven CSVs and `sources.json` byte for byte. The
+standard-library analyzer needs the pinned raw trajectories; the illustrative
+plot also needs Matplotlib. Its fixed lost-hold example was chosen from the
+previous report, and exports sampled goal-distance data, complete wait spans,
+SVG and source fingerprints. See the
+[terminal-arc divergence diagnosis](results/terminal-arc-divergence/report.md).

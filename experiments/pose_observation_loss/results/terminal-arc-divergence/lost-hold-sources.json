@@ -1,0 +1,24 @@
+{
+  "script_sha256": "6a9e82339c96df2f03a2b389d66e89a5ff84c5a4dbe87c0baed601e9cd5be03e",
+  "identity": {
+    "cohort": "new-white",
+    "mode": "blackout",
+    "seed": "274",
+    "scenario": "maze_50x50",
+    "planner": "Theta*"
+  },
+  "raw_sha256": {
+    "epoch-blackout-274/trajectories.csv": "096e22a14932d7e23d064f577cb57c5f94e86e81f007f1daf71b635f6c5f7a1c",
+    "curved-blackout-274/trajectories.csv": "a0f7df7990066161bf7611ab054871eab6af0d3ddd7aa7fbf7da9de24441ff5e"
+  },
+  "diagnosis_sha256": {
+    "sources.json": "1717f593407a9b33b4c34b314cf18794877946e57482ab9a702a35ee8f8f03f8",
+    "forks.csv": "6761a3ea3633f0038ea2410da4ab839719f73618a626950c7eeb4cc42027ed8d"
+  },
+  "artifacts_sha256": {
+    "lost-hold-series.csv": "ab6afb54e489a729db5673b03e2f70345f0bfb826b93b61f625403e94065aa2f",
+    "lost-hold-waits.csv": "093412f4db14a398b7de1888f1d8c0fab8ffc1b4d119b308e1b1f52ca2312f12",
+    "lost-hold-example.svg": "2a0475839cd88929781b99f3193827d0cdac68068b7aee18a252c550785de500"
+  },
+  "matplotlib_version": "3.10.8"
+}
