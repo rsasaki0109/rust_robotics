@@ -1,0 +1,19 @@
+{
+  "script_sha256": "e7a9abd0a9eefa4c3b78f4ab68cfb7a98c684f7790d4bae38d7f0bb6781b1287",
+  "analysis_sources_sha256": "a99a3d2aa0644a26b632a47c21efdccee37f936e62b1a33795c828742a20a5fd",
+  "inputs_sha256": {
+    "case-support.csv": "5e9c11451f5cba49a7602d0a0f97556be60940874c392917f44812d4ea4e78e8",
+    "comparison.csv": "a0f21efb75f7811e235a1c8bc5a9462c7d77731ba4ce9ed30c3712a970c76cf3"
+  },
+  "support_rows": 36,
+  "cutoff_rows": 24,
+  "matplotlib": "3.10.8",
+  "outputs_sha256": {
+    "cutoff-values.csv": "505a44f300062224a7e30572a27ce4920b87d045b9d6fdac3ad790e7ee4d3681",
+    "fresh-audit-support.png": "804a3faf4da3add6f1f9cd270b9a1ef665b99755f1b39670d5709e7c78fa3d26",
+    "fresh-audit-support.svg": "3bca72a81dc05295518c54e0e407672c946a2625b3ec31570a62fd3fa0de9fb0",
+    "fresh-fixed-cutoff-risk.png": "ba0a8c27249fe8a1b507d0ba9af83769d6a2b959ee0efbf0c7beb8075927ecc6",
+    "fresh-fixed-cutoff-risk.svg": "3ad59ca84dba01c4fac2e95c6b8f03a365106e86b8eb26f875a527e34c1eddfd",
+    "support-values.csv": "85448f35a0d20a84387570b0a40658549924fb368037cd3df8cd5d08d722de2c"
+  }
+}
