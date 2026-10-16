@@ -37,6 +37,44 @@ def load_tracks(path):
     return groups
 
 
+def shared_prefix(reference, candidate):
+    """Verify equal physical/sensed inputs through the first different command."""
+    inputs = [
+        "time_s",
+        "measured_speed",
+        "nominal_target_speed",
+        "nominal_steering",
+        "preview_pose_x",
+        "preview_pose_y",
+        "preview_pose_yaw",
+        "preview_margin",
+        "guard_release_margin",
+        "correction",
+        "correction_received",
+        "precision_active",
+        "effective_position_sigma",
+        "effective_yaw_sigma_rad",
+        "loss_uniform",
+        "observation_age",
+        "speed_free_distance",
+        "speed_cap",
+        "speed_margin",
+    ] + [
+        f"{kind}_{axis}"
+        for kind in ["noise", "bias", "noise_innovation"]
+        for axis in ["x", "y", "yaw"]
+    ]
+    count = 0
+    for a0, a, b0, b in zip(reference, reference[1:], candidate, candidate[1:]):
+        assert all(a0[k] == b0[k] for k in ["x", "y", "yaw", "v"]), "physical prefix"
+        assert all(a[k] == b[k] for k in inputs), "sensed/nominal prefix"
+        count += 1
+        if any(a[k] != b[k] for k in ["target_speed", "steering", "acceleration"]):
+            return count
+    assert len(reference) == len(candidate), "unchanged command length"
+    return count
+
+
 def summarize(cases, pairs):
     result = []
     for cohort in [*COHORTS, "known", "new", "all"]:
@@ -155,7 +193,7 @@ def main():
             for r in preview_audits
         )
         raw_hashes, old_hashes = {}, {}
-        intervals = regress_rows = fusion_intervals = 0
+        intervals = regress_rows = fusion_intervals = prefix_intervals = 0
         for mode in ["none", "random", "blackout"]:
             for seed in seeds:
                 groups = []
@@ -233,6 +271,7 @@ def main():
                         prefixes.append(prefix)
                         intervals += len(track) - 1
                         fusion_intervals += len(track) - 1
+                    prefix_intervals += shared_prefix(groups[0][key], groups[1][key])
                     pairs.append(paired(*current, prefixes, [g[key] for g in groups]))
                 del groups
         sources["cohorts"][cohort] = dict(
@@ -257,6 +296,7 @@ def main():
                 cases=len(results),
                 physical_intervals=intervals,
                 fusion_reconstruction_intervals=fusion_intervals,
+                shared_prefix_intervals=prefix_intervals,
                 exact_preview_audits=len(preview_audits),
                 terminal_chord_audits=len(preview_audits),
                 disabled_reference_cases=81 if cohort.startswith("known-") else 0,
