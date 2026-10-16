@@ -1,0 +1,13 @@
+{
+  "script_sha256": "8a650bc49e09c81be59723575d414787b6c3f554dbed54b24e1e472997741c66",
+  "inputs_sha256": {
+    "summary.csv": "d17553156f32e360db97b86c106e8346ffbcd274a0428fa539cd74f808b15481",
+    "events.csv": "55d8d645ac5ad71c58595a5b2a75ab16dd5d59b9ce07f40f1b810a8f5501dc7c",
+    "sources.json": "302d0d71095c66b09075233d92dcc342d2e5c2d559d12fcc85daca1160cd806a"
+  },
+  "artifacts_sha256": {
+    "gate-sequence-partitions.csv": "10199ab0b64027ff1ceb93a6b84d974b12177ed35fef6382bd1f5c6f69c7585f",
+    "gate-sequence-partitions.svg": "179a6ecdb0f8544563acb16d6dac46f1b789fa62874698264e682e7d5b7dc243"
+  },
+  "matplotlib_version": "3.10.8"
+}
