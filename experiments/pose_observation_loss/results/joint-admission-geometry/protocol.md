@@ -21,6 +21,8 @@ Choose the endpoint plus, in the final 30s while joint-pending, each correction
 epoch's first stationary/fresh observation with at least 10 recovery samples,
 and every stationary/fresh observation at age .5 with at least 10 samples.
 Deduplicate coincident case/time points and retain cases with no such opportunity.
+An epoch also restarts on precision activation, exactly as observation age and
+the recovery sample window do in the simulator.
 Use the logged recovery pose even with zero samples: the simulator then falls
 back to the instantaneous sensed pose. Mark sample count and admission usability.
 
@@ -40,7 +42,8 @@ Keep obstacle and wall clearances separate: recovery permits wall equality but
 requires obstacle distance>M; the speed probe requires strict clearance at walls
 and obstacles. Record ambiguity within 2e-8 and do not claim a boundary-equal
 wall makes recovery impossible. Record the true initial center minimum and the
-zero-age floor M0=.6+2sqrt(2)*sigma. C<M0-2e-8 is a necessary-condition obstruction
+zero-age floor M0=.6+2sqrt(2)*sigma, and record both paths' zero-age classifications.
+C<M0-2e-8 is a necessary-condition obstruction
 to any same-margin path from that fixed position and sigma, even after refreshing
 age. Keep the physical radius .5 comparison separate from these heuristic margins.
 
