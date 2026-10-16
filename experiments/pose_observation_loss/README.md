@@ -2453,3 +2453,28 @@ seven CSVs/provenance and both SVG/PNG figures/series/provenance byte for byte.
 Both seed cohorts were observed previously; conditional quantiles do not
 guarantee evaluation coverage or error risk. See the
 [conditional-cutoff results](results/mode-conditional-cutoffs/report.md).
+
+## Whole-known-seed exclusion checks
+
+Omit each known seed across both arms/noise types and all of its recorded
+cases. Refit pooled/mode-conditional cutoffs on the other two known seeds;
+evaluate the omitted seed and the same existing new cohort separately.
+Preserve missing mode fits and original case weights. A three-fold range
+is reported only when every value is defined.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_seed_exclusion_cutoffs.py \
+  --output /tmp/seed-exclusion-cutoffs
+python3 experiments/pose_observation_loss/plot_seed_exclusion_cutoffs.py \
+  --results /tmp/seed-exclusion-cutoffs --output /tmp/seed-exclusion-cutoffs-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and pinned tracked inputs. The
+[protocol](results/seed-exclusion-cutoffs/protocol.md) keeps all simultaneous
+views/scores/budgets/event kinds/strata and both targets. Every all-known fit
+and original comparison must reproduce the preceding study. Repeat twelve
+CSVs/provenance and both SVG/PNG figures/series/provenance byte for byte.
+Both cohorts were already observed, and repeated existing-new evaluations
+do not add independent cases. See the
+[seed-exclusion results](results/seed-exclusion-cutoffs/report.md).
