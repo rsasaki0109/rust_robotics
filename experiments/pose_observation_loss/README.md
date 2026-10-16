@@ -1795,3 +1795,36 @@ pose for speed would also change its proposed target and stopping forecast, so
 these geometry substitutions are not reported as controller rollouts or new
 held-goal outcomes. See the
 [joint-admission diagnosis](results/joint-admission-geometry/report.md).
+
+### Compare the recovery line with the recorded-steering arc
+
+Use the same 2,120 checkpoints and six poses per checkpoint from all 368 timeout
+cases in the previous diagnosis. Compare the original 0.6 m line with a 0.6 m
+arc at the logged nominal steering, preserving the same sigma, age, distance
+margin and inclusive recovery wall bounds. No steering search is involved.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_commanded_recovery_arc.py \
+  --output /tmp/commanded-recovery-arc
+python3 experiments/pose_observation_loss/plot_commanded_recovery_arc.py \
+  --results /tmp/commanded-recovery-arc --output /tmp/commanded-recovery-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. The standard-library analysis consumes only tracked
+tables and map data, checking their hashes and the pinned simulator/helpers. It
+does not require raw trajectories: the prior provenance chain retains their
+validation. Every curve is checked against independent 120-chord geometry with
+the circular sagitta bound; identical geometry inputs share the calculation.
+
+The [fixed protocol](results/commanded-recovery-arc/protocol.md) compares actual
+recovery and stopping-preview inputs against evaluation-only truth. Both gained
+and lost permissions, optimistic permissions, unnecessary blocking and physical
+radius comparisons are retained. Summaries preserve cohort, arm and overlapping
+checkpoint subsets. No substituted speed target, confirmation timer or live
+held-goal outcome is computed.
+
+Repeat aggregation to compare six CSVs and `sources.json` byte for byte. The
+optional Matplotlib plot includes all truth/estimate categories at age 0.5 s,
+exporting deterministic numeric data, SVG and source fingerprints. See the
+[commanded recovery-arc comparison](results/commanded-recovery-arc/report.md).

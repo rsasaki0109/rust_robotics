@@ -1,0 +1,12 @@
+{
+  "script_sha256": "dec79ba1d688683aef0ce126c2a6fa256ecae697c80ccd2eadc8ef6adf2705d6",
+  "inputs_sha256": {
+    "decisions.csv": "5e01cbf0a031e37b0e6bec9c15e699f196e05e41dda5e65712d5b0ca9a745e73",
+    "sources.json": "af392595563b6021f32dd6a92cd835bb8ca9ebb96e038a76659a93f86ce08ba1"
+  },
+  "artifacts_sha256": {
+    "recovery-decisions.csv": "1d029384e5829bcddbe97f6402792b35787c2b0af403aa83d1f58bae479012fa",
+    "recovery-decisions.svg": "6a8f960b3ca0f68b804c90db51c3559652d9623310230799ddf32481cfef5896"
+  },
+  "matplotlib_version": "3.10.8"
+}
