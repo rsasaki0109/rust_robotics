@@ -1,0 +1,27 @@
+{
+  "source_main": "5da777553d4971b0df9af7e26e4718857825b6f3",
+  "prior_sha256": {
+    "geometry.csv": "68854029b7c63dc36da8431761ce1de3abb4541788ae7f60fde600bee2c2c35f",
+    "forks.csv": "705256e42a7521a6cd75ed04ab9b2ef9097e27c8fa864f7d72584f814778e1d3",
+    "accounting.csv": "0a23e6d8f0bf3a19edaafc7404adae3c7443d9ad92b351e0c59fa1058b7f8be1",
+    "sources.json": "f0e83e6947554a5edebdcc5ce32181f4daf37d4b9ed42fa4d57548f99e24ebed"
+  },
+  "obstacles_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+  "script_sha256": "0a02dfc06a6386391682eb34b60f8def986fddc27e29e4b1c30cf0ab94329ba7",
+  "protocol_sha256": "b1acfd30694e39c171debcef77f56dad00cea48a07e69fd937b34961675114af",
+  "helpers_sha256": {
+    "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+    "verify_stopping_preview.py": "5dc42a52d77e4fbe239356d9bf3b5b608936a68d27b7119895eaea1211be7a85",
+    "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029"
+  },
+  "accounting_pairs": 324,
+  "selected_pairs": 121,
+  "checkpoints": 1116,
+  "pose_rows": 4464,
+  "terminal_chord_checks": 8928,
+  "max_straight_error": 5.111466805374221e-13,
+  "max_nominal_error": 4.335000983957116e-06,
+  "ambiguous_decisions": 0,
+  "ambiguous_pose_gates": 0
+}
