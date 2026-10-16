@@ -1,0 +1,93 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "6e9f6377ed20fe308cf5e7de06fe13c06d841b6041005c6432e872cbb0f08599",
+    "states.csv": "28164ead18d19a9d10035b06055d4d47b2d818fc715772919b58ac31187117f7",
+    "transitions.csv": "2b5f7eead9dc621cb337d787a3a5f8c7dbcde1e8b80f3dbeb480ac1e5bd8f26d",
+    "changes.csv": "8df3f04aa88cef0b2801915acaee664b2988eb3d5746bb4177be77d7e7a96070",
+    "geometry.csv": "909750623c861f06baf9e38cf40f773cfbe1ba462c710ac84bbb711114d25254",
+    "sources.json": "35dfa2a6e5c50c4790ea1e654a8135dc4366c546a0d466645e77f6b688164d81"
+  },
+  "map_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "analysis": {
+    "script_sha256": "628aaa3621cf757a6e27632a4012564e45816511821fd1ff819b47c6a1af1dda",
+    "protocol_sha256": "2cef8146bbc21efc83957feabeb96424b758593f3e700ce5b357c5d0aa203e11",
+    "helpers_sha256": {
+      "analyze_arc_pose_components.py": "5d16fc1d0c7d01e0fac2b29dc0283838c480819b08c4926e06723a554ede9058",
+      "analyze_commanded_arc_components.py": "c04881e1c2ddfd47f6eba9dc79fa8de4f0a51e04ffc5928ad0944fcc2c35744c",
+      "analyze_commanded_recovery_arc.py": "4fbd54bfc44b4e1f28524ddd10d7ca7c6c63d8b629d6801edcee71873754444b",
+      "analyze_correction_centre_transitions.py": "f06b94aad01298a51e1d97877a66b8fe6f366ac330b201c4cdfc60cc2b14b654",
+      "analyze_correction_gate_boundaries.py": "d8aac1352ba4d90d14838b517ac1389cd39702022ff0d31ee73b75e5ab4f18da",
+      "analyze_correction_gate_sequences.py": "b0d20cc18e749912cff1c843112718b2eb0154c382c0846c06dc76f9e9963886",
+      "analyze_epoch_divergence.py": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+      "analyze_epoch_position_components.py": "019e60e4a83321ae26b7323df97d2f5ee8ed521be990c237ed7d1def5fa05356",
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_joint_admission_geometry.py": "5252ba0f1b187bff7368fa8d69715fea59aa4f43052310acc31bbdce8d76526d",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+      "analyze_terminal_arc_live.py": "4adf591accb8fbb88d8eae46177e5694dd6474619e03232c79ef42d74dc414fa",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+    },
+    "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228"
+  },
+  "schema": {
+    "pose_kinds": [
+      "raw",
+      "recovery",
+      "preview",
+      "truth"
+    ],
+    "categories": [
+      "start_obstacle",
+      "start_wall",
+      "start_both",
+      "first_chord_obstacle",
+      "first_chord_wall",
+      "first_chord_both",
+      "positive_first_chord"
+    ],
+    "truth_relations": [
+      "both_clear",
+      "estimate_clear_truth_blocks",
+      "estimate_blocks_truth_clear",
+      "both_block"
+    ],
+    "subsets": [
+      "all",
+      "raw_zero_loss",
+      "command_only_zero_loss"
+    ],
+    "chord_length_m": 0.05,
+    "boundary_tolerance_m": 2e-08
+  },
+  "inherited_validation": {
+    "source_sha256": "35dfa2a6e5c50c4790ea1e654a8135dc4366c546a0d466645e77f6b688164d81",
+    "raw_full_probe": true,
+    "observation_and_physics": true,
+    "new_rollout": false
+  },
+  "audit": {
+    "accounted_cases": 648,
+    "source_timeout_cases": 368,
+    "opportunities": 2583,
+    "scanned_source_states": 171082,
+    "scanned_source_transitions": 168708,
+    "selected_states": 6610,
+    "audited_cases": 100,
+    "audited_opportunities": 171,
+    "selected_source_pairs": 6187,
+    "poses": 26440,
+    "pairs": 18561,
+    "raw_source_matches": 6610,
+    "raw_zero_loss_records": 550,
+    "raw_zero_loss_post_states": 550,
+    "command_only_zero_loss_records": 509,
+    "near_boundary_poses": 0,
+    "state_summary_rows": 240,
+    "pair_summary_rows": 6480
+  }
+}

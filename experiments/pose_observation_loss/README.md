@@ -2107,3 +2107,33 @@ Repeat nine CSVs and `sources.json` byte for byte. New states link to the prior
 `interval_id`; transitions and changes link both states and their event. The
 optional figure keeps every post-event joint loss and all observed event kinds,
 including zero-loss categories. See the [recorded boundary analysis](results/correction-gate-boundaries/report.md).
+
+## Speed-probe start and first-chord blocks
+
+Separate an unsafe starting pose from an unsafe first 0.05 m chord at all
+6,610 previously audited states. Compare raw, recovery, preview and recorded
+truth poses with the same nominal steering and speed margin. Preserve all
+6,187 detailed adjacent pairs and the full opportunity/case accounting.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_starts.py \
+  --output /tmp/speed-probe-starts
+python3 experiments/pose_observation_loss/plot_speed_probe_starts.py \
+  --results /tmp/speed-probe-starts --output /tmp/speed-probe-starts-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. The tracked state/geometry tables and map suffice;
+raw trajectories are not required again. The [fixed protocol](results/speed-probe-starts/protocol.md)
+preserves the speed probe's inclusive blocking equality, separate obstacle/wall
+witnesses, start-first precedence, and same-margin truth classifications.
+Positive first chords do not imply a clear whole path or new successful release.
+
+Pose queries join the prior `state_id` and `source_interval_id`; three input
+views of each source `transition_id` share one recorded action. Keep these
+views separate when counting, including the fixed 550 raw-zero-loss pairs
+and 509 command-only pairs. Non-audited opportunities remain explicit.
+
+Repeat seven CSVs and `sources.json` byte for byte. The optional figure keeps
+the complete raw-zero-loss denominator in both arms; its numeric data includes
+empty event-kind groups. See the [start and first-chord comparison](results/speed-probe-starts/report.md).
