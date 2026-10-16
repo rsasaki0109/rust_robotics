@@ -1,0 +1,133 @@
+{
+  "white-validation": {
+    "provenance": {
+      "started_utc": "2026-10-16T03:58:27.752487+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 0.0,
+      "seeds": [
+        268,
+        269,
+        270
+      ],
+      "commit": "36154a80b2e39b06011159ababad87e57012e583",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        }
+      }
+    },
+    "raw_sha256": {
+      "aligned-blackout-268/trajectories.csv": "3196f457eb69cfca477078fce9e0e0c54138397e33a0df46c25e4d034b864849",
+      "aligned-blackout-269/trajectories.csv": "ae46cbad59db7dccaa4c3926d67ddcb2781036ee0f6b2ed39168bc6fb46bae6d",
+      "aligned-blackout-270/trajectories.csv": "48af481a0d0a2fb4bce92d9c40f4a5e19ba9d5cf638061788a31059d3c395f4f",
+      "aligned-none-268/trajectories.csv": "5fcfe0f8f63b7f60a4d5fa85eed339cabbcf7df5a179aa2225c53a528d483b6d",
+      "aligned-none-269/trajectories.csv": "b095eac0440ef3f6d6669149fa76defd9438e76020d426c8bceb848d3e331e28",
+      "aligned-none-270/trajectories.csv": "450dbafe0d4ae6a875b9f33acb47269ab0d4f0b8b32faef288d6cf60520af86b",
+      "aligned-random-268/trajectories.csv": "8020df2c0dbf203e7df45a1acfaf33c85e389627c7033069fec42f23d887a1d1",
+      "aligned-random-269/trajectories.csv": "f0fbd06564f0c404c899e219787fd4dca964143bd77b88ed082673e8074511bd",
+      "aligned-random-270/trajectories.csv": "8b453d458b79b1fac199cb4e8c5a326201242a52ff7e346ce0e6989838c0de4d"
+    },
+    "summary_sha256": "2f6e6678542d15fa50a054c978ec05795a42b35c15c873b4c10b3f39851e21f1",
+    "provenance_sha256": "7ebd560103b6dc053ebb3d8764c221dd9ba498fdcdcf4b0d482f3b5ef48334d1"
+  },
+  "correlated-validation": {
+    "provenance": {
+      "started_utc": "2026-10-16T03:58:29.108487+00:00",
+      "variants": [
+        "entryline",
+        "aligned"
+      ],
+      "noise_correlation_time_s": 1.0,
+      "seeds": [
+        268,
+        269,
+        270
+      ],
+      "commit": "36154a80b2e39b06011159ababad87e57012e583",
+      "dirty": true,
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+      "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+      "inputs_sha256": {
+        "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+        "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+        "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+      },
+      "inputs_by_variant_sha256": {
+        "entryline": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        },
+        "aligned": {
+          "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+          "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+          "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+        }
+      }
+    },
+    "raw_sha256": {
+      "aligned-blackout-268/trajectories.csv": "3d703908dd85d574f066e99b5a888d7767b1e812bf5a1c091611b6d5d23384c5",
+      "aligned-blackout-269/trajectories.csv": "f8bebef3a040b0ec6ed1ff671ebaae1144f3bdadcd7adb128d62cba6991975f8",
+      "aligned-blackout-270/trajectories.csv": "0e632a26da6ccc393555cb5e6f48f37d7248dbc47ee970fd6e395dee16e15568",
+      "aligned-none-268/trajectories.csv": "19d92d6efb2bd4dd347a4a27f2e59bb124f8e55cafd01c87555619265fa07df4",
+      "aligned-none-269/trajectories.csv": "a3806d3f524f942fb962b1318e5e7d1869255ee9fb1efdd456bd13544c30d77b",
+      "aligned-none-270/trajectories.csv": "a577a967e4dad1fb043e34201d43265a186ff5e8fdea268d259d2fe6dbc752ba",
+      "aligned-random-268/trajectories.csv": "9ecd490763cf52ec4f66f4f849a27e651b7348ab9d4556d9a64aea978daebf9a",
+      "aligned-random-269/trajectories.csv": "1545dd6ec78897466b3d3ea4badd7c376cfc81d88cdc8de88e9dd0bad63e8a93",
+      "aligned-random-270/trajectories.csv": "7a50c7e115135e3938aa625a4b465978acc03aa84484f4a2d72f912e2f760d02"
+    },
+    "summary_sha256": "4cdd263b4dd9e59cae3b6078dc39b3c86ef6246276c40b1608185d453fd31972",
+    "provenance_sha256": "79d1fea87edab3481aa18e11046b532c36d76450dd95d10729b83edd2ba3f0e4"
+  },
+  "analysis": {
+    "script_sha256": "0e2bde7234b775e82ae2c4140dc29a581ac510c8c60c30db710416881848a1fa",
+    "helpers_sha256": {
+      "analyze_epoch_spread_selection.py": "8da24ab7287c141b24e1311e526d3644c95c65b2af2111f30859e9c88b40ec41",
+      "analyze_stationary_epoch_fusion.py": "1d730cb485768c564ae8a79600a3121cef5609eda95bd3435b18c0ef3e89b3b9",
+      "analyze_filter_position_components.py": "e71b019d40923e4b315ceda1c53368f79eaf8faa041de9a5994cd0399c9b28a3",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_stopping_preview.py": "4ca8620130ae92eb7f4e5c33a2496e726820f6f45070d4b53b801a8a66837434"
+    },
+    "frozen_sources_sha256": {
+      "epoch-spread-selection": "441fecce03101ad855ea1d931f8a52d455450b34dadb9a0faebaf393963f80f5",
+      "stationary-epoch-fusion": "0ecbbb9ff57b88f329551267b4276510a64d1ca9742cc03243ea8b878f356bad",
+      "filter-position-components": "4f8a6b1bbc4545fa7c2bcd822336fb0637c8fc8845cae7032dbb20e45d4f3277"
+    },
+    "protocol_sha256": "d2e01a791abc2fae42b6b40dde6cc14f7f442b27c929191b3d57c1430cfcf8e6",
+    "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+    "fixture_sha256": {
+      "obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+      "paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+      "planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50"
+    },
+    "cases": 162,
+    "checkpoints": 704,
+    "epoch_rows": 1868,
+    "score_rows": 49984,
+    "geometry_audits": 6656,
+    "filter_steps_checked": 1226535,
+    "max_logged_filter_error": 1.666666804567285e-09,
+    "note": "New seeds with unchanged generating control; frozen rules only in observation replay, not candidate control/hold validation."
+  }
+}

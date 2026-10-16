@@ -1488,3 +1488,51 @@ Outputs are decisions, per-checkpoint spread, full candidate scores, geometry
 audits, summary subsets and provenance. Repeat into another new directory to
 compare five CSVs and `sources.json` byte for byte. No control or hold outcome is
 rerun. See the [spread-based selection comparison](results/epoch-spread-selection/report.md).
+
+## Validate the frozen replay rules on new observation seeds
+
+Generate new observations with the unchanged controller, then replay the frozen
+position prototype and four arc selectors. Use the configured Rust toolchain;
+the standard runner performs the locked release build and existing verification:
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 268 269 270 \
+  --noise-correlation-time 0 --output /tmp/epoch-holdout-white
+python3 experiments/pose_observation_loss/run.py \
+  --aligned-release-comparison "$fixtures" --seeds 268 269 270 \
+  --noise-correlation-time 1 --output /tmp/epoch-holdout-correlated
+python3 experiments/pose_observation_loss/analyze_epoch_selection_holdout.py \
+  --white /tmp/epoch-holdout-white \
+  --correlated /tmp/epoch-holdout-correlated \
+  --output /tmp/epoch-selection-holdout
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_epoch_selection_holdout.py
+```
+
+All output directories must be new. Generation also runs the entryline comparison
+controls (324 cases in total); the replay analyzes all 162 aligned cases. No
+candidate estimator output enters the generating controller. The analyzer checks
+the prior reports' source hashes to keep the prototype/selection rules frozen,
+and validates the simulator, seeds, noise settings and fixture hashes.
+
+The [predeclared protocol](results/epoch-selection-holdout/protocol.md) keeps one
+final pre-command checkpoint from every trajectory, including held, timeout and
+collision outcomes and moving endpoints. It also keeps fixed late fresh stationary
+checkpoints at 150.5 through 175.5 seconds. A coincident final point is counted
+once. Logged observation age and sigma, including precision-active 0.03, remain
+unchanged. Reconstruct the original filter at every step and evaluate the same
+full margin and conditional spread/heading envelope as before.
+
+Outputs contain case outcomes, checkpoint estimates, epoch means, decisions,
+spread, full candidate scores, geometry audits, outcome/subset summaries and
+position-error summaries, plus provenance. The aggregation uses Python's standard
+library. Repeat it into another new directory to compare nine CSVs and
+`sources.json` byte for byte on the same generated raw runs. Regenerating the raw
+runs records new execution provenance, including its start time and commit.
+
+The held/timeout/contact results belong to the unchanged generating controller.
+Replay metrics test the fixed rules on new observations and hypothetical arcs;
+they do not establish candidate-control reachability or hold improvement. See
+the [new-seed observation validation](results/epoch-selection-holdout/report.md).
