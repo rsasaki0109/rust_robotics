@@ -2195,3 +2195,36 @@ overlap. No_conflict runs and empty groups remain explicit.
 Repeat eight CSVs and provenance byte for byte. The optional figure compares
 the entire 550-loss coverage population and all audited conflict spans at
 .10 m / +/-4 degrees. See the [coverage and persistence results](results/speed-probe-coverage-spans/report.md).
+
+## Position-error components within audited probe spans
+
+Replay all 368 timeout histories and decompose every one of the 19,830 audited
+raw/recovery/preview position errors into observation noise, correction-anchor
+offset, within-anchor drift and motion transport. The component vectors and
+their signed projections add to the error; component norms do not add.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_error_components.py \
+  --output /tmp/speed-probe-error-components
+python3 experiments/pose_observation_loss/plot_speed_probe_error_components.py \
+  --results /tmp/speed-probe-error-components --output /tmp/speed-probe-error-components-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories and the pinned raw trajectories. `--raw-root DIR`
+supports relocated identical cohort directories. All 3,312,000 intervals
+check estimator-window counts; every target input matches the tracked pose
+and its preceding physical truth. Per-group weights and anchor IDs remain
+available. This adds no new controller or geometry.
+
+The [fixed protocol](results/speed-probe-error-components/protocol.md) retains
+the full 550/509 loss populations and every original loss membership. All
+default-setting spans in both families receive mean-vector and centered-RMS
+diagnostics, including no_conflict spans and audit truncation. Within-span
+moments describe selected recorded samples, without a calibrated confidence
+level or a causal clearance attribution.
+
+Repeat eight CSVs and provenance byte for byte. The optional figure keeps
+all 550 loss rows and separately all audited clear-conflict spans, with
+signed projections and state-weighted span moments. See the
+[error-component results](results/speed-probe-error-components/report.md).
