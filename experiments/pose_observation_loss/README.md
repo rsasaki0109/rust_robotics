@@ -1972,3 +1972,37 @@ Repeat six CSVs and `sources.json` byte for byte. The optional Matplotlib figure
 partitions all prior-unresolved age-0.5 envelopes for both recorded arms, inputs,
 paths and uncertainty models, with each denominator explicit. See the
 [same-envelope refinement report](results/admission-envelope-refinement/report.md).
+
+### Compare information floors at the same estimated centres
+
+Keep all 8,480 path/input rows, current estimated centres, +/-4 degree heading
+intervals, steering and full margins. Compare ideal repeats of each weighted
+estimator batch with its existing shared anchors versus independent copies of
+all anchor contributions. Use K=1,3,10,25 and each mathematical limit.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_admission_information_floors.py \
+  --output /tmp/admission-information-floors
+python3 experiments/pose_observation_loss/plot_admission_information_floors.py \
+  --results /tmp/admission-information-floors --output /tmp/information-floors-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. The [fixed protocol](results/admission-information-floors/protocol.md)
+preserves every case, fallback and subset. The model already includes temporal
+correlation within each batch; independence between repeated batches is an
+optimistic assumption. K counts full estimator batches, not samples, correction
+events or elapsed time. Actual future observations would also move the centre.
+
+Reuse the pinned nine-heading geometry to bound sufficient and necessary disk
+radii. Distinguish a certificate for all poses, a known blocking pose, and the
+heading interpolation gap; a blocking pose does not establish that all poses
+block. The same-anchor noise-free limit retains anchor variance. A successful
+limit need not be achievable at any finite batch count. Recorded truth and error
+are evaluation-only, with no new confidence calibration or live outcome claims.
+
+Repeat five CSVs and `sources.json` byte for byte. Compact strategy curves link
+to full checkpoint metadata with `base_row`. The optional Matplotlib figure
+exports all seven age-0.5 bottlenecks for both inputs, paths and recorded arms.
+Geometry, raw-window and physics audits are inherited. See the
+[information-floor comparison](results/admission-information-floors/report.md).
