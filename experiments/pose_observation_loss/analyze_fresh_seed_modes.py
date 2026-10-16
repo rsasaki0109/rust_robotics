@@ -413,6 +413,9 @@ def audit_fresh(raw_root):
     audits = {name: CollisionAudit(points) for name, points in maps.items()}
     fixtures = ROOT / "results/planning-clearance/fixtures/fine-padding"
     inputs = {p.name: digest(p) for p in fixtures.glob("*.csv")}
+    assert (
+        digest(ROOT / "inputs/obstacles.csv") == inputs["obstacles.csv"]
+    ), "audit map differs from simulator input"
     cases, events, pairs, verification, sources = [], [], [], [], {}
     for cohort, tau in zip(FRESH, [0, 1]):
         run = raw_root / ("white" if tau == 0 else "correlated")
@@ -589,10 +592,14 @@ def main():
         "run.py",
         "verify.py",
         "verify_motion_filter.py",
+        "verify_restart_consistency.py",
+        "verify_clearance_paths.py",
         "verify_stopping_preview.py",
         "verify_joint_recovery.py",
         "analyze_terminal_arc_live.py",
         "analyze_correction_centre_transitions.py",
+        "analyze_entry_cycles.py",
+        "analyze_terminal_steering_preview.py",
         "repeat_fresh_seed_case.py",
     ]:
         helpers[name] = digest(ROOT / name)
