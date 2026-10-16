@@ -2478,3 +2478,60 @@ CSVs/provenance and both SVG/PNG figures/series/provenance byte for byte.
 Both cohorts were already observed, and repeated existing-new evaluations
 do not add independent cases. See the
 [seed-exclusion results](results/seed-exclusion-cutoffs/report.md).
+
+## Additional seeds and an immediate timeout-mode census
+
+The [fixed protocol](results/fresh-seed-mode-census/protocol.md) collects seeds
+277/278/279 with the existing straight/curved controller, both noise models,
+all loss modes and the same maps/planners: 324 trajectories, 162 paired cases.
+It counts every immediate correction/precision opportunity at logged 150--180 s
+in every timeout, and compares this census with the same population in the
+existing 648 trajectories. This is a wider population than the earlier selected
+speed-probe audit. The additional seeds do not refit its cutoffs or establish
+their transfer.
+
+With the saved Rust toolchain active and cached dependencies, run:
+
+```bash
+export CARGO_NET_OFFLINE=true
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 277 278 279 --noise-correlation-time 0 \
+  --output /tmp/fresh-seed-mode-census/white
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 277 278 279 --noise-correlation-time 1 \
+  --output /tmp/fresh-seed-mode-census/correlated
+python3 experiments/pose_observation_loss/repeat_fresh_seed_case.py \
+  --raw-root /tmp/fresh-seed-mode-census
+python3 experiments/pose_observation_loss/analyze_fresh_seed_modes.py \
+  --raw-root /tmp/fresh-seed-mode-census --output /tmp/fresh-seed-mode-summary
+MPLCONFIGDIR=/tmp/fresh-seed-mpl python3 experiments/pose_observation_loss/plot_fresh_seed_modes.py \
+  --results /tmp/fresh-seed-mode-summary --output /tmp/fresh-seed-mode-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Every output directory must be new. The repeat helper uses the default Cargo
+release binary; pass `--binary PATH` when using a different target directory.
+It repeats the first white `epoch-none-277` nine-case invocation and requires
+identical complete trajectory/result CSV bytes before writing its command and
+binary fingerprint. The analyzer requires both completed run.py verifications,
+audits all physical transitions/contact/bounds and paired input prefixes, and
+replays every timeout's observation history. It validates every immediate
+pose/count against the original records. Historical comparison needs only the
+pinned repository CSVs, not the original raw histories.
+
+`accounting.csv` preserves every old/fresh case. `events.csv` retains all event
+categories and actual/preview modes; `case-support.csv` exposes mixed-mode and
+no-event cases. `summary.csv` includes all per-seed/cohort, arm, loss-mode and
+event-kind groups, with blank empty fractions. Parent-case-weighted shares use
+1/n_events within each reporting group before conditioning on preview mode.
+Filter/Fusion case counts can overlap. `fresh-pairs.csv`, `fresh-outcomes.csv`
+and `verification.csv` preserve the complete new performance and audit results.
+
+Repeat analysis and plotting into new directories and compare every file byte
+for byte with the first outputs. Within a fixed workspace the output paths do
+not enter artifacts; source raw paths, invocation paths and raw provenance are
+intentionally recorded, so regenerating raw runs elsewhere changes provenance
+fingerprints. CSV/SVG/JSON are saved in the repository; large raw CSVs and PNG
+previews remain in scratch. See the [fresh-seed results](results/fresh-seed-mode-census/report.md).
