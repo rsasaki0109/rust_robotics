@@ -2041,3 +2041,37 @@ figure preserves the full improvement/worsening/tie/censoring partition for
 all observed event kinds, both arms/inputs and every post phase. Event
 association among repeated, outcome-selected timeouts is descriptive. See the
 [recorded correction-centre transitions](results/correction-centre-transitions/report.md).
+
+## Correction gate sequences and uninterrupted evidence
+
+Inspect every recorded decision from the pre-event sample through the following
+1.5 seconds for all 2,583 opportunities in the correction-centre analysis.
+Reconstruct the actual joint/independent/inactive route, simultaneous failure
+sets, and release evidence before the release interval resets its logged timer.
+Keep censored end-of-record events, moving events and missed corrections.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_correction_gate_sequences.py \
+  --output /tmp/correction-gate-sequences
+python3 experiments/pose_observation_loss/plot_correction_gate_sequences.py \
+  --results /tmp/correction-gate-sequences --output /tmp/correction-gates-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories and the pinned raw trajectories. `--raw-root DIR`
+supports relocated identical cohort directories. This audits recorded decisions
+and active release timers; full observation/physics validation is inherited.
+Every available prior phase and both inputs' shared gate fields are matched,
+and the prior action-window counts, delays, movement and runs are reproduced.
+
+The [fixed protocol](results/correction-gate-sequences/protocol.md) distinguishes
+conditions seen true at different times, simultaneous readiness, uninterrupted
+readiness and actual resume. Intervals are exported per event, including overlaps;
+their `event_id` joins the event table and the prior correction-centre tables.
+Failure bit positions follow the recorded `requirement_bit_order`; independent
+and inactive routes leave absent requirements blank. Marginal failures overlap.
+Span boundaries at the observation horizon are not failed requirements.
+
+Repeat seven CSVs and `sources.json` byte for byte. The optional figure includes
+all opportunities and a separately labeled joint-start subset, with censoring
+and every observed event kind. See the [recorded gate sequences and timer audit](results/correction-gate-sequences/report.md).
