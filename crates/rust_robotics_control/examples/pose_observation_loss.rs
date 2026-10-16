@@ -75,6 +75,60 @@ impl NoiseRng {
     }
 }
 
+fn terminal_arc_clearance(sensed: VehicleState, steering: f64, obstacles: &[Point2D]) -> f64 {
+    const LENGTH: f64 = 0.6;
+    let start = Point2D::new(sensed.x, sensed.y);
+    let curvature = steering.tan() / WHEELBASE;
+    let at = |length: f64| {
+        let half = curvature * length / 2.0;
+        let distance = length * if half == 0.0 { 1.0 } else { half.sin() / half };
+        Point2D::new(
+            start.x + distance * (sensed.yaw + half).cos(),
+            start.y + distance * (sensed.yaw + half).sin(),
+        )
+    };
+    let end = at(LENGTH);
+    let boundary = |p: Point2D| p.x.min(p.y).min(50.0 - p.x).min(50.0 - p.y);
+    let mut clearance = boundary(start).min(boundary(end));
+    if curvature == 0.0 {
+        return obstacles
+            .iter()
+            .map(|&p| point_segment_distance(p, start, end))
+            .fold(clearance, f64::min);
+    }
+    // Wall minima may occur inside the arc, where a tangent is cardinal.
+    let sign = curvature.signum();
+    for heading in [
+        0.0,
+        std::f64::consts::FRAC_PI_2,
+        std::f64::consts::PI,
+        3.0 * std::f64::consts::FRAC_PI_2,
+    ] {
+        let progress = ((heading - sensed.yaw) * sign).rem_euclid(std::f64::consts::TAU);
+        if progress <= curvature.abs() * LENGTH {
+            clearance = clearance.min(boundary(at(progress / curvature.abs())));
+        }
+    }
+    let (sine, cosine) = sensed.yaw.sin_cos();
+    for &point in obstacles {
+        // Triangle inequality: a farther point cannot lower the current min.
+        if point.distance(&start) - LENGTH >= clearance {
+            continue;
+        }
+        let (dx, dy) = (point.x - start.x, point.y - start.y);
+        let (forward, left) = (dx * cosine + dy * sine, -dx * sine + dy * cosine);
+        let progress = (curvature * forward).atan2(1.0 - curvature * left) / curvature;
+        let distance = if (0.0..=LENGTH).contains(&progress) {
+            let norm = (curvature * forward).hypot(1.0 - curvature * left);
+            (curvature * (forward * forward + left * left) - 2.0 * left).abs() / (norm + 1.0)
+        } else {
+            point.distance(&start).min(point.distance(&end))
+        };
+        clearance = clearance.min(distance);
+    }
+    clearance
+}
+
 // Predict the proposed command for 0.2 s, then the existing bounded brake,
 // holding the proposed steering. Return a conservative lower bound on center
 // clearance. Distant points use the triangle inequality instead of all segments.
@@ -85,6 +139,7 @@ fn stopping_preview(
     margin: f64,
     obstacles: &[Point2D],
     recovery_preview: bool,
+    terminal_steering_preview: bool,
 ) -> (f64, f64) {
     let initial = Point2D::new(sensed.x, sensed.y);
     let mut predicted = sensed;
@@ -120,7 +175,9 @@ fn stopping_preview(
             }
         }
     }
-    let recovery_clearance = if recovery_preview {
+    let recovery_clearance = if recovery_preview && terminal_steering_preview {
+        terminal_arc_clearance(predicted, steering, obstacles)
+    } else if recovery_preview {
         let start = Point2D::new(predicted.x, predicted.y);
         let end = Point2D::new(
             start.x + 0.6 * predicted.yaw.cos(),
@@ -392,6 +449,93 @@ impl RestartConsistency {
 }
 
 #[cfg(test)]
+mod terminal_arc_tests {
+    use super::*;
+
+    #[test]
+    fn curves_can_increase_or_decrease_obstacle_clearance() {
+        let state = VehicleState::new(10.0, 10.0, 0.0, 0.0, WHEELBASE);
+        let below = [Point2D::new(10.6, 9.5)];
+        let above = [Point2D::new(10.6, 10.5)];
+        assert!((terminal_arc_clearance(state, 0.0, &below) - 0.5).abs() < 1e-12);
+        assert!(terminal_arc_clearance(state, MAX_STEERING, &below) > 0.6);
+        assert!(terminal_arc_clearance(state, MAX_STEERING, &above) < 0.5);
+    }
+
+    #[test]
+    fn includes_interior_wall_minimum() {
+        let yaw = 3.0 * std::f64::consts::FRAC_PI_4;
+        let state = VehicleState::new(10.0, 49.8, yaw, 0.0, WHEELBASE);
+        let expected = 0.2 - (1.0 + yaw.cos()) / (MAX_STEERING.tan() / WHEELBASE);
+        assert!((terminal_arc_clearance(state, MAX_STEERING, &[]) - expected).abs() < 1e-12);
+    }
+
+    #[test]
+    fn exact_arcs_agree_with_independent_chords() {
+        let obstacles = [
+            Point2D::new(10.4, 10.7),
+            Point2D::new(11.0, 10.0),
+            Point2D::new(35.0, 40.0),
+        ];
+        for (x, y, yaw) in [(10.0, 10.0, 0.3), (10.0, 49.8, 2.3), (0.4, 0.4, -2.0)] {
+            for steering in [-MAX_STEERING, -0.2, -1e-12, 0.0, 1e-12, 0.2, MAX_STEERING] {
+                let state = VehicleState::new(x, y, yaw, 0.0, WHEELBASE);
+                let curvature = steering.tan() / WHEELBASE;
+                let half = curvature * 0.6 / 240.0 / 2.0;
+                let chord = 0.6 / 240.0 * if half == 0.0 { 1.0 } else { half.sin() / half };
+                let mut previous = Point2D::new(x, y);
+                let mut heading = yaw;
+                let mut sampled = x.min(y).min(50.0 - x).min(50.0 - y);
+                for _ in 0..240 {
+                    let next = Point2D::new(
+                        previous.x + chord * (heading + half).cos(),
+                        previous.y + chord * (heading + half).sin(),
+                    );
+                    sampled = sampled
+                        .min(next.x)
+                        .min(next.y)
+                        .min(50.0 - next.x)
+                        .min(50.0 - next.y);
+                    for &point in &obstacles {
+                        sampled = sampled.min(point_segment_distance(point, previous, next));
+                    }
+                    previous = next;
+                    heading += 2.0 * half;
+                }
+                let sagitta = if curvature == 0.0 {
+                    0.0
+                } else {
+                    (1.0 - half.cos()) / curvature.abs()
+                };
+                let exact = terminal_arc_clearance(state, steering, &obstacles);
+                assert!((sampled - exact).abs() <= sagitta + 1e-9);
+            }
+        }
+    }
+
+    #[test]
+    fn terminal_change_preserves_stopping_prefix_and_reflection() {
+        let state = VehicleState::new(25.0, 25.0, 0.0, 0.7, WHEELBASE);
+        let obstacles = [Point2D::new(26.0, 25.6)];
+        let original = stopping_preview(state, 0.8, 0.4, 0.8, &obstacles, true, false);
+        let curve = stopping_preview(state, 0.8, 0.4, 0.8, &obstacles, true, true);
+        let mirror = stopping_preview(
+            state,
+            0.8,
+            -0.4,
+            0.8,
+            &[Point2D::new(26.0, 24.4)],
+            true,
+            true,
+        );
+        assert_eq!(original.0, curve.0);
+        assert!((original.1 - curve.1).abs() > 0.001);
+        assert!((curve.0 - mirror.0).abs() < 1e-12);
+        assert!((curve.1 - mirror.1).abs() < 1e-12);
+    }
+}
+
+#[cfg(test)]
 mod motion_filter_tests {
     use super::*;
 
@@ -424,11 +568,11 @@ mod motion_filter_tests {
     fn stationary_stop_can_be_clear_while_forward_recovery_is_blocked() {
         let state = VehicleState::new(25.0, 25.0, 0.0, 0.0, WHEELBASE);
         let obstacles = [Point2D::new(26.2, 25.0)];
-        let (stop, recovery) = stopping_preview(state, 0.0, 0.0, 0.8, &obstacles, true);
+        let (stop, recovery) = stopping_preview(state, 0.0, 0.0, 0.8, &obstacles, true, false);
         assert!((stop - 1.2).abs() < 1e-12);
         assert!((recovery - 0.6).abs() < 1e-12);
         assert!(stop > 0.8 && recovery - 0.1 < 0.8);
-        let (original, sentinel) = stopping_preview(state, 0.0, 0.0, 0.8, &obstacles, false);
+        let (original, sentinel) = stopping_preview(state, 0.0, 0.0, 0.8, &obstacles, false, false);
         assert_eq!(original, stop);
         assert_eq!(sentinel, 0.0);
     }
@@ -436,7 +580,7 @@ mod motion_filter_tests {
     #[test]
     fn recovery_segment_includes_map_boundary() {
         let state = VehicleState::new(49.0, 25.0, 0.0, 0.0, WHEELBASE);
-        let (stop, recovery) = stopping_preview(state, 0.0, 0.0, 0.8, &[], true);
+        let (stop, recovery) = stopping_preview(state, 0.0, 0.0, 0.8, &[], true, false);
         assert_eq!(stop, 1.0);
         assert!((recovery - 0.4).abs() < 1e-12);
     }
@@ -444,8 +588,24 @@ mod motion_filter_tests {
     #[test]
     fn terminal_recovery_preview_respects_curved_motion_symmetry() {
         let left = VehicleState::new(25.0, 25.0, 0.0, 0.7, WHEELBASE);
-        let a = stopping_preview(left, 0.8, 0.4, 0.8, &[Point2D::new(26.0, 25.6)], true);
-        let b = stopping_preview(left, 0.8, -0.4, 0.8, &[Point2D::new(26.0, 24.4)], true);
+        let a = stopping_preview(
+            left,
+            0.8,
+            0.4,
+            0.8,
+            &[Point2D::new(26.0, 25.6)],
+            true,
+            false,
+        );
+        let b = stopping_preview(
+            left,
+            0.8,
+            -0.4,
+            0.8,
+            &[Point2D::new(26.0, 24.4)],
+            true,
+            false,
+        );
         assert!((a.0 - b.0).abs() < 1e-12);
         assert!((a.1 - b.1).abs() < 1e-12);
     }
@@ -692,8 +852,8 @@ mod epoch_fusion_tests {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=28).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE [STATIONARY_EPOCH_FUSION]]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=29).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE [STATIONARY_EPOCH_FUSION [TERMINAL_STEERING_PREVIEW]]]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -785,6 +945,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(false);
     assert!(!stationary_epoch_fusion || aligned_terminal_release);
+    let terminal_steering_preview = args
+        .get(28)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!terminal_steering_preview || stationary_epoch_fusion);
     assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
@@ -836,7 +1002,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound,aligned_terminal_release,stationary_epoch_fusion,epoch_fusion_available,epoch_fusion_group_count,motion_filter_pose_x,motion_filter_pose_y,measured_speed"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound,aligned_terminal_release,stationary_epoch_fusion,epoch_fusion_available,epoch_fusion_group_count,motion_filter_pose_x,motion_filter_pose_y,measured_speed,terminal_steering_preview"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -873,7 +1039,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0,false,false,false,0,{},{},0",
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0,false,false,false,0,{},{},0,false",
             initial.x, initial.y, initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
@@ -1231,6 +1397,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         preview_margin,
                         obs,
                         recovery_preview,
+                        terminal_steering_preview,
                     )
                 } else {
                     (0.0, 0.0)
@@ -1353,7 +1520,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release},{stationary_epoch_fusion},{epoch_fusion_available},{epoch_fusion_group_count},{motion_filter_pose_x:.9},{motion_filter_pose_y:.9},{measured_speed:.17e}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release},{stationary_epoch_fusion},{epoch_fusion_available},{epoch_fusion_group_count},{motion_filter_pose_x:.9},{motion_filter_pose_y:.9},{measured_speed:.17e},{terminal_steering_preview}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {

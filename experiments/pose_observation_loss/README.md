@@ -1673,3 +1673,51 @@ summaries and paired straight-to-arc transitions. A clear terminal arc alone
 does not satisfy the separate recovery straight-line gate or confirmation timers
 and does not predict a held goal. See the
 [terminal-steering comparison](results/terminal-steering-preview/report.md).
+
+### Live comparison of straight and curved terminal previews
+
+The optional `TERMINAL_STEERING_PREVIEW` final simulator argument defaults to
+false and requires stationary epoch fusion. The runner's `curved` arm enables
+it; `epoch` retains the original straight path. Only the terminal 0.6 m preview
+uses the current proposed steering. The stopping prefix, margins, raw recovery
+straight line, speed probe, estimator and confirmation timers stay the same.
+
+Reproduce the fixed 648-case matrix with cached Cargo dependencies:
+
+```bash
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 269 270 271 --noise-correlation-time 0 --output /tmp/terminal-arc-live/known-white
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 269 270 271 --noise-correlation-time 1 --output /tmp/terminal-arc-live/known-correlated
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 274 275 276 --noise-correlation-time 0 --output /tmp/terminal-arc-live/new-white
+python3 experiments/pose_observation_loss/run.py \
+  --terminal-arc-comparison experiments/pose_observation_loss/results/planning-clearance/fixtures \
+  --seeds 274 275 276 --noise-correlation-time 1 --output /tmp/terminal-arc-live/new-correlated
+python3 experiments/pose_observation_loss/analyze_terminal_arc_live.py \
+  --raw-root /tmp/terminal-arc-live --output /tmp/terminal-arc-summary
+python3 experiments/pose_observation_loss/check_terminal_arc_default.py \
+  --raw-root /tmp/terminal-arc-live --output /tmp/terminal-arc-default
+python3 experiments/pose_observation_loss/plot_terminal_arc_live.py \
+  --results /tmp/terminal-arc-summary --output /tmp/terminal-arc-figure
+```
+
+All output directories must be new. The runner builds the locked release
+example and verifies the full observation/filter/recovery/hold records and
+selected exact preview geometry. The analyzer independently audits every
+physical transition, swept contact and map boundary, and verifies common inputs
+until commands first differ. Its baseline regression needs the pinned prior
+epoch-preview raw files at the paths in that report's `sources.json`; those files
+are preserved in this cloud workspace. Regenerate historical references with
+their recorded simulator version if needed. Aggregation and the default check
+use Python's standard library; plotting needs Matplotlib.
+
+The [fixed protocol](results/terminal-arc-live/protocol.md) covers all previously
+hold-changing pairs and new seeds 274–276 without tuning after results. Outputs
+are cases, pairs, cohort/loss-mode summaries, verification counts and source/raw
+fingerprints. Repeat aggregation to compare four CSVs and `sources.json` byte
+for byte; figure data, SVG and source fingerprints are deterministic as well.
+See the [live terminal-arc results](results/terminal-arc-live/report.md).

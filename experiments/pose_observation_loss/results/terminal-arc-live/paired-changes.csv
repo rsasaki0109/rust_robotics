@@ -1,0 +1,5 @@
+cohort,pairs,straight_held,curved_held,gained,lost,mean_matched_wait_delta_s
+known-white,81,29,27,0,2,2.3335802469135802
+known-correlated,81,41,41,2,2,0.7898765432098765
+new-white,81,29,28,1,2,2.2241975308641977
+new-correlated,81,41,44,3,0,-3.7898765432098767

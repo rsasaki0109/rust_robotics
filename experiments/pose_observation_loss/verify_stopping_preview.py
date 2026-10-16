@@ -33,7 +33,7 @@ def preview_components(before, row, obstacles):
     if "preview_pose_x" in row:
         # These fields are independently reconstructed by verify.py first.
         x, y, yaw = (float(row[f"preview_pose_{axis}"]) for axis in ["x", "y", "yaw"])
-    v = float(before["v"])
+    v = float(row.get("measured_speed", before["v"]))
     target = float(row["nominal_target_speed"])
     steering = float(row["nominal_steering"])
     points = [(x, y)]
@@ -69,6 +69,10 @@ def preview_components(before, row, obstacles):
             *(min(px, py, 50 - px, 50 - py) for px, py in [start, end]),
             *(segment_distance(p, start, end) for p in obstacles),
         )
+    if row.get("terminal_steering_preview") == "true":
+        from analyze_recovery_arcs import arc_clearance
+
+        terminal = arc_clearance((x, y, yaw), steering, obstacles)
     return clearance, terminal, len(points) - 1
 
 
@@ -150,6 +154,7 @@ def main():
         ["recoverable", "entryline"],
         ["entryline", "aligned"],
         ["aligned", "epoch"],
+        ["epoch", "curved"],
     ]
     candidate = variants[-1]
     assert {r["variant"] for r in results} == set(variants)
@@ -173,15 +178,31 @@ def main():
                     track,
                     candidate == "consistent",
                     candidate
-                    in ["filtered", "recoverable", "entryline", "aligned", "epoch"],
+                    in [
+                        "filtered",
+                        "recoverable",
+                        "entryline",
+                        "aligned",
+                        "epoch",
+                        "curved",
+                    ],
                 )
             check_motion_filter_track(
                 track,
                 candidate
-                in ["filtered", "recoverable", "entryline", "aligned", "epoch"],
-                candidate == "epoch",
+                in [
+                    "filtered",
+                    "recoverable",
+                    "entryline",
+                    "aligned",
+                    "epoch",
+                    "curved",
+                ],
+                candidate in ["epoch", "curved"],
             )
             selected = [1]
+            if candidate == "curved":
+                selected.append(len(track) - 1)
             flags = ["guard_triggered", "guard_released"]
             if candidate in [
                 "joint",
@@ -192,6 +213,7 @@ def main():
                 "entryline",
                 "aligned",
                 "epoch",
+                "curved",
             ]:
                 flags.append("resumed")
             for flag in flags:
@@ -223,6 +245,7 @@ def main():
                 "entryline",
                 "aligned",
                 "epoch",
+                "curved",
             ]:
                 selected.extend(
                     i for i, r in enumerate(track[1:], 1) if r["resumed"] == "true"
@@ -235,6 +258,7 @@ def main():
                 "entryline",
                 "aligned",
                 "epoch",
+                "curved",
             ]:
                 selected.extend(
                     i
@@ -248,7 +272,8 @@ def main():
                 )
                 exact = (
                     min(stop_exact, terminal_exact - 0.1)
-                    if candidate in ["recoverable", "entryline", "aligned", "epoch"]
+                    if candidate
+                    in ["recoverable", "entryline", "aligned", "epoch", "curved"]
                     else stop_exact
                 )
                 if "stop_preview_clearance_lower_bound" in row:
@@ -278,7 +303,7 @@ def main():
                     exact,
                 )
                 release = float(row.get("guard_release_margin", margin + 0.05))
-                if candidate in ["aligned", "epoch"]:
+                if candidate in ["aligned", "epoch", "curved"]:
                     release_exact = exact_release_preview(
                         stop_exact, terminal_exact, row
                     )
@@ -313,11 +338,40 @@ def main():
                     release_margin=release,
                     entry_extra=float(row.get("guard_entry_extra", 0)),
                 )
-                if candidate in ["recoverable", "entryline", "aligned", "epoch"]:
+                if candidate == "curved":
+                    from analyze_recovery_arcs import chord_check
+                    from analyze_terminal_steering_preview import stopping_endpoint
+
+                    endpoint, precise_steps = stopping_endpoint(
+                        tuple(
+                            float(row[f"preview_pose_{axis}"])
+                            for axis in ["x", "y", "yaw"]
+                        ),
+                        float(row["measured_speed"]),
+                        float(row["nominal_target_speed"]),
+                        float(row["nominal_steering"]),
+                    )
+                    assert precise_steps == steps
+                    error, bound = chord_check(
+                        endpoint,
+                        float(row["nominal_steering"]),
+                        maps[key[0]],
+                        terminal_exact,
+                    )
+                    record.update(
+                        terminal_chord_error=error, terminal_sagitta_bound=bound
+                    )
+                if candidate in [
+                    "recoverable",
+                    "entryline",
+                    "aligned",
+                    "epoch",
+                    "curved",
+                ]:
                     record.update(
                         stop_exact=stop_exact, terminal_recovery_exact=terminal_exact
                     )
-                    if candidate in ["entryline", "aligned", "epoch"]:
+                    if candidate in ["entryline", "aligned", "epoch", "curved"]:
                         record.update(
                             release_exact=exact_release_preview(
                                 stop_exact, terminal_exact, row
@@ -342,6 +396,7 @@ def main():
                     "entryline",
                     "aligned",
                     "epoch",
+                    "curved",
                 ]:
                     free = exact_speed_distance(track[i - 1], row, maps[key[0]])
                     assert abs(free - float(row["speed_free_distance"])) < 1e-8, (
@@ -362,6 +417,7 @@ def main():
                     "entryline",
                     "aligned",
                     "epoch",
+                    "curved",
                 ]:
                     x, y, yaw = (float(row[f"recovery_{k}"]) for k in ["x", "y", "yaw"])
                     line = min(

@@ -97,6 +97,12 @@ def main():
         metavar="FIXTURES",
         help="Compare aligned release with three stationary correction epochs for preview position",
     )
+    comparison.add_argument(
+        "--terminal-arc-comparison",
+        type=Path,
+        metavar="FIXTURES",
+        help="Compare epoch fusion with straight versus commanded-steering terminal previews",
+    )
     parser.add_argument(
         "--noise-correlation-time",
         type=float,
@@ -137,6 +143,8 @@ def main():
         variants = ["entryline", "aligned"]
     if args.epoch_fusion_comparison:
         variants = ["aligned", "epoch"]
+    if args.terminal_arc_comparison:
+        variants = ["epoch", "curved"]
     if len(set(args.seeds)) != len(args.seeds) or any(seed < 0 for seed in args.seeds):
         parser.error("seeds must be distinct nonnegative integers")
     started = datetime.now(timezone.utc)
@@ -155,6 +163,7 @@ def main():
         or args.terminal_entry_only_comparison
         or args.aligned_release_comparison
         or args.epoch_fusion_comparison
+        or args.terminal_arc_comparison
     )
     if fixture_source:
         from verify_clearance_paths import audit
@@ -256,6 +265,7 @@ def main():
                                     "entryline",
                                     "aligned",
                                     "epoch",
+                                    "curved",
                                 ]
                             ).lower(),
                             str(args.noise_correlation_time),
@@ -274,6 +284,7 @@ def main():
                                     "entryline",
                                     "aligned",
                                     "epoch",
+                                    "curved",
                                 ]
                             ).lower(),
                             str(variant == "consistent").lower(),
@@ -289,6 +300,7 @@ def main():
                                     "entryline",
                                     "aligned",
                                     "epoch",
+                                    "curved",
                                 ]
                             ).lower(),
                             str(
@@ -302,6 +314,7 @@ def main():
                                     "entryline",
                                     "aligned",
                                     "epoch",
+                                    "curved",
                                 ]
                             ).lower(),
                             str(variant == "buffered").lower(),
@@ -314,15 +327,25 @@ def main():
                                     "entryline",
                                     "aligned",
                                     "epoch",
+                                    "curved",
                                 ]
                             ).lower(),
                             str(
                                 variant
-                                in ["recoverable", "entryline", "aligned", "epoch"]
+                                in [
+                                    "recoverable",
+                                    "entryline",
+                                    "aligned",
+                                    "epoch",
+                                    "curved",
+                                ]
                             ).lower(),
-                            str(variant in ["entryline", "aligned", "epoch"]).lower(),
-                            str(variant in ["aligned", "epoch"]).lower(),
-                            str(variant == "epoch").lower(),
+                            str(
+                                variant in ["entryline", "aligned", "epoch", "curved"]
+                            ).lower(),
+                            str(variant in ["aligned", "epoch", "curved"]).lower(),
+                            str(variant in ["epoch", "curved"]).lower(),
+                            str(variant == "curved").lower(),
                         ],
                         stdout=log,
                         stderr=subprocess.STDOUT,
@@ -395,6 +418,7 @@ def main():
         or args.terminal_entry_only_comparison
         or args.aligned_release_comparison
         or args.epoch_fusion_comparison
+        or args.terminal_arc_comparison
     ):
         subprocess.run(
             ["python3", str(ROOT / "verify_stopping_preview.py"), str(run)], check=True
