@@ -2740,3 +2740,45 @@ Repeat aggregation and plotting and compare all artifacts byte for byte. Five
 SVG/PNG figures export their full numeric inputs and provenance. Weighting units
 are not independent sample counts; unequal windows do not establish independence.
 See the [planner weighting results](results/planner-window-sensitivity/report.md).
+
+## Planner-specific rankings on common family support
+
+The [fixed protocol](results/planner-conditioned-rankings/protocol.md) compares
+mixed planners and A*/JPS/Theta* separately, using the original 1/n_case weights
+before any selection. `source` retains all available states; `common_family`
+requires all three planners in that same stratum and full case family. Eligibility
+uses availability, never labels or scores. Matching keeps family membership;
+times, state counts and inherited mode fractions can still differ.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_planner_conditioned_rankings.py \
+  --output /tmp/planner-conditioned-rankings
+MPLCONFIGDIR=/tmp/planner-conditioned-mpl python3 experiments/pose_observation_loss/plot_planner_conditioned_rankings.py \
+  --results /tmp/planner-conditioned-rankings --output /tmp/planner-conditioned-figures
+python3 experiments/pose_observation_loss/verify_planner_conditioned_rankings.py \
+  --results /tmp/planner-conditioned-rankings --figures /tmp/planner-conditioned-figures \
+  --output /tmp/planner-conditioned-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output directories/evidence files. Aggregation needs only the standard
+library and tracked inputs; plots need Matplotlib/NumPy. The independent verifier
+needs NumPy and imports no analysis helpers. It reconstructs vectors and labels,
+audits every planned family/stratum, and directly evaluates weighted pairs and
+numeric figure inputs. No raw histories, new simulations, Rust build, fitting or
+cutoff changes are needed.
+
+`family-support.csv` keeps every planned family, including zero support;
+`component-summary.csv`, `ranking-summary.csv` and `seed-support.csv` retain all
+populations, planners, strata, targets and E/P/U labels. `planner-blocks.csv`
+contains all nine ordered positive/negative planner pairs and their within-seed
+numerators/denominators. Rankings include full, within-seed, within-planner and
+jointly within-seed-and-planner AUCs and comparison shares. Sum numerators and
+denominators before division. Missing-class AUC stays blank.
+
+Original accounting/support/events/cutoffs/loss links and prior complete
+case/family audits are copied unchanged. Six SVG/PNG figures have full numeric
+exports and hashes. Repeat aggregation/plotting and compare all artifacts byte
+for byte. Planner matching can remove class support or raise a descriptive AUC;
+neither supplies independent validation or estimator repair.
+See the [planner-conditioned results](results/planner-conditioned-rankings/report.md).
