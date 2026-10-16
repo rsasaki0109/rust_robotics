@@ -5,9 +5,17 @@ from copy import deepcopy
 import csv
 from pathlib import Path
 import tempfile
+import random
 import unittest
 
-from analyze_epoch_preview import NEW_COLUMNS, compare_disabled, diagnostics, paired
+from analyze_epoch_preview import (
+    CollisionAudit,
+    NEW_COLUMNS,
+    compare_disabled,
+    diagnostics,
+    paired,
+)
+from verify_stopping_preview import segment_distance
 from analyze_stationary_epoch_fusion import StationaryEpochFusion
 from verify_motion_filter import check_epoch_pair, check_motion_filter_track
 
@@ -77,6 +85,19 @@ def fixture(enabled=True):
 
 
 class EpochPreviewTests(unittest.TestCase):
+    def test_spatial_contact_query_catches_sweeps_and_matches_full_scans(self):
+        audit = CollisionAudit([(0.5, 0.49)])
+        self.assertTrue(audit.contact((0, 0), (1, 0)))
+        self.assertFalse(CollisionAudit([(0.5, 0.501)]).contact((0, 0), (1, 0)))
+        rng = random.Random(1739)
+        obstacles = [(rng.uniform(-2, 3), rng.uniform(-2, 3)) for _ in range(80)]
+        audit = CollisionAudit(obstacles)
+        for _ in range(200):
+            start = tuple(rng.uniform(-2, 3) for _ in range(2))
+            end = tuple(rng.uniform(-2, 3) for _ in range(2))
+            expected = min(segment_distance(p, start, end) for p in obstacles) <= 0.5
+            self.assertEqual(audit.contact(start, end), expected)
+
     def test_parity_includes_fresh_use_and_stale_fallback_after_a_missed_correction(
         self,
     ):

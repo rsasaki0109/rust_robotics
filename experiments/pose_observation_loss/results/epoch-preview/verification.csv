@@ -1,0 +1,5 @@
+cohort,cases,physical_intervals,fusion_reconstruction_intervals,exact_preview_audits,disabled_reference_cases,disabled_reference_rows,initial_batch_cases,initial_batch_rows
+known-white,162,1264261,632637,1396,81,631705,162,1264423
+known-correlated,162,1189271,594360,1271,81,594992,162,1189433
+new-white,162,1254028,628541,1429,0,0,162,1254190
+new-correlated,162,1174422,587858,1615,0,0,162,1174584

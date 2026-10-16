@@ -2,6 +2,7 @@
 """Summarize frozen live epoch-preview runs and audit disabled-mode regression."""
 
 import argparse
+from collections import defaultdict
 import csv
 import hashlib
 from itertools import zip_longest
@@ -10,7 +11,9 @@ import math
 from pathlib import Path
 import statistics
 
+from analyze_entry_cycles import physical_intervals
 from summarize_stopping_preview import save_rows
+from verify_stopping_preview import segment_distance
 
 ROOT = Path(__file__).resolve().parent
 SIMULATOR = (
@@ -32,6 +35,55 @@ NEW_COLUMNS = {
     "motion_filter_pose_y",
     "measured_speed",
 }
+
+
+class CollisionAudit:
+    """Exact radius-0.5 swept contact tests with a conservative spatial query."""
+
+    def __init__(self, obstacles):
+        self.cells = defaultdict(list)
+        for x, y in obstacles:
+            self.cells[math.floor(x), math.floor(y)].append((x, y))
+
+    def contact(self, start, end):
+        # Every point within radius of a segment lies in this expanded box.
+        # Extra candidates near grid corners are harmless; no close point is
+        # omitted. Keep a small query allowance for the CSV's rounded position.
+        radius = 0.5 + 2e-9
+        near = (
+            p
+            for ix in range(
+                math.floor(min(start[0], end[0]) - radius),
+                math.floor(max(start[0], end[0]) + radius) + 1,
+            )
+            for iy in range(
+                math.floor(min(start[1], end[1]) - radius),
+                math.floor(max(start[1], end[1]) + radius) + 1,
+            )
+            for p in self.cells.get((ix, iy), [])
+        )
+        distance = min(
+            (segment_distance(p, start, end) for p in near), default=math.inf
+        )
+        assert abs(distance - 0.5) > 2e-9, "CSV contact classification is ambiguous"
+        return distance <= 0.5
+
+    def check(self, track):
+        physical_intervals(track)  # Includes yaw and every Euler transition.
+        contacts = boundaries = 0
+        previous = previous_contact = None
+        for before, row in zip(track, track[1:]):
+            start = tuple(float(before[a]) for a in ["x", "y"])
+            end = tuple(float(row[a]) for a in ["x", "y"])
+            segment = start, end
+            contact = (
+                previous_contact if segment == previous else self.contact(start, end)
+            )
+            assert contact == (float(row["step_min_obstacle_distance"]) <= 0.5)
+            contacts += contact
+            boundaries += any(not 0 <= p <= 50 for p in end)
+            previous, previous_contact = segment, contact
+        return contacts, boundaries
 
 
 def digest(path):
@@ -267,6 +319,12 @@ def main():
     old_sources = json.loads(
         (ROOT / "results/epoch-selection-holdout/sources.json").read_text()
     )
+    maps = defaultdict(list)
+    for row in read_rows(
+        ROOT / "results/planning-clearance/fixtures/fine-padding/obstacles.csv"
+    ):
+        maps[row["scenario"]].append((float(row["x"]), float(row["y"])))
+    collision_audits = {name: CollisionAudit(points) for name, points in maps.items()}
     cases, pairs, verification, sources = [], [], [], {}
     for cohort in COHORTS:
         run = getattr(args, cohort.replace("-", "_")).resolve()
@@ -366,6 +424,11 @@ def main():
                             and (r["scenario"], r["planner"]) == key
                         )
                         diagnostic, prefix = diagnostics(tracks[key])
+                        contacts, boundaries = collision_audits[key[0]].check(
+                            tracks[key]
+                        )
+                        assert bool(contacts) == (row["collision"] == "true")
+                        assert bool(boundaries) == (row["status"] == "out_of_bounds")
                         event = events[tuple(row[k] for k in ["variant", *KEY])]
                         assert (
                             abs(
@@ -378,6 +441,8 @@ def main():
                             cohort=cohort,
                             **row,
                             **diagnostic,
+                            swept_contact_intervals=contacts,
+                            out_of_bounds_intervals=boundaries,
                             stationary_wait_time_s=event["stationary_wait_time_s"],
                             short_reentries=event["short_reentries"],
                         )
@@ -439,6 +504,7 @@ def main():
                 "verify_joint_recovery.py",
                 "verify_restart_consistency.py",
                 "analyze_stationary_epoch_fusion.py",
+                "analyze_entry_cycles.py",
                 "summarize_stopping_preview.py",
             ]
         },
