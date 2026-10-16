@@ -2287,3 +2287,34 @@ mean errors use known truth for offline arithmetic, without changing point
 labels or recorded control. The figure keeps the full .05 m span partition
 and separate input/difference temporal-model comparisons. See the
 [temporal-information results](results/speed-probe-temporal-information/report.md).
+
+## Information retained across correction opportunities
+
+Replay the original 368 timeout histories at every saved correction snapshot.
+Match the pinned positions, preceding truth, estimator windows and error
+components, then reconstruct exact observation steps and anchor weights.
+Compare pre with immediate, +.18 s, +.50 s and +1.50 s for both inputs at all
+2,583 opportunities, retaining received/missed/precision events and censoring.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_correction_information_renewal.py \
+  --output /tmp/correction-information-renewal
+python3 experiments/pose_observation_loss/plot_correction_information_renewal.py \
+  --results /tmp/correction-information-renewal --output /tmp/correction-information-renewal-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and pinned raw histories; `--raw-root DIR` supports the
+same four cohort directories at a relocated path. The
+[fixed protocol](results/correction-information-renewal/protocol.md) preserves
+all 25,830 source snapshot references and 20,664 requested pre/post pairs.
+Exact group sample-step/sigma lists retain window overlap and AR correlation.
+Shared anchors, the event's new anchor and other older anchors are distinct.
+Unavailable outcomes have blank model fields rather than zero error.
+
+Repeat seven CSVs and provenance byte for byte. The optional figure keeps both
+arms, both inputs, every post phase and all requested pairs, including censored
+counts; its numeric data include empty event kinds. Partial noise-plus-anchor
+variance is not calibrated and excludes drift/nonlinear transport. Error
+change subtracts truth displacement from pose change. Recorded actions remain
+fixed. See the [information-renewal results](results/correction-information-renewal/report.md).

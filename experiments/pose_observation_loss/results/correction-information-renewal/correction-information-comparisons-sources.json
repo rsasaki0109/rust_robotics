@@ -1,0 +1,9 @@
+{
+  "script_sha256": "3f9c960ddd54f770c68d204aa96f794edfbbd2ba987487e43329cf75e36ee21d",
+  "input_sha256": {
+    "summary.csv": "105a6ae822a06a4e6a23c2b068f95fb2edf7aa7574607844ff774146e0111da2",
+    "sources.json": "30cfcbf3a7987e2c64da1b0ce0b16b36f1e92c319b7f51bc3c7048e1e3f535e6"
+  },
+  "numeric_rows": 768,
+  "weighting": "one matched event/input/phase pair; requested partition retains censoring"
+}
