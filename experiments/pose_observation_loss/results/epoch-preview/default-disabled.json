@@ -1,0 +1,19 @@
+{
+  "cases": 9,
+  "omitted_option": true,
+  "explicit_false_reference": "/workspace/scratch/epoch-preview/verified/known-white/aligned-none-268",
+  "raw_path": "/workspace/scratch/epoch-preview/default-omitted",
+  "simulator_sha256": "4e42e38a0f28730ab41f4c7d021b6824fea920057bfb0cc2a7baae3903d1153b",
+  "checks": {
+    "trajectories.csv": {
+      "sha256": "b0da25b292cbfa9a30aefd20e44b2902234d762bb1bfe77a8a229c535fe8ed1e",
+      "bytes": 53935065,
+      "identical": true
+    },
+    "results.csv": {
+      "sha256": "3f11b75ed3a0596775d7ac995a135503447e7cdd7773affeb41900e9277debcc",
+      "bytes": 2007,
+      "identical": true
+    }
+  }
+}

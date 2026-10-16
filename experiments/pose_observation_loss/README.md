@@ -1536,3 +1536,59 @@ The held/timeout/contact results belong to the unchanged generating controller.
 Replay metrics test the fixed rules on new observations and hypothetical arcs;
 they do not establish candidate-control reachability or hold improvement. See
 the [new-seed observation validation](results/epoch-selection-holdout/report.md).
+
+## Run the stationary-epoch position estimator in the stopping preview
+
+The optional `STATIONARY_EPOCH_FUSION` simulator argument follows
+`ALIGNED_TERMINAL_RELEASE` and defaults to false. It requires the aligned
+configuration. The paired runner sets all preceding flags:
+
+```bash
+fixtures=experiments/pose_observation_loss/results/planning-clearance/fixtures
+epoch_runs=/tmp/live-epoch-preview
+python3 experiments/pose_observation_loss/run.py \
+  --epoch-fusion-comparison "$fixtures" --seeds 268 269 270 \
+  --noise-correlation-time 0 --output "$epoch_runs/known-white"
+python3 experiments/pose_observation_loss/run.py \
+  --epoch-fusion-comparison "$fixtures" --seeds 268 269 270 \
+  --noise-correlation-time 1 --output "$epoch_runs/known-correlated"
+python3 experiments/pose_observation_loss/run.py \
+  --epoch-fusion-comparison "$fixtures" --seeds 271 272 273 \
+  --noise-correlation-time 0 --output "$epoch_runs/new-white"
+python3 experiments/pose_observation_loss/run.py \
+  --epoch-fusion-comparison "$fixtures" --seeds 271 272 273 \
+  --noise-correlation-time 1 --output "$epoch_runs/new-correlated"
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_epoch_preview.py
+```
+
+Use the configured Rust toolchain and new output directories. These four runs
+produce and verify 648 live cases. `aligned` is the reference; `epoch` replaces
+only stopping-preview x,y when the frozen three-epoch estimator is available.
+Heading comes from the original motion filter. The estimator retains stationary
+fresh observations from received corrections, averages each epoch separately,
+and equally weights three epochs. Motion or precision activation clears history.
+The [fixed protocol](results/epoch-preview/protocol.md) specifies the exact
+windows, sample requirements and inclusive thresholds.
+
+The original position remains in use whenever fusion is unavailable. Nominal
+steering, speed-probe inputs, raw recovery means, margins and timers retain their
+existing definitions; changed preview decisions can change subsequent motion.
+The offline arc selectors are not executed. New CSV columns record enablement,
+availability, epoch count, original filtered x,y, and round-trip measured speed.
+The latter preserves strict threshold decisions that nine-decimal speed could
+otherwise obscure. Python replays the unchanged prototype on every candidate
+row and checks the position, history, fallback and preserved heading.
+
+Each runner writes verified outcomes, event metrics and geometry audits without
+requiring earlier raw data. The published aggregate additionally checks all old
+fields against the prior known-seed observations and against the initial batch
+before speed-log precision was improved. Its analyzer command and retained raw
+paths appear in the [live comparison](results/epoch-preview/report.md). The
+analyzer writes per-case metrics, paired waits at a common time horizon, cohort
+summaries and provenance. Repeat aggregation on the same raw inputs to compare
+four CSVs and `sources.json` byte for byte.
+
+Historical replay analyzers deliberately pin source hashes. To regenerate their
+archived inputs or reports, use the commit named in the corresponding report.
+The live estimator remains an opt-in simulation experiment.
