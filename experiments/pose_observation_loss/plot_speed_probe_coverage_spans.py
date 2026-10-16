@@ -132,7 +132,10 @@ def main():
             "svg.hashsalt": "speed-probe-coverage-spans",
         }
     )
-    fig, axes = plt.subplots(2, 3, figsize=(12, 7), layout="constrained")
+    fig, axes = plt.subplots(2, 3, figsize=(12, 7))
+    fig.subplots_adjust(
+        left=0.12, right=0.99, bottom=0.15, top=0.87, wspace=0.55, hspace=0.5
+    )
     coverage_names = [
         "Inside both bounds",
         "Position only outside",
@@ -225,7 +228,14 @@ def main():
         ax.set_ylim(0, max(1, ax.get_ylim()[1]) * 1.17)
         ax.spines[["top", "right"]].set_visible(False)
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="outside upper center", ncol=4, fontsize=9)
+    fig.legend(
+        handles,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.995),
+        ncol=4,
+        fontsize=9,
+    )
     axes[1, 2].legend(
         handles=[
             Patch(color=arm_colors[0], label="Baseline log"),
@@ -248,7 +258,7 @@ def main():
     args.output.mkdir(parents=True)
     save_rows(args.output / "coverage-span-comparisons.csv", series)
     svg = args.output / "coverage-span-comparisons.svg"
-    fig.savefig(svg, metadata={"Date": None})
+    fig.savefig(svg, metadata={"Date": None}, bbox_inches="tight")
     svg.write_text(
         "\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n"
     )
@@ -256,6 +266,7 @@ def main():
         args.output / "coverage-span-comparisons.png",
         dpi=160,
         metadata={"Software": "rust_robotics speed-probe-coverage-spans"},
+        bbox_inches="tight",
     )
     plt.close(fig)
     provenance = dict(
