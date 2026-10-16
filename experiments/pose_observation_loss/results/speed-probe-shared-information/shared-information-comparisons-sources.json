@@ -1,0 +1,19 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "bc7a40a8da19e573d443c09fec79d4cb5fa1023de74b0bfbcfad2d4d40b07274",
+    "inputs.csv": "63a674580021cab8153a875d8b5c796236155c3f8e1ee56da2b1497b277abd49",
+    "anchor-weights.csv": "ab1f112c287a0f2c856586110ba7dfcbb84f137039149ff63155962b7dc9d97a",
+    "pairs.csv": "f48da3e2e64fe6ad264890137944f5776034408fa7bf359baecae0d0c2c9744b",
+    "loss-links.csv": "b25ba5f8fe9f6cafbe1bc20a32b318455804adf3dc1639f10d335607fea7222b",
+    "summary.csv": "7dc14fb07e2997e519397682266f5b1770f64b4b7c556dbbea80e2097b668a3a",
+    "sources.json": "56444ffd8625ce3eabff48ecf6439470234d00e591beb8e33f7f195e55f4a6a0"
+  },
+  "script_sha256": "6718e003a9c2eca477ce7baf877064f88eba70fda1199a9e10763120e2de9105",
+  "analysis_sha256": "2607bc45964dda48ee5492405089b937b5435738f179d59b9842c2628019db33",
+  "matplotlib_version": "3.10.8",
+  "numeric_rows": 252,
+  "agreement_threshold_m": 0.05,
+  "truth_position_radius_m": 0.1,
+  "svg_normalization": "strip trailing whitespace from generated XML lines"
+}
