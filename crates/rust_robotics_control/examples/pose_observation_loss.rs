@@ -267,6 +267,88 @@ struct ObservationEvent {
     precision_activation: bool,
 }
 
+struct StationaryEpoch {
+    time: f64,
+    samples: VecDeque<(f64, f64, f64)>,
+}
+
+// Exact live port of the frozen sensor-only Python prototype. This changes
+// preview position only; the existing motion filter still supplies heading.
+#[derive(Default)]
+struct StationaryEpochFusion {
+    groups: VecDeque<StationaryEpoch>,
+    epoch: Option<f64>,
+    previous_speed: f64,
+    previous_time: Option<f64>,
+}
+
+impl StationaryEpochFusion {
+    fn observe(
+        &mut self,
+        sensed: VehicleState,
+        previous_steering: f64,
+        event: ObservationEvent,
+        age: f64,
+    ) -> Option<(f64, f64)> {
+        assert!(self.previous_time.map_or(true, |time| event.time > time));
+        self.previous_time = Some(event.time);
+        if sensed.v.abs() > 0.02 || event.precision_activation {
+            self.groups.clear();
+        }
+        if event.received || event.precision_activation {
+            self.epoch = Some(event.time);
+        }
+        while self
+            .groups
+            .front()
+            .is_some_and(|group| event.time - group.time > 15.0 + 1e-9)
+        {
+            self.groups.pop_front();
+        }
+        let distance = self.previous_speed * DT;
+        let turn = distance / WHEELBASE * previous_steering.tan();
+        for group in &mut self.groups {
+            for (x, y, yaw) in &mut group.samples {
+                *x += distance * yaw.cos();
+                *y += distance * yaw.sin();
+                *yaw = (*yaw + turn).sin().atan2((*yaw + turn).cos());
+            }
+        }
+        if sensed.v.abs() <= 0.02 && (0.0..=0.5 + 1e-9).contains(&age) {
+            if let Some(epoch) = self.epoch {
+                if self.groups.back().map_or(true, |group| group.time != epoch) {
+                    self.groups.push_back(StationaryEpoch {
+                        time: epoch,
+                        samples: VecDeque::new(),
+                    });
+                    if self.groups.len() > 3 {
+                        self.groups.pop_front();
+                    }
+                }
+                let samples = &mut self.groups.back_mut().unwrap().samples;
+                samples.push_back((sensed.x, sensed.y, sensed.yaw));
+                if samples.len() > 25 {
+                    samples.pop_front();
+                }
+            }
+        }
+        self.previous_speed = sensed.v;
+        if sensed.v.abs() > 0.02
+            || age > 1.5 + 1e-9
+            || self.groups.len() != 3
+            || Some(self.groups.back().unwrap().time) != self.epoch
+            || self.groups.iter().take(2).any(|g| g.samples.len() < 10)
+        {
+            return None;
+        }
+        let (x, y) = self.groups.iter().fold((0.0, 0.0), |(x, y), group| {
+            let (mean_x, mean_y, _) = mean_pose(&group.samples);
+            (x + mean_x, y + mean_y)
+        });
+        Some((x / 3.0, y / 3.0))
+    }
+}
+
 impl RestartConsistency {
     fn observe(&mut self, sensed: VehicleState, active: bool, event: ObservationEvent) {
         if !active || sensed.v.abs() > 0.02 || event.precision_activation {
@@ -441,10 +523,177 @@ mod motion_filter_tests {
     }
 }
 
+#[cfg(test)]
+mod epoch_fusion_tests {
+    use super::*;
+
+    fn observe(
+        fusion: &mut StationaryEpochFusion,
+        time: f64,
+        x: f64,
+        speed: f64,
+        received: bool,
+        precision: bool,
+        age: f64,
+    ) -> Option<(f64, f64)> {
+        fusion.observe(
+            VehicleState::new(x, 0.0, 0.0, speed, WHEELBASE),
+            0.0,
+            ObservationEvent {
+                time,
+                correction: received,
+                received,
+                precision_activation: precision,
+            },
+            age,
+        )
+    }
+
+    fn epoch(fusion: &mut StationaryEpochFusion, time: f64, x: f64, count: usize) {
+        for i in 0..count {
+            observe(
+                fusion,
+                time + i as f64 * DT,
+                x,
+                0.0,
+                i == 0,
+                false,
+                i as f64 * DT,
+            );
+        }
+    }
+
+    fn ready() -> StationaryEpochFusion {
+        let mut fusion = StationaryEpochFusion::default();
+        epoch(&mut fusion, 0.0, 0.0, 25);
+        epoch(&mut fusion, 5.0, 0.0, 25);
+        epoch(&mut fusion, 10.0, 0.0, 1);
+        fusion
+    }
+
+    #[test]
+    fn gives_each_received_epoch_equal_weight() {
+        let mut fusion = StationaryEpochFusion::default();
+        epoch(&mut fusion, 0.0, 0.0, 25);
+        epoch(&mut fusion, 5.0, 3.0, 25);
+        assert_eq!(
+            observe(&mut fusion, 10.0, 9.0, 0.0, true, false, 0.0),
+            Some((4.0, 0.0))
+        );
+        assert_eq!(
+            fusion
+                .groups
+                .iter()
+                .map(|g| g.samples.len())
+                .collect::<Vec<_>>(),
+            [25, 25, 1]
+        );
+    }
+
+    #[test]
+    fn missed_correction_is_neither_a_new_epoch_nor_fresh_data() {
+        let mut fusion = ready();
+        assert_eq!(
+            observe(&mut fusion, 15.0, 100.0, 0.0, false, false, 5.0),
+            None
+        );
+        assert_eq!(fusion.groups.len(), 3);
+        assert_eq!(fusion.groups.back().unwrap().time, 10.0);
+        assert_eq!(fusion.groups.back().unwrap().samples.len(), 1);
+    }
+
+    #[test]
+    fn expires_after_the_inclusive_fifteen_second_horizon() {
+        let mut fusion = StationaryEpochFusion::default();
+        epoch(&mut fusion, 0.0, 0.0, 25);
+        epoch(&mut fusion, 5.0, 0.0, 25);
+        assert_eq!(
+            observe(&mut fusion, 15.0, 0.0, 0.0, true, false, 0.0),
+            Some((0.0, 0.0))
+        );
+        assert_eq!(
+            observe(&mut fusion, 15.02, 0.0, 0.0, false, false, 0.02),
+            None
+        );
+        assert_eq!(fusion.groups.len(), 2);
+    }
+
+    #[test]
+    fn clears_on_motion_or_precision_but_keeps_the_speed_boundary() {
+        let mut fusion = ready();
+        assert!(observe(&mut fusion, 10.02, 0.0, 0.02, false, false, 0.02).is_some());
+        assert!(observe(&mut fusion, 10.04, 0.0, 0.020001, false, false, 0.04).is_none());
+        assert!(fusion.groups.is_empty());
+        let mut fusion = ready();
+        assert!(observe(&mut fusion, 10.02, 1.0, 0.0, false, true, 0.0).is_none());
+        assert_eq!(fusion.groups.len(), 1);
+        assert_eq!(fusion.groups[0].time, 10.02);
+    }
+
+    #[test]
+    fn bounds_fresh_windows_and_requires_ten_samples_in_older_epochs() {
+        let mut fusion = StationaryEpochFusion::default();
+        observe(&mut fusion, -1.0, 99.0, 0.0, false, false, 0.0);
+        assert!(fusion.groups.is_empty());
+        epoch(&mut fusion, 0.0, 0.0, 40);
+        assert_eq!(fusion.groups[0].samples.len(), 25);
+        let mut fusion = StationaryEpochFusion::default();
+        epoch(&mut fusion, 0.0, 0.0, 9);
+        epoch(&mut fusion, 5.0, 0.0, 25);
+        assert!(observe(&mut fusion, 10.0, 0.0, 0.0, true, false, 0.0).is_none());
+        let mut fusion = StationaryEpochFusion::default();
+        epoch(&mut fusion, 0.0, 0.0, 10);
+        epoch(&mut fusion, 5.0, 0.0, 10);
+        assert_eq!(
+            observe(&mut fusion, 10.0, 0.0, 0.0, true, false, 0.0),
+            Some((0.0, 0.0))
+        );
+    }
+
+    #[test]
+    fn transports_with_previous_speed_and_applied_steering() {
+        let mut fusion = ready();
+        // Previous speed at 10 s is zero. The new 0.01 reading must not
+        // propagate old samples until the following observation.
+        let steering = WHEELBASE.atan();
+        assert_eq!(
+            observe(&mut fusion, 10.02, 0.0, 0.01, false, false, 0.02),
+            Some((0.0, 0.0))
+        );
+        for i in 1..=2 {
+            let x = if i == 1 {
+                0.0002
+            } else {
+                0.0002 + 0.0002 * 0.0002_f64.cos()
+            };
+            let y = if i == 1 {
+                0.0
+            } else {
+                0.0002 * 0.0002_f64.sin()
+            };
+            let result = fusion
+                .observe(
+                    VehicleState::new(x, y, i as f64 * 0.0002, 0.01, WHEELBASE),
+                    steering,
+                    ObservationEvent {
+                        time: 10.02 + i as f64 * DT,
+                        correction: false,
+                        received: false,
+                        precision_activation: false,
+                    },
+                    0.02 + i as f64 * DT,
+                )
+                .unwrap();
+            assert!((result.0 - x).abs() < 1e-12);
+            assert!((result.1 - y).abs() < 1e-12);
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    if !(15..=27).contains(&args.len()) {
-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
+    if !(15..=28).contains(&args.len()) {
+        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE [STATIONARY_EPOCH_FUSION]]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
     }
     let input = Path::new(&args[1]);
     let output = Path::new(&args[2]);
@@ -530,6 +779,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .transpose()?
         .unwrap_or(false);
     assert!(!aligned_terminal_release || terminal_entry_only);
+    let stationary_epoch_fusion = args
+        .get(27)
+        .map(|s| s.parse::<bool>())
+        .transpose()?
+        .unwrap_or(false);
+    assert!(!stationary_epoch_fusion || aligned_terminal_release);
     assert!(!joint_recovery || anticipatory_speed);
     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
     assert!(!consistent_restart || stopping_guard);
@@ -581,7 +836,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
     writeln!(
         tracks,
-        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound,aligned_terminal_release"
+        "scenario,planner,time_s,x,y,yaw,v,tracking_error,step_min_obstacle_distance,noise_x,noise_y,noise_yaw,bias_x,bias_y,bias_yaw,correction,target_speed,sensed_goal_distance,filtered_goal_distance,stop_latched,hold_time_s,restart_limited,precision_active,effective_position_sigma,effective_yaw_sigma_rad,precision_activation,observation_available,correction_received,loss_uniform,observation_age,safety_paused,recovery_evidence,recovery_clearance,resumed,steering,acceleration,recovery_x,recovery_y,recovery_yaw,recovery_sample_count,noise_innovation_x,noise_innovation_y,noise_innovation_yaw,noise_rho,guard_active,guard_triggered,guard_released,guard_release_evidence,preview_clearance_lower_bound,preview_margin,nominal_target_speed,nominal_steering,consistency_ready,pre_sample_count,stationary_sample_count,consistency_age,position_delta,yaw_delta_rad,preview_pose_x,preview_pose_y,preview_pose_yaw,speed_free_distance,speed_cap,speed_margin,speed_braking,uncapped_target_speed,guard_release_margin,guard_entry_extra,motion_filter_sample_count,recovery_preview_active,stop_preview_clearance_lower_bound,terminal_recovery_clearance,terminal_entry_only,release_preview_clearance_lower_bound,aligned_terminal_release,stationary_epoch_fusion,epoch_fusion_available,epoch_fusion_group_count,motion_filter_pose_x,motion_filter_pose_y"
     )?;
     writeln!(summary, "scenario,planner,lookahead_offset,status,reached,collision,time_s,distance_travelled,goal_distance,rms_tracking_error,max_tracking_error,min_obstacle_distance,min_radius_margin,resampled_points,held,hold_time_s,first_goal_entry_s,final_speed,max_hold_distance,latch_count,pause_count,resume_count,paused_time_s")?;
     for ((scenario, planner), points) in paths {
@@ -618,8 +873,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let initial_goal_distance = initial.distance(&goal);
         writeln!(
             tracks,
-            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0,false",
-            initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
+            "{scenario},{planner},0,{},{},{yaw},0,0,{initial_clearance},0,0,0,0,0,0,false,1,{initial_goal_distance},{initial_goal_distance},false,0,false,false,{position_sigma},{yaw_sigma},false,true,false,0,0,false,0,0,false,0,0,{},{},{yaw},0,0,0,0,{noise_rho:.12},false,false,false,0,0,0,1,0,false,0,0,-1,-1,-1,{},{},{yaw},2,1,0,false,1,0,0,0,false,0,0,false,0,false,false,false,0,{},{}",
+            initial.x, initial.y, initial.x, initial.y, initial.x, initial.y, initial.x, initial.y
         )?;
         let mut rms_sum = 0.0;
         let mut previous_error = 0.0;
@@ -651,6 +906,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut guard_release_evidence = 0.0;
         let mut consistency = RestartConsistency::default();
         let mut pose_filter = MotionPoseFilter::default();
+        let mut epoch_fusion = StationaryEpochFusion::default();
         let mut previous_steering = 0.0;
         let mut recovery_samples: VecDeque<(f64, f64, f64)> = VecDeque::new();
         for step in 1..=(MAX_TIME / DT) as usize {
@@ -928,7 +1184,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .epoch
                 .map_or(-1.0, |epoch| observation_time - epoch);
             let (position_delta, yaw_delta_rad) = consistency.deltas();
-            let preview_pose = if consistency_ready {
+            let mut preview_pose = if consistency_ready {
                 let (x, y, yaw) = mean_pose(&consistency.samples);
                 VehicleState::new(x, y, yaw, sensed.v, WHEELBASE)
             } else if motion_filter {
@@ -941,6 +1197,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sensed
             };
             let motion_filter_sample_count = pose_filter.samples.len();
+            let (motion_filter_pose_x, motion_filter_pose_y) = (preview_pose.x, preview_pose.y);
+            let fused_position = if stationary_epoch_fusion {
+                epoch_fusion.observe(
+                    sensed,
+                    previous_steering,
+                    ObservationEvent {
+                        time: observation_time,
+                        correction,
+                        received: correction_received,
+                        precision_activation,
+                    },
+                    observation_age,
+                )
+            } else {
+                None
+            };
+            let epoch_fusion_available = fused_position.is_some();
+            let epoch_fusion_group_count = epoch_fusion.groups.len();
+            if let Some((x, y)) = fused_position {
+                preview_pose.x = x;
+                preview_pose.y = y;
+            }
             let (preview_pose_x, preview_pose_y, preview_pose_yaw) =
                 (preview_pose.x, preview_pose.y, preview_pose.yaw);
             let (stop_preview_clearance_lower_bound, terminal_recovery_clearance) =
@@ -1074,7 +1352,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 hold_time_s = 0.0;
                 max_hold_distance = 0.0;
             }
-            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+            writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release},{stationary_epoch_fusion},{epoch_fusion_available},{epoch_fusion_group_count},{motion_filter_pose_x:.9},{motion_filter_pose_y:.9}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
             collision = step_clearance <= RADIUS;
             reached = controller.is_goal_reached(&state);
             if collision {
