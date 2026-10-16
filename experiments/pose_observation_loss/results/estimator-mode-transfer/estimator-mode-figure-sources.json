@@ -1,0 +1,16 @@
+{
+  "script_sha256": "5f5d00d7b3286932e8415a61d38fb887132dc2a863068816f30b45a87b985094",
+  "input_sha256": {
+    "stratum-summary.csv": "4aa032e61ea9ee647130a47afc0bdbea64168ab437cc127206994caecfc932e5",
+    "transfer-summary.csv": "3d6c339de9e051cbcdcf026a7a35c4f2955d83e8b2f52e7e712fc9ea8ce23e0b",
+    "sources.json": "161adcd313a2abdaf58a6f4ef1eb08ed084402da7bc31614dbd9133ccca781b0"
+  },
+  "composition_rows": 72,
+  "coverage_rows": 36,
+  "filters": {
+    "event_kind": "all",
+    "coverage_budget": "q50",
+    "composition_budget": "all"
+  },
+  "retrospective": true
+}
