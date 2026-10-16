@@ -1,0 +1,14 @@
+{
+  "script_sha256": "5e05630c61682483c654792fd579e6f99bf811ca1775894c9ffffb67eb09fa53",
+  "inputs_sha256": {
+    "events.csv": "6e9f6377ed20fe308cf5e7de06fe13c06d841b6041005c6432e872cbb0f08599",
+    "changes.csv": "8df3f04aa88cef0b2801915acaee664b2988eb3d5746bb4177be77d7e7a96070",
+    "summary.csv": "cd27f58bca08ffbfc3a8a59b2355e11906281de5e8c2f19557edc5bb89d3e306",
+    "sources.json": "35dfa2a6e5c50c4790ea1e654a8135dc4366c546a0d466645e77f6b688164d81"
+  },
+  "artifacts_sha256": {
+    "gate-boundary-losses.csv": "6955221af79b79855798f7c7a25de1797afb0ec7a5f1d1bf15310886ee62dcbc",
+    "gate-boundary-losses.svg": "96edf340797e1c4d3a0534baf6393e1dcc9ad5a322dadc866a04cc7fb158455b"
+  },
+  "matplotlib_version": "3.10.8"
+}
