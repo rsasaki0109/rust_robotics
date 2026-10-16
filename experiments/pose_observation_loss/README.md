@@ -1451,3 +1451,40 @@ summary subsets and provenance. Repeat into another new directory to compare
 five CSVs and `sources.json` byte for byte. This replays a position prototype on
 selected failed-run observations; it does not rerun commands, timers or hold
 outcomes. See the [prototype comparison](results/stationary-epoch-fusion/report.md).
+
+## Compare arc selection using the spread between received epochs
+
+Use only the tracked estimates, retained epoch means, previous decisions and map:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_epoch_spread_selection.py \
+  --output /tmp/epoch-spread-selection
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_epoch_spread_selection.py
+```
+
+The output directory must be new. Only Python's standard library is needed;
+there is no raw trajectory replay or Rust build. The
+[fixed protocol](results/epoch-spread-selection/protocol.md) retains all previous
+availability, fallback, poses, headings and full true-side margins.
+
+Alongside the pinned baseline and reproduced fused-center selector, `epoch_min`
+chooses the best worst clearance over the three retained mean positions at the
+existing heading. This certifies only those discrete poses. It does not bound
+clearance between them. `spread_yaw_bound` uses the fused center, maximizes the
+worst clearance over nine heading offsets from -4 to +4 degrees, subtracts the
+heading discretization allowance, and subtracts R, the largest distance from
+the center to an epoch mean. Its score bounds true clearance only if true
+position error is <=R and wrapped heading error is <=4 degrees. Measure empirical
+coverage separately; the spread is not a confidence guarantee.
+
+All candidate rules fall back exactly to the previous baseline at unavailable
+checkpoints. Score and acceptance use no truth. Report lost/gained accepted true
+passes against `fused_center`, mismatches, abstentions and envelope coverage,
+including available/fallback subsets. Coverage fields always refer to the fused
+center envelope, including on the baseline reference rows.
+
+Outputs are decisions, per-checkpoint spread, full candidate scores, geometry
+audits, summary subsets and provenance. Repeat into another new directory to
+compare five CSVs and `sources.json` byte for byte. No control or hold outcome is
+rerun. See the [spread-based selection comparison](results/epoch-spread-selection/report.md).

@@ -1,0 +1,24 @@
+{
+  "inputs_sha256": {
+    "results/stationary-epoch-fusion/estimates.csv": "fc1b29685863296e7d8aac151625c89b4bc5d340a8b2beba4df328cd4fa03fc7",
+    "results/stationary-epoch-fusion/epoch-means.csv": "e67c12203a23e8a02ec3e67cffc5d30f7c7a5f1c63a0dc2142aeae4ad27ca6e7",
+    "results/stationary-epoch-fusion/decisions.csv": "f5b70c22b491cdcb860c33b18de379741eb81d1a88c26d135ac409e9ce2f7d6c",
+    "results/stationary-epoch-fusion/sources.json": "0ecbbb9ff57b88f329551267b4276510a64d1ca9742cc03243ea8b878f356bad",
+    "results/aligned-arcs/checkpoints.csv": "6d4c4b3c9d016af0833c8f44320b49cf18c794f41f975e25d2b75616f015750d",
+    "results/planning-clearance/fixtures/fine-padding/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4"
+  },
+  "script_sha256": "8da24ab7287c141b24e1311e526d3644c95c65b2af2111f30859e9c88b40ec41",
+  "helpers_sha256": {
+    "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+    "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+    "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+    "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+    "verify_stopping_preview.py": "4ca8620130ae92eb7f4e5c33a2496e726820f6f45070d4b53b801a8a66837434"
+  },
+  "protocol_sha256": "ac31a49df996174d48c05e8ca23fba93781c7c3f3223190e09decabda436c534",
+  "checkpoints": 497,
+  "available": 389,
+  "score_rows": 35287,
+  "geometry_audits": 4754,
+  "note": "Spread/heading envelope is assumed, not a confidence guarantee; fixed failed-run poses, no new dynamics or hold result."
+}
