@@ -2661,3 +2661,41 @@ Provenance pins inputs, helpers, protocol and plotted values. Case/seed omission
 ranges are deterministic sensitivities, not confidence intervals or untouched
 holdouts; repeated states/planners do not create independent seed streams.
 See the [case and seed influence results](results/fresh-seed-case-influence/report.md).
+
+## Ranking comparisons within each seed
+
+The [fixed protocol](results/seed-conditioned-rankings/protocol.md) keeps the
+known 269/270/271, previous additional 274/275/276 and latest additional
+277/278/279 cohorts separate. It decomposes Recovery/Preview AUC into every
+ordered positive-seed/negative-seed block with unchanged parent case weights,
+both targets, all three scores and E/P/U labels.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_seed_conditioned_rankings.py \
+  --output /tmp/seed-conditioned-rankings
+MPLCONFIGDIR=/tmp/seed-rank-mpl python3 experiments/pose_observation_loss/plot_seed_conditioned_rankings.py \
+  --results /tmp/seed-conditioned-rankings --output /tmp/seed-ranking-figures
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output directories. Aggregation needs only Python's standard library
+and tracked source CSV/JSON files; plotting needs Matplotlib/NumPy. The existing
+historical/latest reconstruction adapters run their original signed-component,
+label and join checks. No raw histories, Rust compilation, new simulation,
+fitting or cutoff changes are needed.
+
+`component-summary.csv` matches the prior complete-group components;
+`seed-support.csv` retains all three seeds, including empty/one-class groups.
+`ranking-summary.csv` preserves full AUC, AUC from comparisons within each seed,
+comparison-mass shares and supported seed counts. `seed-blocks.csv` exposes all
+nine ordered blocks per group/score/label. Sum diagonal numerators/denominators
+to obtain the within-seed value; never average seed AUCs or give seeds new equal
+weights. AUC stays blank without positive-negative support.
+
+The full accounting/support/opportunity/cutoff tables and separate historical
+and latest loss-link tables are copied unchanged. Repeat aggregation and plotting
+into new directories and compare every file byte for byte. Four SVG/PNG figures
+have complete numeric exports and source hashes. These are retrospective
+comparison diagnostics with three observed seed values per cohort: changing
+the comparison population is not estimator repair or independent validation.
+See the [seed comparison results](results/seed-conditioned-rankings/report.md).
