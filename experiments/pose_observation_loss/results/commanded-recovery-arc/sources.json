@@ -1,0 +1,39 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "checkpoints.csv": "aa9207ab84acfacfb9f0a5aa3b4cd7eaf13a50100b92deb71e017539834d98f7",
+    "geometry.csv": "1a3b1ba7e07654c09dcb1354f92f29e1f2ea39adb31c72a4c4164a70d638f08b",
+    "decisions.csv": "77882af557b9bf528acbf9a00e39b17c71e6295ff1324cf4b8b3133c46dd55e6",
+    "sources.json": "ccd59c809aa90313f8f96af8857dca180ce8b3b92600b57fb14757a0edca4da4"
+  },
+  "map_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "analysis": {
+    "script_sha256": "4fbd54bfc44b4e1f28524ddd10d7ca7c6c63d8b629d6801edcee71873754444b",
+    "protocol_sha256": "61796938e2af54b957487155de2deacd1b786790beaebe4985427cb1b7ddee05",
+    "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "helpers_sha256": {
+      "analyze_epoch_divergence.py": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_joint_admission_geometry.py": "5252ba0f1b187bff7368fa8d69715fea59aa4f43052310acc31bbdce8d76526d",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_terminal_arc_live.py": "4adf591accb8fbb88d8eae46177e5694dd6474619e03232c79ef42d74dc414fa",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+    }
+  },
+  "inherited_validation": {
+    "cases": 368,
+    "intervals": 3312000,
+    "raw_reloaded": false
+  },
+  "audit": {
+    "pose_rows": 12720,
+    "checkpoints": 2120,
+    "unique_geometry_audits": 17101,
+    "max_chord_error": 4.677783326134666e-06,
+    "max_sagitta_bound": 5.470362659252085e-06
+  }
+}
