@@ -1,0 +1,21 @@
+{
+  "script_sha256": "dae574759bd923bdfa1a6c4be663b78dd1612847454ba6928768bd5b01baf950",
+  "input_sha256": {
+    "fold-comparison.csv": "033e4a067273ee518546da718be8c2e1abd6ee8a4b1eab0abe7a969564b9bae5",
+    "reference.csv": "463f86f6f2d75ad8c1fefeac6b5e99600d2778637e882cb48c3e2dbf2a3237e1",
+    "sources.json": "7435898a7e5e542a01b26d9022757016ac903b2fe5e4dc0c7b8466510e3cc161"
+  },
+  "numeric_rows": 56,
+  "targets": [
+    "midpoint",
+    "residual"
+  ],
+  "filters": {
+    "view": "sim_recovery_preview",
+    "score": "residual_sigma",
+    "budget": "q50",
+    "event_kind": "all",
+    "stratum": "all"
+  },
+  "retrospective": true
+}
