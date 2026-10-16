@@ -2581,3 +2581,47 @@ and scope are saved in `sources.json`; plots also export their numeric inputs.
 The additional raw trajectories and their broad mode census were previously
 observed, which limits claims about untouched validation. See the
 [original-audit transfer results](results/fresh-seed-cutoff-transfer/report.md).
+
+## Additional-seed error components and fixed-direction rankings
+
+The [protocol](results/fresh-seed-components/protocol.md) diagnoses the same
+13,155 additional-seed pairs using only tracked score/pose/projection artifacts.
+For midpoint and residual targets it preserves the four signed input-error
+components, their cross terms, and the partial-model two-axis energy reference.
+Both the immutable pooled and mode-conditional rules are retained, with no
+refitting or new simulation.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_fresh_seed_components.py \
+  --output /tmp/fresh-seed-components
+MPLCONFIGDIR=/tmp/fresh-component-mpl python3 experiments/pose_observation_loss/plot_fresh_seed_components.py \
+  --results /tmp/fresh-seed-components --output /tmp/fresh-seed-component-figures
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Every output directory must be new. Aggregation needs only Python's standard
+library and repository files; plotting needs Matplotlib/NumPy. Raw trajectories,
+Rust compilation and physics replay are unnecessary. The collector checks
+case/state/time/event/estimator joins, both saved observed labels, component
+closure and every comparable count/mass/fraction/RMS in the preceding cutoff
+results. Original source artifacts and all cutoff bytes remain unchanged.
+
+`component-summary.csv` preserves every view, score, budget, event kind,
+estimator stratum, method and target, with parent case weights carried through
+mode conditioning and retention. Empty energies/fractions stay blank. Unknown
+conditional fits make whole-group metrics undefined, while all_available keeps
+available records. The copied pooled table has 264 rows (72 simultaneous rules
+used here); all 216 conditional rows are retained.
+
+`ranking.csv` uses all_available records and the fixed high-score direction
+against observed, noise-plus-anchor and drift-plus-transport outside labels.
+Ties receive half credit; one-class AUCs stay blank. `reconstruction.csv` records
+per-pair closure checks. Accounting, case support, all opportunities and loss
+links are copied unchanged. Plot numeric CSVs expose all signed energy terms,
+source/retained counts and masses, and AUCs including undefined values.
+
+Repeat aggregation and plotting into new directories and compare every file
+byte for byte. This is retrospective arithmetic diagnosis in the saved frame,
+with repeated states and three additional seed streams; component removal is
+not a counterfactual rollout or evidence of calibration. See the
+[additional-seed component results](results/fresh-seed-components/report.md).
