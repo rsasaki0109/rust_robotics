@@ -55,3 +55,14 @@ extrapolate a diagnostic pose substitution into a successful controller.
 Save portable case, prefix, geometry, tail and requirement tables plus source
 and raw fingerprints. Repeat aggregation byte for byte. Keep controller
 defaults and the already published result files unchanged.
+
+Diagnostic refinement after the first aggregation: one unequal-timer episode
+starts with epoch ahead and later reverses without passing through equal
+counters. Therefore the last equal counter identifies the episode's start,
+not necessarily the readiness check that delayed the eventual later release.
+Keep all original checkpoints and add the last failed readiness check of the
+later arm within the earlier arm's uninterrupted ready run ending at the first
+different action. Audit its geometry in the same four views. For entry forks
+this additional point is the action itself. This changes no case selection,
+controller, thresholds, raw data or outcome counts. Preserve the initial
+aggregation and require deterministic repetition of the refined diagnostic.

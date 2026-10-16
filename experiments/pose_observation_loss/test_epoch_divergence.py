@@ -204,6 +204,49 @@ class EpochDivergenceTests(unittest.TestCase):
         self.assertIn("own_endpoint", chosen[1][5])
         self.assertIn("first_fresh_stationary_in_final_window", chosen[1][1])
 
+    def test_last_failed_gate_handles_a_timer_lead_reversal_without_equality(self):
+        reference = [row(i * 0.02) for i in range(5)]
+        candidate = deepcopy(reference)
+        reference[1].update(
+            stop_preview_clearance_lower_bound="0.8",
+            release_preview_clearance_lower_bound="0.8",
+        )
+        candidate[1]["guard_release_evidence"] = "0.02"
+        reference[2]["guard_release_evidence"] = "0.02"
+        candidate[2].update(
+            stop_preview_clearance_lower_bound="0.8",
+            release_preview_clearance_lower_bound="0.8",
+        )
+        reference[3]["guard_release_evidence"] = "0.04"
+        candidate[3]["guard_release_evidence"] = "0.02"
+        reference[4].update(
+            guard_active="false", guard_released="true", target_speed="0.5", v="0.01"
+        )
+        candidate[4]["guard_release_evidence"] = "0.04"
+        indices, fork = first_fork(reference, candidate, "0.08")
+        self.assertEqual(indices["origin"], 1)
+        self.assertEqual(indices["decisive"], 2)
+        self.assertTrue(fork["history_only_release"])
+        self.assertEqual(fork["first_actor"], "aligned")
+
+    def test_direct_entry_uses_the_current_geometry_without_a_release_timer(self):
+        reference = [row(), row(0.02)]
+        candidate = deepcopy(reference)
+        for track in [reference, candidate]:
+            track[0]["guard_active"] = "false"
+            track[1]["nominal_target_speed"] = "0.5"
+        reference[1].update(guard_active="false", target_speed="0.5", v="0.01")
+        candidate[1].update(
+            guard_triggered="true",
+            preview_clearance_lower_bound="0.8",
+            epoch_fusion_available="true",
+        )
+        indices, fork = first_fork(reference, candidate, "0.02")
+        self.assertEqual(fork["kind"], "entry")
+        self.assertEqual(fork["first_actor"], "epoch")
+        self.assertEqual(indices["decisive"], indices["action"])
+        self.assertEqual(fork["winning_ready_run_s"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

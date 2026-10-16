@@ -188,6 +188,30 @@ def first_fork(reference, candidate, published_time):
         assert all(origin_gates)
         assert all(origin_gates[0].values()) != all(origin_gates[1].values())
     origin = indices["origin"]
+    if kind == "entry":
+        indices["decisive"] = i
+        winning_run = 0
+    else:
+        winner, loser = (
+            (candidate, reference) if earlier == "epoch" else (reference, candidate)
+        )
+        expected_route = "joint" if kind == "joint_resume" else "independent"
+        uninterrupted = []
+        for j in range(i, 0, -1):
+            route, ready = release_inputs(winner[j - 1], winner[j])
+            if route != expected_route or not all(ready.values()):
+                break
+            uninterrupted.append(j)
+        assert uninterrupted
+        failures = [
+            j
+            for j in uninterrupted
+            if not all(release_inputs(loser[j - 1], loser[j])[1].values())
+        ]
+        assert failures, "No failed readiness check explains the later release"
+        indices["decisive"] = max(failures)
+        winning_run = len(uninterrupted)
+    decisive = indices["decisive"]
     original_error = math.hypot(
         *(
             float(candidate[origin][f"motion_filter_pose_{axis}"])
@@ -225,6 +249,10 @@ def first_fork(reference, candidate, published_time):
         origin_original_position_error=original_error,
         origin_fused_position_error=fused_error,
         origin_to_action_s=round((i - origin) * DT, 6),
+        winning_ready_run_s=round(winning_run * DT, 6),
+        decisive_to_action_s=round((i - decisive) * DT, 6),
+        decisive_fusion_available=candidate[decisive]["epoch_fusion_available"]
+        == "true",
         aligned_prior_guard_evidence=reference[i - 1]["guard_release_evidence"],
         epoch_prior_guard_evidence=candidate[i - 1]["guard_release_evidence"],
         aligned_prior_joint_evidence=reference[i - 1]["recovery_evidence"],
@@ -390,7 +418,7 @@ def selected_checkpoints(tracks, indices):
     selections = []
     for track in tracks:
         chosen = defaultdict(list)
-        for name in ["gate", "evidence", "origin", "action", "command"]:
+        for name in ["gate", "evidence", "origin", "decisive", "action", "command"]:
             if indices.get(name) is not None:
                 chosen[indices[name]].append("first_" + name)
         chosen[common].append("common_endpoint")
@@ -545,6 +573,7 @@ def main():
                     "gate",
                     "evidence",
                     "origin",
+                    "decisive",
                     "action",
                     "command",
                 ]:
