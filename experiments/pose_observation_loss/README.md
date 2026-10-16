@@ -2256,3 +2256,34 @@ Seven CSVs and provenance repeat byte for byte. Per-anchor weights and source
 pose IDs make shared offsets explicit; loss links retain original transition
 and event IDs. The figure uses the entire 550-loss population in both arms.
 See the [shared-information results](results/speed-probe-shared-information/report.md).
+
+## Agreement persistence and temporal shared information
+
+Partition the original audited chains into maximal agreement-category spans
+for all three pairings, retaining every state and explicit edge. Within each
+span, split blocks when an anchor-ID/weight signature changes. Calculate the
+partial variance of each block's mean using the actual repeated observation
+weights, AR covariance and common anchors; compare with independent times.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_speed_probe_temporal_information.py \
+  --output /tmp/speed-probe-temporal-information
+python3 experiments/pose_observation_loss/plot_speed_probe_temporal_information.py \
+  --results /tmp/speed-probe-temporal-information --output /tmp/speed-probe-temporal-information-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories; tracked pinned inputs suffice. The
+[fixed protocol](results/speed-probe-temporal-information/protocol.md) keeps
+four agreement rules, all five categories, singleton and audit-truncated spans,
+all 550/509 loss rows and empty summary groups. Time support is last minus
+first decision time; missing audit edges never imply continuity.
+
+Repeat nine CSVs and provenance byte for byte. Loss memberships preserve all
+three pairings and four rules. Pooled sigmas weight blocks equally, separately
+from state and loss-row counts. Common offsets persist in a temporal mean;
+the partial model excludes drift/transport and is not calibrated. Observed
+mean errors use known truth for offline arithmetic, without changing point
+labels or recorded control. The figure keeps the full .05 m span partition
+and separate input/difference temporal-model comparisons. See the
+[temporal-information results](results/speed-probe-temporal-information/report.md).
