@@ -1,0 +1,23 @@
+{
+  "script_sha256": "0c24ff474740872073b13acc1624b241fed645866f79af36dba1ef1ba6a9bedb",
+  "analysis_sources_sha256": "2bdf94ae3c3ce99ff72534a80261ec5bee8101f1de0b2c7ffe41c85ebff02ab1",
+  "inputs_sha256": {
+    "ranking-summary.csv": "aa747a8a6288909d5d273b1d35be972d28186ec2bbd9f229d37c7cd28b5abd54",
+    "seed-blocks.csv": "818d5024cf638389f197dbd68e41ab4c9caa2ac60a0d188ad897f3bbd5fb56b0"
+  },
+  "ranking_rows": 96,
+  "block_rows": 216,
+  "matplotlib": "3.10.8",
+  "outputs_sha256": {
+    "block-values.csv": "6bf626bdeba24a6f70cd4a9001ca292becd7ca7cccb24228c0fb549b2e994b9f",
+    "ranking-values.csv": "c9cf88882486fe7f7495bc4aed70cd64af871bde7092471d401f949a9743e812",
+    "seed-comparison-blocks-modeled.png": "41cc9b0dcc11841a25889b8245f4c94d131ee355c9abd00bd272650409dfa82a",
+    "seed-comparison-blocks-modeled.svg": "f54d32c2cfdf9f43dfdc372d3a0f1ffddf42cae99ae73379ce25895369c46108",
+    "seed-comparison-blocks-observed.png": "ad1262011ab80454e386fb862c6bf306720028a59545dbd42e700b715ca630d6",
+    "seed-comparison-blocks-observed.svg": "400b45ede4d173e773f80c4d4955ceee52fa512c17716ee040e8a4728227dfe5",
+    "seed-conditioned-midpoint.png": "a58382268784bf13da3f23d06d36341d14f2400440b95cfe66208bae0a5a109b",
+    "seed-conditioned-midpoint.svg": "87cc548f535c2b181f20e292cf0b047ecd44fe95640b02680913f9f1e7318de6",
+    "seed-conditioned-residual.png": "43e3859e4446c1569a9961cc8c7d0a3c014911b1077a9a4bd0359acbe0f2e8c0",
+    "seed-conditioned-residual.svg": "7fc61f684ea8215d85bd18bc6eede160e03e8606b80808e2378ec7d1ce422b41"
+  }
+}
