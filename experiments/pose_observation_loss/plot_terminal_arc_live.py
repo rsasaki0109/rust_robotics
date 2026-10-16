@@ -98,7 +98,7 @@ def main():
         ax.set_axisbelow(True)
         ax.grid(axis="x", alpha=0.2)
     fig.suptitle(
-        "Fixed simulator: 324 pairs; matched observations within each pair", fontsize=12
+        "Fixed simulator: 324 pairs; common random seeds and loss modes", fontsize=12
     )
     args.output.mkdir(parents=True)
     save_rows(args.output / "paired-changes.csv", series)
