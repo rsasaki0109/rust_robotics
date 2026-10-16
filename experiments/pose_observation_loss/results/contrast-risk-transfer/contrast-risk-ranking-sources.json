@@ -1,0 +1,14 @@
+{
+  "script_sha256": "9e038fb8e697e71bd133fca39bf3d951d79303e2aa486e0d1f40eb003d0608b9",
+  "input_sha256": {
+    "ranking.csv": "da778a3433aa5159b01a67ae8eb93875a949b823ca5bd3436d7ab8393b141025",
+    "sources.json": "e69444ae8bd9f645aeb96e1caf1f979ea855ff3650ba5d3be87ed3907bbdc331"
+  },
+  "numeric_rows": 3168,
+  "targets": [
+    "midpoint",
+    "residual"
+  ],
+  "weighting": "case-balanced AUC with exact score-tick ties",
+  "retrospective": true
+}

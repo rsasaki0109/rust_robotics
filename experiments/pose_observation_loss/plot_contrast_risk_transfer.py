@@ -165,6 +165,8 @@ def main():
             "AUC; .5 = chance ranking. Higher score predicts larger error; directions are never flipped.",
             fontsize=9,
         )
+        bar.xaxis.set_label_position("top")
+        bar.xaxis.labelpad = 6
         fig.text(
             0.10,
             0.010,
