@@ -1645,3 +1645,31 @@ This fixed example shows the first new-seed lost-hold case without observation
 loss. The numerical series, SVG and provenance are deterministic. The plot uses
 confirmation evidence immediately before the controller resets it on release,
 and checks those values against the original logged counters.
+
+### Terminal preview with the commanded steering
+
+Compare the existing straight 0.6 m terminal preview with a constant-steering
+arc using the already recorded nominal steering, from the same forecast stop
+pose. This portable calculation uses all 1,116 published divergence checkpoints
+at four pose views. It searches no steering angles and changes no controller.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_terminal_steering_preview.py \
+  --output /tmp/terminal-steering-preview
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+The analyzer needs only Python's standard library and checked-in checkpoint
+tables and map; no raw trajectories are required. Use a new output directory.
+It checks pinned inputs, forecast step counts and the prior straight geometry,
+then audits both paths at every pose against an independent 120-chord calculation
+and its sagitta bound. Repeat aggregation to compare five CSVs and `sources.json`
+byte for byte. Entry and release margins are evaluated separately.
+
+The [fixed protocol](results/terminal-steering-preview/protocol.md) keeps all
+121 command-changing pairs, including unchanged outcomes. Outputs retain all
+324 pairs in accounting, full pose geometry, estimated/true decisions, subgroup
+summaries and paired straight-to-arc transitions. A clear terminal arc alone
+does not satisfy the separate recovery straight-line gate or confirmation timers
+and does not predict a held goal. See the
+[terminal-steering comparison](results/terminal-steering-preview/report.md).
