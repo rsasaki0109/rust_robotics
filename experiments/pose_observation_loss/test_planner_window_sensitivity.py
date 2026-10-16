@@ -286,6 +286,18 @@ class PlannerWindowTests(unittest.TestCase):
         second = units(rr[::-1], account(rr)[::-1])[:2]
         self.assertEqual(first, second)
 
+    def test_accounting_existing_new_alias_preserves_original_group(self):
+        r = row(seed="274")
+        r.update(cohort="new-white", partition="new")
+        ledger = account([r])
+        ledger[0]["partition"] = "existing_new"
+        families, cases, lookup = units([r], ledger)
+        self.assertEqual(families[0]["partition"], "new")
+        self.assertEqual(families[0]["accounting_partition"], "existing_new")
+        self.assertEqual(cases[0]["partition"], "new")
+        self.assertEqual(cases[0]["accounting_partition"], "existing_new")
+        self.assertEqual(cases[0]["parent_records"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

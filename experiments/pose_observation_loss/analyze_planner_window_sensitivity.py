@@ -94,12 +94,24 @@ def payload(row, projection, truth_time, events):
 
 
 def audit_units(accounting, rows):
-    cases = {previous.identity(r): dict(r) for r in accounting}
+    cases = {
+        previous.identity(r): dict(
+            r,
+            accounting_partition=r["partition"],
+            partition="new" if r["partition"] == "existing_new" else r["partition"],
+        )
+        for r in accounting
+    }
     assert len(cases) == len(accounting), "duplicate accounting case"
     by_case, by_family = defaultdict(list), defaultdict(list)
     for r in rows:
         if r["view"] == previous.VIEW:
             assert previous.identity(r) in cases, "unaccounted source case"
+            ledger = cases[previous.identity(r)]
+            assert (r["partition"], r["noise"]) == (
+                ledger["partition"],
+                ledger["noise"],
+            ), "accounting reporting group"
             by_case[previous.identity(r)].append(r)
     for key in sorted(cases):
         by_family[tuple(cases[key][k] for k in FAMILY)].append(key)
@@ -130,6 +142,7 @@ def audit_units(accounting, rows):
                 family_id=family_id,
                 **dict(zip(FAMILY, family_key)),
                 partition=first["partition"],
+                accounting_partition=first["accounting_partition"],
                 noise=first["noise"],
                 planned_cases=len(keys),
                 planned_planners="+".join(sorted(planned_planners)),
@@ -153,7 +166,10 @@ def audit_units(accounting, rows):
             record = dict(
                 case_id=ids[key],
                 family_id=family_id,
-                **{k: cases[key][k] for k in [*KEY, "partition", "noise"]},
+                **{
+                    k: cases[key][k]
+                    for k in [*KEY, "partition", "accounting_partition", "noise"]
+                },
                 parent_records=n,
                 source_event_ids="+".join(
                     sorted(
