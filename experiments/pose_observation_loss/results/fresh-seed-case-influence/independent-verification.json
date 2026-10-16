@@ -1,0 +1,12 @@
+{
+  "comparisons": 1409846,
+  "reconstructed_focus_states": 4385,
+  "boundary_trace_rows": 8770,
+  "component_influence_rows": 756,
+  "ranking_influence_rows": 6804,
+  "defined_auc_checks": 2868,
+  "case_pair_rows": 25434,
+  "plot_values": 491,
+  "script_sha256": "042f05889c05ffcc555e055d9494b0ccc5ae15a8f8df27c47609c5603cd5f8ee",
+  "sources_sha256": "68fcb928c5684f873f4e03a4ad4003081a2cdde7e99075842e1c7653520870b9"
+}
