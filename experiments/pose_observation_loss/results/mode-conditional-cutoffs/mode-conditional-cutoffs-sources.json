@@ -1,0 +1,18 @@
+{
+  "script_sha256": "b1bee05ba67e528e9aa202ebae6659c842fdcaa28e92da9ecc25223b15218af3",
+  "input_sha256": {
+    "comparison.csv": "4dd9971f43171627831f07be71b25cd24bd52b24ee4d41c14a314af35a84ac01",
+    "sources.json": "869d66d5459f39fd673901dbe90a891a40d0f58a19d18c9b7775bcdaf2b45103"
+  },
+  "numeric_rows": 144,
+  "targets": [
+    "midpoint",
+    "residual"
+  ],
+  "filters": {
+    "event_kind": "all",
+    "stratum": "all",
+    "budget": "q50"
+  },
+  "retrospective": true
+}
