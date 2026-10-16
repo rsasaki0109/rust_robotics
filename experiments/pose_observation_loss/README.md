@@ -2347,3 +2347,33 @@ for all three simultaneous pairings and all requested lagged phases/inputs,
 with missing counts explicit. This partial second-moment decomposition is not
 a calibrated posterior or a new position estimator. Observed residual RMS is
 separate from model sigma. See the [contrast/common-error results](results/contrast-common-errors/report.md).
+
+## Retrospective transfer of risk diagnostics
+
+Use fixed contrast norm and midpoint/residual model sigma scores to rank
+large observed midpoint/residual errors. Fit lower weighted score quantiles
+on known seeds 269/270/271 only; evaluate those same cutoffs on the existing
+new seeds 274/275/276. Both cohorts were observed in earlier analyses, so this
+is retrospective transfer. The evaluation cohort is not untouched validation.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_contrast_risk_transfer.py \
+  --output /tmp/contrast-risk-transfer
+python3 experiments/pose_observation_loss/plot_contrast_risk_transfer.py \
+  --results /tmp/contrast-risk-transfer --output /tmp/contrast-risk-transfer-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and tracked pinned inputs. The
+[fixed protocol](results/contrast-risk-transfer/protocol.md) keeps every
+simultaneous and requested lagged source reference, both arms/noise types,
+all eleven views and empty event kinds. Each represented case has total
+weight one before retention; selected weights are not renormalized per case.
+Scores use fixed 1e-8 m integer ticks, exact tied quantiles and half-credit AUC
+ties. Thresholds never consult new-cohort scores or outcome labels.
+
+Keep all 25/50/75% quantile rules and all_available, including achieved
+coverage, raw counts, case mass, missing data and both error outcomes. Retained
+diagnostic rows are not released actions. Lagged contrast is an offline oracle
+quantity. Model sigmas are uncalibrated. Repeat seven CSVs/provenance and both
+figures byte for byte. See the [risk-transfer results](results/contrast-risk-transfer/report.md).
