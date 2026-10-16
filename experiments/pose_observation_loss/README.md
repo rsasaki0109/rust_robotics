@@ -2535,3 +2535,48 @@ not enter artifacts; source raw paths, invocation paths and raw provenance are
 intentionally recorded, so regenerating raw runs elsewhere changes provenance
 fingerprints. CSV/SVG/JSON are saved in the repository; large raw CSVs and PNG
 previews remain in scratch. See the [fresh-seed results](results/fresh-seed-mode-census/report.md).
+
+## Transfer the fixed cutoffs under the original audit selection
+
+The [protocol](results/fresh-seed-cutoff-transfer/protocol.md) applies the original
+joint-ready adjacent-decision selection to the preserved additional-seed
+histories. It first reconstructs all historical audit states, pair projections,
+score ticks, source-event memberships and comparison metrics. Only after that
+regression passes does it evaluate 277/278/279 using the unchanged pooled and
+mode-conditional thresholds trained on 269/270/271. No cutoff is refitted.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_fresh_seed_cutoffs.py \
+  --output /tmp/fresh-seed-cutoff-transfer
+MPLCONFIGDIR=/tmp/fresh-cutoff-mpl python3 experiments/pose_observation_loss/plot_fresh_seed_cutoffs.py \
+  --results /tmp/fresh-seed-cutoff-transfer --output /tmp/fresh-seed-cutoff-figures
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Outputs must be new. Analysis uses only the standard library and needs the
+preserved historical and additional-seed raw trajectories at the paths recorded
+in `correction-centre-transitions/sources.json` and
+`fresh-seed-mode-census/sources.json`. It verifies provenance and every consumed
+raw hash. Those histories are already present in this cloud workspace; plotting
+needs Matplotlib. This is a replay of existing runs, with physics/live outcomes
+inherited from their verified live studies.
+
+`accounting.csv` retains all 972 cases and `case-support.csv` distinguishes
+Filter-only/Fusion-only/mixed/no-audit cases on exactly the original selection.
+`scores.csv`, `poses.csv` and `projections.csv` expose the new model and observed
+quantities; `loss-links.csv` preserves every selected raw-zero/command-only loss
+reference. `events.csv` retains all categories and source IDs. Immutable copies
+of the 72 pooled and 216 conditional rules accompany the complete
+`comparison.csv` grid: all three views, scores, budgets, event kinds and strata,
+including an explicit recovery-fallback stratum with missing training support.
+Whole-group conditional metrics stay blank when any represented mode lacks a
+fit; all_available remains defined. Parent case weights precede both mode
+conditioning and retention.
+
+Repeat analysis and plotting into new directories and compare all files byte
+for byte. Source raw paths are preserved, while analysis output paths do not
+enter artifacts. Historical regression evidence, raw/helper/protocol hashes
+and scope are saved in `sources.json`; plots also export their numeric inputs.
+The additional raw trajectories and their broad mode census were previously
+observed, which limits claims about untouched validation. See the
+[original-audit transfer results](results/fresh-seed-cutoff-transfer/report.md).
