@@ -1,0 +1,9 @@
+{
+  "cases": 9,
+  "rows": 64602,
+  "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+  "script_sha256": "a99288c4a759a5c2f48bbbac09bf515724a0846854a8bddf56cf4bcb57b38475",
+  "reference": "/workspace/scratch/terminal-arc-live/known-white/epoch-none-269",
+  "trajectories_sha256": "f565c3c6c51f5623d8b867a0dee5d89cdcbb4b4d69dd992e6aa7421116dee47d",
+  "summary_sha256": "7d23a21fb63607e593ad0a89c392d2f2cf63397c2229834b771ec6f9edf7f6f8"
+}
