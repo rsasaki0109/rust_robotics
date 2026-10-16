@@ -1,0 +1,4 @@
+fold_id,held_seed,fold_training_seeds,train_known_account_cases,train_known_timeout_cases,train_known_source_cases,train_known_source_pairs,held_known_account_cases,held_known_timeout_cases,held_known_source_cases,held_known_source_pairs,existing_new_account_cases,existing_new_timeout_cases,existing_new_source_cases,existing_new_source_pairs
+omit_269,269,270+271,216,126,39,5169,108,60,9,2142,324,182,52,12519
+omit_270,270,269+271,216,123,36,5946,108,63,12,1365,324,182,52,12519
+omit_271,271,269+270,216,123,21,3507,108,63,27,3804,324,182,52,12519
