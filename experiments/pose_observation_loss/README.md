@@ -1769,6 +1769,8 @@ and fixed endpoint, first-usable-epoch and age-0.5 checkpoints.
 python3 experiments/pose_observation_loss/analyze_joint_admission_geometry.py \
   --output /tmp/joint-admission-geometry
 python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+python3 experiments/pose_observation_loss/plot_joint_admission_geometry.py \
+  --results /tmp/joint-admission-geometry --output /tmp/joint-admission-figure
 ```
 
 Use a new output directory. The default raw paths come from the pinned live
@@ -1777,6 +1779,8 @@ The analyzer checks prior tables, source and raw hashes and uses only Python's
 standard library. It exports accounting, per-case readiness/masks, checkpoints,
 six-pose geometry, estimated/true gate comparisons, summaries and provenance.
 Repeat aggregation to compare six CSVs and `sources.json` byte for byte.
+The optional Matplotlib figure exports deterministic numeric data, SVG and
+source fingerprints for the fixed readiness masks and age-0.5 geometry subset.
 
 The [fixed protocol](results/joint-admission-geometry/protocol.md) preserves
 inclusive recovery wall bounds, strict obstacle clearance, the original speed
