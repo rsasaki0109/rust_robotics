@@ -1946,6 +1946,8 @@ alone cannot produce a definite admission decision for that pose set.
 ```bash
 python3 experiments/pose_observation_loss/analyze_admission_envelope_refinement.py \
   --output /tmp/admission-envelope-refinement
+python3 experiments/pose_observation_loss/verify_admission_envelope_refinement.py \
+  --results /tmp/admission-envelope-refinement
 python3 experiments/pose_observation_loss/plot_admission_envelope_refinement.py \
   --results /tmp/admission-envelope-refinement --output /tmp/envelope-refinement-figure
 python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
@@ -1962,6 +1964,9 @@ outside-disk leaves; mixed states export two checked pose witnesses. Every
 published witness/certificate geometry receives an independent 120-chord audit.
 Other explored geometries use exact component evaluation. Truth labels and
 coverage are evaluation-only, and prior raw/physics validation is inherited.
+The standalone verifier reloads the CSVs, recomputes published geometry and
+checks cover completeness with both tree reconstruction and binary leaf weights;
+`--compare DIR` additionally checks all six CSVs and provenance byte for byte.
 
 Repeat six CSVs and `sources.json` byte for byte. The optional Matplotlib figure
 partitions all prior-unresolved age-0.5 envelopes for both recorded arms, inputs,
