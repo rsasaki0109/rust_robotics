@@ -1,0 +1,19 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "bc7a40a8da19e573d443c09fec79d4cb5fa1023de74b0bfbcfad2d4d40b07274",
+    "loss-memberships.csv": "3c28f5a36e41279c3dceae50983868b54fb8ed5652617aa4ec527008e98ead07",
+    "reconstruction.csv": "03a6e8ea5608ba9bdee77e287092573c0f5fb7d829999d67abeeaa6338691e9d",
+    "components.csv": "60efb9edbba466a857c25043e60c0d9b851f6d3ff418d5e0f8e999281df991e8",
+    "groups.csv": "c2cf508a23447808a711f7d760c6f32874e58db24acce097e93941088fc01af8",
+    "summary.csv": "8e761592bdea881ff576d637e4d29387fe7712308c80c0ed2aefeb1e462a4469",
+    "span-components.csv": "4d6adc6ea4fd1637cbee6fde32967d77510462dcf31db60e14ab06acd373aa7a",
+    "sources.json": "95a343b123b2f49ff8e519b3df0c3bce28cd253f4f0bc0aadb26b92e0f7a923e"
+  },
+  "script_sha256": "f2451f1cbe0b40f4b57487ed728caa7d123b74d49c2271c909217999f6dc3b47",
+  "analysis_sha256": "07ed732a477aa87fce291e04615544300fda2376aea6a565ae925938b4545237",
+  "matplotlib_version": "3.10.8",
+  "numeric_rows": 432,
+  "plotted_population": "all 550 losses; separately all default-setting clear-conflict spans",
+  "svg_normalization": "strip trailing whitespace from generated XML lines"
+}
