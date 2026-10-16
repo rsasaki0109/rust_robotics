@@ -1757,3 +1757,37 @@ plot also needs Matplotlib. Its fixed lost-hold example was chosen from the
 previous report, and exports sampled goal-distance data, complete wait spans,
 SVG and source fingerprints. See the
 [terminal-arc divergence diagnosis](results/terminal-arc-divergence/report.md).
+
+### Recovery-line geometry and positive-speed admission
+
+Analyze every timeout in both live terminal-arc arms, retaining all 648 cases
+in accounting. This diagnosis covers all 368 timeouts, independently of whether
+their paired commands changed. It checks the final 30 seconds of joint admission
+and fixed endpoint, first-usable-epoch and age-0.5 checkpoints.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_joint_admission_geometry.py \
+  --output /tmp/joint-admission-geometry
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use a new output directory. The default raw paths come from the pinned live
+report; `--raw-root DIR` supports relocated or identically regenerated cohorts.
+The analyzer checks prior tables, source and raw hashes and uses only Python's
+standard library. It exports accounting, per-case readiness/masks, checkpoints,
+six-pose geometry, estimated/true gate comparisons, summaries and provenance.
+Repeat aggregation to compare six CSVs and `sources.json` byte for byte.
+
+The [fixed protocol](results/joint-admission-geometry/protocol.md) preserves
+inclusive recovery wall bounds, strict obstacle clearance, the original speed
+probe and the uncapped goal command. The first 0.05 chord determines whether
+the speed probe permits positive speed and is checked against the full 40-chord
+calculation. Current-age and zero-age margins are recorded separately; a true
+starting clearance below the zero-age floor obstructs any path requiring that
+same margin at the fixed position and sigma.
+
+Readiness masks describe the recorded requirements. Reusing the stopping-preview
+pose for speed would also change its proposed target and stopping forecast, so
+these geometry substitutions are not reported as controller rollouts or new
+held-goal outcomes. See the
+[joint-admission diagnosis](results/joint-admission-geometry/report.md).
