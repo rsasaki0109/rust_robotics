@@ -1,0 +1,63 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "decisions.csv": "7eeaa32e09c5235c70bd9e95db9b3998f68f835ff392036b554c56536395b394",
+    "geometry-audit.csv": "ffae1282b46e9da0e792840a1d5eae65c9219dfe98c864bae149fc491b32a6f3",
+    "sources.json": "b13e005d5e0e327c8951519823dd73c9f8916573f68ce647d33635b4d8ad1313"
+  },
+  "map_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "analysis": {
+    "script_sha256": "242558f2c0a9990a5b4623345dd79c914c9b5dfde83302fc3a83f29cb347dc3b",
+    "protocol_sha256": "dd908fd5ffc59ebcf17b5422e84dd0b5c1d35dac44fd0ab242777fff24023cb2",
+    "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "helpers_sha256": {
+      "analyze_arc_pose_components.py": "5d16fc1d0c7d01e0fac2b29dc0283838c480819b08c4926e06723a554ede9058",
+      "analyze_commanded_arc_components.py": "c04881e1c2ddfd47f6eba9dc79fa8de4f0a51e04ffc5928ad0944fcc2c35744c",
+      "analyze_commanded_recovery_arc.py": "4fbd54bfc44b4e1f28524ddd10d7ca7c6c63d8b629d6801edcee71873754444b",
+      "analyze_epoch_divergence.py": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+      "analyze_epoch_position_components.py": "019e60e4a83321ae26b7323df97d2f5ee8ed521be990c237ed7d1def5fa05356",
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_joint_admission_geometry.py": "5252ba0f1b187bff7368fa8d69715fea59aa4f43052310acc31bbdce8d76526d",
+      "analyze_model_admission_envelopes.py": "37f6c6e7d64bbbe0eaa000684fec8363876063019a01fc8dd56f376de12c0d28",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+      "analyze_terminal_arc_live.py": "4adf591accb8fbb88d8eae46177e5694dd6474619e03232c79ef42d74dc414fa",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+    }
+  },
+  "fixed_search": {
+    "intersecting_cell_budget": 256,
+    "disk_pruning_tolerance": 1e-12,
+    "distance_padding": 2e-08
+  },
+  "inherited_validation": {
+    "cases": 368,
+    "original_intervals": 3312000,
+    "raw_reloaded": false,
+    "new_physics_validation": false,
+    "prior_window_max_reconstruction_error": 1.2400036553117388e-09
+  },
+  "audit": {
+    "decision_rows": 25440,
+    "prior_unresolved": 13522,
+    "mixed": 13170,
+    "new_permit": 16,
+    "new_blocked": 103,
+    "unresolved": 233,
+    "budget_exhausted": 233,
+    "cell_visits": 150338,
+    "max_cell_visits": 256,
+    "geometry_requests": 544830,
+    "new_exact_geometry_evaluations": 268122,
+    "published_geometry_audits": 18130,
+    "witness_rows": 26340,
+    "certificate_leaves": 7598,
+    "max_published_chord_error": 5.3657268359597055e-06,
+    "max_published_sagitta_bound": 5.470362659252085e-06,
+    "covered_definite_errors": 0
+  }
+}
