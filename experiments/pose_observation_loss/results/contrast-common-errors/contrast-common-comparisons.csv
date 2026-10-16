@@ -1,0 +1,397 @@
+family,variant,event_kind,pairing,phase,input_kind,records,matched,unavailable,zero_or_roundoff_pairs,negative_weight_pairs,quantity,value_m
+simultaneous,epoch,all,raw_recovery,,,197,197,0,0,135,Contrast D,0.09369109403529696
+simultaneous,epoch,all,raw_recovery,,,197,197,0,0,135,Midpoint M,0.11606661324351635
+simultaneous,epoch,all,raw_recovery,,,197,197,0,0,135,Common residual R,0.10639504927324321
+simultaneous,epoch,all,raw_preview,,,197,197,0,0,81,Contrast D,0.11923506519437915
+simultaneous,epoch,all,raw_preview,,,197,197,0,0,81,Midpoint M,0.0971547834586834
+simultaneous,epoch,all,raw_preview,,,197,197,0,0,81,Common residual R,0.07731892324507805
+simultaneous,epoch,all,recovery_preview,,,197,197,0,55,50,Contrast D,0.07371182409043434
+simultaneous,epoch,all,recovery_preview,,,197,197,0,55,50,Midpoint M,0.08544535022105389
+simultaneous,epoch,all,recovery_preview,,,197,197,0,55,50,Common residual R,0.07736196032465828
+simultaneous,epoch,received,raw_recovery,,,197,197,0,0,135,Contrast D,0.09369109403529696
+simultaneous,epoch,received,raw_recovery,,,197,197,0,0,135,Midpoint M,0.11606661324351635
+simultaneous,epoch,received,raw_recovery,,,197,197,0,0,135,Common residual R,0.10639504927324321
+simultaneous,epoch,received,raw_preview,,,197,197,0,0,81,Contrast D,0.11923506519437915
+simultaneous,epoch,received,raw_preview,,,197,197,0,0,81,Midpoint M,0.0971547834586834
+simultaneous,epoch,received,raw_preview,,,197,197,0,0,81,Common residual R,0.07731892324507805
+simultaneous,epoch,received,recovery_preview,,,197,197,0,55,50,Contrast D,0.07371182409043434
+simultaneous,epoch,received,recovery_preview,,,197,197,0,55,50,Midpoint M,0.08544535022105389
+simultaneous,epoch,received,recovery_preview,,,197,197,0,55,50,Common residual R,0.07736196032465828
+simultaneous,epoch,missed,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,missed,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,missed,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,precision_only,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,precision_only,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,precision_only,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,precision_only,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,precision_only,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,precision_only,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,precision_only,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,precision_only,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,precision_only,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,received_and_precision,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,received_and_precision,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,received_and_precision,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,received_and_precision,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,received_and_precision,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,received_and_precision,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,received_and_precision,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,received_and_precision,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,received_and_precision,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,missed_and_precision,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed_and_precision,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed_and_precision,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,missed_and_precision,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed_and_precision,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed_and_precision,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,epoch,missed_and_precision,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,epoch,missed_and_precision,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,epoch,missed_and_precision,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,all,raw_recovery,,,353,353,0,0,258,Contrast D,0.09598984267715485
+simultaneous,curved,all,raw_recovery,,,353,353,0,0,258,Midpoint M,0.11450194778430363
+simultaneous,curved,all,raw_recovery,,,353,353,0,0,258,Common residual R,0.10403737973658717
+simultaneous,curved,all,raw_preview,,,353,353,0,0,169,Contrast D,0.1194112775002029
+simultaneous,curved,all,raw_preview,,,353,353,0,0,169,Midpoint M,0.09674067253586514
+simultaneous,curved,all,raw_preview,,,353,353,0,0,169,Common residual R,0.07645768402411886
+simultaneous,curved,all,recovery_preview,,,353,353,0,113,99,Contrast D,0.07090317570638227
+simultaneous,curved,all,recovery_preview,,,353,353,0,113,99,Midpoint M,0.08414816968082077
+simultaneous,curved,all,recovery_preview,,,353,353,0,113,99,Common residual R,0.076461396635954
+simultaneous,curved,received,raw_recovery,,,353,353,0,0,258,Contrast D,0.09598984267715485
+simultaneous,curved,received,raw_recovery,,,353,353,0,0,258,Midpoint M,0.11450194778430363
+simultaneous,curved,received,raw_recovery,,,353,353,0,0,258,Common residual R,0.10403737973658717
+simultaneous,curved,received,raw_preview,,,353,353,0,0,169,Contrast D,0.1194112775002029
+simultaneous,curved,received,raw_preview,,,353,353,0,0,169,Midpoint M,0.09674067253586514
+simultaneous,curved,received,raw_preview,,,353,353,0,0,169,Common residual R,0.07645768402411886
+simultaneous,curved,received,recovery_preview,,,353,353,0,113,99,Contrast D,0.07090317570638227
+simultaneous,curved,received,recovery_preview,,,353,353,0,113,99,Midpoint M,0.08414816968082077
+simultaneous,curved,received,recovery_preview,,,353,353,0,113,99,Common residual R,0.076461396635954
+simultaneous,curved,missed,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,missed,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,missed,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,precision_only,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,precision_only,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,precision_only,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,precision_only,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,precision_only,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,precision_only,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,precision_only,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,precision_only,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,precision_only,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,received_and_precision,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,received_and_precision,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,received_and_precision,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,received_and_precision,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,received_and_precision,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,received_and_precision,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,received_and_precision,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,received_and_precision,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,received_and_precision,recovery_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,missed_and_precision,raw_recovery,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed_and_precision,raw_recovery,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed_and_precision,raw_recovery,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,missed_and_precision,raw_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed_and_precision,raw_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed_and_precision,raw_preview,,,0,0,0,0,0,Common residual R,
+simultaneous,curved,missed_and_precision,recovery_preview,,,0,0,0,0,0,Contrast D,
+simultaneous,curved,missed_and_precision,recovery_preview,,,0,0,0,0,0,Midpoint M,
+simultaneous,curved,missed_and_precision,recovery_preview,,,0,0,0,0,0,Common residual R,
+lagged,epoch,all,,immediate,actual,1292,1292,0,0,1,Contrast D,0.17276976150672044
+lagged,epoch,all,,immediate,actual,1292,1292,0,0,1,Midpoint M,0.11127757553458928
+lagged,epoch,all,,immediate,actual,1292,1292,0,0,1,Common residual R,0.11121983703229557
+lagged,epoch,all,,immediate,preview,1292,1292,0,0,1,Contrast D,0.11609851321822678
+lagged,epoch,all,,immediate,preview,1292,1292,0,0,1,Midpoint M,0.09021892750744082
+lagged,epoch,all,,immediate,preview,1292,1292,0,0,1,Common residual R,0.08119255638365076
+lagged,epoch,all,,after_0p18,actual,1292,1108,184,0,1,Contrast D,0.17109250425877598
+lagged,epoch,all,,after_0p18,actual,1292,1108,184,0,1,Midpoint M,0.10771702815980168
+lagged,epoch,all,,after_0p18,actual,1292,1108,184,0,1,Common residual R,0.10702987154851902
+lagged,epoch,all,,after_0p18,preview,1292,1108,184,0,1,Contrast D,0.1116272135839677
+lagged,epoch,all,,after_0p18,preview,1292,1108,184,0,1,Midpoint M,0.0873447123604271
+lagged,epoch,all,,after_0p18,preview,1292,1108,184,0,1,Common residual R,0.07825882239046884
+lagged,epoch,all,,after_0p5,actual,1292,1108,184,0,0,Contrast D,0.17501308594268097
+lagged,epoch,all,,after_0p5,actual,1292,1108,184,0,0,Midpoint M,0.10549919176309111
+lagged,epoch,all,,after_0p5,actual,1292,1108,184,0,0,Common residual R,0.10468257426741005
+lagged,epoch,all,,after_0p5,preview,1292,1108,184,0,1,Contrast D,0.11254962242534323
+lagged,epoch,all,,after_0p5,preview,1292,1108,184,0,1,Midpoint M,0.08628146438625384
+lagged,epoch,all,,after_0p5,preview,1292,1108,184,0,1,Common residual R,0.07715062302866074
+lagged,epoch,all,,after_1p5,actual,1292,1108,184,0,0,Contrast D,0.18525977711691946
+lagged,epoch,all,,after_1p5,actual,1292,1108,184,0,0,Midpoint M,0.10120474216208102
+lagged,epoch,all,,after_1p5,actual,1292,1108,184,0,0,Common residual R,0.10036509989629178
+lagged,epoch,all,,after_1p5,preview,1292,1108,184,0,0,Contrast D,0.11652754122383296
+lagged,epoch,all,,after_1p5,preview,1292,1108,184,0,0,Midpoint M,0.08493789470311232
+lagged,epoch,all,,after_1p5,preview,1292,1108,184,0,0,Common residual R,0.07564492051801248
+lagged,epoch,received,,immediate,actual,1197,1197,0,0,0,Contrast D,0.17705854524952605
+lagged,epoch,received,,immediate,actual,1197,1197,0,0,0,Midpoint M,0.1098004332413692
+lagged,epoch,received,,immediate,actual,1197,1197,0,0,0,Common residual R,0.1098004332413692
+lagged,epoch,received,,immediate,preview,1197,1197,0,0,0,Contrast D,0.11828925126283707
+lagged,epoch,received,,immediate,preview,1197,1197,0,0,0,Midpoint M,0.08732377466205947
+lagged,epoch,received,,immediate,preview,1197,1197,0,0,0,Common residual R,0.07782420724882232
+lagged,epoch,received,,after_0p18,actual,1197,1036,161,0,0,Contrast D,0.174415158268628
+lagged,epoch,received,,after_0p18,actual,1197,1036,161,0,0,Midpoint M,0.106189041653722
+lagged,epoch,received,,after_0p18,actual,1197,1036,161,0,0,Common residual R,0.10551789148937062
+lagged,epoch,received,,after_0p18,preview,1197,1036,161,0,0,Contrast D,0.11453107323171434
+lagged,epoch,received,,after_0p18,preview,1197,1036,161,0,0,Midpoint M,0.08501916146644937
+lagged,epoch,received,,after_0p18,preview,1197,1036,161,0,0,Common residual R,0.07505110672467806
+lagged,epoch,received,,after_0p5,actual,1197,1036,161,0,0,Contrast D,0.1781350058282887
+lagged,epoch,received,,after_0p5,actual,1197,1036,161,0,0,Midpoint M,0.10394864792548689
+lagged,epoch,received,,after_0p5,actual,1197,1036,161,0,0,Common residual R,0.10313650483536976
+lagged,epoch,received,,after_0p5,preview,1197,1036,161,0,0,Contrast D,0.11541023230162144
+lagged,epoch,received,,after_0p5,preview,1197,1036,161,0,0,Midpoint M,0.08401898051253057
+lagged,epoch,received,,after_0p5,preview,1197,1036,161,0,0,Common residual R,0.07398020026912236
+lagged,epoch,received,,after_1p5,actual,1197,1036,161,0,0,Contrast D,0.18827083731595484
+lagged,epoch,received,,after_1p5,actual,1197,1036,161,0,0,Midpoint M,0.09957175217270149
+lagged,epoch,received,,after_1p5,actual,1197,1036,161,0,0,Common residual R,0.09873411931660639
+lagged,epoch,received,,after_1p5,preview,1197,1036,161,0,0,Contrast D,0.11855315698468824
+lagged,epoch,received,,after_1p5,preview,1197,1036,161,0,0,Midpoint M,0.08290337176162862
+lagged,epoch,received,,after_1p5,preview,1197,1036,161,0,0,Common residual R,0.07270710529233804
+lagged,epoch,missed,,immediate,actual,91,91,0,0,0,Contrast D,0.10262857156373609
+lagged,epoch,missed,,immediate,actual,91,91,0,0,0,Midpoint M,0.1302568388787966
+lagged,epoch,missed,,immediate,actual,91,91,0,0,0,Common residual R,0.1302568388787966
+lagged,epoch,missed,,immediate,preview,91,91,0,0,0,Contrast D,0.08211515007108149
+lagged,epoch,missed,,immediate,preview,91,91,0,0,0,Midpoint M,0.12283832996103944
+lagged,epoch,missed,,immediate,preview,91,91,0,0,0,Common residual R,0.11771725455747861
+lagged,epoch,missed,,after_0p18,actual,91,68,23,0,0,Contrast D,0.11087965906585473
+lagged,epoch,missed,,after_0p18,actual,91,68,23,0,0,Midpoint M,0.13010159607537472
+lagged,epoch,missed,,after_0p18,actual,91,68,23,0,0,Common residual R,0.13010159607537472
+lagged,epoch,missed,,after_0p18,preview,91,68,23,0,0,Contrast D,0.049502292561424
+lagged,epoch,missed,,after_0p18,preview,91,68,23,0,0,Midpoint M,0.11819021010164434
+lagged,epoch,missed,,after_0p18,preview,91,68,23,0,0,Common residual R,0.11794770615321394
+lagged,epoch,missed,,after_0p5,actual,91,68,23,0,0,Contrast D,0.12001880056762898
+lagged,epoch,missed,,after_0p5,actual,91,68,23,0,0,Midpoint M,0.12805808009484185
+lagged,epoch,missed,,after_0p5,actual,91,68,23,0,0,Common residual R,0.12805808009484185
+lagged,epoch,missed,,after_0p5,preview,91,68,23,0,0,Contrast D,0.052288223513725925
+lagged,epoch,missed,,after_0p5,preview,91,68,23,0,0,Midpoint M,0.11636123642092687
+lagged,epoch,missed,,after_0p5,preview,91,68,23,0,0,Common residual R,0.11636123642092687
+lagged,epoch,missed,,after_1p5,actual,91,68,23,0,0,Contrast D,0.13394601592293154
+lagged,epoch,missed,,after_1p5,actual,91,68,23,0,0,Midpoint M,0.12455768223836476
+lagged,epoch,missed,,after_1p5,actual,91,68,23,0,0,Common residual R,0.12455768223836476
+lagged,epoch,missed,,after_1p5,preview,91,68,23,0,0,Contrast D,0.07965717433581054
+lagged,epoch,missed,,after_1p5,preview,91,68,23,0,0,Midpoint M,0.11241501485642721
+lagged,epoch,missed,,after_1p5,preview,91,68,23,0,0,Common residual R,0.11241501485642721
+lagged,epoch,precision_only,,immediate,actual,4,4,0,0,1,Contrast D,0.1425822639392427
+lagged,epoch,precision_only,,immediate,actual,4,4,0,0,1,Midpoint M,0.07627302604781086
+lagged,epoch,precision_only,,immediate,actual,4,4,0,0,1,Common residual R,0.040842391498598966
+lagged,epoch,precision_only,,immediate,preview,4,4,0,0,1,Contrast D,0.11429158125463995
+lagged,epoch,precision_only,,immediate,preview,4,4,0,0,1,Midpoint M,0.062048070317166915
+lagged,epoch,precision_only,,immediate,preview,4,4,0,0,1,Common residual R,0.0399525756102731
+lagged,epoch,precision_only,,after_0p18,actual,4,4,0,0,1,Contrast D,0.14342909004237261
+lagged,epoch,precision_only,,after_0p18,actual,4,4,0,0,1,Midpoint M,0.07587505540297314
+lagged,epoch,precision_only,,after_0p18,actual,4,4,0,0,1,Common residual R,0.041014116957293914
+lagged,epoch,precision_only,,after_0p18,preview,4,4,0,0,1,Contrast D,0.11198102551533863
+lagged,epoch,precision_only,,after_0p18,preview,4,4,0,0,1,Midpoint M,0.06057927756879039
+lagged,epoch,precision_only,,after_0p18,preview,4,4,0,0,1,Common residual R,0.033337258246115206
+lagged,epoch,precision_only,,after_0p5,actual,4,4,0,0,0,Contrast D,0.1445967467754538
+lagged,epoch,precision_only,,after_0p5,actual,4,4,0,0,0,Midpoint M,0.07531895648167747
+lagged,epoch,precision_only,,after_0p5,actual,4,4,0,0,0,Common residual R,0.04109170725313916
+lagged,epoch,precision_only,,after_0p5,preview,4,4,0,0,1,Contrast D,0.11242567710555273
+lagged,epoch,precision_only,,after_0p5,preview,4,4,0,0,1,Midpoint M,0.0601259145113867
+lagged,epoch,precision_only,,after_0p5,preview,4,4,0,0,1,Common residual R,0.032565142135401404
+lagged,epoch,precision_only,,after_1p5,actual,4,4,0,0,0,Contrast D,0.14653304122132893
+lagged,epoch,precision_only,,after_1p5,actual,4,4,0,0,0,Midpoint M,0.07437752992407776
+lagged,epoch,precision_only,,after_1p5,actual,4,4,0,0,0,Common residual R,0.04089701875160565
+lagged,epoch,precision_only,,after_1p5,preview,4,4,0,0,0,Contrast D,0.1149568136518776
+lagged,epoch,precision_only,,after_1p5,preview,4,4,0,0,0,Midpoint M,0.058917243339645105
+lagged,epoch,precision_only,,after_1p5,preview,4,4,0,0,0,Common residual R,0.032367499181502966
+lagged,epoch,received_and_precision,,immediate,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,immediate,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,immediate,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,immediate,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,immediate,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,immediate,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_0p18,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_0p18,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_0p18,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_0p18,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_0p18,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_0p18,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_0p5,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_0p5,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_0p5,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_0p5,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_0p5,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_0p5,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_1p5,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_1p5,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_1p5,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,received_and_precision,,after_1p5,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,received_and_precision,,after_1p5,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,received_and_precision,,after_1p5,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,immediate,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,immediate,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,immediate,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,immediate,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,immediate,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,immediate,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Common residual R,
+lagged,epoch,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Contrast D,
+lagged,epoch,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Midpoint M,
+lagged,epoch,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Common residual R,
+lagged,curved,all,,immediate,actual,1291,1291,0,0,2,Contrast D,0.17424897911986362
+lagged,curved,all,,immediate,actual,1291,1291,0,0,2,Midpoint M,0.1109215548404207
+lagged,curved,all,,immediate,actual,1291,1291,0,0,2,Common residual R,0.11087195333022516
+lagged,curved,all,,immediate,preview,1291,1291,0,0,2,Contrast D,0.11656166107897475
+lagged,curved,all,,immediate,preview,1291,1291,0,0,2,Midpoint M,0.09045600321074661
+lagged,curved,all,,immediate,preview,1291,1291,0,0,2,Common residual R,0.08214316261577792
+lagged,curved,all,,after_0p18,actual,1291,1107,184,0,2,Contrast D,0.17159889758253624
+lagged,curved,all,,after_0p18,actual,1291,1107,184,0,2,Midpoint M,0.10718365079501298
+lagged,curved,all,,after_0p18,actual,1291,1107,184,0,2,Common residual R,0.10643140877917542
+lagged,curved,all,,after_0p18,preview,1291,1107,184,0,2,Contrast D,0.11255238975316696
+lagged,curved,all,,after_0p18,preview,1291,1107,184,0,2,Midpoint M,0.0877064160523641
+lagged,curved,all,,after_0p18,preview,1291,1107,184,0,2,Common residual R,0.0792491507157268
+lagged,curved,all,,after_0p5,actual,1291,1107,184,0,0,Contrast D,0.1750576006529826
+lagged,curved,all,,after_0p5,actual,1291,1107,184,0,0,Midpoint M,0.10499374574254385
+lagged,curved,all,,after_0p5,actual,1291,1107,184,0,0,Common residual R,0.10406198170030885
+lagged,curved,all,,after_0p5,preview,1291,1107,184,0,2,Contrast D,0.11347964256863151
+lagged,curved,all,,after_0p5,preview,1291,1107,184,0,2,Midpoint M,0.0865183414253613
+lagged,curved,all,,after_0p5,preview,1291,1107,184,0,2,Common residual R,0.0779430626704294
+lagged,curved,all,,after_1p5,actual,1291,1107,184,0,0,Contrast D,0.1851432348494338
+lagged,curved,all,,after_1p5,actual,1291,1107,184,0,0,Midpoint M,0.10081086919994509
+lagged,curved,all,,after_1p5,actual,1291,1107,184,0,0,Common residual R,0.09988813667114547
+lagged,curved,all,,after_1p5,preview,1291,1107,184,0,0,Contrast D,0.11974923840649938
+lagged,curved,all,,after_1p5,preview,1291,1107,184,0,0,Midpoint M,0.08493147865495038
+lagged,curved,all,,after_1p5,preview,1291,1107,184,0,0,Common residual R,0.07646161140826487
+lagged,curved,received,,immediate,actual,1204,1204,0,0,0,Contrast D,0.17805408160208877
+lagged,curved,received,,immediate,actual,1204,1204,0,0,0,Midpoint M,0.10953814226496789
+lagged,curved,received,,immediate,actual,1204,1204,0,0,0,Common residual R,0.10953814226496789
+lagged,curved,received,,immediate,preview,1204,1204,0,0,0,Contrast D,0.11845522806935269
+lagged,curved,received,,immediate,preview,1204,1204,0,0,0,Midpoint M,0.08785210462784043
+lagged,curved,received,,immediate,preview,1204,1204,0,0,0,Common residual R,0.07926089675399219
+lagged,curved,received,,after_0p18,actual,1204,1041,163,0,0,Contrast D,0.17456811662757035
+lagged,curved,received,,after_0p18,actual,1204,1041,163,0,0,Midpoint M,0.10575764801616538
+lagged,curved,received,,after_0p18,actual,1204,1041,163,0,0,Common residual R,0.10500891381753466
+lagged,curved,received,,after_0p18,preview,1204,1041,163,0,0,Contrast D,0.11526754478937502
+lagged,curved,received,,after_0p18,preview,1204,1041,163,0,0,Midpoint M,0.08567016186156096
+lagged,curved,received,,after_0p18,preview,1204,1041,163,0,0,Common residual R,0.07649907593152763
+lagged,curved,received,,after_0p5,actual,1204,1041,163,0,0,Contrast D,0.17784863176227422
+lagged,curved,received,,after_0p5,actual,1204,1041,163,0,0,Midpoint M,0.1035388583003811
+lagged,curved,received,,after_0p5,actual,1204,1041,163,0,0,Common residual R,0.10259400361620925
+lagged,curved,received,,after_0p5,preview,1204,1041,163,0,0,Contrast D,0.11617218726987782
+lagged,curved,received,,after_0p5,preview,1204,1041,163,0,0,Midpoint M,0.08452274526620275
+lagged,curved,received,,after_0p5,preview,1204,1041,163,0,0,Common residual R,0.0751990533794389
+lagged,curved,received,,after_1p5,actual,1204,1041,163,0,0,Contrast D,0.18786707707943373
+lagged,curved,received,,after_1p5,actual,1204,1041,163,0,0,Midpoint M,0.09927074179020297
+lagged,curved,received,,after_1p5,actual,1204,1041,163,0,0,Common residual R,0.09833189675524717
+lagged,curved,received,,after_1p5,preview,1204,1041,163,0,0,Contrast D,0.12184885835718813
+lagged,curved,received,,after_1p5,preview,1204,1041,163,0,0,Midpoint M,0.0831006961434047
+lagged,curved,received,,after_1p5,preview,1204,1041,163,0,0,Common residual R,0.07390188532042796
+lagged,curved,missed,,immediate,actual,84,84,0,0,0,Contrast D,0.1076754698085497
+lagged,curved,missed,,immediate,actual,84,84,0,0,0,Midpoint M,0.12994164703323705
+lagged,curved,missed,,immediate,actual,84,84,0,0,0,Common residual R,0.12994164703323705
+lagged,curved,missed,,immediate,preview,84,84,0,0,0,Contrast D,0.0846890132047716
+lagged,curved,missed,,immediate,preview,84,84,0,0,0,Midpoint M,0.12222644031386823
+lagged,curved,missed,,immediate,preview,84,84,0,0,0,Common residual R,0.1166025118865151
+lagged,curved,missed,,after_0p18,actual,84,63,21,0,0,Contrast D,0.11393993080022545
+lagged,curved,missed,,after_0p18,actual,84,63,21,0,0,Midpoint M,0.12943887763075654
+lagged,curved,missed,,after_0p18,actual,84,63,21,0,0,Common residual R,0.12943887763075654
+lagged,curved,missed,,after_0p18,preview,84,63,21,0,0,Contrast D,0.048545693756846524
+lagged,curved,missed,,after_0p18,preview,84,63,21,0,0,Midpoint M,0.11681527037205645
+lagged,curved,missed,,after_0p18,preview,84,63,21,0,0,Common residual R,0.11656721713209856
+lagged,curved,missed,,after_0p5,actual,84,63,21,0,0,Contrast D,0.12208238852851347
+lagged,curved,missed,,after_0p5,actual,84,63,21,0,0,Midpoint M,0.12756948147105276
+lagged,curved,missed,,after_0p5,actual,84,63,21,0,0,Common residual R,0.12756948147105276
+lagged,curved,missed,,after_0p5,preview,84,63,21,0,0,Contrast D,0.05061002410401263
+lagged,curved,missed,,after_0p5,preview,84,63,21,0,0,Midpoint M,0.11507271027576348
+lagged,curved,missed,,after_0p5,preview,84,63,21,0,0,Common residual R,0.11507271027576348
+lagged,curved,missed,,after_1p5,actual,84,63,21,0,0,Contrast D,0.13463033344408956
+lagged,curved,missed,,after_1p5,actual,84,63,21,0,0,Midpoint M,0.12437310130885745
+lagged,curved,missed,,after_1p5,actual,84,63,21,0,0,Common residual R,0.12437310130885745
+lagged,curved,missed,,after_1p5,preview,84,63,21,0,0,Contrast D,0.07648628922201997
+lagged,curved,missed,,after_1p5,preview,84,63,21,0,0,Midpoint M,0.11144296377709705
+lagged,curved,missed,,after_1p5,preview,84,63,21,0,0,Common residual R,0.11144296377709705
+lagged,curved,precision_only,,immediate,actual,3,3,0,0,2,Contrast D,0.13371314560196756
+lagged,curved,precision_only,,immediate,actual,3,3,0,0,2,Midpoint M,0.0801885195854541
+lagged,curved,precision_only,,immediate,actual,3,3,0,0,2,Common residual R,0.04118222437190461
+lagged,curved,precision_only,,immediate,preview,3,3,0,0,2,Contrast D,0.12078138793482851
+lagged,curved,precision_only,,immediate,preview,3,3,0,0,2,Midpoint M,0.07296193820310069
+lagged,curved,precision_only,,immediate,preview,3,3,0,0,2,Common residual R,0.04110276516289806
+lagged,curved,precision_only,,after_0p18,actual,3,3,0,0,2,Contrast D,0.13610685870920713
+lagged,curved,precision_only,,after_0p18,actual,3,3,0,0,2,Midpoint M,0.07917531656443176
+lagged,curved,precision_only,,after_0p18,actual,3,3,0,0,2,Common residual R,0.04163484752122802
+lagged,curved,precision_only,,after_0p18,preview,3,3,0,0,2,Contrast D,0.12068124146906
+lagged,curved,precision_only,,after_0p18,preview,3,3,0,0,2,Midpoint M,0.07194193326499115
+lagged,curved,precision_only,,after_0p18,preview,3,3,0,0,2,Common residual R,0.038078369399346494
+lagged,curved,precision_only,,after_0p5,actual,3,3,0,0,0,Contrast D,0.13936254090722955
+lagged,curved,precision_only,,after_0p5,actual,3,3,0,0,0,Midpoint M,0.07774651469982558
+lagged,curved,precision_only,,after_0p5,actual,3,3,0,0,0,Common residual R,0.04183836559059387
+lagged,curved,precision_only,,after_0p5,preview,3,3,0,0,2,Contrast D,0.1222795407035974
+lagged,curved,precision_only,,after_0p5,preview,3,3,0,0,2,Midpoint M,0.07102220698844569
+lagged,curved,precision_only,,after_0p5,preview,3,3,0,0,2,Common residual R,0.037334659936088054
+lagged,curved,precision_only,,after_1p5,actual,3,3,0,0,0,Contrast D,0.14465528836579444
+lagged,curved,precision_only,,after_1p5,actual,3,3,0,0,0,Midpoint M,0.07529084862685648
+lagged,curved,precision_only,,after_1p5,actual,3,3,0,0,0,Common residual R,0.04132653872194203
+lagged,curved,precision_only,,after_1p5,preview,3,3,0,0,0,Contrast D,0.12885452691266785
+lagged,curved,precision_only,,after_1p5,preview,3,3,0,0,0,Midpoint M,0.0680540456380695
+lagged,curved,precision_only,,after_1p5,preview,3,3,0,0,0,Common residual R,0.036969020461148853
+lagged,curved,received_and_precision,,immediate,actual,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,immediate,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,immediate,actual,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,immediate,preview,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,immediate,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,immediate,preview,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_0p18,actual,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_0p18,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_0p18,actual,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_0p18,preview,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_0p18,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_0p18,preview,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_0p5,actual,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_0p5,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_0p5,actual,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_0p5,preview,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_0p5,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_0p5,preview,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_1p5,actual,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_1p5,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_1p5,actual,0,0,0,0,0,Common residual R,
+lagged,curved,received_and_precision,,after_1p5,preview,0,0,0,0,0,Contrast D,
+lagged,curved,received_and_precision,,after_1p5,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,received_and_precision,,after_1p5,preview,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,immediate,actual,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,immediate,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,immediate,actual,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,immediate,preview,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,immediate,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,immediate,preview,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_0p18,actual,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_0p18,preview,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_0p5,actual,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_0p5,preview,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_1p5,actual,0,0,0,0,0,Common residual R,
+lagged,curved,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Contrast D,
+lagged,curved,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Midpoint M,
+lagged,curved,missed_and_precision,,after_1p5,preview,0,0,0,0,0,Common residual R,
