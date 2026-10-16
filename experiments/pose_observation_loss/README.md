@@ -1371,3 +1371,43 @@ chord audit. Outputs include `components.csv`, `geometry-audit.csv`, `summary.cs
 and `sources.json`, plus optional figures. Repeat into another new directory to
 compare all three CSVs and provenance byte for byte. See the
 [pose-component diagnosis](results/arc-pose-components/report.md).
+
+## Decompose the motion filter's remaining position error
+
+Use the same saved raw aligned-release runs as the aligned-arc diagnosis.
+The analyzer requires their trajectory hashes and provenance to match the pinned
+inputs; it does not run a new controller or modify the filter:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_filter_position_components.py \
+  --white /tmp/aligned-release-white \
+  --correlated /tmp/aligned-release-correlated \
+  --output /tmp/filter-position-components
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_filter_position_components.py
+```
+
+The output directory must be new. Only Python's standard library is needed.
+At every selected track's step, reconstruct the 25-sample window by transporting
+each observation with measured speed and applied steering. A scheduled
+correction, including a missed one, resets the window; only a received correction
+or precision activation replaces the common bias anchor. Compare position and
+circular mean heading with the logged filter output before extracting the same
+497 checkpoints.
+
+Split filtered minus true position into mean observation noise, common correction
+anchor bias, drift since that anchor, and residual motion transport. The vectors
+sum to the error. Their signed projections on the total error direction also
+sum to its magnitude; component norms and RMS values do not add. Truth and logged
+noise/bias are diagnostic references, not estimator inputs.
+
+For the stationary AR(1) noise process alone, the effective sample count is
+`n^2 / (n + 2*sum((n-k)*rho^k, k=1..n-1))`. This does not reduce common anchor
+variance or establish pose confidence, particularly on selected failed runs.
+The [fixed protocol](results/filter-position-components/protocol.md) keeps the
+window, resets and all recorded commands unchanged.
+
+Outputs are checkpoint decompositions, retained window samples, four cohort/time
+summaries and `sources.json`. Repeat with another new output directory to compare
+all three CSVs and provenance byte for byte. See the
+[filter position-error diagnosis](results/filter-position-components/report.md).

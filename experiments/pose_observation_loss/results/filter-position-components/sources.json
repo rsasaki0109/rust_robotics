@@ -1,0 +1,43 @@
+{
+  "inputs_sha256": {
+    "checkpoints.csv": "6d4c4b3c9d016af0833c8f44320b49cf18c794f41f975e25d2b75616f015750d",
+    "sources.json": "61b12a4b239d1c29768e007b0855cfd0de27225f2ac198d89dd2a35494c3df81"
+  },
+  "raw_sha256": {
+    "white-validation": {
+      "aligned-blackout-265/trajectories.csv": "74ee662eda89aaefec43b0b7a7e1a0493df34740fc4bb2df1b064d08aef416d9",
+      "aligned-blackout-266/trajectories.csv": "be4e49ea50d2fca029c41663b14b3211c1515777116d5d6ec7ff08e1629b365d",
+      "aligned-blackout-267/trajectories.csv": "c619373f5b4c4659e81b39e1e7de5b15738b6b341c4c69a38d334666d3103c2d",
+      "aligned-none-265/trajectories.csv": "0d3f374ee1f503d0bac64636ea2a0cd9dd87f0ea9b84a1936c82d73499eedcf1",
+      "aligned-none-266/trajectories.csv": "575614cde2a092c842554c04a9e79387c9e38968878e322e38cf0858ffb806d1",
+      "aligned-none-267/trajectories.csv": "3f3551cf3b8843ffdcbed040195f6e33fd38d4f76b3499eec8775966a589acc6",
+      "aligned-random-265/trajectories.csv": "44a4bd95495139664361da76206d728eb8c333361a503c658232b57ee07f06b6",
+      "aligned-random-266/trajectories.csv": "cd9b61141ea157fa06af12ccc387e89f0c24250f9fa3aa51d3cfa5c75500d606",
+      "aligned-random-267/trajectories.csv": "84b7e9ac1d07f0b59563c3128c8ee66514d7c65d9718a1eacbd586c63c22b4c0"
+    },
+    "correlated-validation": {
+      "aligned-blackout-265/trajectories.csv": "4a03e733cb5ac6f3bbc26e1d51956a5ca90901c3d92c44b88d574d66f39ab1de",
+      "aligned-blackout-266/trajectories.csv": "2d83895b6f56521fcd4647071aa8cb2ac2634b6d960ba6bab77a1b547cb5c7ef",
+      "aligned-blackout-267/trajectories.csv": "ff00108154facb7bda2e5601adf0e44c4dc1fb5d0cabcb2a4fa6923caf5baf40",
+      "aligned-none-265/trajectories.csv": "8701bf70bab1156b9197de19866db4ad3eb57e2f779735d5ffa40b15755a5a4b",
+      "aligned-none-266/trajectories.csv": "fffb84c1d549448a9f4384866b6170b9aee7fe87d78380a7770ef3b3907de87e",
+      "aligned-none-267/trajectories.csv": "c76c8f8187b35c8b8de3ea2c1b86a3a808913609e36423c7bea08f9537d2d36a",
+      "aligned-random-265/trajectories.csv": "3a2b0ff9be3ed9fb103403d08dfcc2db464967ac5592838203b723cabc98eb13",
+      "aligned-random-266/trajectories.csv": "6851d96d089afbc028226028926b736d3af241f3c4fa7d26fe033c707b60218b",
+      "aligned-random-267/trajectories.csv": "122f48aeb78b448b69a36b115c694148fb5ef90de52e9839dcce094df67ae6db"
+    }
+  },
+  "script_sha256": "e71b019d40923e4b315ceda1c53368f79eaf8faa041de9a5994cd0399c9b28a3",
+  "simulator_sha256": "62dd0d42292b070fb9289bc0ed48474bc14c4530e3fe08f64aaf339ff3babba3",
+  "helpers_sha256": {
+    "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+    "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+    "verify_stopping_preview.py": "4ca8620130ae92eb7f4e5c33a2496e726820f6f45070d4b53b801a8a66837434"
+  },
+  "protocol_sha256": "bab81505b026b5a904ed911619fb11a5082d7d3f064773b4f3c347b7d56adef0",
+  "filter_steps_checked": 729000,
+  "checkpoints": 497,
+  "retained_sample_rows": 10481,
+  "max_logged_filter_error": 1.5000005681997663e-09,
+  "note": "Exact logged-noise decomposition on selected failed runs; no new estimator, drive or pose-confidence claim."
+}
