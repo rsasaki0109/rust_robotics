@@ -1,0 +1,21 @@
+{
+  "script_sha256": "0c43f5b96f0f8b4476861ee0bc3750ff38a850c26604e60800cf7ce2790be413",
+  "analysis_sources_sha256": "73af8d2604eac9aa738c616e71696e32058edd1fc7cc43c84c1b728e37773698",
+  "inputs_sha256": {
+    "component-summary.csv": "388ef049a18cb482124908d17ad6673996937a7a53bef6c273fbf766fb7d55a3",
+    "ranking.csv": "fd9710959d1f46f3426e81651845f0b24c46cff0b4ad4d6d8b9179cc4d90c9b2"
+  },
+  "energy_rows": 48,
+  "auc_rows": 48,
+  "matplotlib": "3.10.8",
+  "outputs_sha256": {
+    "auc-values.csv": "af01f8a300f9a526dff7225cbff7627082e09922c7861559fc108cee06d746f8",
+    "energy-values.csv": "af35f221ba89ef8df1187d3851baf706e27afb958cbad0ab76a13877f8d39d12",
+    "fresh-component-ranking.png": "db7d8208a521af2e2b55cd3c97578edebcaf2b5793ef2e607e4781a7cd378d9c",
+    "fresh-component-ranking.svg": "dda65fa3a55c15e11ad05721ed917d597498ac7e98c527f820c8fa4eafcd4630",
+    "fresh-components-midpoint.png": "92ce2eecd61650f47a89b2e67254415c44ae5f1adb4b7d7929a0b3da73ca18f7",
+    "fresh-components-midpoint.svg": "3a0324da74c1e0f65516d65110ddc6dfc92a48e69b591b16f0d6b8b07ed4aec6",
+    "fresh-components-residual.png": "9ba92e7aa24cfd6fc8cf7ef49fa6736719ff6ee98f8878299da71df8e4443161",
+    "fresh-components-residual.svg": "5bd5107389b9ab1b087a113f05468069cf57b38790458feb109c5155f3434958"
+  }
+}

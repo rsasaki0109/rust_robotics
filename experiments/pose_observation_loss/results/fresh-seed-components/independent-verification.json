@@ -1,0 +1,10 @@
+{
+  "comparisons": 1061040,
+  "reconstructed_pairs": 13155,
+  "reconstructed_targets": 26310,
+  "component_rows": 17280,
+  "ranking_rows": 2160,
+  "defined_auc_checks": 708,
+  "script_sha256": "e00918f1570ef93b7cf946ae1a99f35009870ac29ee971cdab04117ada731c3d",
+  "sources_sha256": "73af8d2604eac9aa738c616e71696e32058edd1fc7cc43c84c1b728e37773698"
+}
