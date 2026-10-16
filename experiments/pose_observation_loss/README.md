@@ -2566,7 +2566,8 @@ Filter-only/Fusion-only/mixed/no-audit cases on exactly the original selection.
 `scores.csv`, `poses.csv` and `projections.csv` expose the new model and observed
 quantities; `loss-links.csv` preserves every selected raw-zero/command-only loss
 reference. `events.csv` retains all categories and source IDs. Immutable copies
-of the 72 pooled and 216 conditional rules accompany the complete
+of the 264-row pooled table (72 simultaneous rules used here) and 216
+conditional rules accompany the complete
 `comparison.csv` grid: all three views, scores, budgets, event kinds and strata,
 including an explicit recovery-fallback stratum with missing training support.
 Whole-group conditional metrics stay blank when any represented mode lacks a

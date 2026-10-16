@@ -1,0 +1,12 @@
+{
+  "comparisons": 759472,
+  "score_rows": 13155,
+  "pose_rows": 13155,
+  "comparison_rows": 4320,
+  "fresh_cases": 324,
+  "loss_links": 101,
+  "command_only_links": 94,
+  "script_sha256": "36af29beb10f73b944d8b20521de5753d4ee33c2d51d686a12b71687774da2b0",
+  "sources_sha256": "a99a3d2aa0644a26b632a47c21efdccee37f936e62b1a33795c828742a20a5fd",
+  "historical_sources_sha256": "e3dbe3ea3861f520035449371d2740bb12d5304df4dc09101589d2dc31fd71c5"
+}
