@@ -2075,3 +2075,35 @@ Span boundaries at the observation horizon are not failed requirements.
 Repeat seven CSVs and `sources.json` byte for byte. The optional figure includes
 all opportunities and a separately labeled joint-start subset, with censoring
 and every observed event kind. See the [recorded gate sequences and timer audit](results/correction-gate-sequences/report.md).
+
+## Adjacent correction gate boundaries and nominal commands
+
+Compare every adjacent decision in those same opportunity windows, including
+the immediate pre/post pair and unavailable futures at the recorded end.
+Keep joint readiness losses, acquisitions and continuations, successful route
+exits and all other decisions in the complete transition accounting.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_correction_gate_boundaries.py \
+  --output /tmp/correction-gate-boundaries
+python3 experiments/pose_observation_loss/plot_correction_gate_boundaries.py \
+  --results /tmp/correction-gate-boundaries --output /tmp/correction-boundaries-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories; pinned raw trajectories or relocated identical
+cohort directories via `--raw-root DIR` are required. The analysis matches all
+prior interval gates, reproduces nominal speed-cap arithmetic and keeps actual
+paused commands separate. Raw poses use the preceding physical row plus noise
+and bias. Recovery and preview poses are the previously validated logged inputs.
+
+The [fixed protocol](results/correction-gate-boundaries/protocol.md) audits exact
+speed/recovery/stopping/terminal map geometry at both sides of every adjacent
+pair touching joint readiness. Position and error changes keep actual motion,
+noise and bias separate. Failure masks preserve simultaneous failed conditions;
+geometric depth excludes nominal speed because it has different units.
+
+Repeat nine CSVs and `sources.json` byte for byte. New states link to the prior
+`interval_id`; transitions and changes link both states and their event. The
+optional figure keeps every post-event joint loss and all observed event kinds,
+including zero-loss categories. See the [recorded boundary analysis](results/correction-gate-boundaries/report.md).
