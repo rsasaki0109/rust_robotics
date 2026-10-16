@@ -2318,3 +2318,32 @@ counts; its numeric data include empty event kinds. Partial noise-plus-anchor
 variance is not calibrated and excludes drift/nonlinear transport. Error
 change subtracts truth displacement from pose change. Recorded actions remain
 fixed. See the [information-renewal results](results/correction-information-renewal/report.md).
+
+## Contrasts and remaining common error
+
+Use each pinned pair's partial covariance to project its error midpoint onto
+its contrast, retaining the remaining common error and all four signed error
+components. Simultaneous contrasts cancel the shared truth. Lagged contrasts
+subtract known truth displacement and are offline oracle diagnostics.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_contrast_common_errors.py \
+  --output /tmp/contrast-common-errors
+python3 experiments/pose_observation_loss/plot_contrast_common_errors.py \
+  --results /tmp/contrast-common-errors --output /tmp/contrast-common-errors-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories; tracked inputs suffice. The
+[fixed protocol](results/contrast-common-errors/protocol.md) keeps all 19,830
+simultaneous pairs, 20,664 requested lagged pairs, 550/509 original losses,
+source point labels and unavailable outcomes. Projection coefficients come
+only from covariance, retaining negative weights and an explicit near-zero
+contrast branch. Identical inputs retain their common variance.
+
+Repeat seven CSVs and provenance byte for byte. Both complete summary families
+include empty event kinds. The figure retains the complete 550-loss population
+for all three simultaneous pairings and all requested lagged phases/inputs,
+with missing counts explicit. This partial second-moment decomposition is not
+a calibrated posterior or a new position estimator. Observed residual RMS is
+separate from model sigma. See the [contrast/common-error results](results/contrast-common-errors/report.md).
