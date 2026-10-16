@@ -1,0 +1,26 @@
+{
+  "script_sha256": "d9e2efd6dfcd87fab2d10724669b40109c50d41abe8a93d063f6f0e4708deb50",
+  "analysis_sources_sha256": "bc786d78bcd51cdcc8566527d1dc6c99f2bb473ffc28b2c1047ec87d78ce83cc",
+  "inputs_sha256": {
+    "ranking-summary.csv": "b32ceacb26b8c1ddb24667757156664cc5400a124861b18f0553cd7e949a5c58",
+    "family-support.csv": "5d057898518bbe79ccf38075251c15ff686c508e8fa06f029dddf07c874bcdb2",
+    "planner-blocks.csv": "bbd1386379aa7ac40d0a372b7b8514937c67aec909a8f65be8ad39154dc10a3a"
+  },
+  "outputs_sha256": {
+    "block-values.csv": "3e3094874cd49dd11a61edcf3b24da53d1fbd9a16ee29ed55c5d14eae3cff63d",
+    "planner-blocks-fresh-correlated-curved-fusion-P.png": "b9cb6092c82d3f118e5d023bcae0d10a0871654ba781181aac781885c91725f8",
+    "planner-blocks-fresh-correlated-curved-fusion-P.svg": "b388e2fe4f0a075bc8422e69a4c6568b63f031c62dcafaf159a53ca65c07638b",
+    "planner-common-support.png": "7a78174a7f66a495c6317fc808d376a76c2733a5924520da79217b497305ff4a",
+    "planner-common-support.svg": "980d6b1db68696ef57b4becbb4df50010f352264373536f9ec45e05a1f8d6656",
+    "planner-ranking-fresh-modeled.png": "7885717262e718a4e7579303900fd102755bf939be909c954643d33fbe216675",
+    "planner-ranking-fresh-modeled.svg": "ce5240723c7fd90481c1f72e431170798514187aaea5480090dfa862cf1fc6cc",
+    "planner-ranking-fresh-observed.png": "daa57012c8034f255543725329184eaf7984c7d525366a51512abdfcc406b907",
+    "planner-ranking-fresh-observed.svg": "563c736ada87148fc65775c76f69c581558fb0aaff1df8ffaeba7e4a73561a12",
+    "planner-ranking-known-observed.png": "eaf47915550f9a437062420889e76af2e5f046e704e4b8caac41e02aa20f2adb",
+    "planner-ranking-known-observed.svg": "7b87a6353ea46f2dcbf3e56770c8043ef0eefc34e0f0cc2acca224dae5f035a9",
+    "planner-ranking-new-observed.png": "38ae21dd54a05abb7749c254863a3f7b5197390f8b5a77852658a2d982612ae6",
+    "planner-ranking-new-observed.svg": "cdb54b6022e7cfb5be4c36a9b9fad342d99728abc6133d221a243a0b673b7375",
+    "ranking-values.csv": "1a7e1e47bfec9bfb64fbb0eaf9239f9d672d4972137cae50582635b8e5e4dc0e",
+    "support-values.csv": "6d771ec57ff1bdd401d707b496c56b9d19b413bbbf1b6cc1ccca527058ba504e"
+  }
+}
