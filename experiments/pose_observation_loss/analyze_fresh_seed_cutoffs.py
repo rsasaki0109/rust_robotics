@@ -104,7 +104,7 @@ def pose_inputs(snapshot, kind):
         groups,
         tuple(float(before[a]) for a in ["x", "y"]),
         state.odom,
-        float(row["noise_rho"]),
+        snapshot["rho"],
     )
     samples, anchors = {}, defaultdict(float)
     for g in groups:
@@ -121,7 +121,7 @@ def pose_inputs(snapshot, kind):
         if len(anchors) == 1
         else comp["model_anchor_sigma_per_axis"] ** 2
     )
-    vn = ar_covariance(samples, samples, float(row["noise_rho"]))
+    vn = ar_covariance(samples, samples, snapshot["rho"])
     assert abs(vn - comp["model_noise_sigma_per_axis"] ** 2) < 1e-12
     assert abs(va - comp["model_anchor_sigma_per_axis"] ** 2) < 1e-12
     return comp, dict(samples=samples, anchors=anchors, variance=vn + va), estimator
@@ -134,7 +134,7 @@ def state_pairs(snapshot):
         kind: pose_inputs(snapshot, kind) for kind in ["raw", "recovery", "preview"]
     }
     pairs = []
-    rho = float(row["noise_rho"])
+    rho = snapshot["rho"]
     for a, b in PAIRINGS:
         ac, ai, ae = pieces[a]
         bc, bi, be = pieces[b]
@@ -159,7 +159,7 @@ def state_pairs(snapshot):
     return pieces, pairs, error
 
 
-def collect_case(case, track, events, old_ids, next_ids):
+def collect_case(case, track, events, old_ids, next_ids, rho):
     edges = edge_windows(events)
     needs = set(edges) | {s - 1 for s in edges}
     state, previous, selected, links = Replay(), None, {}, []
@@ -191,12 +191,14 @@ def collect_case(case, track, events, old_ids, next_ids):
 
     for step, (before, row) in enumerate(zip(track, track[1:]), 1):
         assert round(float(row["time_s"]) / 0.02) == step
+        assert abs(float(row["noise_rho"]) - rho) < 1e-12
         state.advance(before, row)
         state.check_counts(row)
         if step not in needs:
             continue
         current = dict(
             state=frozen(state),
+            rho=rho,
             before=before,
             row=row,
             context=gate_context(before, row),
@@ -540,6 +542,11 @@ def main():
                     bycase[identity(c)],
                     old_ids,
                     next_ids,
+                    (
+                        math.exp(-0.02 / meta["provenance"]["noise_correlation_time_s"])
+                        if meta["provenance"]["noise_correlation_time_s"]
+                        else 0.0
+                    ),
                 )
                 links.extend(ll)
                 for k, value in v.items():
