@@ -1,0 +1,28 @@
+{
+  "script_sha256": "f360b15470a1321f1197d3c7b0d37865d59b4a7f6fbcfa7c482edb75ae144ac3",
+  "analysis_sources_sha256": "68fcb928c5684f873f4e03a4ad4003081a2cdde7e99075842e1c7653520870b9",
+  "inputs_sha256": {
+    "ranking-influence.csv": "41c89435497d7239e9b6851685058b36228cb540a1c1abb63c837d8682e77214",
+    "component-influence.csv": "d5f99aa4443229739a66fd05babcb66f0590703cdff6dfc2d7a0ef058234cf64",
+    "cases.csv": "d633c7eeb5851062960b83005f01a9629280927db8079555767bc1cab366bcdd"
+  },
+  "seed_auc_rows": 224,
+  "case_auc_rows": 248,
+  "boundary_rows": 19,
+  "matplotlib": "3.10.8",
+  "outputs_sha256": {
+    "boundary-values.csv": "7e9b6203d97624baf4c69468f7d5bd3fa0b0dee3e1bca0e8244889217f1d83d6",
+    "case-auc-values.csv": "0d3cebd8672d502e84758270fab9135e13bf53d70cb10415840699402006a2c1",
+    "fresh-case-boundary-cells.png": "44d012506a00bae709e6260fe561b9cdaccd84be1e3dae8bb8f8b6f54f1b7369",
+    "fresh-case-boundary-cells.svg": "6fd063162e047979406cb8f2d9c4d3aa590ede5bbbc84f44d5d3ee205041e99b",
+    "fresh-cases-auc-midpoint.png": "cd89a64ef4cba8edbd0b05ff1aaf8f21e165d873b2735f0186192afe3b20b761",
+    "fresh-cases-auc-midpoint.svg": "ebb2358363ff4263b3bc9c5efc0d5dec3299beb814d885cbe07b5df5acd7f12c",
+    "fresh-cases-auc-residual.png": "ae186c538b37a44850668d52e258a1ccce6f693a9b49b90bccdd1bef254a30d4",
+    "fresh-cases-auc-residual.svg": "56dc9de0278850b0246c04b5955df561688027198122be55b6fe1e8ad79b980a",
+    "fresh-seeds-auc-midpoint.png": "089af08ef7ae8e1d079c368bee5950dbec02b9bf265b29a3c35ff1b97c46f97e",
+    "fresh-seeds-auc-midpoint.svg": "caa5756d05b40d5c566e5ebc362e802c0373c366921ab77fe2882c79bc8ede54",
+    "fresh-seeds-auc-residual.png": "60fa3061dcab46e67434a41da1297599d983ccc782814fdeaa42c5c89a523990",
+    "fresh-seeds-auc-residual.svg": "fe89d8b4533ba0159b382fb7222db6ddbb372757bcb292678673ffb09e8012cb",
+    "seed-auc-values.csv": "af2d0556d3906456d172830aa5f0ce757bf9a17be2f8ef73c69ed8c067703925"
+  }
+}
