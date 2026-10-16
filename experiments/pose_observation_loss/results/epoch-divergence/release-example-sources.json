@@ -1,0 +1,20 @@
+{
+  "case": {
+    "cohort": "new-white",
+    "mode": "none",
+    "seed": "271",
+    "scenario": "maze_50x50",
+    "planner": "Theta*"
+  },
+  "first_action_s": 60.56,
+  "script_sha256": "e0f510f9018143fb683729ded7bf8d21736c0eb8eebf9a10b6e6eb3f02639a0e",
+  "diagnostic_forks_sha256": "705256e42a7521a6cd75ed04ab9b2ef9097e27c8fa864f7d72584f814778e1d3",
+  "diagnostic_sources_sha256": "f0e83e6947554a5edebdcc5ce32181f4daf37d4b9ed42fa4d57548f99e24ebed",
+  "diagnostic_helper_sha256": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+  "raw_sha256": {
+    "aligned-none-271/trajectories.csv": "1605495204cc6f0b3dfee491587af01df64b1956d385f1256f28675b77074782",
+    "epoch-none-271/trajectories.csv": "45da785b19b142aaa282c51e728fb5d893427b241ad261ce42a937a7ad0df0c2"
+  },
+  "shared_pre_command_rows": 39,
+  "matplotlib_version": "3.10.8"
+}
