@@ -1,0 +1,44 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "geometry.csv": "87f015ae26a102d3da20f8270567b3ff6bb29925d446bc0b84feef2e4806084a",
+    "decisions.csv": "5e01cbf0a031e37b0e6bec9c15e699f196e05e41dda5e65712d5b0ca9a745e73",
+    "transitions.csv": "a00da7d3c247365fd31c2574247f0f2e68049b0495cb5621b4836f6774340388",
+    "sources.json": "af392595563b6021f32dd6a92cd835bb8ca9ebb96e038a76659a93f86ce08ba1"
+  },
+  "map_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "analysis": {
+    "script_sha256": "c04881e1c2ddfd47f6eba9dc79fa8de4f0a51e04ffc5928ad0944fcc2c35744c",
+    "protocol_sha256": "7eed33166319b8d8749c2a4db4dd4e82d75971e3fd5d63d127e005a68518e0e4",
+    "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "helpers_sha256": {
+      "analyze_arc_pose_components.py": "5d16fc1d0c7d01e0fac2b29dc0283838c480819b08c4926e06723a554ede9058",
+      "analyze_commanded_recovery_arc.py": "4fbd54bfc44b4e1f28524ddd10d7ca7c6c63d8b629d6801edcee71873754444b",
+      "analyze_epoch_divergence.py": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_joint_admission_geometry.py": "5252ba0f1b187bff7368fa8d69715fea59aa4f43052310acc31bbdce8d76526d",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+      "analyze_terminal_arc_live.py": "4adf591accb8fbb88d8eae46177e5694dd6474619e03232c79ef42d74dc414fa",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+    }
+  },
+  "inherited_validation": {
+    "cases": 368,
+    "intervals": 3312000,
+    "raw_reloaded": false
+  },
+  "audit": {
+    "checkpoints": 2120,
+    "component_rows": 8480,
+    "path_pairs": 4240,
+    "unique_geometry_audits": 16777,
+    "max_chord_error": 5.3610274393101065e-06,
+    "max_sagitta_bound": 5.470362659252085e-06,
+    "ambiguous_component_rows": 0
+  }
+}

@@ -1828,3 +1828,38 @@ Repeat aggregation to compare six CSVs and `sources.json` byte for byte. The
 optional Matplotlib plot includes all truth/estimate categories at age 0.5 s,
 exporting deterministic numeric data, SVG and source fingerprints. See the
 [commanded recovery-arc comparison](results/commanded-recovery-arc/report.md).
+
+### Separate position and heading effects on commanded recovery paths
+
+Reuse every recorded line/arc decision from the previous comparison. For both
+recovery and preview inputs, evaluate estimated xy/yaw, true xy/estimated yaw,
+estimated xy/true yaw and full truth, preserving the nominal steering and margin.
+Classify optimistic permissions and conservative blocks in both directions,
+including the fixed extra arc permissions that failed the true margin.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_commanded_arc_components.py \
+  --output /tmp/commanded-arc-components
+python3 experiments/pose_observation_loss/plot_commanded_arc_components.py \
+  --results /tmp/commanded-arc-components --output /tmp/commanded-components-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. Analysis needs only the tracked tables and map;
+source and input hashes are checked, with raw validation inherited from prior
+provenance. Every distinct hybrid geometry is checked against independent
+120-chord integration. Repeated inputs share geometry, while each margin is
+evaluated separately. Component records link to unique geometry-audit IDs.
+
+The [fixed protocol](results/commanded-arc-components/protocol.md) preserves
+inclusive recovery wall bounds and strict obstacle clearance. Signed distance
+differences are split symmetrically over both coordinate-substitution orders;
+negative terms remain. Paired path effects also check that estimated-minus-true
+arc improvement equals the change in total position/heading overstatement.
+These coordinate and path substitutions do not identify causal error sources
+or predict live recovery and held-goal outcomes.
+
+Repeat aggregation to compare five CSVs and `sources.json` byte for byte. The
+optional Matplotlib figure includes both mismatch directions for both paths,
+inputs and arms at age 0.5 s, exporting numeric data, SVG and source fingerprints.
+See the [commanded-arc component diagnosis](results/commanded-arc-components/report.md).
