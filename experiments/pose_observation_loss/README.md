@@ -1863,3 +1863,40 @@ Repeat aggregation to compare five CSVs and `sources.json` byte for byte. The
 optional Matplotlib figure includes both mismatch directions for both paths,
 inputs and arms at age 0.5 s, exporting numeric data, SVG and source fingerprints.
 See the [commanded-arc component diagnosis](results/commanded-arc-components/report.md).
+
+### Decompose recovery and epoch-fused position error
+
+Replay the same 368 timeout trajectories and 2,120 fixed checkpoints from the
+component diagnosis. Reconstruct raw recovery, motion-filter and three-epoch
+fusion windows, including their actual weights, resets and partial latest epoch.
+The position error is split into observation noise, shared received-correction
+anchor, drift and transported historical-position residual.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_epoch_position_components.py \
+  --output /tmp/epoch-position-components
+python3 experiments/pose_observation_loss/plot_epoch_position_components.py \
+  --results /tmp/epoch-position-components --output /tmp/epoch-position-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. The default raw locations come from pinned prior
+provenance; `--raw-root DIR` supports relocated identical cohorts. Source, input,
+provenance and raw hashes are checked. Every consumed interval checks window
+counts and fusion availability. The fixed checkpoints also check logged xy/yaw
+and previous position-error norms. Original physics/contact/timer validation is
+inherited, with no new trajectories or control changes.
+
+The [fixed protocol](results/epoch-position-components/protocol.md) retains both
+inputs, estimator fallbacks and predeclared decision subgroups. Equal epoch
+weights are preserved even when their observation counts differ. Noise covariance
+uses actual sample spacing, weights and correlation; shared anchors are grouped
+by reset identity. The exported model standard deviations are per axis and
+unconditional, excluding drift/transport uncertainty. They are not confidence
+intervals calibrated on the selected timeout cases.
+
+Repeat aggregation to compare five CSVs and `sources.json` byte for byte. The
+optional Matplotlib figure compares fixed age-0.5 2D error/component RMS by noise
+type, arm and actual input estimator, with explicit denominators. Component RMS
+values are not additive. See the
+[epoch-position decomposition](results/epoch-position-components/report.md).
