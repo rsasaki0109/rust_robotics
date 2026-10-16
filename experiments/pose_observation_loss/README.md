@@ -2699,3 +2699,44 @@ have complete numeric exports and source hashes. These are retrospective
 comparison diagnostics with three observed seed values per cohort: changing
 the comparison population is not estimator repair or independent validation.
 See the [seed comparison results](results/seed-conditioned-rankings/report.md).
+
+## Planner families and exact diagnostic windows
+
+The [fixed protocol](results/planner-window-sensitivity/protocol.md) audits all
+972 cases and 324 planned planner families while reusing the same observed
+Recovery/Preview states. A family removes only planner from the full case key.
+Exact complete windows must match times, event semantics, both targets' signed
+components/vectors/labels, partial variances, coefficients and all score ticks.
+There is no tolerance or partial-window matching, and equality concerns saved
+diagnostics rather than full physical trajectories.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_planner_window_sensitivity.py \
+  --output /tmp/planner-window-sensitivity
+MPLCONFIGDIR=/tmp/planner-window-mpl python3 experiments/pose_observation_loss/plot_planner_window_sensitivity.py \
+  --results /tmp/planner-window-sensitivity --output /tmp/planner-window-figures
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output directories. Aggregation needs Python's standard library and
+tracked inputs; plotting needs Matplotlib/NumPy. No raw histories, Rust build,
+new simulation, fitting or cutoff changes are needed. Original case weighting
+is checked against every preceding component, ranking and seed-block value.
+
+`families.csv` and `cases.csv` keep all planned/represented keys, exact-window
+hashes, missing support and row weights. The original accounting partition
+`existing_new` is retained as `accounting_partition` while the analysis group is
+`new`. Case/window/family weights divide 1/n_case by respectively one, the number
+of identical complete-window cases, or represented cases in the family, before
+mode/seed conditioning. All observations and labels remain present.
+
+`component-summary.csv`, `ranking-summary.csv` and `seed-blocks.csv` preserve
+every weighting, target, score, label and stratum; `unit-summary.csv` records
+parent counts/masses. Mass columns explicitly use `analysis_mass` because their
+unit changes with the weighting. All original accounting, support, opportunities,
+cutoffs and separate historical/latest loss links are copied unchanged.
+
+Repeat aggregation and plotting and compare all artifacts byte for byte. Five
+SVG/PNG figures export their full numeric inputs and provenance. Weighting units
+are not independent sample counts; unequal windows do not establish independence.
+See the [planner weighting results](results/planner-window-sensitivity/report.md).

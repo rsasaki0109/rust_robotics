@@ -1,0 +1,26 @@
+{
+  "script_sha256": "815c8844400c3d615c5d1f12f38185986aed9cbc801712228f9eb6a50bd4112e",
+  "analysis_sources_sha256": "d9ae96688fc1e176606b544835f3b1a9dd3cf7accfcfb71976361f39d2a98550",
+  "inputs_sha256": {
+    "ranking-summary.csv": "6777f9d7971c30a311577ab86837560e7ad6f36a4045fca71e06b41764873720",
+    "unit-summary.csv": "89ee1edb788897e5f14e6e46df86c90fa1dd12a087fd8d11948a966dece2adbb",
+    "families.csv": "abefa6fb5ae76a151cb1dfdb435a2fb71c0f203bf608b093c11d61ddcd9d21f5"
+  },
+  "ranking_rows": 288,
+  "unit_rows": 36,
+  "matplotlib": "3.10.8",
+  "outputs_sha256": {
+    "planner-weighting-midpoint-modeled.png": "8a9eda1449febe58d743ca9be97f005ee28013ad6f16a6736a93487e6859129e",
+    "planner-weighting-midpoint-modeled.svg": "ff26a06a9a83b508b6377aa01f9e4129fef8f4d67138d6a737c30d23485eaa92",
+    "planner-weighting-midpoint-observed.png": "69807fe3b119c4f7610d3bfe99e9de4293e77071f446e9b6b70d3321ace2f6c3",
+    "planner-weighting-midpoint-observed.svg": "df6787cc4c89b15d1f0b568c71d65ff2b902ddde300cffb9d521ef7762224e31",
+    "planner-weighting-residual-modeled.png": "e2e4c6fe4ab30477b3005bdc31dda82c7c3a2b9054355ccaf7b667eda7eb1a77",
+    "planner-weighting-residual-modeled.svg": "727fe264f8afc22ee3a6f9c61d95f50ea3f0a52f0186026cfd0f891a272778ff",
+    "planner-weighting-residual-observed.png": "2a00226d7edb4535438a6f1a202dbf6b16999ad708ae11c1c283072226681db3",
+    "planner-weighting-residual-observed.svg": "325a5117accbea3ae8ad48a8df210b2af3e6bd14840e96783d3a49c6f0ffceef",
+    "planner-window-units.png": "763f55c0853d57c8c4a81a606e71c51abe050d680809f36a6cdccea842efb9f8",
+    "planner-window-units.svg": "391b510a7c23430535b8bbd43497ed03951ee90a1a29124e10cf798c86741a7c",
+    "ranking-values.csv": "a59ca51affe879bc68a8f60d533821834b1619472a4e10a3161c187f29c3ec20",
+    "unit-values.csv": "949c86ca97e6274bfd6f692f0fc1a0ef816cc221ea160d935d992bf732e80820"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "comparisons": 1425817,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "case_rows": 972,
+  "family_rows": 324,
+  "window_signatures": 157,
+  "represented_windows": 125,
+  "represented_families": 72,
+  "component_rows": 360,
+  "ranking_rows": 3240,
+  "seed_block_rows": 29160,
+  "defined_full_or_block_auc_checks": 6219,
+  "defined_same_seed_auc_checks": 1035,
+  "plotted_rows": 324,
+  "script_sha256": "3e132c4e8fbfa25ccf5a440724aab757974062516892c19073a443ae4c541808",
+  "sources_sha256": "d9ae96688fc1e176606b544835f3b1a9dd3cf7accfcfb71976361f39d2a98550"
+}
