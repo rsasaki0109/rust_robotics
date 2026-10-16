@@ -1,0 +1,17 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "bc7a40a8da19e573d443c09fec79d4cb5fa1023de74b0bfbcfad2d4d40b07274",
+    "poses.csv": "966d626f68fe514c7b0e64902a8b894201a624353e2afe78808890080108a052",
+    "loss-decisions.csv": "c8c60d289c2700984a062dcde981ac448479f362b8c15b214c09e2717619475f",
+    "summary.csv": "c71ab0136d28fb88faa210548239a631a30921c82e3cac1e3c7cb67d85a3ad0b",
+    "sources.json": "44b88b02beee2f8682edba2087297be2835ea8d3f6a029ac706e87673b2aa77b"
+  },
+  "script_sha256": "376d85703ac9c737854bc0f84674717ba2feb90dcc5c8aafa7d542d709324ee7",
+  "analysis_sha256": "4838fea689f1a722ef8664c300d8353ceff9d5c5e6474ef93471e77c43a36517",
+  "numeric_rows": 432,
+  "matplotlib_version": "3.10.8",
+  "plotted_population": "all 550 raw-zero-loss pairs, separately by arm and input",
+  "plotted_yaw_bound_deg": 4,
+  "svg_normalization": "strip trailing whitespace from generated XML lines"
+}
