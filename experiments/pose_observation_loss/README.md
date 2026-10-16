@@ -2428,3 +2428,28 @@ strata. Original observed risks/AUC must reproduce the preceding tables.
 Repeat eight CSVs/provenance and both SVG/PNG figures/numeric series/provenance
 byte for byte. See the
 [component results](results/estimator-mode-components/report.md).
+
+## Known-only cutoffs conditional on estimator mode
+
+Compare the existing pooled score cutoffs with quantiles fitted separately
+for each source estimator mode. Known seeds alone fit both shared-arm rules.
+Preserve the parent case weights before mode conditioning and after selection,
+and keep all score ties. Compare coverage, both observed error outcomes and
+which records are newly retained or removed. Empty mode fits stay explicit.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_mode_conditional_cutoffs.py \
+  --output /tmp/mode-conditional-cutoffs
+python3 experiments/pose_observation_loss/plot_mode_conditional_cutoffs.py \
+  --results /tmp/mode-conditional-cutoffs --output /tmp/mode-conditional-cutoffs-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new directories and pinned tracked inputs. The
+[protocol](results/mode-conditional-cutoffs/protocol.md) keeps every simultaneous
+view, score, budget, structural stratum and event kind, with both targets.
+Original pooled metrics must match the preceding component study. Repeat
+seven CSVs/provenance and both SVG/PNG figures/series/provenance byte for byte.
+Both seed cohorts were observed previously; conditional quantiles do not
+guarantee evaluation coverage or error risk. See the
+[conditional-cutoff results](results/mode-conditional-cutoffs/report.md).
