@@ -1,0 +1,12 @@
+{
+  "script_sha256": "e803480000b3d210c3b54d0c1529ec1cfac98bcda858ac55ab23dbb83cd84cf1",
+  "inputs_sha256": {
+    "bottleneck-summary.csv": "765d75e82830b542fe19eb28d5830dc3800bc7b33f1f2662669e23194907ca5a",
+    "sources.json": "985eb29aee0ef4c7a69e45c15b3b3bb103b2ab514e5f3d932481c244afa6de94"
+  },
+  "artifacts_sha256": {
+    "information-bottlenecks.csv": "5c2785972460f41fbc3268f3eafc1c0e7c0d57fde4dd52f7daeb0ef1c1485534",
+    "information-bottlenecks.svg": "542de2cf07fbb7fc6453793605a6e038de4f24399f9570f5e0f0b1fd51550953"
+  },
+  "matplotlib_version": "3.10.8"
+}
