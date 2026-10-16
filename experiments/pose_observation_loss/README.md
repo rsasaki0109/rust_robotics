@@ -2625,3 +2625,39 @@ byte for byte. This is retrospective arithmetic diagnosis in the saved frame,
 with repeated states and three additional seed streams; component removal is
 not a counterfactual rollout or evidence of calibration. See the
 [additional-seed component results](results/fresh-seed-components/report.md).
+
+## Additional-seed case and seed influence
+
+The [fixed protocol](results/fresh-seed-case-influence/protocol.md) traces the
+same Recovery/Preview states for both targets, all three scores and all original
+strata. It keeps every .10 m E/P boundary cell and the original full-parent case
+weights through single/omitted case and single/omitted seed subsets. This is
+retrospective influence diagnosis of the existing additional-seed artifacts.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_fresh_seed_case_influence.py \
+  --output /tmp/fresh-seed-case-influence
+MPLCONFIGDIR=/tmp/fresh-influence-mpl python3 experiments/pose_observation_loss/plot_fresh_seed_case_influence.py \
+  --results /tmp/fresh-seed-case-influence --output /tmp/fresh-seed-case-figures
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output directories. Aggregation uses only the Python standard library
+and tracked source artifacts; plotting needs Matplotlib/NumPy. No raw-history
+access, Rust build, new trajectory or cutoff refitting is needed.
+
+`cases.csv` maps stable IDs to all 57 full case keys. `boundary-trace.csv` keeps
+all 8,770 state/target rows, full joins, signed margins, true component vectors,
+fixed score ticks and inherited weights. `component-influence.csv` and
+`ranking-influence.csv` retain all subsets, including absent seeds, empty groups,
+one-class AUCs and both crossing directions. `case-pairs.csv` decomposes every
+complete-group AUC into ordered positive-case/negative-case contributions;
+sum numerators and denominators before division rather than averaging AUCs.
+Original accounting, support, opportunities, links and cutoffs are copied intact.
+
+All five figures have SVG/PNG versions and complete numeric CSVs. Repeat analysis
+and plotting into new directories and compare every artifact byte for byte.
+Provenance pins inputs, helpers, protocol and plotted values. Case/seed omission
+ranges are deterministic sensitivities, not confidence intervals or untouched
+holdouts; repeated states/planners do not create independent seed streams.
+See the [case and seed influence results](results/fresh-seed-case-influence/report.md).
