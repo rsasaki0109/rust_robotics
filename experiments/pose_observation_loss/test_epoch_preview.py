@@ -2,8 +2,12 @@
 
 from collections import deque
 from copy import deepcopy
+import csv
+from pathlib import Path
+import tempfile
 import unittest
 
+from analyze_epoch_preview import NEW_COLUMNS, compare_disabled, diagnostics, paired
 from analyze_stationary_epoch_fusion import StationaryEpochFusion
 from verify_motion_filter import check_epoch_pair, check_motion_filter_track
 
@@ -46,6 +50,7 @@ def fixture(enabled=True):
             y=25,
             yaw=0,
             v=0,
+            measured_speed=0,
             noise_x=bias,
             noise_y=0,
             noise_yaw=0,
@@ -91,6 +96,20 @@ class EpochPreviewTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             check_motion_filter_track(track, True, True)
 
+    def test_round_trip_speed_preserves_the_strict_motion_reset_boundary(self):
+        track = fixture()[:502]
+        track[500]["v"] = "0.020000000"
+        track[501].update(
+            measured_speed="2.00000000000000039e-2",
+            epoch_fusion_available="false",
+            epoch_fusion_group_count=0,
+            preview_pose_x=track[501]["motion_filter_pose_x"],
+        )
+        check_motion_filter_track(track, True, True)
+        track[501]["measured_speed"] = "0.02"
+        with self.assertRaises(AssertionError):
+            check_motion_filter_track(track, True, True)
+
     def test_rejects_wrong_fused_position_and_wrong_fallback(self):
         for index in [499, 500, 750]:
             with self.subTest(index=index):
@@ -129,6 +148,70 @@ class EpochPreviewTests(unittest.TestCase):
         # verifiers independently check whether that command is justified.
         candidate[500]["steering"] = 0.01
         check_epoch_pair(baseline, candidate)
+
+    def test_disabled_regression_checks_all_old_fields_and_full_length(self):
+        with tempfile.TemporaryDirectory() as directory:
+            old, new = (Path(directory) / name for name in ["old.csv", "new.csv"])
+            old.write_text("time_s,x\n0,25\n0.02,25\n")
+            fields = ["time_s", "x", *sorted(NEW_COLUMNS)]
+            with new.open("w", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=fields)
+                writer.writeheader()
+                writer.writerows([dict(time_s=t, x=25) for t in [0, 0.02]])
+            self.assertEqual(compare_disabled(new, old), 2)
+            changed = new.read_text().replace("0.02,25", "0.02,26")
+            new.write_text(changed)
+            with self.assertRaises(AssertionError):
+                compare_disabled(new, old)
+            new.write_text("\n".join(changed.splitlines()[:2]) + "\n")
+            with self.assertRaises(AssertionError):
+                compare_disabled(new, old)
+
+    def test_error_metrics_use_the_pre_command_pose(self):
+        track = fixture()
+        subset = deepcopy(track[499:501])
+        subset[0]["x"] = 10
+        subset[1]["x"] = 11
+        subset[1]["preview_pose_x"] = 10.1
+        subset[1]["motion_filter_pose_x"] = 10.2
+        subset[1]["guard_active"] = "true"
+        subset[1]["safety_paused"] = "true"
+        for flag in ["guard_triggered", "guard_released", "resumed"]:
+            subset[1][flag] = "false"
+        metrics, prefix = diagnostics(subset)
+        self.assertAlmostEqual(metrics["base_position_rms"], 0.2)
+        self.assertAlmostEqual(metrics["fused_position_rms"], 0.1)
+        self.assertEqual(metrics["position_better_steps"], 1)
+        self.assertEqual(metrics["wait_time_s"], 0.02)  # Union, not sum.
+        self.assertEqual(prefix, [0, 1])
+
+    def test_matched_wait_uses_the_shorter_trajectory_horizon(self):
+        reference = dict(
+            cohort="known-white",
+            mode="none",
+            seed="268",
+            scenario="open_50x50",
+            planner="astar",
+            time_s="0.04",
+            status="held",
+            held="true",
+        )
+        candidate = dict(reference, time_s="0.06", fusion_available_steps=1)
+        first = [
+            dict(time_s=t, target_speed=0, steering=0, acceleration=0)
+            for t in [0, 0.02, 0.04]
+        ]
+        second = deepcopy(first) + [dict(first[-1], time_s=0.06)]
+        second[2]["steering"] = 0.1
+        result = paired(
+            reference, candidate, [[0, 0, 1], [0, 1, 1, 2]], [first, second]
+        )
+        self.assertEqual(result["common_horizon_s"], 0.04)
+        self.assertEqual(result["reference_matched_wait_s"], 0.02)
+        self.assertEqual(result["candidate_matched_wait_s"], 0.02)
+        self.assertEqual(result["matched_wait_difference_s"], 0)
+        self.assertEqual(result["first_command_change_s"], 0.04)
+        self.assertAlmostEqual(result["held_time_difference_s"], 0.02)
 
 
 if __name__ == "__main__":

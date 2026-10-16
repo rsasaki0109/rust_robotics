@@ -44,6 +44,14 @@ def check_motion_filter_track(track, enabled, epoch_enabled=False):
     ox = oy = heading = 0.0
     previous = None
     for before, row in zip(track, track[1:]):
+        # Nine decimal places can turn 0.020000000000000004 into 0.02 and
+        # change the history reset decision. New runs retain round-trip speed.
+        speed = float(
+            row["measured_speed"]
+            if epoch_enabled
+            else row.get("measured_speed", before["v"])
+        )
+        assert abs(speed - float(before["v"])) < 5.1e-10
         if previous is not None:
             velocity, steering = previous
             distance = velocity * 0.02
@@ -82,7 +90,7 @@ def check_motion_filter_track(track, enabled, epoch_enabled=False):
             fusion.observe(
                 float(row["time_s"]),
                 (x, y, yaw),
-                float(before["v"]),
+                speed,
                 float(row["steering"]),
                 row["correction_received"] == "true",
                 row["precision_activation"] == "true",
@@ -90,7 +98,12 @@ def check_motion_filter_track(track, enabled, epoch_enabled=False):
             )
             position = fusion.position()
             assert (row["epoch_fusion_available"] == "true") == (position is not None)
-            assert int(row["epoch_fusion_group_count"]) == len(fusion.groups)
+            assert int(row["epoch_fusion_group_count"]) == len(fusion.groups), (
+                row["time_s"],
+                speed,
+                row["epoch_fusion_group_count"],
+                len(fusion.groups),
+            )
             if position is not None:
                 expected = (*position, expected[2])
         for axis, value in zip(["x", "y", "yaw"], expected):
@@ -98,4 +111,4 @@ def check_motion_filter_track(track, enabled, epoch_enabled=False):
             if axis == "yaw":
                 error = math.atan2(math.sin(error), math.cos(error))
             assert abs(error) < 1e-8, (axis, row["time_s"], error)
-        previous = float(before["v"]), float(row["steering"])
+        previous = speed, float(row["steering"])

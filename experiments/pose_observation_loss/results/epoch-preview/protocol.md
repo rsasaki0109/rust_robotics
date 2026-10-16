@@ -42,3 +42,10 @@ Save per-case metrics, paired comparisons, cohort summaries, verification
 counts, raw provenance and source hashes. Repeat aggregation byte for byte.
 Keep raw trajectories outside Git and document exact reproduction commands.
 Do not tune thresholds to these results or enable the option by default.
+
+Logging clarification after the first generated batch: the old nine-decimal
+speed field rounded values just above 0.02 onto the inclusive boundary, making
+epoch-history replay ambiguous. Append measured_speed in round-trip precision
+and regenerate the same matrix. Preserve all original fields, estimator rules
+and controller behavior. Retain the initial raw batch and require identical
+values for all its existing fields and summaries in the regenerated batch.
