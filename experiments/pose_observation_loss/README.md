@@ -2006,3 +2006,38 @@ to full checkpoint metadata with `base_row`. The optional Matplotlib figure
 exports all seven age-0.5 bottlenecks for both inputs, paths and recorded arms.
 Geometry, raw-window and physics audits are inherited. See the
 [information-floor comparison](results/admission-information-floors/report.md).
+
+### Replay actual centre changes around correction opportunities
+
+Use all 368 recorded timeouts and every scheduled correction or precision
+activation in their last 30 seconds. Keep received and missed opportunities,
+every control route and both actual/preview inputs. Sample the pre-event input,
+the event and +0.18, +0.5 and +1.5 seconds; retain unavailable phases explicitly.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_correction_centre_transitions.py \
+  --output /tmp/correction-centre-transitions
+python3 experiments/pose_observation_loss/plot_correction_centre_transitions.py \
+  --results /tmp/correction-centre-transitions --output /tmp/correction-centre-figure
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
+```
+
+Use new output directories. Raw trajectories are required at pinned prior
+locations; `--raw-root DIR` supports relocated identical cohort directories.
+Source/provenance/raw hashes and every replayed window count are checked.
+All original 2,120 position checkpoints are also reproduced. Physics/contact/
+timer validation is inherited, with no new rollout or control changes.
+
+The [fixed protocol](results/correction-centre-transitions/protocol.md) matches
+each input to the preceding physical CSV row. Pair estimated and true movement
+to distinguish a centre jump from an actual error change. RMS summaries use
+the same available pre/post pairs; empty or censored-only groups keep blank
+RMS. Actual releases, resumes and readiness use the recorded control route
+and one following 1.5-second interval window, counted once per opportunity.
+Both input kinds share these actions and must not be added as separate releases.
+
+Repeat seven CSVs and `sources.json` byte for byte. The optional Matplotlib
+figure preserves the full improvement/worsening/tie/censoring partition for
+all observed event kinds, both arms/inputs and every post phase. Event
+association among repeated, outcome-selected timeouts is descriptive. See the
+[recorded correction-centre transitions](results/correction-centre-transitions/report.md).
