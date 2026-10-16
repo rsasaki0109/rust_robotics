@@ -1,0 +1,14 @@
+{
+  "comparisons": 793385,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "component_rows": 120,
+  "seed_support_rows": 360,
+  "ranking_rows": 1080,
+  "seed_block_rows": 9720,
+  "defined_full_or_block_auc_checks": 2073,
+  "defined_same_seed_auc_checks": 345,
+  "plotted_rows": 312,
+  "script_sha256": "966f2f82bfd6ffb5030daf69c67a03f241e0127c6c05808a7e1891714c314d16",
+  "sources_sha256": "2bdf94ae3c3ce99ff72534a80261ec5bee8101f1de0b2c7ffe41c85ebff02ab1"
+}
