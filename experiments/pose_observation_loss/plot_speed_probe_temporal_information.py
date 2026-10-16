@@ -152,10 +152,22 @@ def main():
             "svg.hashsalt": "speed-probe-temporal-information",
         }
     )
-    fig, axes = plt.subplots(3, 3, figsize=(13.5, 11.4))
-    fig.subplots_adjust(
-        left=0.12, right=0.99, bottom=0.1, top=0.84, wspace=0.39, hspace=0.66
+    fig = plt.figure(figsize=(13.5, 12.5))
+    grid = fig.add_gridspec(
+        5,
+        3,
+        height_ratios=[1, 1, 0.22, 1, 0.30],
+        left=0.10,
+        right=0.99,
+        bottom=0.09,
+        top=0.84,
+        wspace=0.39,
+        hspace=0.52,
     )
+    axes = [[fig.add_subplot(grid[row, j]) for j in range(3)] for row in [0, 1, 3]]
+    legend_axes = [fig.add_subplot(grid[row, :]) for row in [2, 4]]
+    for ax in legend_axes:
+        ax.axis("off")
     colors = ["#238b45", "#3182bd", "#e6550d", "#756bb1", "#bdbdbd"]
     names = [
         "Agree; both within .10 m of truth",
@@ -179,7 +191,7 @@ def main():
                 and r["category"] == category
             )
 
-        ax = axes[0, j]
+        ax = axes[0][j]
         left = [0.0, 0.0]
         for label, name, color in zip(BINS, names, colors):
             values = [
@@ -193,8 +205,7 @@ def main():
         ax.set_yticks(
             [0, 1],
             [
-                f'{name}\n{one(arm,"span_partition",BINS[0])["spans"]:,} spans / '
-                f'{one(arm,"span_partition",BINS[0])["states"]:,} states'
+                f'{name}\n{one(arm,"span_partition",BINS[0])["spans"]:,} spans'
                 for arm, name in [("epoch", "Baseline"), ("curved", "Curved")]
             ],
         )
@@ -217,7 +228,7 @@ def main():
             ],
             1,
         ):
-            ax = axes[row, j]
+            ax = axes[row][j]
             width = 0.8 / len(fields)
             for k, (name, color) in enumerate(zip(fields, palette)):
                 values = [
@@ -246,10 +257,11 @@ def main():
             ax.grid(axis="y", alpha=0.2)
             ax.set_axisbelow(True)
             if j == 0:
-                ax.legend(
-                    fontsize=7,
-                    loc="upper left",
-                    bbox_to_anchor=(0, -0.18),
+                legend_axes[row - 1].legend(
+                    *ax.get_legend_handles_labels(),
+                    fontsize=8,
+                    loc="center",
+                    ncol=2 if row == 1 else 1,
                     frameon=False,
                 )
     fig.legend(
@@ -267,9 +279,10 @@ def main():
         fontsize=12,
     )
     fig.text(
-        0.12,
+        0.10,
         0.015,
-        "Top: full span partition, including singletons and audit-truncated spans. Middle/bottom: one variance weight per block.\n"
+        "Top: all spans, including singletons and audit truncation; 2,922 baseline / 3,688 curved states per pairing.\n"
+        "Middle/bottom: one variance weight per block. "
         "Partial noise + anchor model; excludes drift/transport. Event-kind unions overlap. Recorded control and held goals remain fixed.",
         fontsize=9,
     )
