@@ -1,0 +1,185 @@
+{
+  "input_sha256": {
+    "accounting.csv": "b101dcc2ece4dcacfc1ea8c792afbf27b041b35eccb44be1c245483bd719fe13",
+    "events.csv": "819b026c74884681e8df9fb282998a19ade0d12f82e8d1ffa3ad1a3b5ce1df6f",
+    "snapshots.csv": "9d25ee780dcb7695efee4c586509f8fe9c65edac9bb00b0cc5e4d16f2b8b5fcf",
+    "sources.json": "e3dbe3ea3861f520035449371d2740bb12d5304df4dc09101589d2dc31fd71c5"
+  },
+  "raw_source_sha256": "ccd59c809aa90313f8f96af8857dca180ce8b3b92600b57fb14757a0edca4da4",
+  "map_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "cohorts": {
+    "known-white": {
+      "path": "/workspace/scratch/terminal-arc-live/known-white",
+      "raw_sha256": {
+        "curved-blackout-269/trajectories.csv": "e6ac25b75a5cb4169ffafb25f1887cfe1c8ef05eeb304b9858b608e46657b062",
+        "curved-blackout-270/trajectories.csv": "d00371e02810488c3fb8006c70712ca8cafeb449418d729e6ee145274ab5940d",
+        "curved-blackout-271/trajectories.csv": "9a32999dc01e3ec08fa25b34bf5b902dd85f0e7b9bec07343b71ac19d1539582",
+        "curved-none-269/trajectories.csv": "7d440dce78b499658c65d05beffc2adce3c0f679528dd123bca6dcf5702ea7db",
+        "curved-none-270/trajectories.csv": "0584a031ab9d33877e7ef49e9707b543c9401341fdfbadcb66ed5659390907c8",
+        "curved-none-271/trajectories.csv": "88ab2bfa62d5ff0a3a705d2aafcaff03e172110da0f8f0c731c47a7a6e4c79b7",
+        "curved-random-269/trajectories.csv": "95fdcb45e12178c593fdd8e3af1a7bf919292b3d3b0cb370f1bd37c54bdfeb19",
+        "curved-random-270/trajectories.csv": "d56be07f53ca8f34f023ce6c3e7aa8c429ae3ad43e8270f8131585a7f7ad7fca",
+        "curved-random-271/trajectories.csv": "ba76a408251e62be8daed4e35bf8554cbb7c8ddab68465c7bf6565aab582ead7",
+        "epoch-blackout-269/trajectories.csv": "7bdbbe0851ea2905423730978dbd12f97be7f7627fab49c876159af35d53d0e1",
+        "epoch-blackout-270/trajectories.csv": "4624d7c9d6a7a535c8154ff4445d76a7016c3d8b1fa85bc1515cacab0068eb12",
+        "epoch-blackout-271/trajectories.csv": "bfabd340c4610615bed5d2ceb3561a9dc4edeac3f7e36e407e79277f2e44b583",
+        "epoch-none-269/trajectories.csv": "f565c3c6c51f5623d8b867a0dee5d89cdcbb4b4d69dd992e6aa7421116dee47d",
+        "epoch-none-270/trajectories.csv": "48dad1d97fd772cb416aba700a3b2f09b41552077abf1c661c1054841e9c54ab",
+        "epoch-none-271/trajectories.csv": "013b065ea9b2d5ed6eae0bd44ea557d4c307b61205cce0962e08ae2b76cabb56",
+        "epoch-random-269/trajectories.csv": "315f94dc15fe8c80aa81198e13950cc43616663f236c40f78c066da7afc2ba6f",
+        "epoch-random-270/trajectories.csv": "49759353b47b5660510c53a879c4a1ff8eb505caf2e3dad15af5aaf2f2949a5c",
+        "epoch-random-271/trajectories.csv": "3e3553584df50d4d0fa80794459cee557e6937f14156c1953dc1d256f5222302"
+      },
+      "replayed_intervals": 954000,
+      "provenance_sha256": "8e3f861d409f74318da995b40a55114a7ae3dc705c3b4e2c6d46e703322a327c"
+    },
+    "known-correlated": {
+      "path": "/workspace/scratch/terminal-arc-live/known-correlated",
+      "raw_sha256": {
+        "curved-blackout-269/trajectories.csv": "5f96094f5e87dcb956b9cc062ca472699bdefefd879a31c016420b5d3ee23d4b",
+        "curved-blackout-270/trajectories.csv": "9f6f8f4010f2be01aa567ce68bf61e2ba481ca610cdc818e82eb83c118aabce7",
+        "curved-blackout-271/trajectories.csv": "5b4f404209edd2247fa44548a8b3bf1f0c812a6d31ecb2f3149732b3e7107937",
+        "curved-none-269/trajectories.csv": "372116215d5c23aafe707ee65fbe518b65594473d9ff294cd1b3368504c66e86",
+        "curved-none-270/trajectories.csv": "564e86baa7def517a7e033114f9c96a7bd6491274788968cd6808b830a0cf639",
+        "curved-none-271/trajectories.csv": "9df3921e3055693b99900d8bb2d1a3ebe37173be95d52d4a6623a081303947f0",
+        "curved-random-269/trajectories.csv": "da3d0cc0d4716aaf50b53411f4284aec3328746a183f8b73dcacf46154c2953c",
+        "curved-random-270/trajectories.csv": "c0b89c74a413304adf730cce53e8f1aba2d2f52bcb299a7d807dd02e8f0bbbfb",
+        "curved-random-271/trajectories.csv": "7f4f88458cdc8829ddaf80f4f4dececb91e0fbb0c84c637e36fbe5474b7b7007",
+        "epoch-blackout-269/trajectories.csv": "be1871b0dae97b35e053d2139ce4dcd82a7385d80c5dec78c5235a08e8b7f959",
+        "epoch-blackout-270/trajectories.csv": "1c8546a4cc58caf049d2b3c6176ee47c414b587f2dea7eca7a8510c6640a9b70",
+        "epoch-blackout-271/trajectories.csv": "f883314a57e4d76673a02725bf658636bcc25a04293b808f172486373cdb3ffb",
+        "epoch-none-269/trajectories.csv": "ec4fb0181453b97ae23a1eef02d01469639ce32282b7e4cb1d6329c0b9098888",
+        "epoch-none-270/trajectories.csv": "27c1849e76776c6dee1bef461e5056a64e4ef56d2cb3a7c8f0f491a86f18664d",
+        "epoch-none-271/trajectories.csv": "628c548a66e27e9384dfe36e309bb7c280717ef50204a81b7e3ec1fc9c8da8c4",
+        "epoch-random-269/trajectories.csv": "4eb9ef9ece37e37450d41f3d97f549ba592ca29f0d322fcca61cb78021ee32b9",
+        "epoch-random-270/trajectories.csv": "b12810f9ac055337982676c40f5360a0fce34099a166854efbccf17e5401a88e",
+        "epoch-random-271/trajectories.csv": "550396e776d0e53d8e8bf60db5139867be2fd30a19c380d119cc1b887a4e0a47"
+      },
+      "replayed_intervals": 720000,
+      "provenance_sha256": "f67686fea3d3c3da7f509df8cecf42598753794d24ab489386f6edcff786dfd1"
+    },
+    "new-white": {
+      "path": "/workspace/scratch/terminal-arc-live/new-white",
+      "raw_sha256": {
+        "curved-blackout-274/trajectories.csv": "a0f7df7990066161bf7611ab054871eab6af0d3ddd7aa7fbf7da9de24441ff5e",
+        "curved-blackout-275/trajectories.csv": "3cb492bd2dd5b09c76c22c2c69bf759aa7a3b98c361cc9afbf15f7eec6656883",
+        "curved-blackout-276/trajectories.csv": "a147a20bfc989abcebb1131e25be08883cc0c288e76656d595b4181cea127c30",
+        "curved-none-274/trajectories.csv": "c82b4d0c33bbc5adbdd124ef5a37188029ef477f7619aefa4c44f71ee01487fc",
+        "curved-none-275/trajectories.csv": "aa23fd2d044a10640eb440da5fc5298260250ee42e1e9d7a5b392be2cf43ae90",
+        "curved-none-276/trajectories.csv": "3802370cd867a75c63594bbcf0028ffb0d1f05dfd31b3d967703972752234141",
+        "curved-random-274/trajectories.csv": "e18941b6171eae8b19d0ba709a4046af02eb7c17e7b6f10d21a8dbe44a16ee1d",
+        "curved-random-275/trajectories.csv": "dd0430020514a5d7248b1c2e51c002342e62c83dd3fca456018fce93625fc33a",
+        "curved-random-276/trajectories.csv": "470351414e7655675fd6e5d74bf7a7e5030cf4c679b25cb428db99c9481b336a",
+        "epoch-blackout-274/trajectories.csv": "096e22a14932d7e23d064f577cb57c5f94e86e81f007f1daf71b635f6c5f7a1c",
+        "epoch-blackout-275/trajectories.csv": "b5848b6536f5096311754f0d2c7909b8121d42522c79b6ffb543abbc5cb0025e",
+        "epoch-blackout-276/trajectories.csv": "c7155dc1f56fb594a521f0649fb08d854f9ed29da2d48a63ba7f116e28936c7d",
+        "epoch-none-274/trajectories.csv": "42519ff5687a7564890fff3a124563ef05533049273d37330a7ea3c566c62a72",
+        "epoch-none-275/trajectories.csv": "fb3cecad517f1363ee306431787526be45a4d4c2c240eb1b19f1151f18632863",
+        "epoch-none-276/trajectories.csv": "7d5f662a139f66c8f3e49ac001f457241b945cf3747943a9c6d4b2e08e1e12af",
+        "epoch-random-274/trajectories.csv": "412768218ca47596638fbc42305d9564a7b05f333d9fc6e76d397e29fa731553",
+        "epoch-random-275/trajectories.csv": "6f73715032326e1fea25cada8f2f8c8098a556b65ecf4441a4fb650f434423cb",
+        "epoch-random-276/trajectories.csv": "db690a422eb559c49490c2b866ea95c5f031f4aca2534dfbbdc991656632f483"
+      },
+      "replayed_intervals": 945000,
+      "provenance_sha256": "0fa552567c304e406b72741e241eed88a2a50be79155b59bdc150d2f519df26a"
+    },
+    "new-correlated": {
+      "path": "/workspace/scratch/terminal-arc-live/new-correlated",
+      "raw_sha256": {
+        "curved-blackout-274/trajectories.csv": "82f40fe4572fd764090e9ecba2fc5714d2928d1faf8b9764ea636f1d070ef689",
+        "curved-blackout-275/trajectories.csv": "3a34e1881a5a970f7fdc1d9925b065066c31a4f33334d3b083b666b1d2187909",
+        "curved-blackout-276/trajectories.csv": "f9094bf532e4326061b8cb6b14cc7d018c667f09cc0c95b6848bbfd50a03ddde",
+        "curved-none-274/trajectories.csv": "692361eceb5ebcc7aaa350dbe720d00ce758cceb6e1a73ee687080ca2f6f04d1",
+        "curved-none-275/trajectories.csv": "cba1c682774ddff430db5d0974c02380a2b8491adc2aa718bca6c976b9809624",
+        "curved-none-276/trajectories.csv": "3ae77f8ffafa60a66da961a578eef92480b0c9d7e85f94b9e99785bc1ae50725",
+        "curved-random-274/trajectories.csv": "f01224012fbe447083e8a93f827c82bc0ce660c50b01fe4336a80c0dcd76b3d2",
+        "curved-random-275/trajectories.csv": "2f2ea232e06ddb1da6d7a71aa1656d01bd91f2cc4ae055517bece7657f6dc07d",
+        "curved-random-276/trajectories.csv": "d8c5f72eb1a2ee9ab460e95dfce68e950f0b53ce80355bce043adfed6e836c02",
+        "epoch-blackout-274/trajectories.csv": "4f536ae53f0f775ae95289a2cb15624a95c09a51396924621090a986ef8f91ae",
+        "epoch-blackout-275/trajectories.csv": "d41bb100a571195f2bf20bc16e3de853afdf85a5272344462daf079c69a43a41",
+        "epoch-blackout-276/trajectories.csv": "a97e10d300aa365718144b5364d849cef7930ded274f9e431fc5721960ea0bf9",
+        "epoch-none-274/trajectories.csv": "263527c0c9c4d01c4a05e3255d13474890eafaeed8625d7b5dd49b56191215f1",
+        "epoch-none-275/trajectories.csv": "6e1186839e32124dac809ddbb3016cae7588f784970739eddeafa54cdd5ca5f9",
+        "epoch-none-276/trajectories.csv": "354f0f82314c1dfb1acfee9f3e4665177317db073d51051f30d6e8de8821fc40",
+        "epoch-random-274/trajectories.csv": "3df3eedfa50e17acf7f8ccb85158c83564c6b8e3e9c2a667bf54d4077d4364c2",
+        "epoch-random-275/trajectories.csv": "50c4e1dffc2201be1f423b268d3964ccd3e63736388c404da1f0c72ea1b6fdc4",
+        "epoch-random-276/trajectories.csv": "fa0cd1e20741141832ed7bf0efbe5b19a7caa244d1b7c729e51af06e262cd33e"
+      },
+      "replayed_intervals": 693000,
+      "provenance_sha256": "00cad20109e366c3968c2441751ef6967564a52b4bcc018e53c209fc18cd09f1"
+    }
+  },
+  "analysis": {
+    "script_sha256": "02244499ab6168e71e8410f44a32086cb38946fbb7a7d47a3d33c64e65d2616a",
+    "protocol_sha256": "9342afd7914230c80bb7dedbe867eaa894457d7020a840cc8b5ec5cb6094e93f",
+    "helpers_sha256": {
+      "analyze_arc_pose_components.py": "5d16fc1d0c7d01e0fac2b29dc0283838c480819b08c4926e06723a554ede9058",
+      "analyze_commanded_arc_components.py": "c04881e1c2ddfd47f6eba9dc79fa8de4f0a51e04ffc5928ad0944fcc2c35744c",
+      "analyze_commanded_recovery_arc.py": "4fbd54bfc44b4e1f28524ddd10d7ca7c6c63d8b629d6801edcee71873754444b",
+      "analyze_correction_centre_transitions.py": "f06b94aad01298a51e1d97877a66b8fe6f366ac330b201c4cdfc60cc2b14b654",
+      "analyze_epoch_divergence.py": "77f111b0dde6fe567af8c8c99cf1d8e913581d52e987a7210934fa75b897ed8e",
+      "analyze_epoch_position_components.py": "019e60e4a83321ae26b7323df97d2f5ee8ed521be990c237ed7d1def5fa05356",
+      "analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+      "analyze_filter_stalls.py": "9c72b94aaadbc766088cce954c0cd74f743bebf215b3383d42b0828ee53e96c3",
+      "analyze_joint_admission_geometry.py": "5252ba0f1b187bff7368fa8d69715fea59aa4f43052310acc31bbdce8d76526d",
+      "analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+      "analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+      "analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+      "analyze_speed_probe_shared_information.py": "2607bc45964dda48ee5492405089b937b5435738f179d59b9842c2628019db33",
+      "analyze_terminal_arc_live.py": "4adf591accb8fbb88d8eae46177e5694dd6474619e03232c79ef42d74dc414fa",
+      "summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+      "verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+      "verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+    },
+    "simulator_sha256": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228"
+  },
+  "schema": {
+    "dt_s": 0.02,
+    "offset_steps": {
+      "pre": -1,
+      "immediate": 0,
+      "after_0p18": 9,
+      "after_0p5": 25,
+      "after_1p5": 75
+    },
+    "inputs": [
+      "actual",
+      "preview"
+    ],
+    "post_estimators": [
+      "all",
+      "recovery_mean",
+      "raw_fallback",
+      "three_epoch",
+      "motion_filter",
+      "unavailable"
+    ],
+    "accuracy_categories": [
+      "both_inside",
+      "inside_to_outside",
+      "outside_to_inside",
+      "both_outside",
+      "unavailable"
+    ],
+    "variance_guard_m2": 1e-12
+  },
+  "inherited_validation": {
+    "source_sha256": "e3dbe3ea3861f520035449371d2740bb12d5304df4dc09101589d2dc31fd71c5",
+    "observation_and_physics": true,
+    "new_rollout": false
+  },
+  "audit": {
+    "accounted_cases": 648,
+    "timeout_cases": 368,
+    "opportunities": 2583,
+    "source_snapshots": 25830,
+    "available_snapshots": 23622,
+    "groups": 36328,
+    "requested_transitions": 20664,
+    "matched_transitions": 18456,
+    "summary_rows": 2880,
+    "replayed_intervals": 3312000,
+    "max_pose_error": 1.2400036553117388e-09,
+    "max_component_error": 2.220446049250313e-16
+  }
+}
