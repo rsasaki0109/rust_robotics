@@ -1411,3 +1411,43 @@ Outputs are checkpoint decompositions, retained window samples, four cohort/time
 summaries and `sources.json`. Repeat with another new output directory to compare
 all three CSVs and provenance byte for byte. See the
 [filter position-error diagnosis](results/filter-position-components/report.md).
+
+## Replay a causal three-epoch position prototype while stationary
+
+Use the same saved aligned-release trajectories and fixed paired checkpoints.
+The prototype sees reconstructed sensed pose, measured motion and observation
+events; separated truth/noise/bias never enter its estimation API:
+
+```bash
+python3 experiments/pose_observation_loss/analyze_stationary_epoch_fusion.py \
+  --white /tmp/aligned-release-white \
+  --correlated /tmp/aligned-release-correlated \
+  --output /tmp/stationary-epoch-fusion
+python3 -m unittest discover -s experiments/pose_observation_loss \
+  -p test_stationary_epoch_fusion.py
+```
+
+Only Python's standard library is needed, and the output directory must be new.
+Keep at most three received-correction epochs within 15 seconds, each with at
+most 25 local observations from its first 0.5 seconds. Transport retained poses
+with their own sensed headings and previous measured speed/applied steering.
+Clear history when speed magnitude exceeds 0.02 or precision activates; a missed
+correction does not create a new epoch.
+
+Use the equally weighted mean of three epoch means only when stationary, current
+observation age is at most 1.5 seconds, each older epoch has at least 10 samples,
+and the newest epoch matches the latest receipt. Its current epoch can have one
+sample. Otherwise retain the logged baseline pose. The heading always remains
+the baseline heading. See the predeclared [protocol](results/stationary-epoch-fusion/protocol.md).
+
+Select steering from each estimated pose with the same grid, tie rule and full
+margin as before, then evaluate that fixed angle at the paired true pose. No
+uncertainty reduction is assumed. Report availability/fallback subsets, position
+errors, accepted true passes, mismatches and paired gains/losses. Each selected
+arc has a full obstacle scan and independent chord audit.
+
+Outputs are estimates, retained epoch means/counts, decisions, geometry audits,
+summary subsets and provenance. Repeat into another new directory to compare
+five CSVs and `sources.json` byte for byte. This replays a position prototype on
+selected failed-run observations; it does not rerun commands, timers or hold
+outcomes. See the [prototype comparison](results/stationary-epoch-fusion/report.md).
