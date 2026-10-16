@@ -1,0 +1,15 @@
+{
+  "script_sha256": "6c3dd6faa437a5fffd7e86522eaabe17287fde5567d7d5b24bc9f7a94661b6ee",
+  "input_sha256": {
+    "events.csv": "bc7a40a8da19e573d443c09fec79d4cb5fa1023de74b0bfbcfad2d4d40b07274",
+    "spans.csv": "7317118ee5264e52c385bd4ecc43edcaed8f9c9df7620527e3c37d8838663c22",
+    "blocks.csv": "7fa290ccefe02ed3ed5d296872ed8ba83499d4164bb32a4758762e049fb1a05d",
+    "span-summary.csv": "5a7b10c4581c7f7ae10dffcde0cb130c8f279ea9ef60b5d9c41d0381feb79f5f",
+    "block-summary.csv": "02b6aa10294a6527b02e8eb428e86af13e36a3b7c2540759c80dcf237f1e4971",
+    "sources.json": "d0f0f070cfae445d580e48d5d92b61a491b269f2cf3e44baa9879cbe222cc9e6"
+  },
+  "rule": "0p05",
+  "agreement_threshold_m": 0.05,
+  "numeric_rows": 432,
+  "weighting": "one weight per information block; whole-span event-kind unions overlap"
+}

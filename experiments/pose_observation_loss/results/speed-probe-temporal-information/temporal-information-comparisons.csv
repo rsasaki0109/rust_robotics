@@ -1,0 +1,433 @@
+variant,event_kind,pairing,rule,agreement_threshold_m,spans,blocks,states,singleton_spans,audit_truncated_spans,family,category,count,percent,value_m
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_both_inside,50,7.062146892655368,
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_a_inside_b_outside,3,0.423728813559322,
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_a_outside_b_inside,8,1.1299435028248588,
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_both_outside,236,33.333333333333336,
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,disagree,411,58.05084745762712,
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,A: retained covariance,,,0.129242468982251
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,A: independent times,,,0.10520473983511938
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,B: retained covariance,,,0.11171302413611908
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,B: independent times,,,0.08250764901790081
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Retained covariance,,,0.0679636209195126
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.06627448576720779
+epoch,all,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Independent inputs and times,,,0.13369947430800266
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_both_inside,51,8.900523560209423,
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_a_inside_b_outside,4,0.6980802792321117,
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_a_outside_b_inside,12,2.094240837696335,
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_both_outside,156,27.225130890052355,
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,disagree,350,61.082024432809774,
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,A: retained covariance,,,0.128657846422344
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,A: independent times,,,0.10193868588116338
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,B: retained covariance,,,0.09636880152410476
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,B: independent times,,,0.06923500173851581
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Retained covariance,,,0.0876420815058706
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.07590731142671095
+epoch,all,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Independent inputs and times,,,0.12322735550562945
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_both_inside,23,13.77245508982036,
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_a_inside_b_outside,1,0.5988023952095808,
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_both_outside,57,34.131736526946106,
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,disagree,86,51.49700598802395,
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,A: retained covariance,,,0.11037631559096446
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,A: independent times,,,0.04607728096535247
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,B: retained covariance,,,0.08507227559121565
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,B: independent times,,,0.03372291985243518
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Retained covariance,,,0.07124376965704257
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.031783171877185726
+epoch,all,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Independent inputs and times,,,0.05709948462581602
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_both_inside,50,7.062146892655368,
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_a_inside_b_outside,3,0.423728813559322,
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_a_outside_b_inside,8,1.1299435028248588,
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,agree_both_outside,236,33.333333333333336,
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,span_partition,disagree,411,58.05084745762712,
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,A: retained covariance,,,0.129242468982251
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,A: independent times,,,0.10520473983511938
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,B: retained covariance,,,0.11171302413611908
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_mean_sigma,B: independent times,,,0.08250764901790081
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Retained covariance,,,0.0679636209195126
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.06627448576720779
+epoch,received,raw_recovery,0p05,0.05,708,708,2922,283,264,temporal_difference_sigma,Independent inputs and times,,,0.13369947430800266
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_both_inside,51,8.900523560209423,
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_a_inside_b_outside,4,0.6980802792321117,
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_a_outside_b_inside,12,2.094240837696335,
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,agree_both_outside,156,27.225130890052355,
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,span_partition,disagree,350,61.082024432809774,
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,A: retained covariance,,,0.128657846422344
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,A: independent times,,,0.10193868588116338
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,B: retained covariance,,,0.09636880152410476
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_mean_sigma,B: independent times,,,0.06923500173851581
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Retained covariance,,,0.0876420815058706
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.07590731142671095
+epoch,received,raw_preview,0p05,0.05,573,573,2922,213,252,temporal_difference_sigma,Independent inputs and times,,,0.12322735550562945
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_both_inside,23,13.77245508982036,
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_a_inside_b_outside,1,0.5988023952095808,
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,agree_both_outside,57,34.131736526946106,
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,span_partition,disagree,86,51.49700598802395,
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,A: retained covariance,,,0.11037631559096446
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,A: independent times,,,0.04607728096535247
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,B: retained covariance,,,0.08507227559121565
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_mean_sigma,B: independent times,,,0.03372291985243518
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Retained covariance,,,0.07124376965704257
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.031783171877185726
+epoch,received,recovery_preview,0p05,0.05,167,167,2922,8,162,temporal_difference_sigma,Independent inputs and times,,,0.05709948462581602
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+epoch,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_both_inside,94,9.822361546499478,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_a_inside_b_outside,12,1.2539184952978057,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_a_outside_b_inside,15,1.567398119122257,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_both_outside,264,27.586206896551722,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,disagree,572,59.770114942528735,
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,A: retained covariance,,,0.12811278385072325
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,A: independent times,,,0.10616625539617325
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,B: retained covariance,,,0.10871142149434017
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,B: independent times,,,0.08117603286753537
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Retained covariance,,,0.07000222243322733
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.06896312192705874
+curved,all,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Independent inputs and times,,,0.13364438670201104
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_both_inside,96,11.940298507462687,
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_a_inside_b_outside,7,0.8706467661691543,
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_a_outside_b_inside,36,4.477611940298507,
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_both_outside,152,18.90547263681592,
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,disagree,513,63.80597014925373,
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,A: retained covariance,,,0.12730284081491852
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,A: independent times,,,0.10329738127733118
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,B: retained covariance,,,0.08605026140221125
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,B: independent times,,,0.06257526491692957
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Retained covariance,,,0.09537351358351652
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.08278462733492142
+curved,all,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Independent inputs and times,,,0.1207725662482099
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_both_inside,71,22.468354430379748,
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_a_inside_b_outside,1,0.31645569620253167,
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_a_outside_b_inside,14,4.430379746835443,
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_both_outside,66,20.88607594936709,
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,disagree,164,51.89873417721519,
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,A: retained covariance,,,0.1071041592673048
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,A: independent times,,,0.052782613641946065
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,B: retained covariance,,,0.07689192923405025
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,B: independent times,,,0.037189285934891424
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Retained covariance,,,0.07526338474071638
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.037814113603523956
+curved,all,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Independent inputs and times,,,0.06456816004209864
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_both_inside,94,9.822361546499478,
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_a_inside_b_outside,12,1.2539184952978057,
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_a_outside_b_inside,15,1.567398119122257,
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,agree_both_outside,264,27.586206896551722,
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,span_partition,disagree,572,59.770114942528735,
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,A: retained covariance,,,0.12811278385072325
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,A: independent times,,,0.10616625539617325
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,B: retained covariance,,,0.10871142149434017
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_mean_sigma,B: independent times,,,0.08117603286753537
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Retained covariance,,,0.07000222243322733
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.06896312192705874
+curved,received,raw_recovery,0p05,0.05,957,957,3688,386,424,temporal_difference_sigma,Independent inputs and times,,,0.13364438670201104
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_both_inside,96,11.940298507462687,
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_a_inside_b_outside,7,0.8706467661691543,
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_a_outside_b_inside,36,4.477611940298507,
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,agree_both_outside,152,18.90547263681592,
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,span_partition,disagree,513,63.80597014925373,
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,A: retained covariance,,,0.12730284081491852
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,A: independent times,,,0.10329738127733118
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,B: retained covariance,,,0.08605026140221125
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_mean_sigma,B: independent times,,,0.06257526491692957
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Retained covariance,,,0.09537351358351652
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.08278462733492142
+curved,received,raw_preview,0p05,0.05,804,804,3688,307,403,temporal_difference_sigma,Independent inputs and times,,,0.1207725662482099
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_both_inside,71,22.468354430379748,
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_a_inside_b_outside,1,0.31645569620253167,
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_a_outside_b_inside,14,4.430379746835443,
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,agree_both_outside,66,20.88607594936709,
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,span_partition,disagree,164,51.89873417721519,
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,A: retained covariance,,,0.1071041592673048
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,A: independent times,,,0.052782613641946065
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,B: retained covariance,,,0.07689192923405025
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_mean_sigma,B: independent times,,,0.037189285934891424
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Retained covariance,,,0.07526338474071638
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Independent times; same-time A/B covariance,,,0.037814113603523956
+curved,received,recovery_preview,0p05,0.05,316,316,3688,27,286,temporal_difference_sigma,Independent inputs and times,,,0.06456816004209864
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,precision_only,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,precision_only,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,precision_only,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,received_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,received_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,received_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed_and_precision,raw_recovery,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed_and_precision,raw_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_inside,0,0.0,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_inside_b_outside,0,0.0,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_a_outside_b_inside,0,0.0,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,agree_both_outside,0,0.0,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,span_partition,disagree,0,0.0,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: retained covariance,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,A: independent times,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: retained covariance,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_mean_sigma,B: independent times,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Retained covariance,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent times; same-time A/B covariance,,,
+curved,missed_and_precision,recovery_preview,0p05,0.05,0,0,0,0,0,temporal_difference_sigma,Independent inputs and times,,,
