@@ -3544,3 +3544,61 @@ Repeat all four CSVs/provenance and both figures/exports byte for byte. The
 [returned-spell report](results/return-spell-mechanisms/report.md) explains the
 20 ms TTL and 1.52 s age-gate endings and preserves endpoint censoring. No
 retention setting, controller behavior or original RP selection is changed.
+
+## Logged controls around first Fusion returns
+
+The [fixed protocol](results/fusion-return-controls/protocol.md) joins every
+one of the preceding 137 first returns to its original control records. It
+keeps recovery-pose and preview source identifiers, loss/guard latches,
+resumption flags, nominal commands and final commands separately. All 3,997
+original anchors remain in the ledger with their original parent measures.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_return_controls.py \
+  --output /tmp/fusion-return-controls
+MPLCONFIGDIR=/tmp/return-controls-mpl python3 experiments/pose_observation_loss/plot_return_controls.py \
+  --results /tmp/fusion-return-controls --output /tmp/return-controls-figures
+python3 experiments/pose_observation_loss/verify_return_controls.py \
+  --results /tmp/fusion-return-controls --figures /tmp/return-controls-figures \
+  --work /tmp/return-controls-independent --output /tmp/return-controls-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Both readers hash and stream the same 108 pinned original raw files and
+accept the preceding `--raw-roots` cohort-to-directory JSON override. Collection
+and independent verification use the standard library, including SQLite for
+the verifier. Plotting requires Matplotlib/NumPy. This audit inherits the
+preceding native metadata evidence and does not run another Rust metadata
+replay or require Cargo/network access.
+
+`anchor-controls.csv` preserves the original loss/return/end/censoring fields,
+weights and RP accounting. Returned anchors add source/latch/command snapshots,
+within-available-spell counts, sample-count range and logged recovery evidence.
+`control-runs.csv` compresses each inclusive [return-20 ms, next loss/log end]
+window into maximal source/latch/resumed/positive-command tuples. Counts are
+anchor-checkpoint references; overlapping roles are retained. Within-spell
+counts exclude an observed next-loss checkpoint and include an observed 180 s
+return without extending its future span. `control-snapshots.csv` keeps all
+500 fixed anchor/role references at return predecessors/returns and observed
+endpoints. Censored end-change fields remain blank.
+
+`control-summary.csv` retains 336 cells over all original cohort/noise/arm/mode
+conditions and the preceding disjoint anchor categories, including empty cells
+and planned/timeout/held counts. All-census, received-census and RP masses keep
+their original parents. Resume/positive-command shares condition on returned
+anchors and use exact masses before division; undefined shares stay blank.
+Checkpoint-reference counts remain separate from event counts and masses.
+
+The standalone verifier imports no analyzers. It independently parses the
+original unquoted scalar CSVs, rejoins the original census and reconstructs
+maximal runs with SQLite window functions over uncompressed checkpoints. Both
+readers check final command overwrite invariants at every 150..180 s checkpoint
+in all 570 timeout histories. Verification covers every saved field, closure,
+252 numeric plot summary rows and all 137 returned rows. Logged scalar and
+sample requirements do not constitute a full recovery gate or geometry replay.
+
+Repeat all four CSVs/provenance and the figure/exports byte for byte. See the
+[control audit report](results/fusion-return-controls/report.md) for observed
+latch, command and recovery-pose behavior. No controller, original RP selection
+or simulation outcome is changed.
