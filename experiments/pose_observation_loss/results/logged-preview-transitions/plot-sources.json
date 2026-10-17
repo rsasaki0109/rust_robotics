@@ -1,0 +1,16 @@
+{
+  "script_sha256": "0adf4ba3d577e432e10fd2b21c4721f9e4b4b4cde15a3ed790d45d2db70e3a57",
+  "input_sha256": {
+    "sources.json": "2c68a7619a074237496637f90580f96e5769301139a4326b3adbed62faa84f36",
+    "event-trace.csv": "74206dd534206acd8eaa01f517838883eaa0bceb58ca0b4bcc14c1bc8f88f56e",
+    "transition-summary.csv": "c1ccee8695270aa76794086fc5cdead4f8a0ef393c8dca75320d05984b877431"
+  },
+  "selection": "144 all-kind horizon rows in original modes; every event with a post-event differing RP preview",
+  "output_sha256": {
+    "full-horizon-fusion-loss.svg": "c37b2a594bdfb10af888dad8cc3a4425e6929b5eb0dd324e5e548842d36381bb",
+    "observation-horizons.svg": "93a287cc2495d59e530723137dfc46435e8e3ef49fa067cc085ded525ef2a602",
+    "plot-event-values.csv": "488e277386edb20c40acda0b54c3672f06cbd885dbc0095575bb5bfa53da2ce5",
+    "plot-values.csv": "8ffaf31d230115fdd8c154633c5a5d91f7dca75e170424878fc1cf07b6ecc470",
+    "rp-transition-lag.svg": "a52323ab7da14fda3cf4f4916dd7bee766f7a429324749a3c6a65c7413b75458"
+  }
+}
