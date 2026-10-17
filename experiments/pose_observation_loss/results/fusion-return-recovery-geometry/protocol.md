@@ -19,6 +19,11 @@ timers, commands, Fusion metadata and initial/first-chord enclosures are
 inherited evidence and remain unchanged. No policy/parameter/rollout, new RP
 selection, contact label or causal benefit is introduced.
 
+Some older admission numeric inputs were serialized through float (for
+example 0.0 versus raw 0.000000000). Compare joined/raw numeric inputs by
+identical parsed binary64 value, without a tolerance; keep identities, flags,
+gate labels and the retained preceding output strings exact.
+
 For each zero reference retain ALL definite original obstacle witnesses:
 definite_obstacle_ids for initial failures, otherwise
 first_definite_obstacle_ids. Preserve map row IDs and duplicates. Fail if
