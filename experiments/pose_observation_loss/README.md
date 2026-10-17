@@ -3092,3 +3092,55 @@ values remain blank; loss of support is not a zero or strict-side flip. These
 are retrospective sensitivities of observed environments/seeds, not confidence
 intervals, independent map samples or held-out validation. See the
 [scenario sensitivity results](results/event-scenario-influence/report.md).
+
+## Same-event planner deletion and seed/scenario/planner subsets
+
+The [fixed protocol](results/event-planner-influence/protocol.md) retains A*, JPS
+and Theta* separately and removes each once across all seeds/scenarios. It also
+keeps every planned seed/scenario/planner audit and fixed focused leaf result.
+Original 1/n_case weights, full case identities (including loss mode), labels,
+score order, time scopes and source/common-family eligibility stay fixed.
+Deleting one planner keeps the other two planners' already selected cases.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_planner_influence.py \
+  --output /tmp/event-planner-influence
+MPLCONFIGDIR=/tmp/event-planner-influence-mpl python3 experiments/pose_observation_loss/plot_event_planner_influence.py \
+  --results /tmp/event-planner-influence --output /tmp/event-planner-influence-figures
+python3 experiments/pose_observation_loss/verify_event_planner_influence.py \
+  --results /tmp/event-planner-influence --figures /tmp/event-planner-influence-figures \
+  --output /tmp/event-planner-influence-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with fresh directories and an unused evidence file, without
+Python -O. Collection uses the standard library; figures require Matplotlib and
+NumPy; the standalone verifier requires NumPy. All inputs, preceding results
+and helper scripts are pinned. No new simulation or Rust build is required.
+
+`planner-audit.csv` contains 3,240 label-blind selection/seed/scenario/planner
+entries, including zero-record leaves. `unit_id` identifies the planner; seed
+and scenario are separate fields. One leaf can contain distinct original loss
+modes, which stay separate full cases with no cross-mode pairs. Parent
+`planner_selection=all` identifies the original mixed population for every row.
+`planner-effects.csv` contains all 25,920 operations: unprefixed fields describe
+the population after deletion and `planner_` fields describe the planner alone.
+Removed masses/shares also describe that planner alone. `sensitivity-summary.csv`
+contains 8,640 summaries, each with all three planned planners, represented and
+supported counts, ranges, missing support and exact side counts around .5.
+
+`planner-cells.csv` contains all 20,736 leaf/scope contributions for the fixed
+residual_sigma, Filter/Fusion, E/P subset, both targets and all four scopes.
+All 27 planned cells remain explicit. Their planner sums reproduce all 6,912
+corresponding preceding seed/scenario rows. Full-grid planner effects/summaries
+retain all scores, labels and strata; other case contributions remain in pinned
+preceding outputs. Neither cell AUCs nor planner AUCs are averaged.
+
+Repeat the four CSVs and provenance byte for byte, then six figures, three
+numeric exports and provenance. Independent verification imports no analyzers,
+reconstructs raw states and Decimal score order, checks all preceding case/
+family/seed/scenario results, and directly masks the remaining/retained planner
+and focused leaf pairs with exact Fraction weights. Empty or pair-free subsets
+remain undefined; lost support is not a zero or strict-side flip. These are
+observed diagnostic subsets, not aligned trajectories, causal planner effects
+or held-out prediction. See the [planner sensitivity results](results/event-planner-influence/report.md).
