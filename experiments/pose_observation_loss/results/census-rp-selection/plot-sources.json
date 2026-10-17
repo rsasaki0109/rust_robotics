@@ -1,0 +1,16 @@
+{
+  "script_sha256": "73ab93795ca72ef7eea11d4153602ea65c4ea890fc6e113b7053b854256694c9",
+  "analysis_sources_sha256": "e58fc36fe4c1768dceb2378c2893ddc6187941e4801807b01ff4347724db1dd6",
+  "inputs_sha256": {
+    "selection-summary.csv": "7fd34535696880346e93cac3d73b983164d7e26ac94c0e021e64798ed48cd6d3"
+  },
+  "outputs_sha256": {
+    "case-selection.png": "d8b1bed50a38671aed1afc755bef37f08210b95ac2458652db8383ba7def9636",
+    "case-selection.svg": "17f5529297bd0a60f76e2776e0f71b77f27c88c0a9c178c97b6b67d4721cad35",
+    "event-reference-coverage.png": "8cc292afe1c566bdcb1cb234b4d04b89d48ed1fc7e4a35adc9725607ebf0bcc8",
+    "event-reference-coverage.svg": "de107880f69382aa3d1bb1883906b5fb82a0735c1e0408e173169b52a5c04a37",
+    "plot-values.csv": "f4598c76656948cd1d882d24921acbde76a3689f6c9b0d3a04f24bb6b5b8468a",
+    "preview-mode-crosswalk.png": "5ad36e804baf3f34c92169853544abdb37c4aeabfafb5e2f4542fbb32d844558",
+    "preview-mode-crosswalk.svg": "4ed5bb9410ac129e3ef9953f0d364b8f132da710bc0e8729783066d4fdb529f7"
+  }
+}

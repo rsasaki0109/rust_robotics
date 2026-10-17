@@ -3252,3 +3252,55 @@ new fields, original mode/precision support, plot values and hashes. See the
 [support attrition report](results/event-support-attrition/report.md). These
 retrospective selections do not establish causality, independent replications,
 calibration or held-out prediction.
+
+## Coverage from the late-timeout census to RP records
+
+The [fixed protocol](results/census-rp-selection/protocol.md) joins every planned
+case and broad late-timeout event to the fixed RP diagnostic selection. Original
+status, loss mode and immediate actual/preview identifiers remain explicit.
+This describes coverage and identifier differences; it computes no new AUCs,
+errors or controller outcomes.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_census_rp_selection.py \
+  --output /tmp/census-rp-selection
+MPLCONFIGDIR=/tmp/census-rp-selection-mpl python3 experiments/pose_observation_loss/plot_census_rp_selection.py \
+  --results /tmp/census-rp-selection --output /tmp/census-rp-selection-figures
+python3 experiments/pose_observation_loss/verify_census_rp_selection.py \
+  --results /tmp/census-rp-selection --figures /tmp/census-rp-selection-figures \
+  --output /tmp/census-rp-selection-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with new directories and an unused evidence filename, without
+Python -O. Collection and independent SQL verification use the standard library;
+figures require Matplotlib/NumPy. All inputs and prior helpers are pinned.
+No simulation, Rust build, new label reconstruction or cutoff refit is required.
+
+`case-selection.csv` keeps all 972 planned cases with original outcomes and
+held/timeout_no_rp/timeout_with_rp stages. Held cases fall outside the original
+late-timeout census by design. `event-selection.csv` keeps all 3,997 census
+events, original source IDs/partition aliases, flags and immediate identifiers,
+with RP records/masses by all four strata and original time offsets. An immediate
+event preview identifier is distinct from a selected window-state stratum.
+
+`selection-summary.csv` keeps 3,024 cells across all cohorts/noises/arms, all
+three loss modes plus all_modes, seven event groups and all/two actual and
+preview selectors. Every empty planned category stays explicit. `received_any`
+uses the received flag, including combined received/precision events if present.
+
+Three parent measures remain separate: 1/n_all_census_events_case for each
+event, 1/n_received_census_events_case for received events, and original
+1/n_RP_parent_case for RP states. Parent weights precede kind/identifier/stratum
+selection. Sum exact masses before shares; never average case rates or equate
+the three measures. Blank coverage means no denominator; zero coverage means
+observed census events but no RP reference. Different window/event identifiers
+do not locate a transition or establish a causal mode effect.
+
+Repeat three CSVs and provenance byte for byte, then three figures, the 252-row
+numeric export and plot provenance. Independent verification imports no analyzers
+and reads the original broad census plus historical membership/latest RP score
+metadata instead of trusting the saved source-event-map. SQL selection/count
+queries and exact Fraction weights verify every new field, original case/event
+coverage, additive closure and hashes. Missing RP records are not zero error,
+unrun experiments or failed observations. See the [coverage report](results/census-rp-selection/report.md).

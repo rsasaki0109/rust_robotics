@@ -1,0 +1,21 @@
+{
+  "comparisons": 586363,
+  "planned_cases": 972,
+  "planned_families": 324,
+  "timeout_cases": 570,
+  "source_states": 10995,
+  "source_view_references": 32985,
+  "represented_cases": 157,
+  "census_events": 3997,
+  "referenced_events": 275,
+  "case_selection_rows": 972,
+  "event_selection_rows": 3997,
+  "summary_rows": 3024,
+  "preceding_coverage_comparisons": 28842,
+  "additive_closure_comparisons": 64080,
+  "plotted_rows": 252,
+  "method": "original broad-census IDs and historical membership/latest score RP metadata, SQL selection/count queries, Fraction original parent measures",
+  "script_sha256": "c910f338775aa5a2cb8597c9840f75d1b9a5d0529320e35bce5ff5819546040b",
+  "sources_sha256": "e58fc36fe4c1768dceb2378c2893ddc6187941e4801807b01ff4347724db1dd6",
+  "plot_sources_sha256": "c85aa66ad35a60147c0ecc778b4c612819939d0a344f715dc635ae31a4173452"
+}
