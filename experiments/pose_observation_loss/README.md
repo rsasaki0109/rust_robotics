@@ -2827,3 +2827,48 @@ Five SVG/PNG figures export both targets' complete numeric inputs and hashes.
 Repeat aggregation/plotting byte for byte. Restricted comparisons and repeated
 cases/windows remain retrospective descriptions with limited class support.
 See the [case/window comparison results](results/case-window-rank-decomposition/report.md).
+
+## Rankings within saved source events
+
+The [fixed protocol](results/event-conditioned-rankings/protocol.md) splits
+comparisons into the same saved event, other events in the same case, and other
+cases. Each RP state has one census event_id; the full case/event join is checked.
+The ID is a diagnostic reference tag and does not enumerate Fusion's complete
+information ancestry. Original case weights and source/common-family populations
+remain unchanged. Event AUCs combine exact pair masses, without event weighting.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_conditioned_rankings.py \
+  --output /tmp/event-conditioned-rankings
+MPLCONFIGDIR=/tmp/event-ranking-mpl python3 experiments/pose_observation_loss/plot_event_conditioned_rankings.py \
+  --results /tmp/event-conditioned-rankings --output /tmp/event-ranking-figures
+python3 experiments/pose_observation_loss/verify_event_conditioned_rankings.py \
+  --results /tmp/event-conditioned-rankings --figures /tmp/event-ranking-figures \
+  --output /tmp/event-ranking-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new directories and a new evidence filename, without Python -O. Aggregation
+uses the standard library and tracked inputs. Plotting needs Matplotlib/NumPy;
+the independent NumPy verifier imports no analyzers. No raw histories, new
+simulations, Rust build, fitting or cutoff changes are needed.
+
+`source-event-map.csv` traces every RP state to its event, times and inherited
+weight. `event-coverage.csv` retains the entire census, including events with no
+RP references; this does not mean a received observation was missing.
+`event-support.csv` keeps all five strata of represented events, including zero
+support. `event-rankings.csv` saves only nonempty event/stratum groups across both
+targets, all scores and E/P/U; eligibility determines common-family inclusion.
+Empty groups stay explicit in support and absent-class AUCs stay blank.
+
+`ranking-summary.csv` preserves every preceding aggregate field and adds event
+metrics/counts. `event-pair-bins.csv` exposes all three exact bin masses and
+full-denominator contributions. The first two bins additionally report shares
+of within-case pair mass. Sum numerators and denominators before division;
+never average individual event AUCs or infer independent sample sizes.
+
+All prior accounting/support/events/cutoffs/loss links and planned case/family/
+stratum audits are copied unchanged. Five SVG/PNG figures export both targets
+and full/conditional shares; nonzero shares below .1% are distinguished from
+zero in the focused AUC panels. Repeat aggregation/plotting byte for byte.
+See the [saved-event ranking results](results/event-conditioned-rankings/report.md).
