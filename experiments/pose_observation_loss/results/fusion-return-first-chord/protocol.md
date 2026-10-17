@@ -85,6 +85,12 @@ Taylor sin/cos and derived tan, interval arithmetic and exact binary64 map
 coordinates. Use Decimal projection/clamp distance for the center segment,
 independent of collector float calculations.
 
+Compare new numeric enclosure fields with absolute tolerance 1e-9 and relative
+tolerance 1e-10, within the declared segment allowance; small-curvature source
+subtractions amplify ordinary float/Decimal differences. Require exact agreement
+for states, witness IDs, flags, counts and inherited string fields. This
+cross-implementation tolerance does not narrow any geometric enclosure.
+
 Compile the unchanged full speed_free_distance, original Point2D distance,
 point_segment_distance and minimal VehicleState with stdlib Rust. Extract the
 unchanged first-endpoint arithmetic for native tracing; the full original probe
