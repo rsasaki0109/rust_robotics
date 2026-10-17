@@ -1,0 +1,14 @@
+{
+  "script_sha256": "182303570dda7a8db82916d8058b4e0bb76f4b29c3c239367a869ebd5d0c9385",
+  "input_sha256": {
+    "sources.json": "d4805319372227496c5b6fece67644ee1d16b04e16cbf9fd846281929508ddf5",
+    "anchor-controls.csv": "3c340455c189dfde29144d2646db205b2b612fca957c994ff9cb802399639adc",
+    "control-summary.csv": "5a4e419e1c18596f57b1503c00dcbad3533525e194951b4e117204f4f74d0542"
+  },
+  "selection": "all 36 original conditions, all 252 original-mode category summaries and all 137 returned anchors",
+  "output_sha256": {
+    "plot-return-values.csv": "d23ef1b1b92114f35f06fbb1a283f7ccbbb07e815e7950805d32dbfb530e7220",
+    "plot-values.csv": "8405fd8bfa21425fc8ebc2f3d7240a02807b4206f1d9c683240a2a8f10b8c43e",
+    "return-latches.svg": "4bfefe6fcb474dc06e6016e5a9c460ced3a2f40691bc40372e64796af0c8958f"
+  }
+}
