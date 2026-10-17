@@ -1,0 +1,22 @@
+{
+  "script_sha256": "0c60ccc679ef8990a187b4515b4d0efbb21403c6a936c4da2974786a5c66fca7",
+  "analysis_sources_sha256": "b1b180955af97033109e3147f83864291083856b68c426ef4e7ae5d1b0f8f1b2",
+  "inputs_sha256": {
+    "precision-summary.csv": "ec195b0d76bbb2474444ffdf132f2cfe28b5b11eb6ff51af72c1533bb19645ca",
+    "precision-bins.csv": "43e45bb24b815297f4a61e7470d76061ceb83ccba89d95493ade95d3690e95d3"
+  },
+  "outputs_sha256": {
+    "bin-values.csv": "b33d4599899f9134b3d2ac32e31616668fb860c66bb2ea99a30ca193841ff1f5",
+    "nearby-tie-composition.png": "42196469f761e8913bad9b2c13c131b1a7d0c547e34d7da942aa6a86e0a8064c",
+    "nearby-tie-composition.svg": "9ecc9b19d2ef31daf1d7497d79d733755ba4cc963a5f043c8e43194fda24940f",
+    "score-ties-fresh-modeled.png": "7f2baa4441800af60339b3c9a145fe834661760cdffe31e445966c507f5d93d9",
+    "score-ties-fresh-modeled.svg": "a81941cf62e5337fc857bd05b8e1d68935d74439c7def216ed06debe868c5ebe",
+    "score-ties-fresh-observed.png": "e6abe2ccb6b0571be8b882d9bb3056089d7e27e558128a09a05c4266729e2e42",
+    "score-ties-fresh-observed.svg": "3e3a21b7418fdb26b5d2bf15b2480e6025aa7fc1447d5f024bb73b03d76114e6",
+    "score-ties-known-observed.png": "01d8febf67bb84af9f460fd6832d78cba4ebd809d99e7537ca02f2bf366d1f7f",
+    "score-ties-known-observed.svg": "58ee209ca75af59c0db2b03aa3304855574f083ea01570972146acffdf1981f2",
+    "score-ties-new-observed.png": "b0d7da0863ff03dbd3163d0a6b71415c8bf5f0f748e04ca69795dc054cc73149",
+    "score-ties-new-observed.svg": "922056c7bde322516a16b1a4ab89bb185aca77b6c5067f64a48d7ec327bb65b8",
+    "summary-values.csv": "a98fdce3b7a6d1c24c5fbe0abbacc948729daa3e0a8367ac2383d8e462b64932"
+  }
+}

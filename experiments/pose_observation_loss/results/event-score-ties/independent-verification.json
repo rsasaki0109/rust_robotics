@@ -1,0 +1,24 @@
+{
+  "comparisons": 3369940,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "case_rows": 972,
+  "family_rows": 324,
+  "baseline_ranking_rows": 2160,
+  "baseline_time_bin_rows": 8640,
+  "score_audit_rows": 10995,
+  "saved_score_values": 32985,
+  "distinct_saved_scores": {
+    "contrast": 4108,
+    "midpoint_sigma": 146,
+    "residual_sigma": 146
+  },
+  "precision_scope_rows": 8640,
+  "precision_bin_rows": 8640,
+  "defined_tick_unequal_scope_concordances": 1330,
+  "defined_native_unequal_scope_concordances": 1396,
+  "plotted_rows": 1536,
+  "script_sha256": "f737242edc26dc6624a0a05845606f7d1dc7ec2803d08ee8776e1da17226f7a3",
+  "sources_sha256": "b1b180955af97033109e3147f83864291083856b68c426ef4e7ae5d1b0f8f1b2",
+  "plot_sources_sha256": "7d2f4117383fece8592a74b98ce096416ff6688528897350ab3396b3ce39d8b3"
+}
