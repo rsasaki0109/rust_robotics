@@ -3663,3 +3663,63 @@ Repeat all four CSVs/provenance and the figure/exports byte for byte. See the
 counter resets, joint/guard thresholds and remaining nominal-sign uncertainty.
 These are selected retrospective inputs and timer records, with no new
 controller outcome, causal effect or eventual-release probability.
+
+## Nominal command signs from the source domain
+
+The [fixed protocol](results/fusion-return-command-sign/protocol.md) adds a
+source-domain result to the preceding admission audit. It retains the original
+interval classifications and all 137 returned spells, 3,751 decision references
+and 3,997 census anchors. The new sign inference uses the original speed probe's
+41 possible distances and the positive lower bound of an unlatched pre-cap
+command. Recorded timers enter only the subsequent consistency comparison.
+
+In the saved results, all 909 previously ambiguous available joint nominal
+gates have exact cap-zero commands. The 25 previously unknown joint conjunctions
+become failures, giving 101 pass, 3,169 fail and zero unknown references.
+Guard-only admission is unchanged. All 5,130,000 timeout decisions pass the
+command-chain checks, and the native cap table matches all 41 collector values
+bit for bit. See the report for resets, accounting and the limits of this audit.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_command_sign.py \
+  --output /tmp/fusion-return-command-sign
+MPLCONFIGDIR=/tmp/command-sign-mpl python3 experiments/pose_observation_loss/plot_command_sign.py \
+  --results /tmp/fusion-return-command-sign --output /tmp/command-sign-figures
+python3 experiments/pose_observation_loss/verify_command_sign.py \
+  --results /tmp/fusion-return-command-sign --figures /tmp/command-sign-figures \
+  --work /tmp/command-sign-independent --output /tmp/command-sign-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Activate the cloud environment's saved Rust toolchain first or pass the
+compiler path with `--rustc`. Both readers accept `--raw-roots` as above and
+freshly hash all 108 original raw files. Collection and verification use the
+standard library; plotting requires Matplotlib. The verifier compiles the
+unchanged cap expression and the original pre-steering command block using
+stdlib Rust. No Cargo dependencies or new rollouts are required.
+
+`command-lattice.csv` records all 41 free distances and caps, including binary64
+bits and nine-place strings. `timeout-command-counts.csv` keeps full timeout-grid
+counts by original cohort, arm, mode, seed, pause branch and structural reason,
+with zero cells preserved. Checks use decimal nanounits: rounding commutes with
+min, so the printed nominal command equals the min of the printed uncapped
+command and cap. Stop-latch, speed-cap and simultaneous zeros stay distinct.
+The later pause/guard override and exact-cap braking comparison are checked too.
+
+`command-decisions.csv` preserves prior masks/certainty and adds independently
+derived source signs, reasons and refined masks/certainty. Guard-only admission
+keeps its original two conditions. `anchor-command-sign.csv` retains every
+original anchor, fixed parent measures and blank new fields for nonreturns.
+`command-summary.csv` keeps 336 fixed cells, with phase/branch counts and raw
+and original-case-mass shares. Undefined shares remain blank. Both readers
+reconstruct exact parent measures and check mode/category closures.
+
+The standalone verifier imports no analyzers. It uses Decimal nanounits and a
+native cap lookup independently of the collector's float calculations. Earlier
+geometry, source-clock, timer and Fusion metadata evidence remains inherited
+from the pinned admission proof. This verifies a finite command domain and
+its logged consistency; unrounded map geometry and controller trajectories
+are not replayed. Repeat all five tables/provenance and figure/exports byte
+for byte. See the [command-sign report](results/fusion-return-command-sign/report.md)
+for the observed refinement and independent evidence.
