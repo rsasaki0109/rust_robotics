@@ -3732,6 +3732,12 @@ keeps all preceding 3,751 references, 137 returned spells and 3,997 anchors.
 A certainly safe start plus a recorded zero identifies the first chord by
 source-path exclusion. This does not replay unrounded curved geometry.
 
+The saved 25 previously unresolved conjunctions split into 23 initially
+unsafe sensed positions and two first-chord origins. All initial violations
+are against the inflated obstacle margin. Across all 3,751 references there
+are 1,035 initial-unsafe zeros, 61 first-chord zeros and no ambiguous starts.
+These describe the probe's estimated geometry, not true collision labels.
+
 ```bash
 python3 experiments/pose_observation_loss/analyze_probe_origin.py \
   --output /tmp/fusion-return-probe-origin
