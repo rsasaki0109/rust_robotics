@@ -3835,3 +3835,55 @@ they do not recover unrounded original poses. Repeat all three tables/provenance
 and the figure/exports byte for byte. See the
 [first-chord report](results/fusion-return-first-chord/report.md) for direct
 results, numerical allowances and inherited evidence.
+
+## Compare the raw probe pose with recovery geometry
+
+The [fixed protocol](results/fusion-return-recovery-geometry/protocol.md)
+compares all 1,096 preceding zero-probe references with the logged recovery
+pose. It keeps every original obstacle witness, all 3,751 decision references,
+3,997 anchors, original weights and 336 summary cells. The speed probe uses
+the current sensed pose; recovery uses the stationary mean when samples are
+available. Source checks confirm both obstacle margins use the same expression.
+
+For all 25 preceding nominal-only conjunction failures, the original obstacle
+and the complete map pass the recovery-preview clearance condition. Raw and
+recovery start estimates differ by about 0.05–0.35 coordinate units. Across
+all zero references, 276 clear the original obstacles in recovery geometry,
+but 150 of those encounter another map obstacle. Geometry alone does not
+establish recovery readiness or a safe controller change.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_recovery_geometry.py \
+  --output /tmp/fusion-return-recovery-geometry
+MPLCONFIGDIR=/tmp/recovery-geometry-mpl python3 experiments/pose_observation_loss/plot_recovery_geometry.py \
+  --results /tmp/fusion-return-recovery-geometry --output /tmp/recovery-geometry-figures
+python3 experiments/pose_observation_loss/verify_recovery_geometry.py \
+  --results /tmp/fusion-return-recovery-geometry --figures /tmp/recovery-geometry-figures \
+  --work /tmp/recovery-geometry-independent --output /tmp/recovery-geometry-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Activate the saved Rust toolchain or provide `--rustc`. Both readers accept
+`--raw-roots`, freshly hash all 108 logs and check unique complete case grids.
+The preceding pinned obstacle map and admission inputs are required. Collection
+and verification use the standard library; plotting uses Matplotlib.
+
+`recovery-geometry-decisions.csv` retains all preceding columns and adds an
+audit flag, recovery inputs, original witness IDs, displacement enclosures,
+same-obstacle point/segment gaps and the complete-map clearance enclosure.
+Positive probes have blank new geometry. `anchor-recovery-geometry.csv` and
+`recovery-geometry-summary.csv` preserve earlier fields and add phase/branch
+counts, available-anchor flags and original case-mass shares. Nonreturns keep
+blank new fields; empty share denominators stay blank.
+
+The standalone verifier imports no analyzers. Pinned standalone helpers supply
+its independent raw/map reader and Decimal Taylor trigonometry; it separately
+rebuilds endpoint/Hausdorff enclosures, projection distances and all new fields.
+The unchanged Rust recovery fragment and point/segment distance provide native
+endpoint/clearance checks on 1,096 rounded logged poses. Earlier raw initial/
+first-chord tests and admission/timer results remain inherited. This does not
+reconstruct unrounded sample means or add a closed-loop rollout. Repeat the
+three tables/provenance and figure/exports byte for byte. See the
+[recovery geometry report](results/fusion-return-recovery-geometry/report.md)
+for counts, the original 25-reference subgroup and numerical assumptions.
