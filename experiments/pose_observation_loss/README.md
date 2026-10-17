@@ -2872,3 +2872,45 @@ stratum audits are copied unchanged. Five SVG/PNG figures export both targets
 and full/conditional shares; nonzero shares below .1% are distinguished from
 zero in the focused AUC panels. Repeat aggregation/plotting byte for byte.
 See the [saved-event ranking results](results/event-conditioned-rankings/report.md).
+
+## Time proximity within saved source events
+
+The [fixed protocol](results/event-temporal-rankings/protocol.md) restricts the
+same full-case/event comparisons to absolute saved state-time gaps of
+<=20/100/500 ms. Integer microseconds make the upper endpoints inclusive;
+inputs farther than 1e-7 seconds from that grid are rejected. Original case
+weights, common-family eligibility and every previous aggregate field remain
+unchanged. Time proximity is symmetric in time and does not define forecasts,
+continuous chains or independent observations.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_temporal_rankings.py \
+  --output /tmp/event-temporal-rankings
+MPLCONFIGDIR=/tmp/event-temporal-mpl python3 experiments/pose_observation_loss/plot_event_temporal_rankings.py \
+  --results /tmp/event-temporal-rankings --output /tmp/event-temporal-figures
+python3 experiments/pose_observation_loss/verify_event_temporal_rankings.py \
+  --results /tmp/event-temporal-rankings --figures /tmp/event-temporal-figures \
+  --output /tmp/event-temporal-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new directories and a new evidence filename, without Python -O. Aggregation
+needs the standard library; figures use Matplotlib/NumPy. The independent NumPy
+verifier imports no analyzers, reconstructs raw error labels/scores and uses
+Decimal on original projection timestamps plus direct pair masks. No raw
+rollouts, new simulations, Rust build, fitting or cutoff changes are required.
+
+`source-time-audit.csv` preserves each saved time, integer time and rounding
+error. `event-time-support.csv` keeps each nonempty event/stratum/target/label's
+class support and time-bin pair counts/masses, independent of score. The copied
+`event-support.csv` still exposes empty strata. `temporal-pair-bins.csv` retains
+all four disjoint gap bins, including zero support; their exact pair masses sum
+to the prior same-event comparison. `ranking-summary.csv` adds three cumulative
+horizons, supported event/case counts and shares of both same-event and full
+comparison mass. Sum masses before division; missing-class AUCs remain blank.
+
+All prior census/accounting/cutoffs/loss references and event/case/family audits
+are preserved. Repeat all 20 CSVs and provenance byte for byte. Five SVG/PNG
+figures export complete numeric inputs for both targets; tiny nonzero shares
+are distinguished from zero. Small supported counts and comparison mass limit
+the conclusions. See the [time-proximity results](results/event-temporal-rankings/report.md).
