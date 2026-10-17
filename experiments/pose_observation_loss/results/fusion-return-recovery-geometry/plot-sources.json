@@ -1,0 +1,13 @@
+{
+  "script_sha256": "948d0f51961fd12fa1094e19d93e8bdf850465527f854db8937a7d6764790658",
+  "input_sha256": {
+    "sources.json": "2427ad221774c58a9f74183efb0f7986e33d1fe91935296f9ae858e01a281177",
+    "anchor-recovery-geometry.csv": "3cac68e520a67fa13850365f3020b8f96fd07ba7985fe0519cfadcd93b62e4f6",
+    "recovery-geometry-summary.csv": "602d4ab6b0c1f478e0a6b0fe14c018275c2ee4083a05f3ee7f9659f6a3ba5f6f"
+  },
+  "output_sha256": {
+    "recovery-geometry.svg": "01adbe9bee5b53002e039ffe4ba959f64269efbfb8bebf7f71c9d731f3a4bfc2",
+    "plot-values.csv": "cc59ecf51d7a3b7bd7de597a0191a8a62ebe6ebb0f2dd457d21fa46f15085062",
+    "plot-return-values.csv": "3a382683c913cf76781317862713435b6f3d5c03801ca088fff10a5a3091dd55"
+  }
+}
