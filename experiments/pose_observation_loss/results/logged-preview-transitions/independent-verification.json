@@ -1,0 +1,22 @@
+{
+  "raw_files": 108,
+  "raw_bytes": 6043185194,
+  "timeout_grid_rows": 5130570,
+  "planned_cases": 972,
+  "planned_families": 324,
+  "timeout_cases": 570,
+  "census_events": 3997,
+  "source_states": 10995,
+  "represented_cases": 157,
+  "interval_rows": 7222,
+  "checkpoint_references": 265019,
+  "summary_rows": 1344,
+  "comparisons": 894444,
+  "plotted_summary_rows": 144,
+  "plotted_event_rows": 44,
+  "method": "original raw csv.reader, independent broad-census/RP joins, uncompressed SQL LAG and cumulative run windows, exact parent fractions; no analyzer imports",
+  "sqlite_version": "3.53.1",
+  "script_sha256": "2b4921cd634955b4e5efea3d5427f66208067af42bd87ac2870e5c467dcce665",
+  "sources_sha256": "2c68a7619a074237496637f90580f96e5769301139a4326b3adbed62faa84f36",
+  "plot_sources_sha256": "46b1263a807df7b687b1ae5350042c0d439f3028e5b0d7331dbbdfdad796dfd6"
+}

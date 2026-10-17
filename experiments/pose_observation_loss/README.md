@@ -3304,3 +3304,61 @@ metadata instead of trusting the saved source-event-map. SQL selection/count
 queries and exact Fraction weights verify every new field, original case/event
 coverage, additive closure and hashes. Missing RP records are not zero error,
 unrun experiments or failed observations. See the [coverage report](results/census-rp-selection/report.md).
+
+## Logged preview transitions in the original windows
+
+The [frozen protocol](results/logged-preview-transitions/protocol.md) follows
+all 3,997 late-timeout census events through the original inclusive -20..+1,500 ms
+windows, clipped at 180 s. It checks whether differing immediate-event and RP
+preview identifiers correspond to a sequence actually present in the raw logs.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_logged_preview_transitions.py \
+  --output /tmp/logged-preview-transitions
+MPLCONFIGDIR=/tmp/logged-preview-transitions-mpl python3 experiments/pose_observation_loss/plot_logged_preview_transitions.py \
+  --results /tmp/logged-preview-transitions --output /tmp/logged-preview-transitions-figures
+python3 experiments/pose_observation_loss/verify_logged_preview_transitions.py \
+  --results /tmp/logged-preview-transitions --figures /tmp/logged-preview-transitions-figures \
+  --output /tmp/logged-preview-transitions-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new directories and an unused evidence filename, without Python -O.
+Collector and independent verifier use the standard library; figures require
+Matplotlib/NumPy. Both raw readers need the 108 original CSVs (6,043,185,194 bytes)
+pinned in `fresh-seed-cutoff-transfer/sources.json`, including the historical
+terminal-arc-live and latest fresh-seed-mode-census roots. Each reader accepts
+`--raw-roots /path/to/roots.json`, an optional JSON map from any of the six cohort
+names to relocated directories containing the same arm-mode-seed subdirectories.
+Every original file hash remains mandatory. Raw CSVs and PNGs stay outside Git.
+No new simulation or Rust build is required.
+
+`event-trace.csv` keeps all events with immediate and predecessor modes,
+post-event changes, observation horizon and RP disagreement timing.
+`mode-intervals.csv` losslessly compresses the two logged mode identifiers into
+maximal inclusive runs, preserving all 265,019 checkpoint references.
+`rp-state-audit.csv` checks every original RP state against its same-time log
+and covering interval. Selected preview depends on `epoch_fusion_available`;
+retained group count alone does not define the selected source.
+
+`transition-summary.csv` keeps 1,344 cells over all cohort/noise/arm groups,
+none/random/blackout plus all_modes, all/received/five event-kind groups, and
+all/full/clipped/no-forward horizon selectors. A pre-event to immediate change
+is distinct from a later change. A final 180 s event has no forward sample;
+an empty denominator stays blank. Counts from overlapping windows are event
+references, not independent physical observations.
+
+Original all-census, received-census and RP-state parent measures remain
+separate and precede filtering. Fusion-loss fractions condition on immediate
+Fusion; the figure uses only full 1.50 s forward windows. Sum exact masses
+before division. The lag plot includes every event with a post-event differing
+RP preview, including empty cohort panels. Numeric exports contain 144 full
+summary rows and all qualifying event rows.
+
+Repeat four CSVs/provenance and all figures/exports byte for byte. The standalone
+verifier imports no analyzers, independently reads and hashes the raw CSVs,
+joins original broad-census and historical/latest RP metadata, and uses SQL
+LAG/cumulative windows over uncompressed checkpoints to reconstruct all runs
+and transition positions. See the [logged transition report](results/logged-preview-transitions/report.md)
+for findings, full verification and limits. Logged ordering does not establish
+causal mode benefits or an unobserved continuous-time transition instant.
