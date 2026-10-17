@@ -1,0 +1,20 @@
+{
+  "comparisons": 9891141,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "case_rows": 972,
+  "family_rows": 324,
+  "prior_precision_scope_rows": 8640,
+  "prior_precision_bin_rows": 8640,
+  "prior_unit_audit_rows": 782,
+  "prior_delete_one_rows": 56304,
+  "prior_influence_summary_rows": 17280,
+  "seed_audit_rows": 360,
+  "seed_effect_rows": 25920,
+  "summary_rows": 8640,
+  "exact_half_comparisons": "Fraction weights from direct NumPy pair-count masks, original parent n_case",
+  "plotted_rows": 1056,
+  "script_sha256": "d05035bfa3ded5dd965a4702450584700d7c1502fc5f3e746b7b9403212dc10b",
+  "sources_sha256": "fd8943676129642ab3edd66476faa2579f677aca29fe71a1576439159aac4176",
+  "plot_sources_sha256": "12ca812a341272b70013404595c7ac0df384d6c7c76d8361d974e93494d0d7fc"
+}
