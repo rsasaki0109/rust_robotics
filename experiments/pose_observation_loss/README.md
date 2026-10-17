@@ -3195,3 +3195,60 @@ leaf. Missing RP selections, including mode none, do not imply zero error or
 unrun experiments. These are retrospective diagnostic subsets, not causal loss-
 mode effects, independent replications or held-out prediction. See the
 [loss-mode sensitivity results](results/event-loss-mode-influence/report.md).
+
+## Class-pair support attrition by case, event and time
+
+The [fixed protocol](results/event-support-attrition/protocol.md) explains where
+comparisons cease to be available, without calculating new AUCs. Keep every
+planned full case, all three loss modes, both targets and E/P/U, all five strata,
+and source/common_family populations. Class labels, original parent 1/n_case
+weights and availability-only common-family eligibility stay fixed.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_support_attrition.py \
+  --output /tmp/event-support-attrition
+MPLCONFIGDIR=/tmp/event-support-attrition-mpl python3 experiments/pose_observation_loss/plot_event_support_attrition.py \
+  --results /tmp/event-support-attrition --output /tmp/event-support-attrition-figures
+python3 experiments/pose_observation_loss/verify_event_support_attrition.py \
+  --results /tmp/event-support-attrition --figures /tmp/event-support-attrition-figures \
+  --output /tmp/event-support-attrition-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with new directories and an unused evidence filename, without
+Python -O. Collection uses the standard library and pinned case-strata/event
+support ledgers; figures require Matplotlib/NumPy and independent verification
+requires NumPy. No new simulation or Rust build is required.
+
+`case-support.csv` retains 58,320 planned case/stratum/target/label/population
+rows, including absent RP selections. `case_id` always names the planned full
+case. `event-support.csv` retains 16,500 rows over all 275 RP-referenced events,
+including empty strata. Empty event/stratum entries come from the original
+label-blind support ledger; a missing nonempty time row is rejected rather than
+filled with zero. `event-coverage.csv` keeps all 3,997 census events with their
+original flags and RP reference counts, including the 3,722 unreferenced events.
+
+`support-summary.csv` keeps 2,880 aggregate rows across the three original modes
+and all_modes. For each of the four existing event/time scopes, every planned
+case has exactly one reason in this precedence: no_parent_rp, no_stratum_rp,
+family_ineligible, no_outside, no_inside, event_separated, gap_excluded, supported.
+The ordering is an audit convention, not a causal account of simulator behavior.
+Supported cases can still lose most class pairs. Counts/masses and weighted
+event/case and time/case or /event shares are saved separately. Undefined
+opportunity denominators stay blank. Original squared parent weights precede
+stratum/population selection; sum masses before division, never average shares.
+
+Within-case class opportunities include other event tags solely as an availability
+denominator; they do not become new admissible within-event comparisons or AUCs.
+Every actual event/time pair stays in one full original case, including its loss
+mode. Missing RP diagnostics are not unrun experiments, zero error or failed
+sensor observations. None and every empty panel remain explicit.
+
+Repeat four CSVs and provenance byte for byte, then four figures, the 288-row
+numeric export and plot provenance. The standalone verifier imports no analyzers,
+reconstructs labels from original signed pose/projection components, and uses
+direct NumPy event/time masks with exact Fraction parent weights to check all
+new fields, original mode/precision support, plot values and hashes. See the
+[support attrition report](results/event-support-attrition/report.md). These
+retrospective selections do not establish causality, independent replications,
+calibration or held-out prediction.
