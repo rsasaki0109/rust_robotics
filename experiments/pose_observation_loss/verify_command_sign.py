@@ -656,11 +656,6 @@ def main():
     for name, h in source["output_sha256"].items():
         assert core.sha(args.results / name) == h
     table, native_proof = native(args.work, args.rustc)
-    compare(
-        args.results / "command-lattice.csv",
-        {(str(r["lattice_index"]),): r for r in table},
-        ("lattice_index",),
-    )
     cases, original = core.original_inputs()
     events = core.read(BASE / "anchor-admission.csv")
     assert {e["event_id"] for e in events} == original.keys()
@@ -680,6 +675,11 @@ def main():
         ):
             core.check(e[k], original[e["event_id"]][k])
     original_checks = core.comparisons
+    compare(
+        args.results / "command-lattice.csv",
+        {(str(r["lattice_index"]),): r for r in table},
+        ("lattice_index",),
+    )
     old = core.read(BASE / "admission-decisions.csv")
     core.index(old, ("event_id", "time_s"))
     roots = json.loads(args.raw_roots.read_text()) if args.raw_roots else {}
