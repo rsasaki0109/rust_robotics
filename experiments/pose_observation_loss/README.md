@@ -3426,3 +3426,62 @@ Repeat all four CSVs/provenance and the figure/CSV/provenance byte for byte.
 See the [retention mechanism report](results/epoch-retention-mechanisms/report.md)
 and its native evidence. This explains recorded algorithm operations; it does
 not estimate the benefit of changing the horizon or establish held-out prediction.
+
+## Follow-up after Fusion becomes unavailable
+
+The [fixed protocol](results/fusion-return-followup/protocol.md) follows all
+152 previously observed Fusion losses through the original 180 s log endpoint.
+It distinguishes a first return, a return followed by another loss, and a
+right-censored episode with no observed return. All 3,997 original census
+anchors remain in the ledger, including the 18 TTL-limit anchors without a
+next step; those are outside the observed-loss denominator.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_fusion_return.py \
+  --output /tmp/fusion-return-followup
+MPLCONFIGDIR=/tmp/fusion-return-followup-mpl python3 experiments/pose_observation_loss/plot_fusion_return.py \
+  --results /tmp/fusion-return-followup --output /tmp/fusion-return-followup-figures
+python3 experiments/pose_observation_loss/verify_fusion_return.py \
+  --results /tmp/fusion-return-followup --figures /tmp/fusion-return-followup-figures \
+  --work /tmp/fusion-return-native --output /tmp/fusion-return-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Both readers require the same 108 pinned raw files and accept the preceding
+`--raw-roots` cohort-to-directory JSON override. Collection uses the standard
+library; plotting requires Matplotlib/NumPy. Verification needs `rustc` on PATH
+or `--rustc /path/to/rustc`; the managed setup's activation file is
+`/workspace/.cloud-env/rust_robotics/activate.sh`. Its scratch stdlib harness
+uses the pinned preceding verifier/native helpers, six original Rust tests and
+unchanged simulator source. No Cargo dependency installation or network is needed.
+
+`availability-runs.csv` compresses all 855,570 late checkpoints in all 570
+timeout histories into maximal inclusive availability runs. It is lossless
+for the availability flag only. `loss-followup.csv` retains every original
+anchor with fixed parent weights and RP accounting. Observed losses add their
+first return or censoring bound, returned-spell endpoint, source groups and
+next opportunities. A return at exactly 180 s is observed, with zero subsequent
+observed span and a censored returned spell. A missing return has a blank
+return wait and a separate elapsed lower bound, not a substituted duration.
+
+`opportunity-followup.csv` keeps every future census opportunity for every
+observed-loss anchor, including opportunities after its first return. Reused
+events are anchor-opportunity references, not independent observations.
+`followup-summary.csv` keeps 528 cells over all original cohort/noise/arm groups,
+loss modes plus all_modes and all/ten operation selectors, including empty
+operations. Return fractions condition on observed losses; original all-census,
+received-census and RP parent measures remain separate and precede filtering.
+Case counts can overlap across operation/outcome groups and are not additive.
+
+The standalone verifier imports no analyzers and requests every late checkpoint
+from the original Rust implementation, rather than collector-chosen return
+times. It reconstructs maximal native runs, first returns and spell endpoints
+independently, comparing all new fields, original joins, 396 numeric summary
+rows and 152 plotted loss rows. It records all 108 native trace hashes.
+Dummy zero geometry limits verification to metadata; fused positions are ignored.
+
+Repeat four CSVs/provenance and both figures/exports byte for byte. See the
+[Fusion return report](results/fusion-return-followup/report.md) for observed
+waits, one-checkpoint returns and censoring. These selected retrospective
+sequences do not estimate eventual-return probabilities or controller benefits.
