@@ -3780,3 +3780,53 @@ Repeat all four tables/provenance and figure/exports byte for byte. See the
 [probe-origin report](results/fusion-return-probe-origin/report.md) for results
 and the distinction between direct initial-test evidence and first-chord
 inference by exclusion.
+
+## Direct tests of the first speed-probe chord
+
+The [fixed protocol](results/fusion-return-first-chord/protocol.md) directly
+bounds all 61 preceding first-chord references, retaining all 3,751 decision
+references, 3,997 anchors and 336 summary cells. The two references among the
+preceding 25 nominal-only conjunction failures remain included in that scope.
+The earlier source-path exclusion result stays in separate inherited columns.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_first_chord.py \
+  --output /tmp/fusion-return-first-chord
+MPLCONFIGDIR=/tmp/first-chord-mpl python3 experiments/pose_observation_loss/plot_first_chord.py \
+  --results /tmp/fusion-return-first-chord --output /tmp/first-chord-figures
+python3 experiments/pose_observation_loss/verify_first_chord.py \
+  --results /tmp/fusion-return-first-chord --figures /tmp/first-chord-figures \
+  --work /tmp/first-chord-independent --output /tmp/first-chord-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Activate the saved Rust toolchain or provide `--rustc`. Both readers accept
+`--raw-roots`, freshly check all original raw hashes/grids and use the preceding
+pinned map. Collection/verification use the standard library; plotting uses
+Matplotlib. No new rollout or Cargo dependencies are required.
+
+Sensed yaw uses preceding truth yaw plus current noise and bias. The nominal
+steering field supplies the probe command before final pause/guard overrides.
+Nine-place rounding intervals and a 1e-12 elemental allowance propagate through
+the source's original tan and sin/cos-difference arithmetic. Curvature near zero
+uses a fixed coarse endpoint rectangle instead of choosing a branch. Chord
+distance uses the endpoint-displacement/Hausdorff bound and a 1e-9 comparison
+allowance. These are explicit numerical assumptions of this bounded audit.
+
+`first-chord-decisions.csv` retains preceding columns, adds an audited flag and
+new endpoint/witness/direct-test fields for the 61 selected references, and
+leaves those fields blank for the other 3,690. `anchor-first-chord.csv` keeps all
+preceding anchor fields and original measures. `first-chord-summary.csv` keeps
+the same 336 cells and adds phase/branch counts and raw/case-mass shares.
+Original weights precede selection; undefined shares stay blank.
+
+The standalone verifier imports no analyzers. It uses 60-digit Decimal Taylor
+trigonometry, separate interval arithmetic and projection/clamp distances.
+It compiles the unchanged full source probe, original segment/point distances
+and extracted first-endpoint arithmetic with stdlib Rust. Native rounded-center
+traces cross-check enclosures, predicates and every certain/possible witness;
+they do not recover unrounded original poses. Repeat all three tables/provenance
+and the figure/exports byte for byte. See the
+[first-chord report](results/fusion-return-first-chord/report.md) for direct
+results, numerical allowances and inherited evidence.
