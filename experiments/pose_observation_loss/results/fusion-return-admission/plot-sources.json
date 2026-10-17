@@ -1,0 +1,14 @@
+{
+  "script_sha256": "c9951ecfd2c1361d9f0b507bbed6df8cfb0a7263aa36166e541d69f92e950b9e",
+  "input_sha256": {
+    "sources.json": "f83beeea16ed0eb61846be0c3ce58299ec4ef8df29f37ea8dc50261938bfc056",
+    "anchor-admission.csv": "24036d34ead6f456ed79c1c8b9bc1b865ea1daad8752c1e5cac94d13c4e83012",
+    "admission-summary.csv": "08a87e8c951798b60800768c7ccc6c9473e9378e0a9697622b0ee4035269dece"
+  },
+  "selection": "available checkpoints; cohort sums of all original modes/noises/arms, branches separate; 252 original-mode numeric summary rows and all 137 returned anchors",
+  "output_sha256": {
+    "admission-conditions.svg": "a3a6f6b70ed464e23a21e620dfd38246c51de3039554dfc6829201f6242ec5b5",
+    "plot-return-values.csv": "5708afc5cd5b2b661b919de0f5c7d399eb02a9861f8725d768e7b864952b683a",
+    "plot-values.csv": "0f51ff80c43c29390d19a898f1d27cf5373068b0eb7758d71a06e06522a2b903"
+  }
+}
