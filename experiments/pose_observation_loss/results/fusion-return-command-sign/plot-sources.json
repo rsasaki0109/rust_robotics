@@ -1,0 +1,13 @@
+{
+  "script_sha256": "c532db163d3134219cf2e0b010b05e8be58637828413dce5d0619bd165b14c6a",
+  "input_sha256": {
+    "sources.json": "2090042807aaef058d8c43eee5b112ab0ef658b934b1bccad29e81a5af4bc62b",
+    "anchor-command-sign.csv": "ab7792d4e1e3f9a11cd9f22d3bd6dfdb27322b324bb582a96cf86e24b05b2ccd",
+    "command-summary.csv": "a87c86c84b173722be837fc99327be13cc89446ea3bc505c7cfa5ea439fa058e"
+  },
+  "output_sha256": {
+    "command-sign.svg": "3c08884911941199c438242ec062ab7087f96a4afe5c99958894bae2d55d46f9",
+    "plot-values.csv": "0b37b3f8bb84122ba9f0a28d6473ca622b18724afdd7c4ed4cecb3e144f88244",
+    "plot-return-values.csv": "d29bb64539a35da10b0cbb382428642433e9fff8da00c5f302e9da74c6019a46"
+  }
+}

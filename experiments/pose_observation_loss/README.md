@@ -3673,6 +3673,13 @@ and 3,997 census anchors. The new sign inference uses the original speed probe's
 41 possible distances and the positive lower bound of an unlatched pre-cap
 command. Recorded timers enter only the subsequent consistency comparison.
 
+In the saved results, all 909 previously ambiguous available joint nominal
+gates have exact cap-zero commands. The 25 previously unknown joint conjunctions
+become failures, giving 101 pass, 3,169 fail and zero unknown references.
+Guard-only admission is unchanged. All 5,130,000 timeout decisions pass the
+command-chain checks, and the native cap table matches all 41 collector values
+bit for bit. See the report for resets, accounting and the limits of this audit.
+
 ```bash
 python3 experiments/pose_observation_loss/analyze_command_sign.py \
   --output /tmp/fusion-return-command-sign
