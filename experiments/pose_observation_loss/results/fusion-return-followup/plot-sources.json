@@ -1,0 +1,15 @@
+{
+  "script_sha256": "22e8e05bdd969d646ea798842e1441887afa50084b16293ef1e575e685844b7b",
+  "input_sha256": {
+    "sources.json": "076db5ab572c491d53a88f14493006e830ba75be637bae6a3dd5bd24ebdc3cc7",
+    "loss-followup.csv": "4be561f7e62d36307ef3a62f0c91c0b7085d6f0a29b021d56fc525f7f98bc13a",
+    "followup-summary.csv": "3fae7b7d8a52db05d5220a3858ffd8529a6c55f0b96fee531fd86b7e29d7adc6"
+  },
+  "selection": "all original-mode operation summaries (396) and all 152 previously fixed loss anchors; original log endpoint 180 s",
+  "output_sha256": {
+    "plot-event-values.csv": "22c053ffd39bfd81fc04075d5f59bd8fa51bea025b124751fc6decd33f94a865",
+    "plot-values.csv": "22db287887ec1ea5fc5afe6bc4af0f931ff006bbae43d1a641c550bbec004b69",
+    "return-coverage.svg": "8395b89320dae3e491f1f78c9d1cce19aca4511f0348c4c63e83826fa991a469",
+    "return-wait.svg": "df3eed6d3c9296b588585742e3667a25daca002f5130324f54504afbbdf423f9"
+  }
+}
