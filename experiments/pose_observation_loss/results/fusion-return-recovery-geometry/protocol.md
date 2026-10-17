@@ -20,7 +20,7 @@ inherited evidence and remain unchanged. No policy/parameter/rollout, new RP
 selection, contact label or causal benefit is introduced.
 
 For each zero reference retain ALL definite original obstacle witnesses:
-initial_definite_obstacle_ids for initial failures, otherwise
+definite_obstacle_ids for initial failures, otherwise
 first_definite_obstacle_ids. Preserve map row IDs and duplicates. Fail if
 either failure stage lacks a definite obstacle witness or has a definite wall
 witness, since that would contradict this fixed obstacle comparison scope.
