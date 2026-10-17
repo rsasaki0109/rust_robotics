@@ -1,0 +1,29 @@
+{
+  "generated_harness_sha256": "157e0635735359e9d2292bdec8151b007780dd6fe13bb4284c1807b8cc9c5d81",
+  "checks": [
+    {
+      "case": "duplicate_request",
+      "rejected": true,
+      "returncode": 101,
+      "fixture_sha256": "deebeface63006ec22a86024de2359fed5aa46bf980cf42b918ff2b174b84df7",
+      "expected_diagnostic": "request_ids.insert"
+    },
+    {
+      "case": "unknown_trajectory",
+      "rejected": true,
+      "returncode": 101,
+      "fixture_sha256": "755e727065c649758a89e92962e8de56de42d146b57e4d3f9d6f3b185b88afc8",
+      "expected_diagnostic": "no entry found for key"
+    },
+    {
+      "case": "outside_grid",
+      "rejected": true,
+      "returncode": 101,
+      "fixture_sha256": "1218f340dc17627bf15b81887b901fbdce78a9e7138f76561ff6083b8a625956",
+      "expected_diagnostic": "(1..=9000).contains(&n)"
+    }
+  ],
+  "raw_sha256": "1b7bb700ad2d5537fe45e6fe65f566298695176ae0ce06943a1c814506fd075b",
+  "base_cases_sha256": "b27a4eb7f6ffa85885ef549383363534daea38422e006423358efc5c46d8d6c5",
+  "original_queries_sha256": "d92ba2a63b16ea60ff17428ef6ddaf121ce52e270e07a70f403d41d8b425ed51"
+}

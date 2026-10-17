@@ -1,0 +1,39 @@
+{
+  "raw_bytes": 6043185194,
+  "verified_decisions": 5130000,
+  "timeout_grid_rows": 5130570,
+  "snapshot_rows": 4301,
+  "raw_files": 108,
+  "planned_cases": 972,
+  "planned_families": 324,
+  "timeout_cases": 570,
+  "census_events": 3997,
+  "group_rows": 10570,
+  "summary_rows": 1344,
+  "additive_closure_comparisons": 53568,
+  "comparisons": 739220,
+  "plotted_rows": 144,
+  "native": {
+    "rustc_version": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "rustc_flags": [
+      "--edition=2021",
+      "-O"
+    ],
+    "original_rust_tests_passed": 6,
+    "source_slices_sha256": {
+      "constants": "e1f8d5aa57f13d3254819bb1a686fa6aa5d985e145a54f7a7bc69593c4e4799d",
+      "vehicle": "af07fa920c8992a7c5428454f99bd9b369ca2e7bbf17170da1ff646eb96aaa19",
+      "vehicle_new": "5b73d6df4c1542321581bf2e830c712bab3eb3c271cfef6d12ed89d974d876e9",
+      "mean_pose": "b1fde953cfef2a6b538e8c224fe6d11fecd7ccf63253cdfbe3b82247ea878d63",
+      "fusion": "306ac53f2dd6e8db3da35ffbbe71d6498d8f3879c5385cccee06de441f95bdcf",
+      "tests": "8af05ee93fa6cc163bd9abeddbc519402759971028bba085693204b2af8d08b1"
+    },
+    "generated_harness_sha256": "157e0635735359e9d2292bdec8151b007780dd6fe13bb4284c1807b8cc9c5d81",
+    "native_template_sha256": "6ee51bce1a585838bbdae153fba16e18a6537ade38c9da72dadd92e50982a8e6",
+    "geometry_inputs": "zero dummy pose and steering; original logged speed/age/event flags; fused positions ignored"
+  },
+  "script_sha256": "417a3e93cc4680e77722fe2c95e24f206d532399bd4e2efc8d9951a24530e9f1",
+  "sources_sha256": "b849e7b25de666fa74f1a8dfde5052627684398fa77e4c92dbea4d2a92d187d1",
+  "plot_sources_sha256": "baa1dfce9e3ced7f409cf2e7486457116fef63c2a73cfdc810b2186cae5d44d4",
+  "method": "original Rust observe/types/mean_pose and six tests unchanged; native independent raw CSV reads; Python expected-field and exact-parent comparisons; no analyzer imports"
+}
