@@ -1,0 +1,30 @@
+{
+  "comparisons": 2375573,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "case_rows": 972,
+  "family_rows": 324,
+  "source_event_map_rows": 10995,
+  "event_coverage_rows": 3997,
+  "event_support_rows": 1375,
+  "event_ranking_rows": 9900,
+  "case_stratum_rows": 4860,
+  "ranking_rows": 2160,
+  "event_bin_rows": 6480,
+  "time_bin_rows": 8640,
+  "time_audit_rows": 10995,
+  "event_time_support_rows": 3300,
+  "defined_time_auc_checks": {
+    "le_20ms": 414,
+    "le_100ms": 414,
+    "le_500ms": 414
+  },
+  "defined_time_bin_auc_checks": 1617,
+  "defined_full_auc_checks": 639,
+  "defined_same_event_auc_checks": 414,
+  "defined_bin_auc_checks": 1566,
+  "plotted_rows": 960,
+  "script_sha256": "01e5b47a5d5396e96596591a1febeb96baff3081f2faf8a8a6ee745ecebc1cb1",
+  "sources_sha256": "19d64587f8fb0c5893ecf21312ed38a7f9261ab3898c9c6fc7fd1c565d0f6e80",
+  "plot_sources_sha256": "87f3d58aaa3e77cc9f1bc5a3876b2672cfcca80543d2f0693a499f2fd9c83620"
+}
