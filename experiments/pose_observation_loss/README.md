@@ -3144,3 +3144,54 @@ and focused leaf pairs with exact Fraction weights. Empty or pair-free subsets
 remain undefined; lost support is not a zero or strict-side flip. These are
 observed diagnostic subsets, not aligned trajectories, causal planner effects
 or held-out prediction. See the [planner sensitivity results](results/event-planner-influence/report.md).
+
+## Same-event loss-mode deletion and complete focused case subsets
+
+The [fixed protocol](results/event-loss-mode-influence/protocol.md) retains none,
+random and blackout loss modes separately and deletes each once across all
+seeds/scenarios/planners. Loss mode is the original full-case `mode`, distinct
+from estimator `stratum`. Original 1/n_case weights, fixed common-family
+eligibility, labels, score orders and event/time scopes remain unchanged.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_loss_mode_influence.py \
+  --output /tmp/event-loss-mode-influence
+MPLCONFIGDIR=/tmp/event-loss-mode-influence-mpl python3 experiments/pose_observation_loss/plot_event_loss_mode_influence.py \
+  --results /tmp/event-loss-mode-influence --output /tmp/event-loss-mode-influence-figures
+python3 experiments/pose_observation_loss/verify_event_loss_mode_influence.py \
+  --results /tmp/event-loss-mode-influence --figures /tmp/event-loss-mode-influence-figures \
+  --output /tmp/event-loss-mode-influence-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with fresh directories and an unused evidence file, without
+Python -O. Collection uses the standard library; figures require Matplotlib and
+NumPy; independent verification requires NumPy. All source tables, prior results
+and helper scripts are pinned. No new simulation or Rust build is required.
+
+`mode-audit.csv` keeps 9,720 label-blind loss-mode/seed/scenario/planner entries,
+including absent selections. `unit_kind=loss_mode` and `unit_id` name the mode;
+seed, scenario and planner are separate fields. Each nonempty leaf corresponds
+to at most one original full case. `mode-effects.csv` keeps all 25,920 operations:
+unprefixed fields describe deletion, `mode_` fields describe the mode alone,
+and removed masses/shares describe that mode alone. `sensitivity-summary.csv`
+keeps all 8,640 baseline/range/support/side-count summaries, with three planned
+units each. No missing denominator is replaced with zero or chance AUC.
+
+`mode-cells.csv` keeps 62,208 fixed residual_sigma, Filter/Fusion, E/P leaf/scope
+rows across both targets, all scopes, cohorts/noises/arms/populations and all
+81 mode/seed/scenario/planner combinations. `case_id` names the selected full
+case, or stays blank for no selected states. Summing modes reproduces every
+one of the 20,736 preceding focused planner leaves. Full mode effects/summaries
+retain every original score, label and stratum; other original case contributions
+remain accessible in pinned preceding bundles. AUCs are never averaged.
+
+Repeat the four CSVs and provenance byte for byte, then all six figures, three
+numeric exports and plot provenance. Independent verification imports no analyzers,
+reconstructs original states/Decimal score order and rechecks preceding case/
+family/seed/scenario/planner results too. Direct NumPy pair masks and exact
+Fraction weights evaluate retained/remaining modes and every focused full-case
+leaf. Missing RP selections, including mode none, do not imply zero error or
+unrun experiments. These are retrospective diagnostic subsets, not causal loss-
+mode effects, independent replications or held-out prediction. See the
+[loss-mode sensitivity results](results/event-loss-mode-influence/report.md).
