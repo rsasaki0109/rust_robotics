@@ -1,0 +1,22 @@
+{
+  "script_sha256": "0559ee0e8f1d08124f8af1a246d3daa110b4509c3e9bfa63b6ae83d11cf38c93",
+  "analysis_sources_sha256": "0797d936f0c97f62cf986871179699467f4e3ce884d69a309d41ec12e470fb85",
+  "inputs_sha256": {
+    "ranking-summary.csv": "3752b7b38a8cea3c8ce0edf7b5b7f4665fbc88d03f928b0b3fe73af7f4d6d351",
+    "hierarchy-bins.csv": "db09f9adb51d97a6c928c16d489bf0b5720cb55362bb619bed58c92c6709690c"
+  },
+  "outputs_sha256": {
+    "bin-values.csv": "60ac41884b0e755fb15376e11d24ac0cd558415f372c768728a77cfc5873a9a8",
+    "case-window-comparison-mass.png": "791725d92863d19c66805d9fd15209284daa4a1412c1d7d28dc8560784c2ec45",
+    "case-window-comparison-mass.svg": "4abbac697de2a405003630482abe5657df664dc5369f815a03f824c6c74dd249",
+    "case-window-fresh-modeled.png": "188ce42bc35199550c84a9062d2244c3bf75e04624a45a011754e6261f631157",
+    "case-window-fresh-modeled.svg": "166c87d1b2f50b137946a06b126fd07b16fa8cd076d5e2d3fc1172005edb293f",
+    "case-window-fresh-observed.png": "84d3c57ea72f2df1be63ab247d9d846d2828547d9dc12341d200a9384853c798",
+    "case-window-fresh-observed.svg": "31a5eda366278b9c933ffe6c54bccbc52f9ade48b5dd9eed0cdb22155c4d6c86",
+    "case-window-known-observed.png": "eee180c72f9cc7b476e0e38a87260745d34605c5186612881d41153689ca5a82",
+    "case-window-known-observed.svg": "35185220ad912160e30cdb3d93c8451afbe28715e2d8521a2240a78bfd9d3ac3",
+    "case-window-new-observed.png": "0fd76cf854fb8bbbf225163aff99c01eed8f7523dd1951f1b58ce0e08865e1d3",
+    "case-window-new-observed.svg": "80067c7e09a7e74379a662d47b7dd12771f670d6a0afb60473baea29d29f010b",
+    "ranking-values.csv": "06cbdc091e65050b3f9d43eb2eb4f25da5aed716f44c5798eff9150b187f40d9"
+  }
+}

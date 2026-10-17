@@ -2782,3 +2782,48 @@ exports and hashes. Repeat aggregation/plotting and compare all artifacts byte
 for byte. Planner matching can remove class support or raise a descriptive AUC;
 neither supplies independent validation or estimator repair.
 See the [planner-conditioned results](results/planner-conditioned-rankings/report.md).
+
+## Ranking comparisons within cases and exact windows
+
+The [fixed protocol](results/case-window-rank-decomposition/protocol.md) divides
+every mixed-planner positive/negative comparison into five disjoint bins: same
+case, another case with the same exact complete window, another window in the
+same family, another family at the same seed, or another seed. Original 1/n_case
+weights and source/common-family populations remain unchanged. Cumulative bins
+give within-case/window/family/seed AUCs; sum numerators and denominators before
+division, never average individual case AUCs.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_case_window_ranks.py \
+  --output /tmp/case-window-ranks
+MPLCONFIGDIR=/tmp/case-window-mpl python3 experiments/pose_observation_loss/plot_case_window_ranks.py \
+  --results /tmp/case-window-ranks --output /tmp/case-window-figures
+python3 experiments/pose_observation_loss/verify_case_window_ranks.py \
+  --results /tmp/case-window-ranks --figures /tmp/case-window-figures \
+  --output /tmp/case-window-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output directories and a new evidence filename, without Python -O.
+Aggregation needs only the standard library and tracked inputs; figures need
+Matplotlib/NumPy and independent verification needs NumPy. No raw histories,
+new simulations, Rust build, fitting or cutoff changes are needed.
+
+`case-strata.csv` audits all 972 planned cases in all five strata, with both
+targets' class support, inherited mass and common-family eligibility. Missing
+parent histories have blank row weights and zero observations. `case-rankings.csv`
+keeps all 157 represented parent cases across every stratum/target/score/label,
+including empty strata; eligibility specifies whether each unchanged case
+survives common-family selection. `ranking-summary.csv` retains previous
+mixed-planner metrics and adds within-case/window/family and between-case results.
+`hierarchy-bins.csv` exposes all five bin masses, AUCs and contributions, even
+when empty. An absent-class AUC stays blank.
+
+Full accounting/support/events/cutoffs/loss links and prior case/family/stratum
+audits are copied unchanged. All prior mixed-ranking fields and latest-only
+within/between-case masses are checked. The independent verifier imports no
+analysis helpers and uses direct state-pair masks to check every new field.
+Five SVG/PNG figures export both targets' complete numeric inputs and hashes.
+Repeat aggregation/plotting byte for byte. Restricted comparisons and repeated
+cases/windows remain retrospective descriptions with limited class support.
+See the [case/window comparison results](results/case-window-rank-decomposition/report.md).
