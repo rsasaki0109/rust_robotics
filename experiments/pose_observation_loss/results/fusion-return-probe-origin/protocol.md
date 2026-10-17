@@ -38,8 +38,9 @@ Each printed nine-place scalar gets a half-unit radius 5e-10. Add a 1e-12
 guard to each summed coordinate enclosure and each final clearance comparison.
 Keep the speed_margin interval separate. Require finite bounded coordinates
 (absolute value <=100), positive margins below 10, and exact binary64 map
-coordinates parsed from the original map strings. Pinned code uses hypot for
-point distance. Enclose point-to-obstacle distance using minimum/maximum
+coordinates parsed from the original map strings. Pinned point distance is
+sqrt(dx.powi(2)+dy.powi(2)); extract that implementation unchanged for native
+checks. Enclose point-to-obstacle distance using minimum/maximum
 distance from an axis-aligned x/y rectangle; compare with the margin interval.
 Independently use 60-digit Decimal arithmetic and squared distances in the
 verifier. Boundary inequalities are inclusive unsafe (distance <= margin).
@@ -84,7 +85,7 @@ The standalone verifier imports no analyzers or new collector/plot code. Reuse
 only the pinned original standalone census/hash helper. Independently parse
 selected raw grids, build Decimal coordinate rectangles, compare squared
 obstacle distances and retain the same conservative guards. Extract the unchanged
-initial source test, actual Point2D/hypot implementation and minimal VehicleState
+initial source test, actual Point2D/distance implementation and minimal VehicleState
 into a stdlib Rust harness. Test inclusive walls/obstacles, nearby filtering,
 strictly safe starts and simultaneous constraints; compare native rounded-center
 results only where bounded classification is certain. Center evaluation is a
