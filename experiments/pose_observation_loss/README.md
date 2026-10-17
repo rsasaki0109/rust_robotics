@@ -3362,3 +3362,67 @@ LAG/cumulative windows over uncompressed checkpoints to reconstruct all runs
 and transition positions. See the [logged transition report](results/logged-preview-transitions/report.md)
 for findings, full verification and limits. Logged ordering does not establish
 causal mode benefits or an unobserved continuous-time transition instant.
+
+## Epoch retention mechanisms behind the logged losses
+
+The [fixed protocol](results/epoch-retention-mechanisms/protocol.md) reconstructs
+only epoch identities and capped sample counts through every original timeout
+decision. It connects the preceding preview-loss boundaries to the existing
+15 s retention and motion/precision reset rules.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_epoch_retention.py \
+  --output /tmp/epoch-retention-mechanisms
+MPLCONFIGDIR=/tmp/epoch-retention-mechanisms-mpl python3 experiments/pose_observation_loss/plot_epoch_retention.py \
+  --results /tmp/epoch-retention-mechanisms --output /tmp/epoch-retention-mechanisms-figures
+python3 experiments/pose_observation_loss/verify_epoch_retention.py \
+  --results /tmp/epoch-retention-mechanisms --figures /tmp/epoch-retention-mechanisms-figures \
+  --work /tmp/epoch-retention-native --output /tmp/epoch-retention-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Collection uses the standard library; plotting needs Matplotlib/NumPy.
+The standalone verifier also needs `rustc` on PATH or `--rustc /path/to/rustc`.
+In this managed setup, `. /workspace/.cloud-env/rust_robotics/activate.sh`
+activates the installed toolchain. Verification compiles a scratch Rust 2021
+stdlib harness; no Cargo dependencies or network access are needed. It runs
+the six unchanged original epoch-fusion tests and independently reads the raw
+CSV files in Rust. This run used Rust 1.99.0; provenance records the compiler,
+flags, source-slice hashes and generated harness hash.
+
+Both readers require the same 108 original raw files as the preceding logged
+transition study, and accept its `--raw-roots` cohort-to-directory JSON override.
+All original hashes remain mandatory. Raw CSVs, generated native source/binaries
+and PNGs stay outside Git. No controller setting, retention horizon or simulation
+is changed.
+
+`event-mechanisms.csv` keeps all 3,997 events, the oldest immediate epoch's age
+and remaining retention time, observed loss operation and original census/RP
+parent measures. `snapshots.csv` keeps every immediate event and both endpoints
+of each previously logged loss, totaling 4,301 event/role references.
+`group-history.csv` keeps every retained group in those snapshots, oldest first,
+with its logged epoch time, sample count, age and remaining TTL. Empty histories
+have no group rows. Reused physical checkpoints remain separate references.
+
+`retention-summary.csv` keeps 1,344 cells with all original loss modes plus
+all_modes, event-kind groups and full/clipped/no-forward horizons. Operation
+ordering follows reset, TTL pruning, capacity and availability predicates;
+independent flags remain available alongside that audit category. Original
+all-census, received-census and RP parent measures precede filtering and remain
+separate. One-step denominators require a forward sample; the 18 TTL-limit
+events at 180 s do not become observed losses or observed stable events.
+
+The native verifier extracts the pinned original Rust observe/types, mean_pose,
+VehicleState struct/new and six original tests without changing their text.
+It uses logged speed/age/event flags with dummy zero pose and steering because
+geometry does not enter group membership, sample counts or availability.
+Fused positions are ignored: this validates metadata, not pose or controller
+trajectory replay. Every timeout decision's availability and retained count
+must match the original log. Native snapshots independently reconstruct all
+saved event/group/summary fields, exact parent weights and 144 plot rows.
+
+Repeat all four CSVs/provenance and the figure/CSV/provenance byte for byte.
+See the [retention mechanism report](results/epoch-retention-mechanisms/report.md)
+and its native evidence. This explains recorded algorithm operations; it does
+not estimate the benefit of changing the horizon or establish held-out prediction.

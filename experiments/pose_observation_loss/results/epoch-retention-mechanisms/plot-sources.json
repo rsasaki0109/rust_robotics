@@ -1,0 +1,12 @@
+{
+  "script_sha256": "7664efd7d5ffd516521ac7ef19976e7521bcea8ce035c7bb1d2eca1ff8c5f7bc",
+  "input_sha256": {
+    "sources.json": "b849e7b25de666fa74f1a8dfde5052627684398fa77e4c92dbea4d2a92d187d1",
+    "retention-summary.csv": "fde3762154f3bee151743609ca1f2871b3b982d79ab9add494b2bde9c06fe1e5"
+  },
+  "selection": "all 36 original conditions, all event kinds and full forward horizons; export all 144 original-mode/all-kind horizon rows",
+  "output_sha256": {
+    "loss-mechanisms.svg": "9d973169139bcaef26658be6e9f4d69b6d569b4bd9ff6bcd2657393480e8e7f2",
+    "plot-values.csv": "470079470cbad964781cb9ecdb432a7a746ab43939cbb42d558baa6bed0c7e0b"
+  }
+}
