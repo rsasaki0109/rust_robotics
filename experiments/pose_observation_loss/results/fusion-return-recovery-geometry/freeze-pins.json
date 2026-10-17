@@ -1,0 +1,7 @@
+{
+  "base_main": "19afeccaef19bb2e590eeac130d42ffb0c059804",
+  "sources_sha256": "8e2697be1401ca6b576a9fe75163e5823d25474e7a352bb5b49e05fd9d2ee6c4",
+  "proof_sha256": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+  "admission_sha256": "666ba8d39e81abafde1828c752ad76d1d781a9792fad8af77a761fed2e80b2bf",
+  "verifier_helper_sha256": "66545fd3d1f44f732ffa11ef51b70fed6ee47636bdd22dcfe0ab4fbb58a4b263"
+}
