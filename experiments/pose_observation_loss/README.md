@@ -2914,3 +2914,47 @@ are preserved. Repeat all 20 CSVs and provenance byte for byte. Five SVG/PNG
 figures export complete numeric inputs for both targets; tiny nonzero shares
 are distinguished from zero. Small supported counts and comparison mass limit
 the conclusions. See the [time-proximity results](results/event-temporal-rankings/report.md).
+
+## Saved-score ties and conditional concordance
+
+The [fixed protocol](results/event-score-ties/protocol.md) separates ties in the
+original 1e-8 m score ticks into equal saved scores and distinct saved scores
+that round to the same tick. All original cases, populations, weights, labels
+and time horizons remain unchanged. The original AUC is retained alongside an
+AUC using strict saved-score order and C/(C+D) conditional on unequal scores.
+All-tie comparisons retain AUC .5 and blank conditional concordance; missing
+classes retain blank AUC. Conditional concordance uses a different comparison
+population and does not replace the original AUC.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_score_ties.py \
+  --output /tmp/event-score-ties
+MPLCONFIGDIR=/tmp/event-score-ties-mpl python3 experiments/pose_observation_loss/plot_event_score_ties.py \
+  --results /tmp/event-score-ties --output /tmp/event-score-ties-figures
+python3 experiments/pose_observation_loss/verify_event_score_ties.py \
+  --results /tmp/event-score-ties --figures /tmp/event-score-ties-figures \
+  --output /tmp/event-score-ties-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new directories and a new evidence filename, without Python -O. Collection
+uses the standard library, plotting needs Matplotlib/NumPy, and the independent
+verifier needs NumPy. Existing tracked source tables and the complete preceding
+event-temporal bundle remain required inputs: their hashes are checked and the
+tables are referenced in place. No previous results are overwritten or copied
+into this bundle. No new simulations, fitting or Rust build are required.
+
+`score-audit.csv` preserves all 10,995 states' three original score strings,
+binary64 hex representations, ticks and source/case/event joins.
+`precision-summary.csv` keeps 8,640 all-event/cumulative-horizon rows;
+`precision-bins.csv` keeps 8,640 disjoint time-bin rows. Both expose the original
+pair masses/AUC, saved-score AUC, exact/resolved tie shares and unequal-pair
+concordance, counts and supported event/case counts. Empty support stays explicit.
+
+Repeat all three CSVs and provenance byte for byte. Five SVG/PNG figures export
+both targets' complete numeric inputs. The standalone verifier imports no
+analyzers: it reconstructs raw states and original weights, rechecks every
+preceding audit/ranking field, orders original score strings using Decimal,
+checks agreement with binary64 order and evaluates direct NumPy pair masks.
+Saved precision does not imply physical accuracy or independent information.
+See the [saved-score tie results](results/event-score-ties/report.md).
