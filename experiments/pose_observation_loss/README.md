@@ -3045,3 +3045,50 @@ uses direct NumPy pair masks with exact Fraction weights for each retained and
 remaining seed selection. These are retrospective sensitivities of already
 observed seeds, not held-out prediction or confidence intervals. See the
 [seed sensitivity results](results/event-seed-influence/report.md).
+
+## Same-event scenario deletion and seed/scenario decomposition
+
+The [fixed protocol](results/event-scenario-influence/protocol.md) retains each
+planned dense_50x50, maze_50x50 and open_50x50 scenario alone and deletes it once
+across all three seeds. It also preserves every seed/scenario cell separately.
+Original 1/n_case weights, source/common-family eligibility, labels, score
+orders and same-case/event/time scopes remain fixed. Empty scenarios and cells
+stay explicit; selected records and class-pair support are separate quantities.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_scenario_influence.py \
+  --output /tmp/event-scenario-influence
+MPLCONFIGDIR=/tmp/event-scenario-influence-mpl python3 experiments/pose_observation_loss/plot_event_scenario_influence.py \
+  --results /tmp/event-scenario-influence --output /tmp/event-scenario-influence-figures
+python3 experiments/pose_observation_loss/verify_event_scenario_influence.py \
+  --results /tmp/event-scenario-influence --figures /tmp/event-scenario-influence-figures \
+  --output /tmp/event-scenario-influence-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with fresh directories and an unused evidence filename, without
+Python -O. Collection uses the standard library; figures require Matplotlib and
+NumPy; the standalone verifier requires NumPy. Sources, preceding artifacts and
+helper scripts are pinned. No simulation or Rust rebuild is required.
+
+`scenario-audit.csv` has 1,080 label-blind selection/seed/scenario rows, including
+zero-record cells. `scenario-effects.csv` has all 25,920 scenario comparisons:
+unprefixed metrics describe the population after deleting that scenario, and
+`scenario_` metrics describe the scenario alone. Removed masses/shares also
+describe that scenario alone. `sensitivity-summary.csv` keeps 8,640 cells, each
+with three planned scenarios, represented/supported counts, baseline values,
+deletion ranges/side counts/support loss and scenario-only ranges. All four
+tick/native AUC and unequal-score concordance metrics remain available.
+`seed-scenario-pairs.csv` has all 77,760 scope/cell contributions with original
+availability, weights, six C/T/D masses, pair/support counts and metrics. Their
+nine-cell sums reproduce the same-event baseline masses; do not average AUCs.
+
+Repeat the four CSVs and provenance byte for byte, then repeat six figures,
+three numeric exports and plot provenance. The independent verifier imports no
+analyzers, reconstructs raw states and Decimal score order, checks prior case/
+family/seed results too, and directly masks original state pairs for every
+remaining and retained scenario and all nine seed/scenario subsets. Missing
+values remain blank; loss of support is not a zero or strict-side flip. These
+are retrospective sensitivities of observed environments/seeds, not confidence
+intervals, independent map samples or held-out validation. See the
+[scenario sensitivity results](results/event-scenario-influence/report.md).
