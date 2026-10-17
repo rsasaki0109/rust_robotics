@@ -3723,3 +3723,54 @@ its logged consistency; unrounded map geometry and controller trajectories
 are not replayed. Repeat all five tables/provenance and figure/exports byte
 for byte. See the [command-sign report](results/fusion-return-command-sign/report.md)
 for the observed refinement and independent evidence.
+
+## Initial geometry of zero speed-probe returns
+
+The [fixed protocol](results/fusion-return-probe-origin/protocol.md) separates
+zero speed probes caused by an unsafe start from a first unsafe chord. It
+keeps all preceding 3,751 references, 137 returned spells and 3,997 anchors.
+A certainly safe start plus a recorded zero identifies the first chord by
+source-path exclusion. This does not replay unrounded curved geometry.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_probe_origin.py \
+  --output /tmp/fusion-return-probe-origin
+MPLCONFIGDIR=/tmp/probe-origin-mpl python3 experiments/pose_observation_loss/plot_probe_origin.py \
+  --results /tmp/fusion-return-probe-origin --output /tmp/probe-origin-figures
+python3 experiments/pose_observation_loss/verify_probe_origin.py \
+  --results /tmp/fusion-return-probe-origin --figures /tmp/probe-origin-figures \
+  --work /tmp/probe-origin-independent --output /tmp/probe-origin-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Activate the saved Rust toolchain or pass `--rustc`. Both readers accept
+`--raw-roots`; the collector also accepts `--obstacles` with the pinned map
+hash. All six raw provenance/compiler/map declarations and all 108 original
+raw hashes are checked. No Cargo dependencies or new rollouts are needed.
+
+The current raw row records truth after state.update. Reconstruct the probe's
+sensed x/y from the preceding row's truth plus current noise and bias, in the
+source addition order. Step-zero noise fields establish the noisy pose branch.
+Nine-place inputs retain half-unit rounding intervals and a 1e-12 comparison
+guard. Check all walls and original obstacle records; keep duplicate map IDs,
+all definite/ambiguous witnesses and simultaneous failure masks.
+
+`probe-decisions.csv` retains prior command/admission/timer fields and adds
+pose inputs, rectangles, initial-test bounds and origin labels. Safe starts
+with positive probes stay distinct from zero origins; unresolved starts stay
+ambiguous. `anchor-probe-origin.csv` retains every preceding anchor column and
+adds phase/branch/origin counts and blank fields for nonreturns. `probe-summary.csv`
+keeps 336 original cells, exact original measures and new raw/case-mass shares.
+The exact original map is saved as `obstacle-map.csv`.
+
+The standalone verifier imports no analyzers. It uses 60-digit Decimal
+rectangles and squared obstacle distances independently of the collector's
+float enclosures. It compiles the unchanged initial source test and actual
+Point2D distance method with stdlib Rust, cross-checking rounded centers only
+when the bounded result is certain. Earlier admission/timer/command-domain
+and Fusion metadata evidence remains inherited from the pinned proof.
+Repeat all four tables/provenance and figure/exports byte for byte. See the
+[probe-origin report](results/fusion-return-probe-origin/report.md) for results
+and the distinction between direct initial-test evidence and first-chord
+inference by exclusion.
