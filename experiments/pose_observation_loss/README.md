@@ -2958,3 +2958,46 @@ preceding audit/ranking field, orders original score strings using Decimal,
 checks agreement with binary64 order and evaluates direct NumPy pair masks.
 Saved precision does not imply physical accuracy or independent information.
 See the [saved-score tie results](results/event-score-ties/report.md).
+
+## Delete-one case and planner-family sensitivity
+
+The [fixed protocol](results/event-unit-influence/protocol.md) removes every
+selected case or planner family once at each preceding event/time scope. A
+family shares the full case key except for planner. Populations, common-family
+eligibility, labels, score directions and original 1/n_case weights stay fixed.
+Deleting one planner case keeps the family's other selected cases. Pair-free
+units remain explicit; empty selections have summaries and no deletion rows.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_unit_influence.py \
+  --output /tmp/event-unit-influence
+MPLCONFIGDIR=/tmp/event-unit-influence-mpl python3 experiments/pose_observation_loss/plot_event_unit_influence.py \
+  --results /tmp/event-unit-influence --output /tmp/event-unit-influence-figures
+python3 experiments/pose_observation_loss/verify_event_unit_influence.py \
+  --results /tmp/event-unit-influence --figures /tmp/event-unit-influence-figures \
+  --output /tmp/event-unit-influence-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new directories and a new evidence filename, without Python -O. Collection
+uses the standard library; figures require Matplotlib/NumPy and the independent
+verifier requires NumPy. Pinned preceding bundles and original tracked source
+tables remain inputs; no new simulation, fitting or Rust build is required.
+
+`unit-audit.csv` contains 782 selection/unit entries, chosen without class labels:
+554 cases and 228 families across selection groups. These reuse the 157 observed
+cases and are not independent trials. `delete-one.csv` keeps all 56,304 deletions,
+including removed mass/counts, remaining support, tick/native AUC and unequal-score
+concordance, and changes from baseline. `influence-summary.csv` keeps all 17,280
+scope/unit-kind summaries with defined ranges, support loss, exact side counts
+around .5 and maximum removed shares. Missing denominators stay blank; removing
+all support is not a zero AUC or sign flip. Ranges are deletion sensitivities,
+not confidence intervals. No remaining case weights are renormalized.
+
+Repeat all three CSVs and provenance byte for byte. Five SVG/PNG figures export
+complete summary inputs across both targets. The standalone verifier imports no
+analyzers, reconstructs raw states/Decimal score order and directly masks the
+remaining NumPy state pairs for every deletion. Exact Fraction weights preserve
+half comparisons, independently of the collector's contribution subtraction.
+All prior and new fields and hashes are checked. See the
+[delete-one sensitivity results](results/event-unit-influence/report.md).
