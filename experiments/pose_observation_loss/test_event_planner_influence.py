@@ -252,6 +252,20 @@ class EventPlannerInfluenceTests(unittest.TestCase):
         rr[1]["_event_id"] = "other"
         self.assertEqual(run(rr, lookup)[0][0]["pair_count"], 0)
 
+    def test_loss_modes_remain_distinct_full_cases_inside_one_leaf(self):
+        positive, _ = fixture([(0, 2, 2e-8, 0.2)])
+        negative, _ = fixture([(0, 1, 1e-8, 0.05)])
+        positive[0]["mode"], negative[0]["mode"] = "random", "blackout"
+        rows = positive + negative
+        _, _, lookup = analysis.window.audit_units(account(rows), rows)
+        _, audits = analysis.planner_audits(rows, lookup, "fresh")
+        leaf = next(a for a in audits if a["records"])
+        self.assertEqual(leaf["cases"], 2)
+        self.assertEqual(leaf["events"], 2)
+        for baseline, effects, summary, cells in run(rows, lookup):
+            self.assertEqual(baseline["pair_count"], 0)
+            self.assertTrue(all(c["pair_count"] == 0 for c in cells))
+
     def test_planner_only_includes_exact_time_boundaries_without_rounding_leaks(self):
         spec = [(0, 2, 2e-8, 0.2)] + [
             (t, 1, 1e-8, 0.05) for t in [0.02, 0.020001, 0.1, 0.100001, 0.5, 0.500001]
