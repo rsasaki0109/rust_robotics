@@ -1,0 +1,21 @@
+{
+  "comparisons": 4198097,
+  "reconstructed_states": 10995,
+  "reconstructed_targets": 21990,
+  "planned_cases": 972,
+  "families": 324,
+  "source_states": 10995,
+  "source_view_references": 32985,
+  "represented_cases": 157,
+  "census_events": 3997,
+  "referenced_events": 275,
+  "case_support_rows": 58320,
+  "event_support_rows": 16500,
+  "summary_rows": 2880,
+  "preceding_support_comparisons": 216000,
+  "plotted_rows": 288,
+  "pair_method": "direct within-full-case NumPy event/time masks, Fraction original parent weights",
+  "script_sha256": "33970e838a3b7d7497250c8a3a832d5d159ad28d690e4a45aaa5408aa529890f",
+  "sources_sha256": "ab2e13f3cd055b7585da2387acf1983bea6f5ddffed9872cd8c3d13d314e5407",
+  "plot_sources_sha256": "f6adbc26c0d224f9c36f5a1e4b2e9a7aabadfeb5001bd883c89597f875279a6e"
+}

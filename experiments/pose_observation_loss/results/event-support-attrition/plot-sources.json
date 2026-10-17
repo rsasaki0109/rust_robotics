@@ -1,0 +1,18 @@
+{
+  "script_sha256": "d4a740136182ea81ddf01fd3711df518742e0b80b05ba99be78a07cb24228b7f",
+  "analysis_sources_sha256": "ab2e13f3cd055b7585da2387acf1983bea6f5ddffed9872cd8c3d13d314e5407",
+  "inputs_sha256": {
+    "support-summary.csv": "57dd5b6a8fff22aa126dddee85779faa0d74d7d6737df7dec4302c02e410cbc0"
+  },
+  "outputs_sha256": {
+    "case-reasons-fresh.png": "1e3f94f231fb6ce40b67a0fd209ff5a8063ded9a647973634d565a1cc8de54a8",
+    "case-reasons-fresh.svg": "a2453d155ca0df08e2c60299f1e45d753b35f1964dfa678724dc9a97553a7a62",
+    "pair-retention-fresh.png": "bb7b7c834e2d37e991f888d3871f41a546ce0f8dcb8c1c1275573fcb4c38fba8",
+    "pair-retention-fresh.svg": "0f9d6979c3218ffc797af3e0af573da303cb8f5421ca032256b27a48e9f03412",
+    "pair-retention-known.png": "166e6d9c245d8bf1fafaf3013ad91bf57daf4acf57d62891e69dfcf441365317",
+    "pair-retention-known.svg": "7c8f51572721d63e5dd00c22877883f45b510a815470b547a5fb3be979bd41e3",
+    "pair-retention-new.png": "165b39258704295ce1d901cc5d84f94e155b5834cdc61c915b3ee1b868568a41",
+    "pair-retention-new.svg": "e305e650c6aec4d019d19ac8fdc4c38e0d9dea99039ad1a7f2b179473788c50b",
+    "plot-values.csv": "7b01bf88931bea09355f69a172f85c980d0d6fe6ae5120526d975a784473ae11"
+  }
+}
