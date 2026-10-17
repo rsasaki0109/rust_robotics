@@ -3789,6 +3789,11 @@ references, 3,997 anchors and 336 summary cells. The two references among the
 preceding 25 nominal-only conjunction failures remain included in that scope.
 The earlier source-path exclusion result stays in separate inherited columns.
 
+All 61 saved direct tests fail only the inflated obstacle-margin condition,
+with one definite original obstacle record each and no unresolved result.
+The two preceding nominal-only resets identify obstacle IDs 420 at (3,4)
+and 1310 at (34,35), with margin deficits about 9.89 mm and 4.78 mm.
+
 ```bash
 python3 experiments/pose_observation_loss/analyze_first_chord.py \
   --output /tmp/fusion-return-first-chord
