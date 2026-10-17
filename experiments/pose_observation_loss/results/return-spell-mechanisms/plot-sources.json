@@ -1,0 +1,15 @@
+{
+  "script_sha256": "477e683f31c966b97a8928d55900bb9164ef0302682fc98aee7f81ba21857abb",
+  "input_sha256": {
+    "sources.json": "e251852bc1bc8c1f2f1f974acaeaaf5660fb0be8b15f16eabd95b3fd3bdf914b",
+    "return-endpoints.csv": "74f0c7332355cb32212957ce32dc4002699f6295407260d11f813e785f4c86e9",
+    "spell-summary.csv": "3398b172a6f36002331053bd87bbdd2723fcee8b2002ac84619c8586fc3edfea"
+  },
+  "selection": "all 396 original-mode operation summaries and all 137 first-return anchors, including 48 censored returned spells",
+  "output_sha256": {
+    "plot-return-values.csv": "ed064c88805306c29af35c45bf7e17e358cd91981d40f61c5e69b52347f52684",
+    "plot-values.csv": "c0cdc494aa0afddb419e73fef6852152ac41f399aaafb37cd803445bb7e62ca3",
+    "spell-operations.svg": "ae5ae749563dbb624e03c6a4b60b93a50ff5e468b5126017feeacbaff087d8ab",
+    "spell-spans.svg": "2fe6d7428a332e699a3aa449f727750c41c03c35a3e80979ea9c48eb43ad3751"
+  }
+}
