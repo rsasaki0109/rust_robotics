@@ -3602,3 +3602,64 @@ Repeat all four CSVs/provenance and the figure/exports byte for byte. See the
 [control audit report](results/fusion-return-controls/report.md) for observed
 latch, command and recovery-pose behavior. No controller, original RP selection
 or simulation outcome is changed.
+
+## Admission conditions and timers after Fusion returns
+
+The [fixed protocol](results/fusion-return-admission/protocol.md) audits all
+137 preceding first returned spells, including the 48 censored returns at
+180 s. It separates seven joint loss-recovery conditions from the two guard
+release conditions and retains simultaneous failures and rounded-input
+unknowns. Every original census anchor and parent measure remains represented.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_return_admission.py \
+  --output /tmp/fusion-return-admission
+MPLCONFIGDIR=/tmp/return-admission-mpl python3 experiments/pose_observation_loss/plot_return_admission.py \
+  --results /tmp/fusion-return-admission --output /tmp/return-admission-figures
+python3 experiments/pose_observation_loss/verify_return_admission.py \
+  --results /tmp/fusion-return-admission --figures /tmp/return-admission-figures \
+  --work /tmp/return-admission-independent --output /tmp/return-admission-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use new output/work directories and an unused evidence filename, without Python
+-O. Both readers hash and stream the same 108 original raw files and accept
+`--raw-roots` as above. Collection and independent verification use the standard
+library; plotting needs Matplotlib/NumPy. No Cargo, new native metadata replay
+or network access is required. Existing native metadata evidence is inherited.
+
+`admission-decisions.csv` saves 3,751 decision references: 3,662 while returned
+Fusion is available and 89 at the first next loss. Each return's predecessor
+supplies the actual carried latch/timer inputs. The source binary64 clock is
+reconstructed and checked against every printed timeout age; exact audited
+ages include hex encodings. The pinned source's identical recovery/speed-margin
+expressions justify using logged speed-margin intervals. Nine-decimal scalar
+inputs receive half-unit rounding intervals with a 1e-12 numerical guard and
+sin/cos Lipschitz endpoint bounds. Unknowns stay separate from certain failures.
+
+`admission-runs.csv` losslessly compresses branch, phase, readiness certainty,
+timer-derived readiness, simultaneous failure/unknown masks and timer action.
+`anchor-admission.csv` keeps all 3,997 original anchors with fixed parent weights,
+RP accounting and blank new fields for nonreturns. It adds reference counts,
+condition states, carried/maximum counters and available versus next-loss reset
+counts. A return at 180 s adds one observed decision without a future endpoint.
+
+`admission-summary.csv` keeps all 336 original condition/category cells, including
+empty cells and planned/timeout/held counts. Original census/received/RP weights
+precede selection; exact masses precede division. Checkpoint-reference counts
+remain separate from anchor masses. Raw and mass-weighted ready/reset shares
+condition on returned anchors; empty denominators are blank.
+
+The standalone verifier imports no analyzers. It uses Decimal intervals and
+Taylor-series trigonometry independently of the collector's float/libm bounds,
+enumerates both ready states to check recorded counter transitions, and uses
+SQLite window functions on uncompressed decisions for maximal runs. It checks
+all saved fields, original/preceding-control joins, closures, 252 numeric plot
+summary rows and all 137 returned-anchor rows. Timer-derived readiness does
+not relabel an uncertain individual condition.
+
+Repeat all four CSVs/provenance and the figure/exports byte for byte. See the
+[admission report](results/fusion-return-admission/report.md) for observed
+counter resets, joint/guard thresholds and remaining nominal-sign uncertainty.
+These are selected retrospective inputs and timer records, with no new
+controller outcome, causal effect or eventual-release probability.
