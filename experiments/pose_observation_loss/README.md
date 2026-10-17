@@ -3001,3 +3001,47 @@ remaining NumPy state pairs for every deletion. Exact Fraction weights preserve
 half comparisons, independently of the collector's contribution subtraction.
 All prior and new fields and hashes are checked. See the
 [delete-one sensitivity results](results/event-unit-influence/report.md).
+
+## Same-event seed deletion and seed-only sensitivity
+
+The [fixed protocol](results/event-seed-influence/protocol.md) retains each of the
+three planned seeds alone and deletes it once within the same case/event/time
+scopes. Known uses 269/270/271, previous additional 274/275/276 and latest
+additional 277/278/279. All three remain explicit even for absent seeds and empty
+selections. Original 1/n_case weights, source/common-family selected populations,
+eligibility, labels, score orders and time boundaries stay fixed.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_event_seed_influence.py \
+  --output /tmp/event-seed-influence
+MPLCONFIGDIR=/tmp/event-seed-influence-mpl python3 experiments/pose_observation_loss/plot_event_seed_influence.py \
+  --results /tmp/event-seed-influence --output /tmp/event-seed-influence-figures
+python3 experiments/pose_observation_loss/verify_event_seed_influence.py \
+  --results /tmp/event-seed-influence --figures /tmp/event-seed-influence-figures \
+  --output /tmp/event-seed-influence-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Run sequentially with fresh directories and an unused evidence filename, without
+Python -O. Aggregation uses the standard library; plotting requires Matplotlib
+and NumPy; independent verification requires NumPy. All raw sources, preceding
+bundles and helper scripts are pinned. No simulation or Rust build is required.
+
+`seed-audit.csv` has 360 label-blind selection/seed rows including zero records.
+`seed-effects.csv` has 25,920 scope/seed rows. Unprefixed metrics describe the
+remaining population after deleting a seed; `seed_` metrics describe that seed
+alone. Removed C/T/D masses and comparison shares also describe the seed alone.
+`sensitivity-summary.csv` has all 8,640 cells, each with three planned units,
+represented and supported counts, baseline values, deletion ranges/side counts,
+support loss and seed-only ranges. All four tick/native AUC and unequal-score
+concordance metrics remain available. Missing denominators stay blank, and
+support loss is not a zero or strict-side flip. A seed with no pairs is an
+explicit deletion no-op and has undefined seed-only metrics.
+
+Repeat the three CSVs and provenance byte for byte, then repeat all five figures
+and numeric exports. The standalone verifier imports no analyzers, reconstructs
+raw states and Decimal score order, checks prior case/family deletions too, and
+uses direct NumPy pair masks with exact Fraction weights for each retained and
+remaining seed selection. These are retrospective sensitivities of already
+observed seeds, not held-out prediction or confidence intervals. See the
+[seed sensitivity results](results/event-seed-influence/report.md).
