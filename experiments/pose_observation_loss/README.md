@@ -4828,6 +4828,9 @@ Rust motion filter and stationary-epoch position fusion. It checks the logged
 filter state and rounded preview pose at every step before evaluating the
 selected positive commands. Physical truth and rounded poses are excluded from
 the estimator inputs.
+The [recorded report](results/terminal-preview-input-replay/report.md) preserves
+all paired flips and shows that the filtered heading already agrees with the
+recovery mean; position and the proposed stopping prefix affect release.
 
 ```bash
 python3 -B experiments/pose_observation_loss/analyze_terminal_preview.py \

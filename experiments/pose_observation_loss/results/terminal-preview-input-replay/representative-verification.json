@@ -1,0 +1,30 @@
+{
+  "representatives": 132,
+  "static_queries": 528,
+  "source_sha256": "0499caf8508c9f9ff6a4b8bf4897c92ff423305c7cb9b96237f1dc67634852df",
+  "binary_sha256": "5e6bf8acaf8212f3b7bea3a6a3627bc5fee69b1f08a8c52a030862a62fb24273",
+  "compile_command": [
+    "/workspace/.cloud-env/rust_robotics/cargo/bin/rustc",
+    "--edition=2021",
+    "-O",
+    "terminal-preview.rs",
+    "-o",
+    "native-terminal-preview"
+  ],
+  "trace_bytes_identical": true,
+  "evaluation": {
+    "command": [
+      "./native-terminal-preview",
+      "direct",
+      "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+      "compact.tsv",
+      "history-checks.csv",
+      "exact-original-functions"
+    ],
+    "sha256": {
+      "compact.tsv": "c6491053556dac7df8e1ca6ece715c7de1fff54ccda70f3bef33c4cd4ab0d265",
+      "trace.csv": "80af89bece3a0e0837ad9fe34472c9f304698fd1c125d3d43d454954c61a1ea1",
+      "history-checks.csv": "c9edcf480bea614c6bf3b522c0a3c7729ee65ac1d29250112693ccd2e65814b7"
+    }
+  }
+}
