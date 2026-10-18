@@ -1,0 +1,24 @@
+{
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "command": [
+    "/workspace/.cloud-env/rust_robotics/cargo/bin/rustc",
+    "--edition=2021",
+    "-O",
+    "admission-geometry.rs",
+    "-o",
+    "native-geometry"
+  ],
+  "source_sha256": "6fec3d061e173065d9658049a5abe36425e793b3026997a87e841725e75c4ef1",
+  "binary_sha256": "a9d894f8230e2e5b48dda2e305bfcdfd59f301b02cf8006cbfaea610daaf8a38",
+  "compiler_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluate_command": [
+    "./native-geometry",
+    "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+    "queries.tsv"
+  ],
+  "query_sha256": "16e1cfc8ea27d4c2e6849a236797d74628e7877265c56e556f3751983a8d7759",
+  "trace_sha256": "5f58e9a55ad0b5423932b1b0c7c30a2b6716e2af114ad5d47f4c9178393af5da",
+  "obstacle_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "queries": 267711,
+  "fresh_simulator_steps": 0
+}

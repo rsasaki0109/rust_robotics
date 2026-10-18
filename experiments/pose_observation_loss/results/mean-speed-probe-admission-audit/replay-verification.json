@@ -1,0 +1,57 @@
+{
+  "method": "Two complete admission audits of the same frozen raw packet; exact tables, provenance, native source, inputs, trace and binary comparison",
+  "implementation_commit": "0c951ccb9c693c730110092edb69878be6c35cf9",
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "decisions": 788988,
+    "native_queries": 267711,
+    "ready_runs": 482,
+    "unresolved_release_gates": 0,
+    "unverified_timer_steps": 0,
+    "fresh_simulator_steps": 0
+  },
+  "native_counter_joins": 108,
+  "byte_identical": true,
+  "first_sha256": {
+    "case-gates.csv": "7fd2b52ed35d67cca6c3971023e6bf67e0264af509261f48eadbb9ba406176bd",
+    "gate-patterns.csv": "e7e331caf13040d2f8804ebb1bf1bafdbb821b6d815169150cb999a0022dd0b8",
+    "admission-runs.csv": "223d8e6807f44bc4b6eba5accc0f1c14540557088271176803dfff770b121470",
+    "summary.csv": "99bf6179a0a9a721c7cecb3baa68dddaf30bb22f9d8d4b5e0d19d74ccda54465",
+    "sources.json": "9f6db00ad4de7e93cd30ebd80837ffce37342ecf8e5793a95077a027560975fc",
+    "native/admission-geometry.rs": "6fec3d061e173065d9658049a5abe36425e793b3026997a87e841725e75c4ef1",
+    "native/queries.tsv": "16e1cfc8ea27d4c2e6849a236797d74628e7877265c56e556f3751983a8d7759",
+    "native/trace.csv": "5f58e9a55ad0b5423932b1b0c7c30a2b6716e2af114ad5d47f4c9178393af5da",
+    "native/native-sources.json": "9432581d12302b2b73c127815edb01bb9d6f7052ed937a8b10590865299f73e5",
+    "native/native-geometry": "a9d894f8230e2e5b48dda2e305bfcdfd59f301b02cf8006cbfaea610daaf8a38"
+  },
+  "second_sha256": {
+    "case-gates.csv": "7fd2b52ed35d67cca6c3971023e6bf67e0264af509261f48eadbb9ba406176bd",
+    "gate-patterns.csv": "e7e331caf13040d2f8804ebb1bf1bafdbb821b6d815169150cb999a0022dd0b8",
+    "admission-runs.csv": "223d8e6807f44bc4b6eba5accc0f1c14540557088271176803dfff770b121470",
+    "summary.csv": "99bf6179a0a9a721c7cecb3baa68dddaf30bb22f9d8d4b5e0d19d74ccda54465",
+    "sources.json": "9f6db00ad4de7e93cd30ebd80837ffce37342ecf8e5793a95077a027560975fc",
+    "native/admission-geometry.rs": "6fec3d061e173065d9658049a5abe36425e793b3026997a87e841725e75c4ef1",
+    "native/queries.tsv": "16e1cfc8ea27d4c2e6849a236797d74628e7877265c56e556f3751983a8d7759",
+    "native/trace.csv": "5f58e9a55ad0b5423932b1b0c7c30a2b6716e2af114ad5d47f4c9178393af5da",
+    "native/native-sources.json": "9432581d12302b2b73c127815edb01bb9d6f7052ed937a8b10590865299f73e5",
+    "native/native-geometry": "a9d894f8230e2e5b48dda2e305bfcdfd59f301b02cf8006cbfaea610daaf8a38"
+  },
+  "full_tests_before_corrected_audit": {
+    "tests": 1339,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 40.91303557399078,
+    "success": true
+  },
+  "tracked_sha256": {
+    "case-gates.csv": "7fd2b52ed35d67cca6c3971023e6bf67e0264af509261f48eadbb9ba406176bd",
+    "gate-patterns.csv": "e7e331caf13040d2f8804ebb1bf1bafdbb821b6d815169150cb999a0022dd0b8",
+    "admission-runs.csv": "223d8e6807f44bc4b6eba5accc0f1c14540557088271176803dfff770b121470",
+    "summary.csv": "99bf6179a0a9a721c7cecb3baa68dddaf30bb22f9d8d4b5e0d19d74ccda54465",
+    "sources.json": "9f6db00ad4de7e93cd30ebd80837ffce37342ecf8e5793a95077a027560975fc",
+    "admission-geometry.rs": "6fec3d061e173065d9658049a5abe36425e793b3026997a87e841725e75c4ef1",
+    "native-sources.json": "9432581d12302b2b73c127815edb01bb9d6f7052ed937a8b10590865299f73e5"
+  }
+}

@@ -4753,6 +4753,10 @@ recovery-line geometry at every paused decision, reconstructs all seven joint
 admission gates and checks the one-second continuous timer. It retains complete
 failure masks and all definite-ready runs, including runs ending in failure.
 Cases without a loss pause remain in the exported population.
+The [recorded report](results/mean-speed-probe-admission-audit/report.md) shows
+that 9,276 of the mean arm's 11,998 eligible positive commands still failed a
+different admission gate. It retains all 482 readiness runs and the extra
+admission that still ended in a timeout.
 The [margin amendment](results/mean-speed-probe-admission-audit/protocol-amendment-1.md)
 records a rejected initial assumption: the curved configuration has separate
 recovery and guard margins. The native reader reconstructs both original
