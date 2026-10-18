@@ -3994,3 +3994,60 @@ Both contexts are traced with the original Rust window fragment; duplicate
 context queries are distinguished from unique source points. Repeat all four
 tables/provenance and plot artifacts byte for byte. See the
 [adjacent-window report](results/fusion-return-window-turnover/report.md).
+
+## Compare adjacent point gaps to fixed original blockers
+
+The [fixed protocol](results/fusion-return-point-clearance/protocol.md) follows
+all 1,096 preceding zero-probe references and their original definite obstacle
+IDs. It compares raw and reconstructed mean start points at n-1 and n, using
+each context's own logged speed margin. A predecessor remains input context;
+the original population, weights, follow-up and outcome labels are retained.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_point_clearance.py \
+  --output /tmp/fusion-return-point-clearance
+MPLCONFIGDIR=/tmp/point-clearance-mpl python3 experiments/pose_observation_loss/plot_point_clearance.py \
+  --results /tmp/fusion-return-point-clearance --output /tmp/point-clearance-figures
+python3 experiments/pose_observation_loss/verify_point_clearance.py \
+  --results /tmp/fusion-return-point-clearance --figures /tmp/point-clearance-figures \
+  --work /tmp/point-clearance-independent --output /tmp/point-clearance-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output/work directories and an unused evidence filename, without
+Python -O. Activate the saved Rust toolchain or provide `--rustc`. Both readers
+accept `--raw-roots`. Collection and verification use the standard library;
+plotting uses Matplotlib. No controller rollout or Cargo dependencies are added.
+Both readers hash all 108 raw files and replay the 63 selected histories again.
+
+`point-decisions.csv` retains all preceding fields, adding bounded raw/mean
+coordinates, both exact margin strings, point distances and signed gaps,
+previous-to-current states, signed distance/margin/gap changes and closure
+residuals. Gap changes obey Delta gap = Delta distance - Delta margin. Bounds
+use the declared input rounding assumptions. A zero-containing change interval
+remains unresolved; inclusive gap equality is blocked. Empty windows use raw
+fallback. Positive probes keep blank new fields.
+
+In the fixed 25-reference subgroup, raw point distance decreases in 21 cases
+and increases in four, while each logged margin increases by 0.0004 m. Raw
+point gaps change from clear to blocked in 15, stay blocked in eight and stay
+clear in two; mean point gaps stay clear in all 25. The two clear raw starts
+retain their inherited first-chord failures.
+
+Every multi-obstacle set keeps all original IDs and duplicate coordinates.
+`point-witnesses.csv` preserves their individual results. Decision-level minima
+span only that fixed set, with exact center ties and possible minimum IDs saved
+for each context. An obstacle outside the set never enters this diagnostic.
+`anchor-point.csv` and `point-summary.csv` retain all prior fields and original
+measures, adding phase/branch transition/direction counts, available-anchor
+flags and raw/case-mass shares. Nonreturns and empty denominators remain blank.
+
+The standalone verifier imports no analyzers. It uses pinned independent
+window/raw readers, new 60-digit Decimal point calculations, and the original
+Rust window and Point2D.distance source. Native traces check both contexts and
+all rounded raw/mean point-obstacle pairs, including interval closure. These
+are point-gap diagnostics: they do not replace the original curved 0.05-m
+chord, straight 0.6-m recovery segment, boundary or whole-probe tests. A
+first-chord failure can have a clear start point. Repeat all four tables /
+provenance and plot artifacts byte for byte. See the
+[point-clearance report](results/fusion-return-point-clearance/report.md).
