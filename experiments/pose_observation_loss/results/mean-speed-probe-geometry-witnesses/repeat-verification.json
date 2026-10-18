@@ -1,0 +1,40 @@
+{
+  "implementation_commit": "c44e8f86dd098704d2fac14ddcb9f669b6933041",
+  "runs": 2,
+  "aggregate_files": 25,
+  "aggregate_sha256": {
+    "case-summary.csv": "7030af7911070b8691474556cceef96bd35c7a77cb9abfa310e6fe1792916d1d",
+    "mask-summary.csv": "1c62b8c74a2bc87b2d327143ca56d5ac95897f3d34a9c5fadc325257fa91e7dc",
+    "native-sources.json": "0659a051afa7cdc5f801c43dd98ed1544c9f7fe05d422b27198674912ec7c7fb",
+    "native/compiler.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native/decisions.csv": "1c1e459a3f5a5f36ee951e3a239c3d69bc8b3a0492e03d65055b7c41f0cbfcc6",
+    "native/native-probe-geometry": "b2077f9b4f50d2a5321c12d788501ad9d7d0be017b24b2a01499a385e02d2f93",
+    "native/native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native/paths.csv": "28abd62c589c626741987bb35625ac02f7fe14e8853bde12c62a7bcd1e498aa6",
+    "native/plot-native.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "native/plot-paths.csv": "895b7f52d663be07da3c665abfd062e9b545cd06101b577fd84ca53b09a6cdc1",
+    "native/plot-queries.tsv": "e4a8511b4d90a784e96446d2e8ce7fb0cb5a3e0d8833dd90bfbfbfb33ef52034",
+    "native/plot-trace.csv": "e4a031fb031be4a2973c71d24349a6301e857351927be38f3350e2d499c12424",
+    "native/plot-witnesses.csv": "b67696cdb481288d798453f56329025d405e3207d977d54d8d431882c1ec129f",
+    "native/probe-geometry.rs": "098a6140a0295854134645c848e46040b843beba24bc820d18ce74f939baec93",
+    "native/queries.tsv": "6a9e9213d3e443c4cc9946482325bb03552a6532817196800cc3ab0a497251d8",
+    "native/selected.csv": "f9eea13f711230b07645cd4f20f328ee44159fc540b5105867cd578e5b34959d",
+    "native/trace.csv": "658c1d74c37de1d49d02e322f2c23662f91a6206b0a71bc4e7e66abda761ca17",
+    "native/witnesses.csv": "13dc318dfe77d5998f816cfe72b7f51b46d52aa0f5a24c3f48cc5da37a09746a",
+    "plot-paths.csv": "895b7f52d663be07da3c665abfd062e9b545cd06101b577fd84ca53b09a6cdc1",
+    "probe-geometry.rs": "098a6140a0295854134645c848e46040b843beba24bc820d18ce74f939baec93",
+    "representative-inputs.tsv": "3c25a4df752958313ed378db203bdd1170b67bff42c5013379beda1f143be9cb",
+    "representative-native.csv": "97e071755f69ee7d54bd55b2fbf0fe31d66b232ee4949c120090f39e0923bd14",
+    "representative-witnesses.csv": "52457f52640ce2e8179104dbf86d6880d5d520277f8f86e18c3a2d89d477b77f",
+    "representatives.csv": "f10d047f9fe1df3bbe610077ea95167ce5b9f6c90c1f2c688e2794de5d3cfc8c",
+    "sources.json": "38d0b70791fc2a92525fdba8a8aaf23c5802e83b558f4cce2356adddbac2a3a9"
+  },
+  "render_runs": 2,
+  "figure_files": 3,
+  "figure_sha256": {
+    "geometry.png": "0180a29388a22882fc5dd81605e062cbfb11a3f8754928149cdcccd2303a6b4a",
+    "geometry.svg": "c0da54b0cd4f871dd677d7bc52a1791da8f613b3ccd45822ecee5c86c3682f01",
+    "plot-sources.json": "e215775ee1eb38ebcd4a2901cfebe8dfb0c8f1efe8ff0d1d36d4765f0e4540c1"
+  },
+  "png_visually_inspected": true
+}

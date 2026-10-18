@@ -1,0 +1,54 @@
+{
+  "compiler": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "command": [
+      "/workspace/.cloud-env/rust_robotics/cargo/bin/rustc",
+      "--edition=2021",
+      "-O",
+      "probe-geometry.rs",
+      "-o",
+      "native-probe-geometry"
+    ],
+    "source_sha256": "098a6140a0295854134645c848e46040b843beba24bc820d18ce74f939baec93",
+    "binary_sha256": "b2077f9b4f50d2a5321c12d788501ad9d7d0be017b24b2a01499a385e02d2f93"
+  },
+  "main": {
+    "command": [
+      "./native-probe-geometry",
+      "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+      "queries.tsv",
+      "witnesses.csv",
+      "paths.csv"
+    ],
+    "sha256": {
+      "queries.tsv": "6a9e9213d3e443c4cc9946482325bb03552a6532817196800cc3ab0a497251d8",
+      "trace.csv": "658c1d74c37de1d49d02e322f2c23662f91a6206b0a71bc4e7e66abda761ca17",
+      "witnesses.csv": "13dc318dfe77d5998f816cfe72b7f51b46d52aa0f5a24c3f48cc5da37a09746a",
+      "paths.csv": "28abd62c589c626741987bb35625ac02f7fe14e8853bde12c62a7bcd1e498aa6"
+    }
+  },
+  "plot": {
+    "command": [
+      "./native-probe-geometry",
+      "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+      "plot-queries.tsv",
+      "plot-witnesses.csv",
+      "plot-paths.csv"
+    ],
+    "sha256": {
+      "plot-queries.tsv": "e4a8511b4d90a784e96446d2e8ce7fb0cb5a3e0d8833dd90bfbfbfb33ef52034",
+      "plot-trace.csv": "e4a031fb031be4a2973c71d24349a6301e857351927be38f3350e2d499c12424",
+      "plot-witnesses.csv": "b67696cdb481288d798453f56329025d405e3207d977d54d8d431882c1ec129f",
+      "plot-paths.csv": "895b7f52d663be07da3c665abfd062e9b545cd06101b577fd84ca53b09a6cdc1"
+    }
+  },
+  "native_queries": 11998,
+  "probe_evaluations": 35994,
+  "repeated_plot_queries": 3,
+  "repeated_plot_evaluations": 9,
+  "extra_sha256": {
+    "selected.csv": "f9eea13f711230b07645cd4f20f328ee44159fc540b5105867cd578e5b34959d",
+    "decisions.csv": "1c1e459a3f5a5f36ee951e3a239c3d69bc8b3a0492e03d65055b7c41f0cbfcc6",
+    "paths.csv": "28abd62c589c626741987bb35625ac02f7fe14e8853bde12c62a7bcd1e498aa6"
+  }
+}

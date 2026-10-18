@@ -4791,6 +4791,9 @@ ready controls. It replays the recorded speed probe and recovery line using
 the original Rust functions, retains all nearest obstacle ties, and compares
 three static queries at the same mean position: recorded yaw/steering, mean
 yaw with the same steering, and mean yaw with zero steering.
+The [recorded report](results/mean-speed-probe-geometry-witnesses/report.md)
+retains all populations, the terminal-release component census and three
+fixed geometric diagrams.
 
 ```bash
 python3 -B experiments/pose_observation_loss/analyze_probe_geometry.py \
