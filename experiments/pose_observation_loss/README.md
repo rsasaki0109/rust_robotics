@@ -4782,3 +4782,40 @@ failures, verified/unverified timers and endpoint brake flags. Native queries
 and traces remain under the output's `native/` directory. Completion provenance
 is written only after all joins and coverage checks pass. Use a second fresh
 output path to compare all tables and provenance byte for byte.
+
+## Inspect mean-probe geometric witnesses
+
+The [fixed witness protocol](results/mean-speed-probe-geometry-witnesses/protocol.md)
+retains all 54 mean-arm cases and every eligible positive command, including
+ready controls. It replays the recorded speed probe and recovery line using
+the original Rust functions, retains all nearest obstacle ties, and compares
+three static queries at the same mean position: recorded yaw/steering, mean
+yaw with the same steering, and mean yaw with zero steering.
+The [recorded report](results/mean-speed-probe-geometry-witnesses/report.md)
+retains all populations, the terminal-release component census and three
+fixed geometric diagrams.
+
+```bash
+python3 -B experiments/pose_observation_loss/analyze_probe_geometry.py \
+  --raw /path/to/mean-speed-probe-raw --output /tmp/probe-geometry
+python3 -B experiments/pose_observation_loss/plot_probe_geometry.py \
+  --data /tmp/probe-geometry --output /tmp/probe-geometry-plot
+```
+
+The collector requires the complete frozen pilot packet, an activated Rust
+compiler and a clean committed checkout. The plotter uses the existing pinned
+Python 3.12 / Matplotlib 3.10.8 replay profile. Both commands require fresh
+external output directories and reject Python optimization. Run each twice
+and compare all evidence and figure bytes. No new vehicle trajectories are
+generated and no control thresholds are changed.
+
+The stopping and terminal-preview logs have nine decimal places. Their closed
+rounding intervals are converted outward to binary floats and passed through
+the original aligned release function. A component overlapping the strict
+release threshold remains unresolved. All case/mask cells, including empty
+cells, are exported. Compact representatives select the first and minimum
+recovery-gap decision per case/mask; all tied nearest obstacles remain attached.
+Full queries, traces and witnesses stay under the output's `native/` directory,
+bound by completion hashes. The plots show the first decision of each failure
+mask and label the guard-pose marker as rounded. Same-step query differences
+cannot establish the outcome of a modified controller.

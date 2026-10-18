@@ -1,0 +1,27 @@
+{
+  "python": "3.12.14",
+  "matplotlib": "3.10.8",
+  "plotter_sha256": "fc8684e1b1c5b1176c727ba452f4bcc6c3c2cedcf2dc2b19feab764e2117bf7e",
+  "sources_sha256": "38d0b70791fc2a92525fdba8a8aaf23c5802e83b558f4cce2356adddbac2a3a9",
+  "fixture_sha256": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+  "selected_ids": [
+    "51",
+    "52",
+    "1597"
+  ],
+  "input_sha256": {
+    "case-summary.csv": "7030af7911070b8691474556cceef96bd35c7a77cb9abfa310e6fe1792916d1d",
+    "mask-summary.csv": "1c62b8c74a2bc87b2d327143ca56d5ac95897f3d34a9c5fadc325257fa91e7dc",
+    "representatives.csv": "f10d047f9fe1df3bbe610077ea95167ce5b9f6c90c1f2c688e2794de5d3cfc8c",
+    "representative-native.csv": "97e071755f69ee7d54bd55b2fbf0fe31d66b232ee4949c120090f39e0923bd14",
+    "representative-witnesses.csv": "52457f52640ce2e8179104dbf86d6880d5d520277f8f86e18c3a2d89d477b77f",
+    "representative-inputs.tsv": "3c25a4df752958313ed378db203bdd1170b67bff42c5013379beda1f143be9cb",
+    "probe-geometry.rs": "098a6140a0295854134645c848e46040b843beba24bc820d18ce74f939baec93",
+    "plot-paths.csv": "895b7f52d663be07da3c665abfd062e9b545cd06101b577fd84ca53b09a6cdc1",
+    "native-sources.json": "0659a051afa7cdc5f801c43dd98ed1544c9f7fe05d422b27198674912ec7c7fb"
+  },
+  "output_sha256": {
+    "geometry.svg": "c0da54b0cd4f871dd677d7bc52a1791da8f613b3ccd45822ecee5c86c3682f01",
+    "geometry.png": "0180a29388a22882fc5dd81605e062cbfb11a3f8754928149cdcccd2303a6b4a"
+  }
+}

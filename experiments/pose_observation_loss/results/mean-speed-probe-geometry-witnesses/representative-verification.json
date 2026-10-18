@@ -1,0 +1,22 @@
+{
+  "representatives": 132,
+  "archived_source_recompiled": true,
+  "trace_bytes_identical": true,
+  "all_witness_bytes_identical": true,
+  "frozen_inputs": 62,
+  "receipt": {
+    "command": [
+      "./native-probe-geometry",
+      "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+      "queries.tsv",
+      "witnesses.csv",
+      "paths.csv"
+    ],
+    "sha256": {
+      "queries.tsv": "3c25a4df752958313ed378db203bdd1170b67bff42c5013379beda1f143be9cb",
+      "trace.csv": "97e071755f69ee7d54bd55b2fbf0fe31d66b232ee4949c120090f39e0923bd14",
+      "witnesses.csv": "52457f52640ce2e8179104dbf86d6880d5d520277f8f86e18c3a2d89d477b77f",
+      "paths.csv": "28abd62c589c626741987bb35625ac02f7fe14e8853bde12c62a7bcd1e498aa6"
+    }
+  }
+}
