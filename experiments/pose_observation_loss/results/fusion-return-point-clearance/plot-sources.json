@@ -1,0 +1,13 @@
+{
+  "script_sha256": "58119274e177a03fc8278787a09a7a0e0e0eafd2a559c0051608b10e71674a1c",
+  "input_sha256": {
+    "sources.json": "6752d0e1aa13908e5b402e63f1079d1fac692c68fc70c66129a930e31ec09d58",
+    "anchor-point.csv": "b9d558433bef0080eccdae6afb1b887cd13c6d38d53cb3fa28050b705bb7007b",
+    "point-summary.csv": "d329c21a9f4d8f8c5843819dc33d00c93ac3fcb038774994fa0e036f2761e677"
+  },
+  "output_sha256": {
+    "point-clearance.svg": "6c0ac90f0d51458d766fe8574f9d7e1e06025bac6b3b18f1a16bea14413bce57",
+    "plot-values.csv": "79170268948e78b9fd8bebe8bf3127356984761208e907fdb5e3a59e67a363b0",
+    "plot-return-values.csv": "409da2103f2f1b51144add670e6c5a3e88ad163bb819f5bd54c530b3cf08ba32"
+  }
+}
