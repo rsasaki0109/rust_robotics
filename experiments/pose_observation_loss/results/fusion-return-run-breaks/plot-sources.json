@@ -1,0 +1,18 @@
+{
+  "script_sha256": "6d6c67ed00578e8eb8eef3c0f89901e1ce38ffa047db32e5a64367f9662cd985",
+  "input_sha256": {
+    "sources.json": "83d3c06df66e4e331c05486bfe7df0bdb4197d8159f7c1820d767d287f4debaa",
+    "run-ends.csv": "5932a460b0a2bb1eff6b3785170453291898995146d72ffb236e9e2d8e8d4472",
+    "reset-edges.csv": "ce2d8cbea32f68221c292c3728d0723003336dbd6ca8466cdbeed622d42b017d",
+    "reference-breaks.csv": "4ead69cf2f16f6b59ed234f7e11e2b762ca70d8b746ae061d864eecd543bedfe",
+    "anchor-breaks.csv": "6324c57a9cc35b444dfd92246920abaf4b56055671180ebc807a52ff6993d340",
+    "break-summary.csv": "8a81a4f610dbf66055b034f31e81b6bd76e75138deec0fe4327113d40e3fd66d"
+  },
+  "output_sha256": {
+    "run-breaks.svg": "9bfe246d319cae5721bd2ce77e2c72133d5b551ef2061a890380f92f4b35f176",
+    "plot-run-ends.csv": "5932a460b0a2bb1eff6b3785170453291898995146d72ffb236e9e2d8e8d4472",
+    "plot-reset-edges.csv": "ce2d8cbea32f68221c292c3728d0723003336dbd6ca8466cdbeed622d42b017d",
+    "plot-values.csv": "9e954d25c91c4ff22e3bb2ffd461a80bbaf467865d6f5f47193801d40fe83601",
+    "plot-return-values.csv": "38e5bc07a12e96b9758ff9b442dd15d1139d50f8c41f250bba592aa0b1722051"
+  }
+}
