@@ -1,0 +1,13 @@
+{
+  "script_sha256": "215eb9b6cfa16460102a9683329e48f124c296e6451e7804d30407c72c49f277",
+  "input_sha256": {
+    "sources.json": "ce946dad8570b16cc0ca12a8f2d41c526801ec560b620c386fda8e9ed9688f9e",
+    "anchor-turnover.csv": "c60516d993229c0eaac4338431303fa590e110184052c1849debd18794c0453c",
+    "turnover-summary.csv": "f8e64357e69cda8d3e7879e54964ad2f79ce7d3461e2556c42b547479c187933"
+  },
+  "output_sha256": {
+    "window-turnover.svg": "618ffb263f907fd5a378c6405c536df891370c27143b5670bdad6f8eb042de9f",
+    "plot-values.csv": "9ca772538dfeb6857c66add0e9837d847a45ce9ce64a0673fcc0c14dc6481d7e",
+    "plot-return-values.csv": "6278d6ad0625313255f10d4b26b72aaedd9f8d9d7c6f8b406286e32fd944df3f"
+  }
+}

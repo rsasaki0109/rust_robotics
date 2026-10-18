@@ -3946,3 +3946,51 @@ samples or run the rest of the controller. Repeat all four tables/provenance
 and plot artifacts byte for byte. See the
 [window reconstruction report](results/fusion-return-recovery-window/report.md)
 for evidence and the fixed 25-reference subgroup.
+
+## Compare adjacent recovery-window updates
+
+The [fixed protocol](results/fusion-return-window-turnover/protocol.md) compares
+each of the same 1,096 zero-probe references with its immediately preceding
+source step. It retains the original population, weights, outcome labels and
+follow-up boundaries. A predecessor is historical input context; it does not
+become a new available decision. All 63 selected histories are replayed again.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_window_turnover.py \
+  --output /tmp/fusion-return-window-turnover
+MPLCONFIGDIR=/tmp/window-turnover-mpl python3 experiments/pose_observation_loss/plot_window_turnover.py \
+  --results /tmp/fusion-return-window-turnover --output /tmp/window-turnover-figures
+python3 experiments/pose_observation_loss/verify_window_turnover.py \
+  --results /tmp/fusion-return-window-turnover --figures /tmp/window-turnover-figures \
+  --work /tmp/window-turnover-independent --output /tmp/window-turnover-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output/work directories and an unused evidence filename, without
+Python -O. Activate the saved Rust toolchain or provide `--rustc`. Both readers
+accept `--raw-roots`. Collection/verification use the standard library; plotting
+uses Matplotlib. No controller rollout or Cargo dependencies are added.
+
+`turnover-decisions.csv` retains earlier columns, adding preceding context,
+membership transitions, signed mean/raw/gap steps and their numerical bounds.
+When both windows are nonempty, added and removed samples independently predict
+the mean update. A full 25-to-25 slide uses (newest−removed_oldest)/25; growth
+uses the previous mean and the new count. Empty-side predictions stay blank.
+`turnover-members.csv` records the union of both memberships, shared/added/
+removed roles and exact raw inputs. Positive probes retain blank new fields.
+
+Among 887 pairs with two nonempty windows, 877 have a certainly larger raw
+position step and ten a larger mean step; no comparison is unresolved. All
+25 preceding conjunction failures have a larger raw step, with seven growing
+windows and 18 slides. These describe recorded adjacent input changes rather
+than statistical noise reduction, causal policy benefit or successful motion.
+
+`anchor-turnover.csv` and `turnover-summary.csv` retain original weights and
+cells and add phase/branch transition and comparison counts, available-anchor
+flags and original case-mass shares. Nonreturns and empty denominators remain
+blank. The standalone verifier imports no analyzers, using pinned independent
+window replay/means and native helpers plus separate Decimal vector arithmetic.
+Both contexts are traced with the original Rust window fragment; duplicate
+context queries are distinguished from unique source points. Repeat all four
+tables/provenance and plot artifacts byte for byte. See the
+[adjacent-window report](results/fusion-return-window-turnover/report.md).
