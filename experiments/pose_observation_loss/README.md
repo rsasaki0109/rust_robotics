@@ -4543,6 +4543,27 @@ timestamps and output paths so they can be compared bytewise; their stage
 hashes include the PNGs. The saved review was checked with two full runs,
 including every generated collector, plot and proof file.
 
+To check a completed replay after copying or receiving it:
+
+```bash
+python3 experiments/pose_observation_loss/check_reset_review.py \
+  --review /tmp/fusion-return-reset-review
+```
+
+This read-only command needs only the Python standard library and the pinned
+checkout. It checks all 64 artifact files, six stage records, 91 frozen inputs,
+the recorded runner/protocol/catalogue, and both overview exports. Each PNG
+must match its own completion-manifest hash; PNGs have no committed image
+baseline. The other stage artifacts also match the frozen repository bytes.
+The success JSON describes stored-file integrity. Use the replay command above
+for fresh collector, plotter and numerical verifier execution.
+
+Keep the three top-level CSV/JSON files and the complete `stages/` tree.
+Stage logs may be retained or discarded; their contents are outside the
+integrity claim. Missing/extra artifacts, internal symlinks, changed provenance
+or mismatched hashes fail with a nonzero status and a diagnostic on stderr.
+The checker writes no files and runs without Python -O.
+
 All 19 original commands have cap_zero and a failing nominal gate; four also
 have clearance/release failures, preserved in the full masks. Seventeen
 original probes fail at the initial point and two at the directly checked
