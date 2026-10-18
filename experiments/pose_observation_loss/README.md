@@ -48,14 +48,20 @@ inputs, which also detects earlier files changed by later children.
 
 Download the `reset-evidence-replay` artifact from the workflow run to obtain
 the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
-log, the integrity receipt and the Python/package version record. The upload
-runs on success and failure with 14-day retention; a failed replay retains its
-partial outputs and diagnostics. Failure annotations show the last child and
+log, the integrity receipt and the source/Python/package version record. The
+upload runs on success and failure with 14-day retention. A failed replay retains
+its partial outputs and diagnostics. Failure annotations show the last child and
 runner log lines and the first differences from frozen artifacts.
-Check an extracted successful artifact with:
+
+The first line of `reset-review-environment.txt` is `source_commit=<full SHA>`
+from the checkout that produced the artifact. Use a clean checkout of that commit
+and run the following command from its repository root. The check validates
+driver, helper and dependency-file hashes, so a later `main` can
+reject an older valid packet after those files change. This read-only check
+needs only the Python standard library; it does not rerun the six stages.
 
 ```bash
-python3 -B experiments/pose_observation_loss/ci_reset_replay.py \
+python3 -S -B experiments/pose_observation_loss/ci_reset_replay.py \
   --check /path/to/extracted-artifact/fusion-return-reset-review
 ```
 
