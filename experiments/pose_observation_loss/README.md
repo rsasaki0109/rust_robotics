@@ -6,6 +6,10 @@ model and Pure Pursuit implementation, fixed A*, JPS, and Theta* paths, and
 paired noise/loss streams. The policy lives in an example; library behavior is
 unchanged.
 
+For the completed 19-reset evidence audit, start with the
+[consolidated review](results/fusion-return-reset-review/report.md) and its
+[one-command replay](#review-and-replay-the-reset-evidence).
+
 ## Reproduce
 
 From the repository root, with the repository's Rust toolchain and Python 3.9+:
@@ -4472,3 +4476,53 @@ add; empty extrema stay blank. The standalone verifier imports no analyzers or
 plotters and independently checks the new calculations with 60-digit Decimal.
 Replay both tables/sources and all five plot artifacts byte for byte. See the
 [reset-surplus report](results/fusion-return-reset-surplus/report.md).
+
+## Review and replay the reset evidence
+
+The [consolidated review](results/fusion-return-reset-review/report.md) connects
+all 19 original reset decisions to their point gaps, original failing probe
+stage, full simultaneous failure mask, zero-cap nominal command and timer
+before/after values. Its 39-column CSV copies original strings and keeps both
+nonapplicable first-chord rows, including blank ratio values.
+
+```bash
+MPLCONFIGDIR=/tmp/reset-review-mpl python3 experiments/pose_observation_loss/review_reset_evidence.py \
+  --output /tmp/fusion-return-reset-review
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use a fresh output directory outside the checkout, without Python -O. The
+runner uses the standard library; the existing plotters require Matplotlib.
+The full Python suite also needs the activated saved Rust toolchain for its
+existing native unit fixtures. The review runner adds no raw extraction,
+source observations or native dataset execution.
+
+The command reruns all six collectors, plotters and standalone independent
+verifiers: run-breaks, reset-probes, reset-displacement, reset-projection,
+reset-margin and reset-surplus. Each keeps its original committed input paths;
+the runner compares all replayed tables/sources, SVG/CSV/plot manifests and
+independent proof files byte for byte with frozen evidence. It retains fresh
+PNGs for comparison between review runs. This repeats existing arithmetic,
+including 19 displacement, 19 projection, 19 margin and 17 ratio pairs, with
+their original input boxes; it creates no new experimental trials.
+
+`reset-evidence.csv` contains all 19 rows × 39 fields. `study-index.csv` links
+the six reports/scripts/proofs and retains each stage's full original audit
+JSON with its original units. `review-sources.json` records frozen inputs,
+all fresh replay hashes and the two overview CSV hashes. Per-stage logs and
+full replay outputs remain under `OUTPUT/stages/`. A failed child preserves
+its failure status and logs; a completion manifest is written only after all
+stages and exact comparisons pass. Existing output directories are rejected.
+
+For a second replay, choose another fresh output path. Review manifests omit
+timestamps and output paths so they can be compared bytewise; their stage
+hashes include the PNGs. The saved review was checked with two full runs,
+including every generated collector, plot and proof file.
+
+All 19 original commands have cap_zero and a failing nominal gate; four also
+have clearance/release failures, preserved in the full masks. Seventeen
+original probes fail at the initial point and two at the directly checked
+first chord. Mean point gaps to their original blockers are clear in all 19,
+while the original timer resets remain zero after the decision. These are
+different recorded predicates; a clear mean point does not replace a curved
+probe or establish a successful recovery policy.
