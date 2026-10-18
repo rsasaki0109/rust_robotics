@@ -46,6 +46,11 @@ A mismatch preserves that stage's logs and stops the replay. The completed
 packet is published only after another full check of all stages and frozen
 inputs, which also detects earlier files changed by later children.
 
+If a collector, plotter or verifier fails, the CLI reports its stage, phase,
+status and absolute log path. It stops immediately and preserves the partial
+outputs and original log bytes. The CLI preserves positive child exit codes
+and returns `128 + signal` for a child terminated by a signal.
+
 Download the `reset-evidence-replay` artifact from the workflow run to obtain
 the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
 log, the integrity receipt and the source/Python/package version record. The
