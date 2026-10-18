@@ -58,6 +58,7 @@ Yaw uses sin/cos global Lipschitz intervals with P. For nonempty windows form
 mean sine/cosine enclosures and their vector displacement radius. If the
 center resultant norm is positive and radius<=norm/2, use circular angle
 radius 2*radius/norm+P; otherwise keep full_circle uncertainty explicitly.
+Use canonical center zero for full_circle, whose center is otherwise arbitrary.
 The bound follows asin(r/norm)<=2r/norm on [0,1/2]. Compare logged/native yaw
 on the circle, including wrap at pi, with the corresponding log half-unit or
 P guard. The standalone verifier uses pinned Decimal Taylor sin/cos and a
