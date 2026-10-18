@@ -38,76 +38,74 @@ def csv_bytes(rows, fields):
     return stream.getvalue().encode()
 
 
+def inspect_stage(output, stem, pinned):
+    reference = review.RESULTS / pinned["study"]
+    work = output / "stages" / stem
+    integrity.directory(
+        work,
+        ("independent-verification.json",),
+        ("collector", "figures"),
+        integrity.LOG_FILES,
+    )
+    source = review.read_json(reference / "sources.json")
+    plot = review.read_json(reference / "plot-sources.json")
+    proof = review.read_json(reference / "independent-verification.json")
+    png = stem.replace("_", "-") + ".png"
+    integrity.directory(work / "collector", [*source["output_sha256"], "sources.json"])
+    integrity.directory(
+        work / "figures", [*plot["output_sha256"], "plot-sources.json", png]
+    )
+    collector_hashes = review.match_directory(
+        reference, work / "collector", source["output_sha256"], ("sources.json",)
+    )
+    plot_hashes = review.match_directory(
+        reference,
+        work / "figures",
+        plot["output_sha256"],
+        ("plot-sources.json", png),
+    )
+    equivalent(work / "collector/sources.json", source)
+    plot["input_sha256"]["sources.json"] = collector_hashes["sources.json"]
+    equivalent(work / "figures/plot-sources.json", plot)
+    proof["sources_sha256"] = collector_hashes["sources.json"]
+    proof["plot_sources_sha256"] = plot_hashes["plot-sources.json"]
+    equivalent(work / "independent-verification.json", proof)
+    proof_hash = review.sha(work / "independent-verification.json")
+    record = dict(
+        stage=stem,
+        study=pinned["study"],
+        collector_sha256=collector_hashes,
+        plot_sha256=plot_hashes,
+        independent_proof_sha256=proof_hash,
+        frozen_sources_sha256=pinned["sources_sha256"],
+        frozen_plot_sources_sha256=pinned["plot_sources_sha256"],
+        frozen_proof_sha256=pinned["proof_sha256"],
+    )
+    entry = dict(
+        study=pinned["study"],
+        collector_script=f"analyze_{stem}.py",
+        verifier_script=f"verify_{stem}.py",
+        plotter_script=f"plot_{stem}.py",
+        report_path=str((reference / "report.md").relative_to(review.REPO)),
+        sources_sha256=collector_hashes["sources.json"],
+        proof_sha256=proof_hash,
+        plot_sources_sha256=plot_hashes["plot-sources.json"],
+        replayed_collector_files=len(collector_hashes),
+        replayed_plot_files=len(plot_hashes),
+        independent_comparisons=proof["comparisons"],
+        original_identity_comparisons=proof["original_join_comparisons"],
+        audit_json=json.dumps(source["audit"], sort_keys=True, separators=(",", ":")),
+    )
+    return record, entry
+
+
 def inspect_stages(output, pins):
     integrity.directory(output / "stages", directories=review.STEMS)
     records, index = [], []
     for stem in review.STEMS:
-        pinned = pins["studies"][stem]
-        reference = review.RESULTS / pinned["study"]
-        work = output / "stages" / stem
-        integrity.directory(
-            work,
-            ("independent-verification.json",),
-            ("collector", "figures"),
-            integrity.LOG_FILES,
-        )
-        source = review.read_json(reference / "sources.json")
-        plot = review.read_json(reference / "plot-sources.json")
-        proof = review.read_json(reference / "independent-verification.json")
-        png = stem.replace("_", "-") + ".png"
-        integrity.directory(
-            work / "collector", [*source["output_sha256"], "sources.json"]
-        )
-        integrity.directory(
-            work / "figures", [*plot["output_sha256"], "plot-sources.json", png]
-        )
-        collector_hashes = review.match_directory(
-            reference, work / "collector", source["output_sha256"], ("sources.json",)
-        )
-        plot_hashes = review.match_directory(
-            reference,
-            work / "figures",
-            plot["output_sha256"],
-            ("plot-sources.json", png),
-        )
-        equivalent(work / "collector/sources.json", source)
-        plot["input_sha256"]["sources.json"] = collector_hashes["sources.json"]
-        equivalent(work / "figures/plot-sources.json", plot)
-        proof["sources_sha256"] = collector_hashes["sources.json"]
-        proof["plot_sources_sha256"] = plot_hashes["plot-sources.json"]
-        equivalent(work / "independent-verification.json", proof)
-        proof_hash = review.sha(work / "independent-verification.json")
-        records.append(
-            dict(
-                stage=stem,
-                study=pinned["study"],
-                collector_sha256=collector_hashes,
-                plot_sha256=plot_hashes,
-                independent_proof_sha256=proof_hash,
-                frozen_sources_sha256=pinned["sources_sha256"],
-                frozen_plot_sources_sha256=pinned["plot_sources_sha256"],
-                frozen_proof_sha256=pinned["proof_sha256"],
-            )
-        )
-        index.append(
-            dict(
-                study=pinned["study"],
-                collector_script=f"analyze_{stem}.py",
-                verifier_script=f"verify_{stem}.py",
-                plotter_script=f"plot_{stem}.py",
-                report_path=str((reference / "report.md").relative_to(review.REPO)),
-                sources_sha256=collector_hashes["sources.json"],
-                proof_sha256=proof_hash,
-                plot_sources_sha256=plot_hashes["plot-sources.json"],
-                replayed_collector_files=len(collector_hashes),
-                replayed_plot_files=len(plot_hashes),
-                independent_comparisons=proof["comparisons"],
-                original_identity_comparisons=proof["original_join_comparisons"],
-                audit_json=json.dumps(
-                    source["audit"], sort_keys=True, separators=(",", ":")
-                ),
-            )
-        )
+        record, entry = inspect_stage(output, stem, pins["studies"][stem])
+        records.append(record)
+        index.append(entry)
     return records, index
 
 
@@ -207,6 +205,8 @@ def run(output):
                 [sys.executable, "-B", str(review.ROOT / args[0]), *args[1:]],
                 work / (phase + ".log"),
             )
+        inspect_stage(output, stem, pins["studies"][stem])
+    # Recheck the final snapshot as well: later children could change earlier files.
     records, index = inspect_stages(output, pins)
     rows = review.project_overview(
         review.read_csv(output / "stages/reset_surplus/collector/surplus.csv")
