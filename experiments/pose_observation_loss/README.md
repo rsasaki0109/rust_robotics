@@ -4108,3 +4108,64 @@ pair is traced. Repeat the five tables/provenance and figure artifacts byte
 for byte. The 5x5 figure shows all 25 references in original order, marks
 before-return context and raw-away labels, and breaks lines at missing slots.
 See the [point-history report](results/fusion-return-point-history/report.md).
+
+## Check local admission gates and actual timers
+
+The [fixed protocol](results/fusion-return-local-admission/protocol.md) reuses
+exactly the preceding 25 references and 1,275 planned slots. It checks whether
+a clear point also satisfies the original admission conjunction, and follows
+the actual joint/guard evidence counters. The 60 slots at/after next loss stay
+missing; the 82 before-return slots remain historical context.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_local_admission.py \
+  --output /tmp/fusion-return-local-admission
+MPLCONFIGDIR=/tmp/local-admission-mpl python3 experiments/pose_observation_loss/plot_local_admission.py \
+  --results /tmp/fusion-return-local-admission --output /tmp/local-admission-figures
+python3 experiments/pose_observation_loss/verify_local_admission.py \
+  --results /tmp/fusion-return-local-admission --figures /tmp/local-admission-figures \
+  --work /tmp/local-admission-independent --output /tmp/local-admission-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output/work directories and an unused evidence filename, without
+Python -O. Activate the saved Rust toolchain or provide `--rustc`. Both readers
+accept `--raw-roots`. Collection/verification use the standard library; plotting
+uses Matplotlib. Both readers hash/stream all 108 raw files and independently
+replay the four selected window histories. No new rollout is required.
+
+`local-slots.csv` retains every preceding field and adds exact current/previous
+raw inputs, binary64 observation age, the original branch, seven source gates,
+simultaneous failure/unknown masks and observed timer transitions. Nominal sign
+comes from the original 41-value speed-cap domain and stop latch, independently
+of counters. Other gates retain the declared rounding intervals. Joint admission
+needs 50 consecutive ready ticks; an active guard needs 25. Fusion availability
+does not add a gate or reset a timer by itself.
+
+`ready-runs.csv` records maximal known-pass segments, breaking on unknowns,
+failures, missing slots, branch changes or a preceding release. A segment with
+L checkpoints spans (L-1)/50 s and adds L/50 s of evidence. Actual carried
+counts and context-limited endpoints remain explicit; unknown does not imply
+that the original unrounded predicate was false. `local-decisions.csv` adds
+pre/post counts, segment/counter maxima and checks at the inherited first
+later-clear offsets, without adding decision references. `anchor-local.csv`
+and `local-summary.csv` preserve the original weights and all summary cells.
+
+The standalone verifier imports no analyzers or plotters. Independent Decimal
+gate calculations, timer inference, original-reference joins, run scans and
+aggregation check all exports. Unchanged Rust window, speed-cap, recovery and
+timer fragments check the native predicates and updates. Native timer inputs
+use logged rounded scalars, exact age/speed and source-DT counter reconstruction;
+unknown center mismatches are counted explicitly. Guard-entry flags are inputs,
+so this is not a new closed-loop replay or whole-map probe audit.
+
+At the inherited first later-clear offsets, 22 of 23 references pass all gates
+and advance from zero to one tick; one fails recovery clearance. Across all
+included contexts, the longest known-pass segment and largest actual counter
+are nine ticks, below the joint threshold of 50. All 25 reference windows have
+both known-pass decisions and resets at positive offsets.
+
+The 5x5 figure shows actual active counters for all 25 references, with shared
+0..50-tick axes, both thresholds and missing-slot breaks. Repeat all five tables,
+provenance and plot artifacts byte for byte. See the
+[local-admission report](results/fusion-return-local-admission/report.md).
