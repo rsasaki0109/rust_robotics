@@ -3887,3 +3887,62 @@ reconstruct unrounded sample means or add a closed-loop rollout. Repeat the
 three tables/provenance and figure/exports byte for byte. See the
 [recovery geometry report](results/fusion-return-recovery-geometry/report.md)
 for counts, the original 25-reference subgroup and numerical assumptions.
+
+## Reconstruct the stationary recovery window
+
+The [fixed protocol](results/fusion-return-recovery-window/protocol.md)
+reconstructs sample membership for all 1,096 preceding zero-probe references.
+It replays every recorded step of histories containing a selected reference,
+checks their recovery sample counts, and retains all preceding references,
+anchors, original measures and summary cells. Other raw histories still receive
+complete hash/grid checks; their windows are not claimed as newly replayed.
+
+The recorded audit reproduces all sample counts across 63 selected histories
+and 567,000 steps. All 1,096 reference means agree with logged values within
+the declared input/output rounding enclosures: 921 use retained samples and
+175 use raw fallback. The preceding 25 conjunction failures use 10–25 samples;
+18 already evicted older samples. This confirms the recorded window behavior
+without changing the nominal-speed predicate or controller.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_recovery_window.py \
+  --output /tmp/fusion-return-recovery-window
+MPLCONFIGDIR=/tmp/recovery-window-mpl python3 experiments/pose_observation_loss/plot_recovery_window.py \
+  --results /tmp/fusion-return-recovery-window --output /tmp/recovery-window-figures
+python3 experiments/pose_observation_loss/verify_recovery_window.py \
+  --results /tmp/fusion-return-recovery-window --figures /tmp/recovery-window-figures \
+  --work /tmp/recovery-window-independent --output /tmp/recovery-window-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output/work directories and an unused evidence filename, without
+Python -O. Activate the saved Rust toolchain or provide `--rustc`. Both readers
+accept `--raw-roots`. Collection and verification use the standard library;
+plotting uses Matplotlib. No new controller rollout or Cargo dependencies.
+
+Window admission uses the pause flag before recovery updates, exact roundtrip
+measured speed and source binary64 observation-age arithmetic. Preserve every
+simultaneous clear reason, clear-then-append order, and removal of the oldest
+sample beyond capacity 25. `window-lineage.csv` records the ordered raw inputs
+of every retained member; empty windows have an explicit raw-fallback row.
+`window-decisions.csv` retains preceding columns and adds count/clear/eviction
+metadata, bounded reconstructed means and a rounded-input decomposition of the
+current-versus-mean displacement into truth/noise/bias terms. This decomposition
+is for auditing recorded inputs and does not supply true pose to the controller.
+
+`anchor-window.csv` and `window-summary.csv` retain every preceding field and
+original measure, adding phase/branch counts, anchor flags and original case-
+mass shares. Nonreturns and undefined shares keep blank new fields. Positive
+probes retain blank new reconstruction fields.
+
+The standalone verifier imports no analyzers. It independently keeps admissions
+since the last clear, selects the last 25, and calculates Decimal mean intervals
+and circular yaw with Taylor trig and a separate reduced atan series. Native
+Rust compiles the unchanged original window-update/mean fragment and checks
+all selected-history sample counts, tracing each selected rounded-input mean.
+The full native replay input stays scratch and hash-pinned; small checkpoint
+queries and traces are tracked. These checks do not recover original unrounded
+samples or run the rest of the controller. Repeat all four tables/provenance
+and plot artifacts byte for byte. See the
+[window reconstruction report](results/fusion-return-recovery-window/report.md)
+for evidence and the fixed 25-reference subgroup.
