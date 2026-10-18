@@ -38,6 +38,34 @@ def csv_bytes(rows, fields):
     return stream.getvalue().encode()
 
 
+def preflight():
+    reference = review.STUDY / "review-sources.json"
+    integrity.require(
+        review.sha(reference) == integrity.RECORDED_REVIEW_SHA256,
+        f"Recorded reset review changed: {reference}",
+    )
+    recorded = integrity.read_manifest(reference)
+    for field, path in (
+        ("script_sha256", review.ROOT / "review_reset_evidence.py"),
+        ("protocol_sha256", review.STUDY / "protocol.md"),
+        ("freeze_sha256", review.STUDY / "freeze-pins.json"),
+    ):
+        integrity.require(
+            review.sha(path) == recorded["analysis"][field],
+            f"Recorded review input changed: {path}",
+        )
+    for name, digest in recorded["output_sha256"].items():
+        path = review.STUDY / name
+        integrity.require(
+            review.sha(path) == digest, f"Recorded review export changed: {path}"
+        )
+    pins, inputs = review.preflight()
+    integrity.require(
+        inputs == recorded["input_sha256"], "Recorded reset input pins changed"
+    )
+    return pins, inputs
+
+
 def inspect_stage(output, stem, pinned):
     reference = review.RESULTS / pinned["study"]
     work = output / "stages" / stem
@@ -146,7 +174,7 @@ def check_packet(output):
     integrity.require(__debug__, "Run without Python optimization")
     output = Path(output).expanduser().resolve()
     integrity.directory(output, TOP_FILES, ("stages",))
-    pins, inputs = review.preflight()
+    pins, inputs = preflight()
     records, index = inspect_stages(output, pins)
     review.same_file(review.STUDY / "reset-evidence.csv", output / "reset-evidence.csv")
     integrity.require(
@@ -169,7 +197,7 @@ def check_packet(output):
 def run(output):
     integrity.require(__debug__, "Run without Python optimization")
     output = review.check_destination(output)
-    pins, inputs = review.preflight()
+    pins, inputs = preflight()
     output.mkdir(parents=True)
     for stem in review.STEMS:
         work = output / "stages" / stem
@@ -224,7 +252,7 @@ def run(output):
     review.write_csv(output / "study-index.csv", index, review.INDEX_FIELDS)
     review.same_file(review.STUDY / "reset-evidence.csv", output / "reset-evidence.csv")
     integrity.require(
-        review.preflight() == (pins, inputs), "Frozen inputs changed during replay"
+        preflight() == (pins, inputs), "Frozen inputs changed during replay"
     )
     (output / MANIFEST).write_text(
         json.dumps(manifest(output, records, inputs), indent=2) + "\n"
