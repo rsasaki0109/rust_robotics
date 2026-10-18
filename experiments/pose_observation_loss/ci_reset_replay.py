@@ -170,6 +170,17 @@ def manifest(output, records, inputs):
     )
 
 
+def publish_manifest(output, value):
+    temporary = output / ("." + MANIFEST + ".tmp")
+    stream = temporary.open("x", encoding="utf-8")
+    try:
+        with stream:
+            stream.write(json.dumps(value, indent=2) + "\n")
+        temporary.replace(output / MANIFEST)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def check_packet(output):
     integrity.require(__debug__, "Run without Python optimization")
     output = Path(output).expanduser().resolve()
@@ -255,9 +266,7 @@ def run(output):
     integrity.require(
         preflight() == (pins, inputs), "Frozen inputs changed during replay"
     )
-    (output / MANIFEST).write_text(
-        json.dumps(manifest(output, records, inputs), indent=2) + "\n"
-    )
+    publish_manifest(output, manifest(output, records, inputs))
     return dict(
         replayed_stages=len(records),
         retained_resets=len(rows),
