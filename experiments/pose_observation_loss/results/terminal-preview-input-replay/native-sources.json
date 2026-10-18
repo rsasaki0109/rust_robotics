@@ -1,0 +1,43 @@
+{
+  "compiler": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "command": [
+      "/workspace/.cloud-env/rust_robotics/cargo/bin/rustc",
+      "--edition=2021",
+      "-O",
+      "terminal-preview.rs",
+      "-o",
+      "native-terminal-preview"
+    ],
+    "source_sha256": "0499caf8508c9f9ff6a4b8bf4897c92ff423305c7cb9b96237f1dc67634852df",
+    "binary_sha256": "5e6bf8acaf8212f3b7bea3a6a3627bc5fee69b1f08a8c52a030862a62fb24273"
+  },
+  "evaluation": {
+    "command": [
+      "./native-terminal-preview",
+      "history",
+      "/workspace/rust_robotics/experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv",
+      "history.tsv",
+      "history-checks.csv",
+      "exact-original-functions"
+    ],
+    "sha256": {
+      "history.tsv": "8b410251fd5e146bcdd4a6ae25f43ce4f10831484dd75f1af21b211a7399b3c7",
+      "trace.csv": "6b7c82482df71b242ec19342ccfdddc2146d2d1fd3f07467e11894ee67029b82",
+      "history-checks.csv": "1d8f0b00b7ab19c59fcaf2611632d8d2f16e7ed3a7ed7b79762b1554f1d8ede5"
+    }
+  },
+  "history_decisions": 394494,
+  "selected_decisions": 11998,
+  "static_queries": 47992,
+  "variants": [
+    "recorded",
+    "mean_position",
+    "mean_pose",
+    "zero_target"
+  ],
+  "extra_sha256": {
+    "metadata.csv": "4a0b51ff52162dc70615a3696a1a67f06f492fad65603c8fa071324262f17fa9",
+    "decisions.csv": "91cfa84e68abe56a67bf72f818f7c6713ef8299a8b67b2878ef658f0dfd2f521"
+  }
+}

@@ -4819,3 +4819,45 @@ Full queries, traces and witnesses stay under the output's `native/` directory,
 bound by completion hashes. The plots show the first decision of each failure
 mask and label the guard-pose marker as rounded. Same-step query differences
 cannot establish the outcome of a modified controller.
+
+## Replay the exact terminal-preview input history
+
+The [fixed terminal-input protocol](results/terminal-preview-input-replay/protocol.md)
+replays every mean-arm sensor decision in the retained pilot using the original
+Rust motion filter and stationary-epoch position fusion. It checks the logged
+filter state and rounded preview pose at every step before evaluating the
+selected positive commands. Physical truth and rounded poses are excluded from
+the estimator inputs.
+The [recorded report](results/terminal-preview-input-replay/report.md) preserves
+all paired flips and shows that the filtered heading already agrees with the
+recovery mean; position and the proposed stopping prefix affect release.
+
+```bash
+python3 -B experiments/pose_observation_loss/analyze_terminal_preview.py \
+  --raw /path/to/mean-speed-probe-raw --output /tmp/terminal-inputs-1
+python3 -B experiments/pose_observation_loss/analyze_terminal_preview.py \
+  --raw /path/to/mean-speed-probe-raw --output /tmp/terminal-inputs-2
+```
+
+Use a clean committed checkout, Python 3.12, the activated Rust compiler and
+fresh external output paths. The command rejects Python optimization and
+unsupported preview configurations. It verifies the full frozen raw packet,
+requires exact original nine-decimal filter/preview values and sample counts,
+and requires the recorded query's stop, terminal and combined clearances to
+match the logs exactly at their recorded precision.
+
+Each selected decision retains four static queries: original preview inputs,
+mean x/y with the original preview heading, mean x/y and mean heading, and the
+original preview with a zero target. Speed, steering, margins and map stay
+fixed except for the indicated factor. The zero target diagnoses the proposed
+stopping-motion prefix and is not a positive-command admission candidate.
+No controller trajectory, timer or threshold is changed.
+
+All cases, original gate masks, ready controls and both directions of release
+flips are retained. `case-summary.csv` and `summary.csv` preserve empty cells.
+Compact exports use the previous study's exact 132 representative IDs and
+roles, retaining all four variants. Their static inputs can be replayed with
+the archived Rust source's `direct` mode. Full sensor histories, native traces
+and classifications remain outside the checkout, bound by completion hashes.
+Compare both full run directories byte for byte; successful completion
+provenance is absent when a reconstruction or join fails.
