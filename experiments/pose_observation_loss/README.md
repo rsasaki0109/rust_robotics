@@ -4423,3 +4423,52 @@ partitions. The standalone verifier imports no analyzers or plotters and
 independently checks the arithmetic/classifications with 60-digit Decimal.
 Replay both tables/sources and all five plot artifacts byte for byte. See the
 [reset-margin report](results/fusion-return-reset-margin/report.md).
+
+## Measure radial surplus relative to the original point deficit
+
+The [fixed protocol](results/fusion-return-reset-surplus/protocol.md) retains
+all 19 original reset/blocker pairs and all 185 overlapping-ending records.
+Only the preceding 17 blocked-to-clear/radial-clear point pairs are eligible
+for deficit/radial fractions. Both already-clear first-chord rows remain
+explicitly not applicable, with blank fractions rather than zeros.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reset_surplus.py \
+  --output /tmp/fusion-return-reset-surplus
+MPLCONFIGDIR=/tmp/reset-surplus-mpl python3 experiments/pose_observation_loss/plot_reset_surplus.py \
+  --results /tmp/fusion-return-reset-surplus --output /tmp/reset-surplus-figures
+python3 experiments/pose_observation_loss/verify_reset_surplus.py \
+  --results /tmp/fusion-return-reset-surplus --figures /tmp/reset-surplus-figures \
+  --output /tmp/reset-surplus-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh directories and an unused proof filename, without Python -O. The
+standard-library collector/verifier use tracked preceding results; Matplotlib
+produces the figure. Activate the saved Rust toolchain for the full suite's
+existing native unit fixtures. Raw extraction and native dataset execution
+remain inherited; the new audit adds neither.
+
+For original raw gap `h`, radial component `a` and radial gap `H=h+a`, compute
+`deficit=0-h`, `surplus=a-deficit`, `required_fraction=deficit/a` and
+`surplus_fraction=surplus/a`. Division requires `a_lo>0`. Verify that the two
+fractions sum to one, the surplus fraction matches `H/a` and the surplus
+matches the preceding radial gap. Conditional intervals retain 1e-12 padding;
+fractions are never clipped to [0,1]. Strict full bounds classify relations
+to one and signs, without numeric comparison tolerance.
+
+All 17 eligible pairs have required fractions below one and positive surplus
+fractions. The raw deficits account for approximately 1.405–91.379% of their
+recorded radial components; the remainder accounts for 8.621–98.595%. These
+are same-step algebraic fractions, not controller settings, simulated changes
+or recovery probabilities. The original unsafe chord evidence is retained.
+
+`surplus.csv` preserves all 656 preceding fields and adds eight quantity
+triples, status and two classifications. Incomplete margins or uncertain
+radial denominators remain explicit with blank new quantities. The 20
+`surplus-summary.csv` cells keep all physical/overlapping counts, computed
+multiplicities, every status/classification and interval extrema. Only counts
+add; empty extrema stay blank. The standalone verifier imports no analyzers or
+plotters and independently checks the new calculations with 60-digit Decimal.
+Replay both tables/sources and all five plot artifacts byte for byte. See the
+[reset-surplus report](results/fusion-return-reset-surplus/report.md).

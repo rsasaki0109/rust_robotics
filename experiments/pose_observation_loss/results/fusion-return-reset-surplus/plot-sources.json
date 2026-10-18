@@ -1,0 +1,13 @@
+{
+  "script_sha256": "dfba4cc3f364507764c964133654583e27a1a19b59851a8aed8e102674f6a5be",
+  "input_sha256": {
+    "sources.json": "a98faabc9e2857d5dc5af2c5e078a7412fee0e8f7c3694780c2309a99eb2acd4",
+    "surplus.csv": "4aa66216f5125aa0783904e1b7edb6391afd3954549085eda6bae48f8488fc7b",
+    "surplus-summary.csv": "a7459fb55f6c0c33fb94877b23d76c1843fc2fc1dc398d462c6d100dca590547"
+  },
+  "output_sha256": {
+    "reset-surplus.svg": "0a8133560b3d65ab5d0fa391d6451cadf18261af144a07fa4adf865e8efb6c2d",
+    "plot-surplus.csv": "4aa66216f5125aa0783904e1b7edb6391afd3954549085eda6bae48f8488fc7b",
+    "plot-values.csv": "a7459fb55f6c0c33fb94877b23d76c1843fc2fc1dc398d462c6d100dca590547"
+  }
+}

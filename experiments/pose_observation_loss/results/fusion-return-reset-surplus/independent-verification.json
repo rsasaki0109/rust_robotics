@@ -1,0 +1,39 @@
+{
+  "physical_resets": 19,
+  "overlapping_endings": 185,
+  "inspected_pairs": 19,
+  "computed_overlapping_endings": 170,
+  "origins": {
+    "initial_unsafe": 17,
+    "first_chord_by_exclusion": 2
+  },
+  "surplus_statuses": {
+    "complete": 17,
+    "not_applicable_category": 2
+  },
+  "required_fraction_relations": {
+    "below_one": 17,
+    "not_applicable": 2
+  },
+  "surplus_fraction_states": {
+    "positive": 17,
+    "not_applicable": 2
+  },
+  "summary_rows": 20,
+  "additive_closure_comparisons": 135,
+  "fresh_ratio_pairs": 17,
+  "fresh_raw_reads": 0,
+  "fresh_native_runs": 0,
+  "comparisons": 27114,
+  "original_join_comparisons": 131901,
+  "script_sha256": "8ad8ef65cfc38177fe8187730e3e46302cbd89076558c6e5502d1fb491ec77af",
+  "sources_sha256": "a98faabc9e2857d5dc5af2c5e078a7412fee0e8f7c3694780c2309a99eb2acd4",
+  "plot_sources_sha256": "abf8627c9934a53818cb0012845ea4ff927d198b8b45919f35c9717fea42d483",
+  "inherited_reset_margin_proof_sha256": "b65366c13bb48c3d4843233a45ebb593b15ad0562da5c3d013ec1f5233e8c898",
+  "inherited_geometry_proofs": {
+    "fusion-return-probe-origin": "b6dbf95d64cdff2e052c671b48e17e172d54c9d8d7013514291b5369192e450b",
+    "fusion-return-first-chord": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "fusion-return-point-clearance": "d6f0254d3e70a4bb371ac1cc17cb2cbf506e4f1b6af12751a0201f8df21ab901"
+  },
+  "method": "independent 60-digit Decimal eligibility/guarded fractions, strict relations/signs, identity intervals, extrema/count closures and original census joins; no new raw/native dataset execution"
+}
