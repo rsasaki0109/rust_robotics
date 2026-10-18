@@ -4744,3 +4744,41 @@ The small native fixture and selector tests run in the full Python suite; CI
 does not rerun the 108-case pilot. This one-seed engineering pilot cannot
 establish a population recovery rate or a safety guarantee. The option remains
 experimental and disabled by default regardless of its results.
+
+## Diagnose the live pilot's admission gates
+
+The [fixed admission diagnostic](results/mean-speed-probe-admission-audit/protocol.md)
+uses every recorded case from the 108-case live pilot. It queries the original
+recovery-line geometry at every paused decision, reconstructs all seven joint
+admission gates and checks the one-second continuous timer. It retains complete
+failure masks and all definite-ready runs, including runs ending in failure.
+Cases without a loss pause remain in the exported population.
+The [recorded report](results/mean-speed-probe-admission-audit/report.md) shows
+that 9,276 of the mean arm's 11,998 eligible positive commands still failed a
+different admission gate. It retains all 482 readiness runs and the extra
+admission that still ended in a timeout.
+The [margin amendment](results/mean-speed-probe-admission-audit/protocol-amendment-1.md)
+records a rejected initial assumption: the curved configuration has separate
+recovery and guard margins. The native reader reconstructs both original
+expressions from the fixed command parameters and recorded precision epochs.
+
+```bash
+python3 -B experiments/pose_observation_loss/analyze_mean_probe_admission.py \
+  --raw /path/to/mean-speed-probe-raw --output /tmp/mean-probe-admission
+```
+
+Use Python 3.12, an activated Rust compiler, a clean committed checkout and a
+fresh external output path. Preserve the complete original raw packet. Source,
+fixtures, the packet manifest and all raw trial hashes must match the frozen
+pilot. This command reads retained observations and runs native geometry queries;
+it creates no new simulator steps and changes no control thresholds.
+
+The original release-preview clearance has nine decimal places. Its closed
+rounding interval must establish the strict release comparison; a threshold
+overlap remains unresolved and is retained. The diagnostic does not infer a
+gate's truth from the observed timer. `case-gates.csv`, `gate-patterns.csv`,
+`admission-runs.csv` and `summary.csv` preserve the complete case set, overlapping
+failures, verified/unverified timers and endpoint brake flags. Native queries
+and traces remain under the output's `native/` directory. Completion provenance
+is written only after all joins and coverage checks pass. Use a second fresh
+output path to compare all tables and provenance byte for byte.
