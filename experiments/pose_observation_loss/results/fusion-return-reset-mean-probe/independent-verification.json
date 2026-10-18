@@ -1,0 +1,35 @@
+{
+  "method": "unchanged native Rust full probe and witnesses; independent 60-digit Decimal cap/target; rounded inputs, no closed-loop replay",
+  "verifier_sha256": "c73f0bdfbafce736a9f92aab81b9f80835c3ad13b6f651ebb97d85f3e93ead4f",
+  "protocol_sha256": "fc92784136f25d7c681879f6960a482fa10cc6933a6dd68cc636de10006ff857",
+  "freeze_sha256": "6777e7281225e85dcf0c188aa93c452761744c1084a48ab5ec7e6efaf67832d7",
+  "input_sha256": {
+    "experiments/pose_observation_loss/results/fusion-return-reset-surplus/surplus.csv": "4aa66216f5125aa0783904e1b7edb6391afd3954549085eda6bae48f8488fc7b",
+    "experiments/pose_observation_loss/results/fusion-return-reset-surplus/sources.json": "a98faabc9e2857d5dc5af2c5e078a7412fee0e8f7c3694780c2309a99eb2acd4",
+    "experiments/pose_observation_loss/results/fusion-return-reset-review/reset-evidence.csv": "d98eea7efdcc50fc88e473d0306501993d9c5174c88a0b30443b4ded3c7eca66",
+    "experiments/pose_observation_loss/results/fusion-return-first-chord/sources.json": "8e2697be1401ca6b576a9fe75163e5823d25474e7a352bb5b49e05fd9d2ee6c4",
+    "experiments/pose_observation_loss/results/fusion-return-first-chord/independent-verification.json": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "experiments/pose_observation_loss/results/fusion-return-probe-origin/obstacle-map.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+    "crates/rust_robotics_control/examples/pose_observation_loss.rs": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "crates/rust_robotics_control/src/pure_pursuit.rs": "e6a818f32a3f396b7056a9b1d788d2f8d2b497511bad4f926614bbfc40063deb",
+    "crates/rust_robotics_core/src/types.rs": "19c5cf3473851102b84caa21eaa2149c9bffd7d113a0a035622bf53164bde80f",
+    "selected-inputs.csv": "b9a266041cdb15a94af0234bdbfb5438b00412ee5926845037a18eef1cb8da56",
+    "selected-input-sources.json": "e4c7bdf81bed7d3f18ec684b84d696ca2e05f8fe4be2ba7cf1d0f59acfe079eb"
+  },
+  "output_sha256": {
+    "reprobes.csv": "3dcf1e312916e0b2134d0e75b4f4520c5a6c90a02be64fd3c0ab61ba2039f77c",
+    "reprobe-summary.csv": "69abada0b4614df6d1e9251db552b5a776c4783b0cb33c9d64b0a8bd375e0ffa",
+    "sources.json": "ea5f6e38ef28e3f0548105c80eb90735b7a2cb40a2dcdc56d0ce2531e9627029"
+  },
+  "distinct_edges": 19,
+  "ending_multiplicity": 185,
+  "native": {
+    "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "harness_sha256": "1065faedcba352c5def9fb08159006c6b445e5bf1a7add52c33395ed1a9bdbc9",
+    "inputs_sha256": "3a4a4ab6a7da0db5077f5d07a427a2f606f3a79923297c017f16feb8c6ed2d41",
+    "trace_sha256": "f3c70bce28dc08238164e0649b420cb999896432314f81ac57dc4e93d7260d86",
+    "probe_evaluations": 38,
+    "fresh_trajectories": 0
+  },
+  "summary_cells": 40
+}

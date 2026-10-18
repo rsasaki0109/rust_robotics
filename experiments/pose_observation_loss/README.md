@@ -10,6 +10,14 @@ For the completed 19-reset evidence audit, start with the
 [consolidated review](results/fusion-return-reset-review/report.md) and its
 [one-command replay](#review-and-replay-the-reset-evidence).
 
+The [mean-position full-probe diagnostic](results/fusion-return-reset-mean-probe/report.md)
+then replays the same 19 reset probes with only x/y replaced by the recorded
+stationary mean. Eighteen reach the two-unit probe horizon; one returns 0.20
+before its fifth chord fails. All 38 raw/mean evaluations match the unchanged
+Rust function. These are rounded-input geometry results; controller recovery
+and mission outcomes are not rerun. See the
+[replay commands](#replay-the-reset-probes-at-mean-positions).
+
 ## Continuous checks
 
 The [experiment workflow](../../.github/workflows/pose-observation-loss.yml)
@@ -4634,3 +4642,49 @@ first chord. Mean point gaps to their original blockers are clear in all 19,
 while the original timer resets remain zero after the decision. These are
 different recorded predicates; a clear mean point does not replace a curved
 probe or establish a successful recovery policy.
+
+## Replay the reset probes at mean positions
+
+The [fixed mean-position diagnostic](results/fusion-return-reset-mean-probe/report.md)
+keeps the same 19 reset selections, original yaw, nominal steering, margins and
+map. It changes only x/y to the inherited stationary mean and evaluates the
+whole original 40-chord speed probe. Both raw and mean inputs are reconstructed
+rounded centers, rather than bounds on hidden unrounded states.
+
+```bash
+python3 -B experiments/pose_observation_loss/analyze_reset_mean_probe.py \
+  --output /tmp/reset-mean-probe
+python3 -B experiments/pose_observation_loss/verify_reset_mean_probe.py \
+  --results /tmp/reset-mean-probe --work /tmp/reset-mean-probe-native \
+  --output /tmp/reset-mean-probe-verification.json
+```
+
+Use Python 3.12, an activated Rust compiler and fresh paths outside the checkout.
+Only the Python and Rust standard libraries are needed. The collector reads the
+tracked 19-row input extraction and pinned preceding evidence. The standalone
+verifier imports no collector: it compiles the unchanged Rust probe and distance
+functions, queries all 38 centers and checks all failure steps/witnesses. It also
+checks the existing speed-cap/nominal-target formulas with 60-digit Decimal.
+
+All 19 raw probes reproduce zero. At the mean positions, 18 return the full
+2.0-unit horizon; C0310@8795 returns 0.20 before the fifth chord fails against
+obstacle 1310. Every mean nominal target is positive, while all original
+simultaneous failure masks and ending multiplicities remain recorded. These
+same-step outputs do not establish new timer, release, trajectory or hold results.
+
+The two original raw logs can also rebuild the compact input packet:
+
+```bash
+python3 -B experiments/pose_observation_loss/analyze_reset_mean_probe.py \
+  --extract-raw --output /tmp/reset-mean-probe-inputs
+```
+
+The original paths come from the pinned first-chord source manifest. If those
+logs were relocated, add `--raw-root /path/to/original/fresh-white`; both full
+file hashes must still match. Pass `--inputs /tmp/reset-mean-probe-inputs` to
+both replay commands to use that new extraction. No trajectories are regenerated.
+
+Two extractions, collections and native verifications reproduced nine files
+byte for byte. The full test suite replays the tracked packet, verifies the new
+results with the native function and includes synthetic initial/first/later
+chord, inclusive wall/obstacle, duplicate and near-zero-steering cases.
