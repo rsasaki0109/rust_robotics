@@ -4,6 +4,7 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -57,6 +58,117 @@ class PortableReplay(unittest.TestCase):
             replay.manifest(self.packet, records, self.inputs),
         )
         self.work = self.packet / "stages/run_breaks"
+
+    def fixture_child(self, calls, after_phase=None):
+        def execute(command, log):
+            stem, phase = log.parent.name, log.stem
+            calls.append((stem, phase))
+            target = Path(command[command.index("--output") + 1])
+            source = self.packet / "stages" / stem
+            if phase == "verifier":
+                shutil.copyfile(source / "independent-verification.json", target)
+            else:
+                folder = "collector" if phase == "collector" else "figures"
+                shutil.copytree(source / folder, target)
+            log.write_text("Completed fixture phase\n")
+            if after_phase:
+                after_phase(stem, phase, log.parent)
+
+        return execute
+
+    def test_first_and_middle_stage_mismatches_stop_before_the_next_stage(self):
+        for bad_index in (0, 2):
+            for corruption in ("csv", "json"):
+                bad_stem = review.STEMS[bad_index]
+                target = self.root / f"bad-stage-{bad_index}-{corruption}"
+                calls = []
+
+                def corrupt(stem, phase, work):
+                    if stem == bad_stem and phase == "verifier":
+                        if corruption == "csv":
+                            path = next(
+                                p
+                                for p in (work / "collector").iterdir()
+                                if p.suffix == ".csv"
+                            )
+                            path.write_bytes(path.read_bytes() + b"\n")
+                        else:
+                            path = work / "collector/sources.json"
+                            source = review.read_json(path)
+                            source["audit"]["fresh_raw_reads"] = 1
+                            save(path, source)
+
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(
+                    review,
+                    "run_command",
+                    side_effect=self.fixture_child(calls, corrupt),
+                ), redirect_stdout(out), redirect_stderr(err):
+                    code = replay.main(["--output", str(target)])
+                with self.subTest(stage=bad_stem, corruption=corruption):
+                    self.assertEqual(code, 1)
+                    self.assertEqual(
+                        calls,
+                        [
+                            (s, p)
+                            for s in review.STEMS[: bad_index + 1]
+                            for p in ("collector", "plotter", "verifier")
+                        ],
+                    )
+                    self.assertIn(bad_stem, err.getvalue())
+                    self.assertFalse(
+                        (target / "stages" / review.STEMS[bad_index + 1]).exists()
+                    )
+                    self.assertFalse((target / replay.MANIFEST).exists())
+                    self.assertEqual(
+                        (target / "stages" / bad_stem / "verifier.log").read_text(),
+                        "Completed fixture phase\n",
+                    )
+
+    def test_all_valid_stages_publish_a_packet_that_passes_the_read_only_check(self):
+        target = self.root / "successful-run"
+        calls = []
+        out = io.StringIO()
+        with patch.object(
+            review, "run_command", side_effect=self.fixture_child(calls)
+        ), redirect_stdout(out):
+            code = replay.main(["--output", str(target)])
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            calls,
+            [
+                (s, p)
+                for s in review.STEMS
+                for p in ("collector", "plotter", "verifier")
+            ],
+        )
+        self.assertEqual(
+            json.loads(out.getvalue().splitlines()[-1])["completion_manifest"],
+            replay.MANIFEST,
+        )
+        self.assertEqual(replay.check_packet(target)["stored_artifact_files"], 64)
+
+    def test_final_snapshot_detects_a_later_child_changing_a_validated_stage(self):
+        target = self.root / "late-change"
+        calls = []
+
+        def change_earlier_stage(stem, phase, work):
+            if stem == review.STEMS[-1] and phase == "verifier":
+                path = work.parent / "run_breaks/collector/reset-edges.csv"
+                path.write_bytes(path.read_bytes() + b"\n")
+
+        out, err = io.StringIO(), io.StringIO()
+        with patch.object(
+            review,
+            "run_command",
+            side_effect=self.fixture_child(calls, change_earlier_stage),
+        ), redirect_stdout(out), redirect_stderr(err):
+            code = replay.main(["--output", str(target)])
+        self.assertEqual(code, 1)
+        self.assertEqual(len(calls), 18)
+        self.assertIn("Byte mismatch", err.getvalue())
+        self.assertIn("run_breaks", err.getvalue())
+        self.assertFalse((target / replay.MANIFEST).exists())
 
     def test_all_nested_object_orders_can_change_with_identical_values(self):
         result = replay.check_packet(self.packet)

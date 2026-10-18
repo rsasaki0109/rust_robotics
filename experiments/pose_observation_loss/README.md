@@ -41,6 +41,11 @@ order is ignored. Array order, value types, methods, arithmetic/audit counts,
 script hashes and all other fields remain frozen. The fresh PNGs are checked
 against their completion-manifest hashes.
 
+Each stage's files and provenance are checked before the next stage starts.
+A mismatch preserves that stage's logs and stops the replay. The completed
+packet is published only after another full check of all stages and frozen
+inputs, which also detects earlier files changed by later children.
+
 Download the `reset-evidence-replay` artifact from the workflow run to obtain
 the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
 log, the integrity receipt and the Python/package version record. The upload
