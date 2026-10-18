@@ -216,6 +216,49 @@ class PortableReplay(unittest.TestCase):
         )
         self.assertEqual(replay.check_packet(target)["stored_artifact_files"], 64)
 
+    def test_unexpected_packet_root_entries_stop_replay_and_preserve_child_outputs(
+        self,
+    ):
+        payload = b"unexpected child output\n"
+        names = ("notes.txt", "notes", "reset-evidence.csv", "study-index.csv")
+        for stage_index in (0, len(review.STEMS) - 1):
+            bad_stem = review.STEMS[stage_index]
+            for name in names:
+                with self.subTest(stage=bad_stem, name=name):
+                    target = self.root / f"extra root {stage_index} {name}"
+                    entry = target / name
+                    child_file = entry / "details.txt" if name == "notes" else entry
+                    calls = []
+
+                    def add_extra(stem, phase, _work):
+                        if stem == bad_stem and phase == "verifier":
+                            if name == "notes":
+                                entry.mkdir()
+                            child_file.write_bytes(payload)
+
+                    out, err = io.StringIO(), io.StringIO()
+                    with patch.object(
+                        review,
+                        "run_command",
+                        side_effect=self.fixture_child(calls, add_extra),
+                    ), redirect_stdout(out), redirect_stderr(err):
+                        code = replay.main(["--output", str(target)])
+                    self.assertEqual(code, 1)
+                    self.assertEqual(
+                        calls,
+                        [
+                            (stem, phase)
+                            for stem in review.STEMS[: stage_index + 1]
+                            for phase in ("collector", "plotter", "verifier")
+                        ],
+                    )
+                    self.assertIn(name, err.getvalue())
+                    self.assertEqual(child_file.read_bytes(), payload)
+                    self.assertEqual(
+                        {p.name for p in target.iterdir()}, {"stages", name}
+                    )
+                    self.assertFalse((target / replay.MANIFEST).exists())
+
     def test_final_snapshot_detects_a_later_child_changing_a_validated_stage(self):
         target = self.root / "late-change"
         calls = []

@@ -242,6 +242,7 @@ def run(output):
                 )
                 raise
         inspect_stage(output, stem, pins["studies"][stem])
+        integrity.directory(output, directories=("stages",))
     # Recheck the final snapshot as well: later children could change earlier files.
     records, index = inspect_stages(output, pins)
     rows = review.project_overview(

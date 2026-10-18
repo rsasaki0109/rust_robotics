@@ -46,6 +46,10 @@ A mismatch preserves that stage's logs and stops the replay. The completed
 packet is published only after another full check of all stages and frozen
 inputs, which also detects earlier files changed by later children.
 
+Each stage also checks that only the `stages/` directory exists at the packet
+root. Unexpected entries stop the replay and preserve child outputs before
+the overview, index and completion manifest are written.
+
 Both CLI modes bind the frozen inputs to the original recorded review. Before
 a replay creates its output directory, it checks the recorded review manifest,
 runner, protocol, freeze catalogue, original CSV exports and all 91 input pins.
