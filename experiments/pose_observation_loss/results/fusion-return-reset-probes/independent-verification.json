@@ -1,0 +1,28 @@
+{
+  "physical_resets": 19,
+  "overlapping_endings": 185,
+  "joined_decisions": 19,
+  "blocker_rows": 19,
+  "origins": {
+    "initial_unsafe": 17,
+    "first_chord_by_exclusion": 2
+  },
+  "obstacle_map_rows": 1340,
+  "summary_rows": 20,
+  "additive_closure_comparisons": 27,
+  "fresh_raw_reads": 0,
+  "fresh_geometry_evaluations": 0,
+  "fresh_native_runs": 0,
+  "comparisons": 21944,
+  "original_join_comparisons": 131901,
+  "script_sha256": "bc868ba6f8449373e89d3f5fcde9b204a659b3d1353deb244e72fba02e62d332",
+  "sources_sha256": "43e4109d5b9adbbc30acefe0a9583feb7724825c49e9448eb0d7d493e21a0858",
+  "plot_sources_sha256": "93987243c78d935cdf539188616b89dcee89866e3109323c9d1f6ee0a9381921",
+  "inherited_run_breaks_proof_sha256": "bb50761c35e3b49125861af5c93d339a43a95b337f24cd75737f4b86c50f0fdc",
+  "inherited_geometry_proofs": {
+    "fusion-return-probe-origin": "b6dbf95d64cdff2e052c671b48e17e172d54c9d8d7013514291b5369192e450b",
+    "fusion-return-first-chord": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "fusion-return-point-clearance": "d6f0254d3e70a4bb371ac1cc17cb2cbf506e4f1b6af12751a0201f8df21ab901"
+  },
+  "method": "independent exact edge/decision/witness/map joins, Decimal interval-state and stage checks, original census identities and additive descriptive counts; no new geometry or native execution"
+}
