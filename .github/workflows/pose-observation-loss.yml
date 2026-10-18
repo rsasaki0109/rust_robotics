@@ -125,7 +125,8 @@ jobs:
 
       - name: Record replay environment
         run: |
-          python -VV > "$RUNNER_TEMP/reset-review-environment.txt"
+          git log -1 --format='source_commit=%H' > "$RUNNER_TEMP/reset-review-environment.txt"
+          python -VV >> "$RUNNER_TEMP/reset-review-environment.txt"
           python -m pip freeze >> "$RUNNER_TEMP/reset-review-environment.txt"
 
       - name: Replay six collectors, plotters and independent verifiers
