@@ -1,0 +1,30 @@
+{
+  "method": "selected original decision/predecessor raw strings; no regenerated trajectories",
+  "analysis": {
+    "script_sha256": "6589f00a0553dc33c2742f2a96d7bdb901a75bd36fde54c0171a23a343354ada",
+    "protocol_sha256": "fc92784136f25d7c681879f6960a482fa10cc6933a6dd68cc636de10006ff857",
+    "freeze_sha256": "6777e7281225e85dcf0c188aa93c452761744c1084a48ab5ec7e6efaf67832d7"
+  },
+  "input_sha256": {
+    "experiments/pose_observation_loss/results/fusion-return-reset-surplus/surplus.csv": "4aa66216f5125aa0783904e1b7edb6391afd3954549085eda6bae48f8488fc7b",
+    "experiments/pose_observation_loss/results/fusion-return-reset-surplus/sources.json": "a98faabc9e2857d5dc5af2c5e078a7412fee0e8f7c3694780c2309a99eb2acd4",
+    "experiments/pose_observation_loss/results/fusion-return-reset-review/reset-evidence.csv": "d98eea7efdcc50fc88e473d0306501993d9c5174c88a0b30443b4ded3c7eca66",
+    "experiments/pose_observation_loss/results/fusion-return-first-chord/sources.json": "8e2697be1401ca6b576a9fe75163e5823d25474e7a352bb5b49e05fd9d2ee6c4",
+    "experiments/pose_observation_loss/results/fusion-return-first-chord/independent-verification.json": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "experiments/pose_observation_loss/results/fusion-return-probe-origin/obstacle-map.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+    "crates/rust_robotics_control/examples/pose_observation_loss.rs": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "crates/rust_robotics_control/src/pure_pursuit.rs": "e6a818f32a3f396b7056a9b1d788d2f8d2b497511bad4f926614bbfc40063deb",
+    "crates/rust_robotics_core/src/types.rs": "19c5cf3473851102b84caa21eaa2149c9bffd7d113a0a035622bf53164bde80f"
+  },
+  "raw_sha256": {
+    "fresh-white/curved-random-278/trajectories.csv": "e9b7e9b3cc9bab10e79345cb94ef5c25dec9d5b2fd7875f1555823a625d4ac91",
+    "fresh-white/epoch-random-278/trajectories.csv": "b2d6b514dd4456674fd9be912b1f485b140e89a6fbdc44fc8ed489f56c4ec6c3"
+  },
+  "raw_rows_scanned": {
+    "fresh-white/curved-random-278/trajectories.csv": 71910,
+    "fresh-white/epoch-random-278/trajectories.csv": 71910
+  },
+  "output_sha256": {
+    "selected-inputs.csv": "b9a266041cdb15a94af0234bdbfb5438b00412ee5926845037a18eef1cb8da56"
+  }
+}
