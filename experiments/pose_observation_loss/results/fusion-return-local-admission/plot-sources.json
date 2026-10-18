@@ -1,0 +1,15 @@
+{
+  "script_sha256": "4487354c06e7350dfcff56df4ec38ceaf797290813d530ac0c0e7c32cd219f64",
+  "input_sha256": {
+    "sources.json": "855f9efd9a43a20251c58d3db043c8947c920c54d82aec1ae42cb9b1777a175c",
+    "anchor-local.csv": "bf20a05e1423cbabd3a4f00066a25c34c6f17e3a0c94e6043f10f245dbedb906",
+    "local-summary.csv": "fb65fde92062f6f4c6f3703140198504f14c786b3bdf341351103e98c250d5d6",
+    "local-slots.csv": "54366c2328b43de051be21b414ff2baf7b7ceae93aea7847bcf9e606448dba50"
+  },
+  "output_sha256": {
+    "local-admission.svg": "d2d8b62376d616d2cd7cfaadf0a0916ce46cd39d7b81e8b49a61c384d215bc59",
+    "plot-local.csv": "54366c2328b43de051be21b414ff2baf7b7ceae93aea7847bcf9e606448dba50",
+    "plot-values.csv": "7909b1969f99b34e77ccf43054d37ad888c64b48ccb6bcd4aaf1cedd321af302",
+    "plot-return-values.csv": "ead5fad6c6b4ab1670ce9c88e91fd0a03a0d7a0f79b99c5493ba2104c8c2b90e"
+  }
+}
