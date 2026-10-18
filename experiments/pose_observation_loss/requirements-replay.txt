@@ -1,0 +1,12 @@
+# Rendering profile for the six frozen reset studies (Python 3.12, Linux).
+-r requirements-ci.txt
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.61.1
+kiwisolver==1.4.9
+matplotlib==3.10.8
+packaging==26.3
+pillow==12.3.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+six==1.17.0

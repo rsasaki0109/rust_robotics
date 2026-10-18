@@ -28,10 +28,26 @@ python3 -m pip install --only-binary=:all: -r experiments/pose_observation_loss/
 The workflow also checks the six reset studies' frozen artifact/script hashes,
 the saved review's runner/protocol/catalogue and export hashes, and the exact
 19-row projection from the original surplus table. Logs are uploaded on both
-success and failure for 14 days. For fresh collector, plotter and independent
-verifier execution with byte comparisons, use the
-[complete reset replay](#review-and-replay-the-reset-evidence), whose plotters
-require Matplotlib.
+success and failure for 14 days.
+
+The `reset-evidence-replay` job performs the
+[complete reset replay](#review-and-replay-the-reset-evidence): six collectors,
+six plotters and six independent numerical verifiers, followed by the completed
+packet integrity check. It uses Python 3.12 on Ubuntu 24.04 with the pinned
+Matplotlib rendering profile in `requirements-replay.txt`. Every table, SVG,
+plot manifest and independent proof must match the frozen bytes. The fresh
+PNGs are checked against their completion-manifest hashes.
+
+Download the `reset-evidence-replay` artifact from the workflow run to obtain
+the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
+log, the integrity receipt and the Python/package version record. The upload
+runs on success and failure with 14-day retention; a failed replay retains its
+partial outputs and diagnostics. Check an extracted successful artifact with:
+
+```bash
+python3 -B experiments/pose_observation_loss/check_reset_review.py \
+  --review /path/to/extracted-artifact/fusion-return-reset-review
+```
 
 ## Reproduce
 
@@ -4509,13 +4525,15 @@ before/after values. Its 39-column CSV copies original strings and keeps both
 nonapplicable first-chord rows, including blank ratio values.
 
 ```bash
+python3 -m pip install --only-binary=:all: -r experiments/pose_observation_loss/requirements-replay.txt
 MPLCONFIGDIR=/tmp/reset-review-mpl python3 experiments/pose_observation_loss/review_reset_evidence.py \
   --output /tmp/fusion-return-reset-review
 python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
 ```
 
-Use a fresh output directory outside the checkout, without Python -O. The
-runner uses the standard library; the existing plotters require Matplotlib.
+Use Python 3.12 on Linux for this pinned rendering profile and a fresh output
+directory outside the checkout, without Python -O. The runner uses the
+standard library; the existing plotters require Matplotlib.
 The full Python suite also needs NumPy (see [continuous checks](#continuous-checks))
 and the activated saved Rust toolchain for its existing native unit fixtures.
 The review runner adds no raw extraction,
