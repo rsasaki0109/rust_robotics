@@ -1,6 +1,7 @@
 """Check portable provenance equivalence and fresh digest bindings."""
 
 from contextlib import redirect_stderr, redirect_stdout
+import errno
 import io
 import json
 from pathlib import Path
@@ -215,6 +216,77 @@ class PortableReplay(unittest.TestCase):
             replay.MANIFEST,
         )
         self.assertEqual(replay.check_packet(target)["stored_artifact_files"], 64)
+
+    def test_completion_errors_leave_outputs_without_a_manifest(self):
+        original_open, original_replace = Path.open, Path.replace
+        for failure in ("write", "close", "publish"):
+            with self.subTest(failure=failure):
+                target = self.root / ("failed manifest " + failure)
+                faults, calls = [], []
+
+                def fail(path):
+                    faults.append(failure)
+                    code = errno.ENOSPC if failure == "write" else errno.EIO
+                    raise OSError(code, f"injected {failure} failure", str(path))
+
+                class FailingWriter:
+                    def __init__(self, stream, path):
+                        self.stream, self.path = stream, path
+
+                    def __enter__(self):
+                        return self
+
+                    def write(self, text):
+                        if failure == "write":
+                            self.stream.write(text[:10])
+                            fail(self.path)
+                        return self.stream.write(text)
+
+                    def __exit__(self, exc_type, exc_value, traceback):
+                        self.stream.__exit__(exc_type, exc_value, traceback)
+                        if failure == "close" and exc_type is None:
+                            fail(self.path)
+
+                def faulty_open(path, *args, **kwargs):
+                    stream = original_open(path, *args, **kwargs)
+                    mode = args[0] if args else kwargs.get("mode", "r")
+                    if (
+                        path.parent == target
+                        and replay.MANIFEST in path.name
+                        and mode[0] in "wax"
+                    ):
+                        return FailingWriter(stream, path)
+                    return stream
+
+                def faulty_replace(path, destination):
+                    if (
+                        Path(destination) == target / replay.MANIFEST
+                        and failure == "publish"
+                    ):
+                        fail(path)
+                    return original_replace(path, destination)
+
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(
+                    review, "run_command", side_effect=self.fixture_child(calls)
+                ), patch.object(Path, "open", new=faulty_open), patch.object(
+                    Path, "replace", new=faulty_replace
+                ), redirect_stdout(
+                    out
+                ), redirect_stderr(
+                    err
+                ):
+                    code = replay.main(["--output", str(target)])
+                self.assertEqual(code, 1)
+                self.assertEqual(faults, [failure])
+                self.assertEqual(len(calls), 18)
+                self.assertIn(f"injected {failure} failure", err.getvalue())
+                self.assertFalse((target / replay.MANIFEST).exists())
+                self.assertEqual(
+                    {p.name for p in target.iterdir()},
+                    {"stages", *replay.TOP_FILES[:2]},
+                )
+                self.assertEqual(len(list(target.glob("stages/*/*.log"))), 18)
 
     def test_unexpected_packet_root_entries_stop_replay_and_preserve_child_outputs(
         self,

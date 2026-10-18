@@ -56,6 +56,10 @@ runner, protocol, freeze catalogue, original CSV exports and all 91 input pins.
 The replay repeats these checks before writing its completion manifest. Changes
 to those references fail validation even when a packet is otherwise consistent.
 
+The completion manifest is published by an atomic rename after its temporary
+file closes successfully. Write or publication failures retain stage outputs
+and leave no completion manifest; handled failures also remove the temporary file.
+
 If a collector, plotter or verifier fails, the CLI reports its stage, phase,
 status and absolute log path. It stops immediately and preserves the partial
 outputs and original log bytes. The CLI preserves positive child exit codes
