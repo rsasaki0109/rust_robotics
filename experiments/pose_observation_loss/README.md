@@ -4270,3 +4270,56 @@ and interval states, and verifies all exports. The two-panel figure shows all
 19 inherited test-gap intervals and the two counting units by origin. Repeat
 all three tables/provenance and all plot artifacts byte for byte. See the
 [reset-probes report](results/fusion-return-reset-probes/report.md).
+
+## Compare raw and mean positions at the same reset step
+
+The [fixed protocol](results/fusion-return-reset-displacement/protocol.md)
+reuses the same 19 resets, their original single blocker witnesses and all 185
+overlapping-ending multiplicities. It compares two position estimates at each
+recorded step; it adds no trajectory, decision, window or trial denominator.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reset_displacement.py \
+  --output /tmp/fusion-return-reset-displacement
+MPLCONFIGDIR=/tmp/reset-displacement-mpl python3 experiments/pose_observation_loss/plot_reset_displacement.py \
+  --results /tmp/fusion-return-reset-displacement --output /tmp/reset-displacement-figures
+python3 experiments/pose_observation_loss/verify_reset_displacement.py \
+  --results /tmp/fusion-return-reset-displacement --figures /tmp/reset-displacement-figures \
+  --output /tmp/reset-displacement-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output directories and an unused proof filename, without Python -O.
+The standard-library collector/verifier need only tracked preceding results;
+Matplotlib produces the figure. Activate the saved Rust toolchain for the full
+suite's existing native unit fixtures. New raw reads and native dataset runs
+remain zero; preceding geometry/native evidence stays inherited.
+
+`displacements.csv` copies all 469 preceding probe fields and all 72 original
+witness fields under `witness_`. It adds position differences, displacement
+length, distance/gap gains and the decomposition
+`d_mean^2 - d_raw^2 = 2 (raw-obstacle) dot (mean-raw) + ||mean-raw||^2`,
+with center/lo/hi values and closure residuals. Both point gaps use the same
+current margin, so their gain must agree with the distance gain. The method
+does not divide by raw distance and supports a raw point at the obstacle.
+
+Conditional interval arithmetic preserves inherited point rectangles and uses
+the frozen 1e-12 elemental padding. A positive lower bound certifies increase;
+a negative upper bound certifies decrease; otherwise the sign remains unknown.
+The standalone verifier imports no analyzers or plotters and independently
+calculates the joins, intervals, signs, extrema and closures with 60-digit
+Decimal. Numeric comparison tolerance never resolves an interval's sign.
+
+All 19 conditional distance gains are positive, approximately 0.01743–0.34544 m.
+Eighteen linear terms are outward. C0310 at 176.16 s has a negative linear term
+but a larger positive quadratic term, yielding a positive distance gain. The
+two original first-chord failures retain their direct curved-segment evidence;
+these point comparisons do not establish successful motion or policy recovery.
+
+The 20 `displacement-summary.csv` cells keep both counting units, sign counts
+and interval enclosures for minimum/maximum gain and displacement length.
+Empty extrema remain blank; only counts add across partitions. The two-panel
+figure shows every raw/mean point-gap pair and gain/length pair in original
+case/step order, marking both first-chord rows. Repeat both tables/provenance
+and all five plot artifacts byte for byte. See the
+[reset-displacement report](results/fusion-return-reset-displacement/report.md).
