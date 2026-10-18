@@ -46,6 +46,12 @@ A mismatch preserves that stage's logs and stops the replay. The completed
 packet is published only after another full check of all stages and frozen
 inputs, which also detects earlier files changed by later children.
 
+Both CLI modes bind the frozen inputs to the original recorded review. Before
+a replay creates its output directory, it checks the recorded review manifest,
+runner, protocol, freeze catalogue, original CSV exports and all 91 input pins.
+The replay repeats these checks before writing its completion manifest. Changes
+to those references fail validation even when a packet is otherwise consistent.
+
 If a collector, plotter or verifier fails, the CLI reports its stage, phase,
 status and absolute log path. It stops immediately and preserves the partial
 outputs and original log bytes. The CLI preserves positive child exit codes

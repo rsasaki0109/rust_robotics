@@ -76,6 +76,74 @@ class PortableReplay(unittest.TestCase):
 
         return execute
 
+    def test_changed_review_references_stop_before_creating_output_or_children(self):
+        cases = (
+            ("protocol.md", None),
+            ("freeze-pins.json", None),
+            ("freeze-pins.json", b"{}\n"),
+            ("reset-evidence.csv", None),
+            ("study-index.csv", None),
+            ("review-sources.json", None),
+        )
+        for index, (name, replacement) in enumerate(cases):
+            with self.subTest(name=name, replacement=replacement):
+                study = self.root / f"changed reference {index}"
+                shutil.copytree(review.STUDY, study)
+                path = study / name
+                path.write_bytes(
+                    replacement
+                    if replacement is not None
+                    else path.read_bytes() + b"\n"
+                )
+                target = self.root / f"rejected replay {index}"
+                calls = []
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(review, "STUDY", study), patch.object(
+                    review, "run_command", side_effect=self.fixture_child(calls)
+                ), redirect_stdout(out), redirect_stderr(err):
+                    code = replay.main(["--output", str(target)])
+                self.assertEqual(code, 1)
+                self.assertEqual(calls, [])
+                self.assertFalse(target.exists())
+                self.assertIn(name, err.getvalue())
+
+    def test_stored_packet_cannot_ignore_changed_protocol_or_recorded_index(self):
+        for name in ("protocol.md", "study-index.csv"):
+            with self.subTest(name=name):
+                study = self.root / ("changed " + name)
+                shutil.copytree(review.STUDY, study)
+                path = study / name
+                path.write_bytes(path.read_bytes() + b"\n")
+                with patch.object(review, "STUDY", study):
+                    with self.assertRaises(ValueError) as error:
+                        replay.check_packet(self.packet)
+                self.assertIn(name, str(error.exception))
+
+    def test_reference_changes_during_replay_prevent_completion(self):
+        for name in ("protocol.md", "freeze-pins.json"):
+            with self.subTest(name=name):
+                study = self.root / ("later change " + name)
+                shutil.copytree(review.STUDY, study)
+                path = study / name
+                target = self.root / ("incomplete " + name)
+                calls = []
+
+                def change_reference(stem, phase, _work):
+                    if stem == review.STEMS[-1] and phase == "verifier":
+                        path.write_bytes(path.read_bytes() + b"\n")
+
+                out, err = io.StringIO(), io.StringIO()
+                with patch.object(review, "STUDY", study), patch.object(
+                    review,
+                    "run_command",
+                    side_effect=self.fixture_child(calls, change_reference),
+                ), redirect_stdout(out), redirect_stderr(err):
+                    code = replay.main(["--output", str(target)])
+                self.assertEqual(code, 1)
+                self.assertEqual(len(calls), 18)
+                self.assertFalse((target / replay.MANIFEST).exists())
+                self.assertIn(name, err.getvalue())
+
     def test_first_and_middle_stage_mismatches_stop_before_the_next_stage(self):
         for bad_index in (0, 2):
             for corruption in ("csv", "json"):
