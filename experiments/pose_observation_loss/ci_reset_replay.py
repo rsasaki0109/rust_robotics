@@ -201,10 +201,18 @@ def run(output):
             ),
         ):
             print(f"{stem}: {phase}", flush=True)
-            review.run_command(
-                [sys.executable, "-B", str(review.ROOT / args[0]), *args[1:]],
-                work / (phase + ".log"),
-            )
+            log = work / (phase + ".log")
+            try:
+                review.run_command(
+                    [sys.executable, "-B", str(review.ROOT / args[0]), *args[1:]],
+                    log,
+                )
+            except subprocess.CalledProcessError as error:
+                print(
+                    f"Replay child failed with status {error.returncode} at {stem}: {phase}; inspect {log}",
+                    file=sys.stderr,
+                )
+                raise
         inspect_stage(output, stem, pins["studies"][stem])
     # Recheck the final snapshot as well: later children could change earlier files.
     records, index = inspect_stages(output, pins)
@@ -241,10 +249,6 @@ def main(argv=None):
             run(args.output) if args.output is not None else check_packet(args.check)
         )
     except subprocess.CalledProcessError as error:
-        print(
-            f"Replay child failed with status {error.returncode}; inspect {args.output / 'stages'}",
-            file=sys.stderr,
-        )
         return error.returncode if error.returncode > 0 else 128 - error.returncode
     except (OSError, ValueError, AssertionError) as error:
         print(

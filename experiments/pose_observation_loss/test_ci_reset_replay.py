@@ -329,24 +329,52 @@ class PortableReplay(unittest.TestCase):
         )
 
     def test_child_status_logs_and_incomplete_packet_are_preserved(self):
-        for status in (7, -9):
-            target = self.root / ("failed-" + str(status))
+        phases = ("collector", "plotter", "verifier")
+        all_commands = [(stem, phase) for stem in review.STEMS for phase in phases]
+        payload = b"deliberate child failure\nraw output: \xff\n"
+        for stage_index in (0, 2):
+            failed_stem = review.STEMS[stage_index]
+            for phase_index, failed_phase in enumerate(phases):
+                for status in (7, -9):
+                    with self.subTest(
+                        stage=failed_stem, phase=failed_phase, status=status
+                    ):
+                        target = (
+                            self.root / f"failed {failed_stem} {failed_phase} {status}"
+                        )
+                        calls = []
 
-            def fail(command, log):
-                log.write_text("deliberate child failure")
-                raise subprocess.CalledProcessError(status, command)
+                        def fail(stem, phase, work):
+                            if (stem, phase) == (failed_stem, failed_phase):
+                                (work / (phase + ".log")).write_bytes(payload)
+                                raise subprocess.CalledProcessError(
+                                    status, ["fixture child"]
+                                )
 
-            out, err = io.StringIO(), io.StringIO()
-            with patch.object(review, "run_command", side_effect=fail), redirect_stdout(
-                out
-            ), redirect_stderr(err):
-                code = replay.main(["--output", str(target)])
-            self.assertEqual(code, status if status > 0 else 128 - status)
-            self.assertFalse((target / replay.MANIFEST).exists())
-            self.assertEqual(
-                (target / "stages/run_breaks/collector.log").read_text(),
-                "deliberate child failure",
-            )
+                        out, err = io.StringIO(), io.StringIO()
+                        with patch.object(
+                            review,
+                            "run_command",
+                            side_effect=self.fixture_child(calls, fail),
+                        ), redirect_stdout(out), redirect_stderr(err):
+                            code = replay.main(
+                                ["--output", str(target / ".." / target.name)]
+                            )
+                        self.assertEqual(code, status if status > 0 else 128 - status)
+                        completed = stage_index * len(phases) + phase_index + 1
+                        self.assertEqual(calls, all_commands[:completed])
+                        log = target / "stages" / failed_stem / (failed_phase + ".log")
+                        self.assertIn(f"status {status}", err.getvalue())
+                        self.assertIn(f"{failed_stem}: {failed_phase}", err.getvalue())
+                        self.assertIn(str(log), err.getvalue())
+                        self.assertEqual(log.read_bytes(), payload)
+                        self.assertFalse((target / replay.MANIFEST).exists())
+                        next_stem, next_phase = all_commands[completed]
+                        self.assertFalse(
+                            (
+                                target / "stages" / next_stem / (next_phase + ".log")
+                            ).exists()
+                        )
 
     def test_optimized_python_rejects_both_modes_without_creating_output(self):
         for mode in ("--output", "--check"):
