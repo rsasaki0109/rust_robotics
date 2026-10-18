@@ -34,9 +34,12 @@ The `reset-evidence-replay` job performs the
 [complete reset replay](#review-and-replay-the-reset-evidence): six collectors,
 six plotters and six independent numerical verifiers, followed by the completed
 packet integrity check. It uses Python 3.12 on Ubuntu 24.04 with the pinned
-Matplotlib rendering profile in `requirements-replay.txt`. Every table, SVG,
-plot manifest and independent proof must match the frozen bytes. The fresh
-PNGs are checked against their completion-manifest hashes.
+Matplotlib rendering profile in `requirements-replay.txt`. Every table and SVG
+must match the frozen bytes. JSON provenance must have identical content,
+with source/plot digest references bound to the actual fresh files; object key
+order is ignored. Array order, value types, methods, arithmetic/audit counts,
+script hashes and all other fields remain frozen. The fresh PNGs are checked
+against their completion-manifest hashes.
 
 Download the `reset-evidence-replay` artifact from the workflow run to obtain
 the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
@@ -47,9 +50,19 @@ runner log lines and the first differences from frozen artifacts.
 Check an extracted successful artifact with:
 
 ```bash
-python3 -B experiments/pose_observation_loss/check_reset_review.py \
-  --review /path/to/extracted-artifact/fusion-return-reset-review
+python3 -B experiments/pose_observation_loss/ci_reset_replay.py \
+  --check /path/to/extracted-artifact/fusion-return-reset-review
 ```
+
+The CI command is `ci_reset_replay.py --output /tmp/new-ci-reset-replay`.
+It preserves generated files exactly as written by the original collectors,
+plotters and independent verifiers, including their actual provenance hashes.
+`ci-replay-sources.json` records this comparison policy, the driver/helper and
+dependency-file hashes, actual file hashes and frozen reference proof hashes.
+The study index references actual fresh proof/source hashes. This handles
+directory enumeration differences between filesystems. The historical
+`review_reset_evidence.py` command and `check_reset_review.py` retain their
+original byte checks and `review-sources.json` format.
 
 ## Reproduce
 

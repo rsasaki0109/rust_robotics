@@ -133,14 +133,14 @@ jobs:
           MPLCONFIGDIR: ${{ runner.temp }}/reset-review-mpl
           XDG_CACHE_HOME: ${{ runner.temp }}/reset-review-cache
         run: |
-          python -B experiments/pose_observation_loss/review_reset_evidence.py \
+          python -B experiments/pose_observation_loss/ci_reset_replay.py \
             --output "$RUNNER_TEMP/fusion-return-reset-review" \
             2>&1 | tee "$RUNNER_TEMP/reset-review-runner.log"
 
       - name: Check completed replay
         run: |
-          python -B experiments/pose_observation_loss/check_reset_review.py \
-            --review "$RUNNER_TEMP/fusion-return-reset-review" \
+          python -B experiments/pose_observation_loss/ci_reset_replay.py \
+            --check "$RUNNER_TEMP/fusion-return-reset-review" \
             | tee "$RUNNER_TEMP/reset-review-receipt.json"
 
       - name: Annotate replay failure diagnostics
