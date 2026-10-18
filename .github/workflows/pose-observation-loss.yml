@@ -102,3 +102,91 @@ jobs:
           path: ${{ runner.temp }}/pose-loss-*.log
           if-no-files-found: warn
           retention-days: 14
+
+  reset-evidence-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned replay dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r experiments/pose_observation_loss/requirements-replay.txt
+
+      - name: Record replay environment
+        run: |
+          python -VV > "$RUNNER_TEMP/reset-review-environment.txt"
+          python -m pip freeze >> "$RUNNER_TEMP/reset-review-environment.txt"
+
+      - name: Replay six collectors, plotters and independent verifiers
+        env:
+          MPLCONFIGDIR: ${{ runner.temp }}/reset-review-mpl
+          XDG_CACHE_HOME: ${{ runner.temp }}/reset-review-cache
+        run: |
+          python -B experiments/pose_observation_loss/ci_reset_replay.py \
+            --output "$RUNNER_TEMP/fusion-return-reset-review" \
+            2>&1 | tee "$RUNNER_TEMP/reset-review-runner.log"
+
+      - name: Check completed replay
+        run: |
+          python -B experiments/pose_observation_loss/ci_reset_replay.py \
+            --check "$RUNNER_TEMP/fusion-return-reset-review" \
+            | tee "$RUNNER_TEMP/reset-review-receipt.json"
+
+      - name: Annotate replay failure diagnostics
+        if: failure()
+        env:
+          PYTHONPATH: experiments/pose_observation_loss
+        run: |
+          python - <<'PY'
+          import difflib
+          import os
+          from pathlib import Path
+          import review_reset_evidence as review
+
+          root = Path(os.environ["RUNNER_TEMP"])
+          packet = root / "fusion-return-reset-review"
+
+          def annotate(title, message):
+              message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title={title}::{message}")
+
+          logs = list(packet.glob("stages/*/*.log"))
+          if logs:
+              latest = max(logs, key=lambda p: p.stat().st_mtime_ns)
+              annotate("Last replay child log", "\n".join(latest.read_text(errors="replace").splitlines()[-24:]))
+          runner = root / "reset-review-runner.log"
+          if runner.exists():
+              annotate("Replay runner log", "\n".join(runner.read_text(errors="replace").splitlines()[-24:]))
+          for stem in review.STEMS:
+              reference = review.RESULTS / ("fusion-return-" + stem.replace("_", "-"))
+              work = packet / "stages" / stem
+              for fresh in [*work.glob("collector/*"), *work.glob("figures/*"), *work.glob("independent-verification.json")]:
+                  baseline = reference / fresh.name
+                  if fresh.is_file() and baseline.is_file() and review.sha(fresh) != review.sha(baseline):
+                      difference = difflib.unified_diff(baseline.read_text().splitlines(), fresh.read_text().splitlines(), fromfile="frozen", tofile="replayed")
+                      annotate(f"Changed replay artifact: {stem}/{fresh.name}", "\n".join(list(difference)[:30]))
+          PY
+
+      - name: Upload replay outputs and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reset-evidence-replay
+          path: |
+            ${{ runner.temp }}/fusion-return-reset-review/
+            ${{ runner.temp }}/reset-review-runner.log
+            ${{ runner.temp }}/reset-review-receipt.json
+            ${{ runner.temp }}/reset-review-environment.txt
+          if-no-files-found: warn
+          retention-days: 14
