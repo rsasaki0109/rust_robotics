@@ -1,0 +1,13 @@
+{
+  "script_sha256": "a2f7c946f016cbf1550ad084deb83e48446a29e5cba069f019df27b66bc36223",
+  "input_sha256": {
+    "sources.json": "5c41eca356ae027aa9fe062a7c60fcf9bc8949099951686f9589be20f1e752c1",
+    "displacements.csv": "bb2cd1b0b8e4bbc10447bbe26658abf46bd83c07a71bd048d51df9292bcc1024",
+    "displacement-summary.csv": "9f0bd6756cdbfe41e2ead85f058638a43f2402180ac5dfbbcdf66564f40b6810"
+  },
+  "output_sha256": {
+    "reset-displacement.svg": "60239b4d228a458d225cb34f91d098f64437180295d9957eb6bbd31f27e06d86",
+    "plot-displacements.csv": "bb2cd1b0b8e4bbc10447bbe26658abf46bd83c07a71bd048d51df9292bcc1024",
+    "plot-values.csv": "9f0bd6756cdbfe41e2ead85f058638a43f2402180ac5dfbbcdf66564f40b6810"
+  }
+}
