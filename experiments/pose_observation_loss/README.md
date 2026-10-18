@@ -4169,3 +4169,58 @@ The 5x5 figure shows actual active counters for all 25 references, with shared
 0..50-tick axes, both thresholds and missing-slot breaks. Repeat all five tables,
 provenance and plot artifacts byte for byte. See the
 [local-admission report](results/fusion-return-local-admission/report.md).
+
+## Inspect endings of the original known-pass segments
+
+The [fixed protocol](results/fusion-return-run-breaks/protocol.md) reuses the
+same 25 reference windows and all 191 known-pass segments. It checks the next
+included checkpoint, preserves every simultaneous failed gate and verifies
+the actual reset amount, including evidence carried into the context window.
+Window/missing boundaries do not establish a reset or an unobserved failure.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_run_breaks.py \
+  --output /tmp/fusion-return-run-breaks
+MPLCONFIGDIR=/tmp/run-breaks-mpl python3 experiments/pose_observation_loss/plot_run_breaks.py \
+  --results /tmp/fusion-return-run-breaks --output /tmp/run-breaks-figures
+python3 experiments/pose_observation_loss/verify_run_breaks.py \
+  --results /tmp/fusion-return-run-breaks --figures /tmp/run-breaks-figures \
+  --output /tmp/run-breaks-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output directories and an unused evidence filename, without Python
+-O. Collection/verification use the standard library; plotting uses Matplotlib.
+This postprocessing audit requires the tracked preceding results. It rechecks
+their complete provenance and all 1,215 inherited native admission query/trace
+links, without a new raw extraction or dataset replay. Prior raw/native
+execution remains inherited evidence. The full existing test suite also runs
+its own native unit fixtures with the activated Rust toolchain.
+
+`run-ends.csv` keeps every preceding segment column and adds the next slot,
+native row pointers, complete masks and timer decomposition. `reset-edges.csv`
+groups only certified observed failures by exact case/source step, requiring
+identical inputs, predicates, counters and native outputs across overlapping
+windows. It retains multiplicity and all member references. Distinct physical
+resets remain descriptive records; they are not independent experiments.
+
+`reference-breaks.csv` contains only the 25 selected original references.
+`anchor-breaks.csv` retains all 3,997 anchors and `break-summary.csv` all 336
+original cells. Original metadata/denominator strings stay intact; additional
+`exact_*` columns reconstruct the original rational weights from case/received
+anchor counts and RP parent counts. Aggregation uses these fractions, preserves
+nonreturn/empty-denominator blanks and checks additive mode/category closures.
+
+Of 191 segments, 185 end at an observed failed decision and six at the right
+window boundary. The failures represent 19 distinct case/step resets: 15 fail
+nominal alone, one fails clearance plus nominal and three fail nominal plus
+release. All have inherited zero-cap nominal commands. The largest reset loses
+nine ticks at C0310 / 175.40 s, with nominal as its only failed gate.
+
+The standalone verifier imports no analyzers or plotters. It independently
+rescans segments, classifies end priority, verifies carry/reset arithmetic,
+groups physical edges and joins the original census. The frozen two-panel
+figure shows all 25 windows and compares overlapping failure endings with
+distinct case/step resets by full gate mask. Repeat all five tables/provenance
+and all plot artifacts byte for byte. See the
+[run-breaks report](results/fusion-return-run-breaks/report.md).
