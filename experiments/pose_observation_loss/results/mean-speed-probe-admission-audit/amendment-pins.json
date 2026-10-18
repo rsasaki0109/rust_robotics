@@ -1,0 +1,13 @@
+{
+  "original_protocol_sha256": "5ac8875f5e49e78c218090c27e81a90d64cf970d2b4e82a8b43593969635c992",
+  "amendment_sha256": "f2e9208008dd354074bf0a160a8d677424390947155432829af03c538ea4ca2d",
+  "failed_implementation_commit": "cd2deaf82fd347d679fb7f9478ae55b39cda7bce",
+  "failed_attempt_sha256": {
+    "failure.txt": "cabd47b699941b987485abaed2083f636d985a91582b8e504376b6410e2873fc",
+    "native/admission-geometry.rs": "6992a22d363868da0c0cd8ef75a90f37fb04e6f8033b2da0f9831ce4fe594a23",
+    "native/native-sources.json": "44b858dcd2e610249cfcd7df9f4004aa1aaceab4c36b94034b9f5d828dfe5a7a",
+    "native/queries.tsv": "e436a262b76bc1e6217130fe4d3ee82717211c8b021d56d5c45aacc92005bc2e",
+    "native/trace.csv": "86cc3f9de292fb7554ebb621f7856ea70ea0464aa3f703631580c5c65ea32426"
+  },
+  "completed_distribution_tables": false
+}

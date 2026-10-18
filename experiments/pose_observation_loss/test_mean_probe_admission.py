@@ -34,6 +34,17 @@ class IntervalAndTimerTests(unittest.TestCase):
         self.assertIs(audit.conjunction(states), False)
         self.assertEqual(audit.masks(states), ("samples;nominal", "release"))
 
+    def test_endpoint_comparison_preserves_both_rounding_intervals(self):
+        self.assertIsNone(
+            audit.release_gate("0.650000001", "0.650000000", margin_rounded=True)
+        )
+        self.assertIs(
+            audit.release_gate("0.650000002", "0.650000000", margin_rounded=True), True
+        )
+        self.assertIs(
+            audit.release_gate("0.649999999", "0.650000000", margin_rounded=True), False
+        )
+
     def test_49_steps_do_not_admit_and_50_steps_admit_atomically(self):
         timer = audit.Timer()
         for step in range(1, 50):
@@ -106,16 +117,47 @@ class NativeAndCaseTests(unittest.TestCase):
             (49.4, 20.0, 0.0, 0.6),
             (10.0, 9.0, math.pi / 2, 0.6),
         ]
+        cls.configs = [(0.0, False, 0.0, 0.0, False)] * len(cls.queries)
+        for age, precision in ((5.0, False), (1.0, True)):
+            sigma = 0.03 if precision else 0.1
+            margin = 0.5 + 0.1 + 2.0 * math.sqrt(2.0) * sigma + 0.02 * age
+            cls.queries.append((11.0, 10.0, 0.0, margin))
+            cls.configs.append((age, precision, 0.1, 0.02, False))
         cls.receipts = []
         for name in ("native-one", "native-two"):
             work = cls.root / name
             receipt = native.compile_geometry(work)
             with (work / "queries.tsv").open("w", newline="") as stream:
                 writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-                writer.writerow(("id", "scenario", "x", "y", "yaw", "margin"))
+                writer.writerow(
+                    (
+                        "id",
+                        "scenario",
+                        "x",
+                        "y",
+                        "yaw",
+                        "margin",
+                        "observation_age",
+                        "precision_active",
+                        "position_sigma",
+                        "drift_speed",
+                        "recovery_guard_buffer",
+                    )
+                )
                 writer.writerows(
-                    (i, "s", *(format(v, ".17e") for v in values))
-                    for i, values in enumerate(cls.queries, 1)
+                    (
+                        i,
+                        "s",
+                        *(format(v, ".17e") for v in values),
+                        format(config[0], ".17e"),
+                        str(config[1]).lower(),
+                        format(config[2], ".17e"),
+                        format(config[3], ".17e"),
+                        str(config[4]).lower(),
+                    )
+                    for i, (values, config) in enumerate(
+                        zip(cls.queries, cls.configs), 1
+                    )
                 )
             cls.receipts.append(
                 native.evaluate(
@@ -139,18 +181,29 @@ class NativeAndCaseTests(unittest.TestCase):
             "(recovery_margin..=(50.0 - recovery_margin)).contains(p)", source
         )
         self.assertIn("let recovery_margin = margin;", source)
-        self.assertNotIn("effective_position_sigma", source)
+        self.assertIn("let effective_position_sigma = if precision_active", source)
+        self.assertIn("if recovery_guard_buffer { 0.1 } else { 0.0 }", source)
 
     def test_native_geometry_covers_endpoint_interior_turn_and_inclusive_bounds(self):
         clearances = [float(r["recovery_clearance"]) for r in self.rows]
         self.assertEqual(clearances[:3], [1.0, 0.5, 0.0])
         self.assertAlmostEqual(clearances[6], 0.4)
         self.assertEqual(
-            [r["recovery_bounds"] for r in self.rows],
+            [r["recovery_bounds"] for r in self.rows[:7]],
             ["true", "true", "true", "true", "false", "false", "true"],
         )
         self.assertTrue(
-            all(float(r["release_margin"]) == 0.6 + 0.05 for r in self.rows)
+            all(float(r["release_margin"]) == 0.5 + 0.05 for r in self.rows[:7])
+        )
+
+    def test_original_sigma_and_separate_guard_margin_are_reconstructed(self):
+        ordinary, precision = self.rows[-2:]
+        self.assertEqual(ordinary["release_margin_9"], "0.932842712")
+        self.assertEqual(ordinary["effective_position_sigma_9"], "0.100000000")
+        self.assertEqual(precision["effective_position_sigma_9"], "0.030000000")
+        self.assertEqual(precision["precision_active"], "true")
+        self.assertNotEqual(
+            float(ordinary["release_margin"]), float(ordinary["recovery_margin"]) + 0.05
         )
 
     def test_fresh_build_paths_keep_source_queries_trace_binary_and_receipt_identical(
@@ -172,7 +225,9 @@ class NativeAndCaseTests(unittest.TestCase):
     def inputs(self):
         row = dict(
             recovery_clearance="1.000000000",
-            guard_release_margin="0.650000000",
+            guard_release_margin="0.550000000",
+            precision_active="false",
+            effective_position_sigma="0.000000000",
             recovery_sample_count="10",
             release_preview_clearance_lower_bound="1.000000000",
         )
@@ -248,7 +303,9 @@ class NativeAndCaseTests(unittest.TestCase):
                 recovery_evidence=f"{(step - 9) * 0.02 if ready and not resumed else 0:.6f}",
                 recovery_clearance="1.000000000",
                 recovery_sample_count=side["count"],
-                guard_release_margin="0.650000000",
+                guard_release_margin="0.550000000",
+                precision_active="false",
+                effective_position_sigma="0.000000000",
                 release_preview_clearance_lower_bound="1.000000000",
                 stop_latched="false",
                 guard_active="false",
@@ -321,7 +378,7 @@ class NativeAndCaseTests(unittest.TestCase):
 
     def test_case_preserves_a_rounding_ambiguity_and_unverified_timer_suffix(self):
         packet = self.synthetic_case()
-        packet[1][20]["release_preview_clearance_lower_bound"] = "0.650000000"
+        packet[1][20]["release_preview_clearance_lower_bound"] = "0.550000000"
         case, _, runs, _ = self.diagnose(packet)
         self.assertEqual(
             (case["release_ambiguous_steps"], case["timer_unverified_steps"]), (1, 40)

@@ -99,22 +99,34 @@ def preflight():
         need(
             build.sha(build.REPO / name) == digest, f"Changed diagnostic input: {name}"
         )
+    amendment = json.loads((STUDY / "amendment-pins.json").read_text())
+    need(
+        amendment["original_protocol_sha256"] == pins["protocol_sha256"],
+        "Amendment targets another protocol",
+    )
+    need(
+        build.sha(STUDY / "protocol-amendment-1.md") == amendment["amendment_sha256"],
+        "Margin amendment changed",
+    )
     return pins
 
 
-def release_gate(text, margin):
+def release_gate(text, margin, margin_rounded=False):
     """Classify strict > from the closed nine-decimal rounding interval."""
-    margin = pilot.finite(margin)
+    numeric_margin = pilot.finite(margin)
     pilot.finite(text)
     with localcontext() as context:
         context.prec = 80
         center = Decimal(text)
         need(center.is_finite(), "Nonfinite release clearance")
         half = Decimal("0.0000000005")
-        threshold = Decimal.from_float(margin)
-        if center - half > threshold:
+        threshold = (
+            Decimal(margin) if margin_rounded else Decimal.from_float(numeric_margin)
+        )
+        margin_half = half if margin_rounded else Decimal(0)
+        if center - half > threshold + margin_half:
             return True
-        if center + half <= threshold:
+        if center + half <= threshold - margin_half:
             return False
     return None
 
@@ -164,7 +176,18 @@ def gates(row, side, geometry):
     )
     margin = pilot.finite(side["margin"])
     release_margin = pilot.finite(geometry["release_margin"])
-    need(release_margin == margin + 0.05, "Native release margin calculation differs")
+    need(
+        pilot.finite(geometry["recovery_margin"]) == margin,
+        "Native recovery margin differs",
+    )
+    need(
+        geometry["precision_active"] == row["precision_active"],
+        "Native precision epoch differs",
+    )
+    need(
+        geometry["effective_position_sigma_9"] == row["effective_position_sigma"],
+        "Native effective sigma differs",
+    )
     need(
         int(side["count"]) == int(row["recovery_sample_count"]), "Sample count differs"
     )
@@ -352,7 +375,8 @@ def diagnose_case(
     brakes = ("stop_latched", "safety_paused", "guard_active", "speed_braking")
     release = release_gate(
         last["release_preview_clearance_lower_bound"],
-        pilot.finite(side["margin"]) + 0.05,
+        last["guard_release_margin"],
+        margin_rounded=True,
     )
     return dict(
         **meta,
@@ -436,8 +460,23 @@ def extract_queries(raw, provenance, directory):
     path = directory / "queries.tsv"
     with path.open("x", newline="") as stream:
         writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-        writer.writerow(("id", "scenario", "x", "y", "yaw", "margin"))
+        writer.writerow(
+            (
+                "id",
+                "scenario",
+                "x",
+                "y",
+                "yaw",
+                "margin",
+                "observation_age",
+                "precision_active",
+                "position_sigma",
+                "drift_speed",
+                "recovery_guard_buffer",
+            )
+        )
         for trial in provenance["trials"]:
+            previous_key, precision = None, False
             with (raw / trial["directory"] / "speed-probes.csv").open(
                 newline=""
             ) as source:
@@ -447,6 +486,10 @@ def extract_queries(raw, provenance, directory):
                     "Diagnostic sidecar schema differs",
                 )
                 for side in reader:
+                    key = side["scenario"], side["planner"]
+                    if key != previous_key:
+                        previous_key, precision = key, False
+                    precision |= pilot.truth(side["precision_activation"])
                     if pilot.truth(side["paused"]):
                         count += 1
                         writer.writerow(
@@ -462,6 +505,11 @@ def extract_queries(raw, provenance, directory):
                                         "margin",
                                     )
                                 ),
+                                side["observation_age"],
+                                str(precision).lower(),
+                                trial["command"][4],
+                                trial["command"][7],
+                                trial["command"][21],
                             )
                         )
     return path, count
@@ -580,6 +628,8 @@ def collect(raw, output):
             working_tree_clean=True,
             protocol_sha256=build.sha(STUDY / "protocol.md"),
             freeze_sha256=build.sha(STUDY / "freeze-pins.json"),
+            amendment_sha256=build.sha(STUDY / "protocol-amendment-1.md"),
+            amendment_pins_sha256=build.sha(STUDY / "amendment-pins.json"),
             input_sha256=pins["input_sha256"],
             raw_provenance_sha256=build.sha(raw / "provenance.json"),
             diagnostic_sha256=build.sha(Path(__file__)),

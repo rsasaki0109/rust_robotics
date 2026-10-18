@@ -15,6 +15,9 @@ TRACE_FIELDS = (
     "recovery_bounds",
     "release_margin",
     "release_margin_9",
+    "recovery_margin",
+    "precision_active",
+    "effective_position_sigma_9",
 )
 
 
@@ -38,8 +41,33 @@ def source():
     line = build.once(
         original[start:end], margin, "            let recovery_margin = margin;"
     )
+    effective_start = original.index(
+        "            let effective_position_sigma = if precision_active {"
+    )
+    effective_end = original.index(
+        "            let effective_yaw_sigma =", effective_start
+    )
+    guard_start = original.index("            let base_preview_margin = RADIUS")
+    guard_end = original.index("            // A flat +0.1", guard_start)
+    guard_release = "let guard_release_margin = base_preview_margin + 0.05;"
+    build.require(
+        original.count(guard_release) == 1, "Guard release expression changed"
+    )
+    margins = (
+        "fn margins(position_sigma: f64, drift_speed: f64, observation_age: f64, precision_active: bool, recovery_guard_buffer: bool) -> (f64, f64, f64) {\n"
+        + original[effective_start:effective_end]
+        + margin
+        + "\n"
+        + original[guard_start:guard_end]
+        + guard_release
+        + "\n(recovery_margin, guard_release_margin, effective_position_sigma)\n}\n"
+    )
     return (
-        "#![allow(dead_code)]\nuse std::io::{BufRead, Write};\n#[derive(Clone, Copy)]\n"
+        "#![allow(dead_code)]\nuse std::io::{BufRead, Write};\n"
+        + next(
+            line for line in original.splitlines() if line.startswith("const RADIUS:")
+        )
+        + "\n#[derive(Clone, Copy)]\n"
         + source_block(types, "pub struct Point2D")
         + "\nimpl Point2D {\n"
         + source_block(types, "pub fn new(x: f64, y: f64)")
@@ -50,6 +78,7 @@ def source():
         + "\nfn geometry(recovery_x: f64, recovery_y: f64, recovery_yaw: f64, margin: f64, obs: &[Point2D]) -> (f64, bool) {\n"
         + line
         + "(recovery_clearance, recovery_bounds)\n}\n"
+        + margins
         + r"""
 fn main() {
     let args: Vec<_> = std::env::args().collect();
@@ -60,18 +89,20 @@ fn main() {
         maps.entry(f[0].to_owned()).or_default().push(Point2D::new(f[1].parse().unwrap(), f[2].parse().unwrap()));
     }
     let mut output = std::io::BufWriter::new(std::io::stdout().lock());
-    writeln!(output, "id,recovery_clearance,recovery_clearance_9,recovery_bounds,release_margin,release_margin_9").unwrap();
+    writeln!(output, "id,recovery_clearance,recovery_clearance_9,recovery_bounds,release_margin,release_margin_9,recovery_margin,precision_active,effective_position_sigma_9").unwrap();
     let input = std::io::BufReader::new(std::fs::File::open(&args[2]).unwrap());
     for line in input.lines().skip(1) {
         let line = line.unwrap();
         let f: Vec<_> = line.split('\t').collect();
-        assert_eq!(f.len(), 6);
-        let values: Vec<f64> = f[2..].iter().map(|v| v.parse().unwrap()).collect();
+        assert_eq!(f.len(), 11);
+        let values: Vec<f64> = f[2..6].iter().map(|v| v.parse().unwrap()).collect();
         assert!(values.iter().all(|v| v.is_finite()));
         assert!(values[3] > 0.0);
-        let (clearance, bounds) = geometry(values[0], values[1], values[2], values[3], maps.get(f[1]).unwrap());
-        let release_margin = values[3] + 0.05;
-        writeln!(output, "{},{:.17e},{:.9},{},{:.17e},{:.9}", f[0], clearance, clearance, bounds, release_margin, release_margin).unwrap();
+        let precision: bool = f[7].parse().unwrap();
+        let (recovery_margin, release_margin, sigma) = margins(f[8].parse().unwrap(), f[9].parse().unwrap(), f[6].parse().unwrap(), precision, f[10].parse().unwrap());
+        assert_eq!(recovery_margin, values[3], "Logged recovery margin differs at query {}", f[0]);
+        let (clearance, bounds) = geometry(values[0], values[1], values[2], recovery_margin, maps.get(f[1]).unwrap());
+        writeln!(output, "{},{:.17e},{:.9},{},{:.17e},{:.9},{:.17e},{},{:.9}", f[0], clearance, clearance, bounds, release_margin, release_margin, recovery_margin, precision, sigma).unwrap();
     }
 }
 """

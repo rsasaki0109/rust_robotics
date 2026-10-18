@@ -4753,6 +4753,10 @@ recovery-line geometry at every paused decision, reconstructs all seven joint
 admission gates and checks the one-second continuous timer. It retains complete
 failure masks and all definite-ready runs, including runs ending in failure.
 Cases without a loss pause remain in the exported population.
+The [margin amendment](results/mean-speed-probe-admission-audit/protocol-amendment-1.md)
+records a rejected initial assumption: the curved configuration has separate
+recovery and guard margins. The native reader reconstructs both original
+expressions from the fixed command parameters and recorded precision epochs.
 
 ```bash
 python3 -B experiments/pose_observation_loss/analyze_mean_probe_admission.py \
