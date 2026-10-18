@@ -4051,3 +4051,60 @@ chord, straight 0.6-m recovery segment, boundary or whole-probe tests. A
 first-chord failure can have a clear start point. Repeat all four tables /
 provenance and plot artifacts byte for byte. See the
 [point-clearance report](results/fusion-return-point-clearance/report.md).
+
+## Inspect the original 25 local point-gap histories
+
+The [fixed protocol](results/fusion-return-point-history/protocol.md) follows
+all 25 preceding nominal-only conjunction failures, including the four raw-away
+references. Each gets exactly 51 planned slots, offsets -25..25 at 50 Hz.
+Positive offsets stop strictly before the original next loss or at source end;
+missing slots remain explicit. Negative offsets before the first return are
+historical context. Slots do not become new decision references or follow-up.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_point_history.py \
+  --output /tmp/fusion-return-point-history
+MPLCONFIGDIR=/tmp/point-history-mpl python3 experiments/pose_observation_loss/plot_point_history.py \
+  --results /tmp/fusion-return-point-history --output /tmp/point-history-figures
+python3 experiments/pose_observation_loss/verify_point_history.py \
+  --results /tmp/fusion-return-point-history --figures /tmp/point-history-figures \
+  --work /tmp/point-history-independent --output /tmp/point-history-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output/work directories and an unused evidence filename, without
+Python -O. Activate the saved Rust toolchain or provide `--rustc`. Both readers
+accept `--raw-roots`. Collection/verification use the standard library; plotting
+uses Matplotlib. The 108 raw files receive fresh hash/grid checks; only the four
+histories containing a selected reference receive the new full window replay.
+All earlier evidence and the complete reference population remain inherited.
+
+`history-decisions.csv` retains every prior field and adds an audit flag,
+pre/post state counts, current-state run lengths, onset censorship and first
+certain later-clear fields. Checkpoint count L and span (L-1)/50 s are separate;
+a run reaching the left context limit has an unknown earlier onset. Unknown
+states break clear/blocked runs. For currently blocked points, a future clear
+is an observed point predicate; missing future slots cannot establish a whole
+half-second without a clear or any controller recovery.
+
+All 23 currently blocked raw points have a certain clear point 1–3 recorded
+steps later (0.02–0.06 s). The four raw-away references were already in blocked
+runs of two or three checkpoints and all have a clear point at the next step.
+The 60 future slots at/after next loss remain blank. All 565 included positive-
+offset mean points are clear; this is a recorded point predicate.
+
+`history-slots.csv` keeps all 1,275 planned slots and exact raw margin/input
+strings for included slots. `history-witnesses.csv` preserves every original
+fixed obstacle ID; no whole-map minimum is substituted. Reconstructed raw/mean
+point gaps reuse each slot's own margin and the preceding rounding enclosures.
+The current and preceding point results are checked against inherited fields.
+`anchor-history.csv` and `history-summary.csv` retain original weights, cells,
+nonreturns and empty share denominators, adding phase/branch counts and flags.
+
+The standalone verifier imports no analyzers. Independent planning and run
+scanning use the pinned Decimal window/point helpers and unchanged Rust window
+and Point2D.distance source. Every included context and rounded point-obstacle
+pair is traced. Repeat the five tables/provenance and figure artifacts byte
+for byte. The 5x5 figure shows all 25 references in original order, marks
+before-return context and raw-away labels, and breaks lines at missing slots.
+See the [point-history report](results/fusion-return-point-history/report.md).
