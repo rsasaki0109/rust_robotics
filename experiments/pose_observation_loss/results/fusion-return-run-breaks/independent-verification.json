@@ -1,0 +1,41 @@
+{
+  "planned_cases": 972,
+  "planned_families": 324,
+  "timeout_cases": 570,
+  "census_events": 3997,
+  "returned_anchors": 137,
+  "inherited_decision_references": 3751,
+  "inherited_zero_probes": 1096,
+  "selected_references": 25,
+  "planned_slots": 1275,
+  "included_slots": 1215,
+  "unique_context_points": 247,
+  "missing_slots": 60,
+  "before_return_slots": 82,
+  "inherited_runs": 191,
+  "end_statuses": {
+    "gate_failure": 185,
+    "right_context_limit": 6
+  },
+  "failure_kinds": {
+    "nominal_only": 171,
+    "nominal_with_other": 14
+  },
+  "unique_reset_edges": 19,
+  "reset_multiplicity": 185,
+  "inherited_native_links_checked": 1215,
+  "summary_rows": 336,
+  "additive_closure_comparisons": 3036,
+  "fresh_raw_reads": 0,
+  "fresh_native_runs": 0,
+  "comparisons": 329539,
+  "original_join_comparisons": 155883,
+  "plotted_summary_rows": 252,
+  "plotted_return_rows": 137,
+  "script_sha256": "35a370af36b285902270b8f9a5eb5acfbe49ca03d1e21b43a379192bf90ba373",
+  "sources_sha256": "83d3c06df66e4e331c05486bfe7df0bdb4197d8159f7c1820d767d287f4debaa",
+  "plot_sources_sha256": "9005f86bdba345a51277beb68b96d3801661b34b1a3f45277a2fd3a669004210",
+  "inherited_local_admission_proof_sha256": "884fb4bca980ec2baf35fd7df28d6a51a5280ec01a9ff671a38f46bc4ef62770",
+  "inherited_native_tests": 21,
+  "method": "independent segment/end traversal, carry/reset checks, physical edge agreement and original census accounting; inherited native queries/traces rechecked without new raw/native execution"
+}
