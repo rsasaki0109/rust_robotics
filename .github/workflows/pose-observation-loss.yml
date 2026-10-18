@@ -1,0 +1,104 @@
+name: Pose observation loss checks
+
+on:
+  push:
+    branches: [ main, dev/*, feat/*, task/* ]
+    paths:
+      - .github/workflows/pose-observation-loss.yml
+      - experiments/pose_observation_loss/**
+      - crates/rust_robotics_control/**
+      - crates/rust_robotics_core/**
+  pull_request:
+    branches: [ main ]
+    paths:
+      - .github/workflows/pose-observation-loss.yml
+      - experiments/pose_observation_loss/**
+      - crates/rust_robotics_control/**
+      - crates/rust_robotics_core/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-and-native-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: -r experiments/pose_observation_loss/requirements-ci.txt
+
+      - name: Show toolchains
+        run: |
+          python --version
+          rustc --version
+
+      - name: Check frozen reset review inputs and exports
+        env:
+          PYTHONPATH: experiments/pose_observation_loss
+        run: |
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/pose-loss-frozen-inputs.log"
+          import review_reset_evidence as review
+
+          if not __debug__:
+              raise RuntimeError("Run without Python optimization")
+          _, inputs = review.preflight()
+          manifest = review.read_json(review.STUDY / "review-sources.json")
+          assert manifest["input_sha256"] == inputs
+          for field, path in (
+              ("script_sha256", review.ROOT / "review_reset_evidence.py"),
+              ("protocol_sha256", review.STUDY / "protocol.md"),
+              ("freeze_sha256", review.STUDY / "freeze-pins.json"),
+          ):
+              assert review.sha(path) == manifest["analysis"][field], path
+          for name, digest in manifest["output_sha256"].items():
+              assert review.sha(review.STUDY / name) == digest, name
+          original = review.read_csv(
+              review.RESULTS / "fusion-return-reset-surplus" / "surplus.csv"
+          )
+          saved = review.read_csv(review.STUDY / "reset-evidence.csv")
+          assert len(saved) == 19
+          assert review.project_overview(original) == saved
+          print(f"Verified {len(inputs)} frozen inputs and all {len(saved)} review rows")
+          PY
+
+      - name: Run Python tests and Rust source cross-checks without skips
+        run: |
+          python - <<'PY' 2>&1 | tee "$RUNNER_TEMP/pose-loss-tests.log"
+          import sys
+          import unittest
+
+          if not __debug__:
+              raise RuntimeError("Run without Python optimization")
+          suite = unittest.defaultTestLoader.discover(
+              "experiments/pose_observation_loss", pattern="test_*.py"
+          )
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.testsRun or result.skipped:
+              raise SystemExit("Expected a nonempty test suite with no skipped tests")
+          sys.exit(0 if result.wasSuccessful() else 1)
+          PY
+
+      - name: Upload check logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pose-observation-loss-checks
+          path: ${{ runner.temp }}/pose-loss-*.log
+          if-no-files-found: warn
+          retention-days: 14

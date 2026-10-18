@@ -10,6 +10,29 @@ For the completed 19-reset evidence audit, start with the
 [consolidated review](results/fusion-return-reset-review/report.md) and its
 [one-command replay](#review-and-replay-the-reset-evidence).
 
+## Continuous checks
+
+The [experiment workflow](../../.github/workflows/pose-observation-loss.yml)
+runs on pushes and pull requests that change this experiment, the control/core
+crates, or the workflow itself. It can also be started with `workflow_dispatch`.
+It uses Python 3.12 and stable Rust to run all `test_*.py` tests, including the
+native fixtures that compile and cross-check the recorded Rust expressions.
+Zero discovered tests, skipped tests and test failures all fail the check.
+The test suite uses NumPy, the Python standard library and `rustc`. Install its
+Python dependency with the same pinned requirements used by CI:
+
+```bash
+python3 -m pip install --only-binary=:all: -r experiments/pose_observation_loss/requirements-ci.txt
+```
+
+The workflow also checks the six reset studies' frozen artifact/script hashes,
+the saved review's runner/protocol/catalogue and export hashes, and the exact
+19-row projection from the original surplus table. Logs are uploaded on both
+success and failure for 14 days. For fresh collector, plotter and independent
+verifier execution with byte comparisons, use the
+[complete reset replay](#review-and-replay-the-reset-evidence), whose plotters
+require Matplotlib.
+
 ## Reproduce
 
 From the repository root, with the repository's Rust toolchain and Python 3.9+:
@@ -4493,8 +4516,9 @@ python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py'
 
 Use a fresh output directory outside the checkout, without Python -O. The
 runner uses the standard library; the existing plotters require Matplotlib.
-The full Python suite also needs the activated saved Rust toolchain for its
-existing native unit fixtures. The review runner adds no raw extraction,
+The full Python suite also needs NumPy (see [continuous checks](#continuous-checks))
+and the activated saved Rust toolchain for its existing native unit fixtures.
+The review runner adds no raw extraction,
 source observations or native dataset execution.
 
 The command reruns all six collectors, plotters and standalone independent

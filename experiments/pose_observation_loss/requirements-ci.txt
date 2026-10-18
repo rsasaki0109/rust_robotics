@@ -1,0 +1,2 @@
+# NumPy-backed independent mask fixtures in test_event_support_attrition.py.
+numpy==2.3.5
