@@ -4688,3 +4688,59 @@ Two extractions, collections and native verifications reproduced nine files
 byte for byte. The full test suite replays the tracked packet, verifies the new
 results with the native function and includes synthetic initial/first/later
 chord, inclusive wall/obstacle, duplicate and near-zero-steering cases.
+
+## Run the closed-loop mean-position probe pilot
+
+The [predeclared pilot](results/mean-speed-probe-live-pilot/protocol.md) tests
+whether using the existing stationary recovery mean for the speed probe's x/y
+changes actual recovery and hold outcomes. It fixes one new seed, two noise
+correlation times, three availability modes, three maps and three planners:
+108 cases, or 54 raw/mean pairs. Keep the complete fixed grid, including failures.
+The [recorded report](results/mean-speed-probe-live-pilot/report.md) retains all
+outcomes: both arms held in 24/54 cases, with no gained or lost holds in any
+pair. This pilot did not establish an increase in successful holds.
+
+```bash
+python3 -B experiments/pose_observation_loss/run_mean_speed_probe.py \
+  --output /tmp/mean-speed-probe-raw
+python3 -B experiments/pose_observation_loss/analyze_mean_speed_probe.py \
+  --raw /tmp/mean-speed-probe-raw --output /tmp/mean-speed-probe-audit
+```
+
+Use Python 3.12, the activated Rust/Cargo toolchain, a clean committed checkout
+and fresh output paths outside the repository. The runner requires at least
+2 GiB free on the output parent's filesystem and uses only standard libraries
+and the existing locked Cargo dependencies. It verifies all frozen inputs,
+generates the complete candidate source and diff outside the checkout, and
+compiles it against the unchanged original example's exact Cargo libraries.
+It preserves the original simulator, library defaults, manifests and lockfile.
+
+The generated example adds an optional final `MEAN_SPEED_PROBE` boolean,
+default false. The mean arm changes only probe x/y when already paused,
+measured absolute speed is at most 0.02, observation age is at most 1.5 seconds,
+and the existing window contains at least 10 samples. Raw yaw, original nominal
+steering, margins, geometry and every other policy calculation are retained.
+The original 82-column trajectories/results keep their format; a separate
+`speed-probes.csv` records every decision and full-precision physical values
+for independent verification. Physical truth is never a new controller input.
+
+The runner retains all 108 cases and 18 additional original/default regression
+cases. The latter must reproduce the complete explicit-false trajectories and
+results byte for byte and are excluded from the treatment denominator.
+`provenance.json` records source commit, commands, compiler/library/binary/source
+hashes and every raw file hash. Preserve the complete raw packet for replay.
+
+The auditor reconstructs every existing averaging window and eligibility
+decision, checks full-precision physical dynamics, braking, swept contacts,
+bounds, holds and inherited gate/filter histories, and checks paired common
+prefixes and latent observations. Independent full-probe geometry replay uses
+the protocol's fixed sampled steps; `probe-samples.csv` retains all checks.
+`cases.csv`, `pairs.csv`, `summary.csv` and `verification.csv` retain the complete
+population. `sources.json` is written only on successful completion; failures
+retain sampled evidence and a diagnostic. Repeat with a second fresh output
+path to compare all five CSV files and `sources.json` byte for byte.
+
+The small native fixture and selector tests run in the full Python suite; CI
+does not rerun the 108-case pilot. This one-seed engineering pilot cannot
+establish a population recovery rate or a safety guarantee. The option remains
+experimental and disabled by default regardless of its results.
