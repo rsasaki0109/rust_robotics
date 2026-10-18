@@ -1,0 +1,54 @@
+{
+  "method": "Two complete audits of the same fixed raw packet; byte comparison of all five CSV tables and completion provenance",
+  "implementation_commit": "6497a30a64ae2a2b677dfa1e53f648f217800b78",
+  "raw_provenance_sha256": "eaafffb6cf20d8d8019daa9bf627977b41746e7801d41a1889435baa1637a117",
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "physical_steps": 788988,
+    "sidecar_decisions": 788988,
+    "geometry_samples": 4400,
+    "regression_cases": 18
+  },
+  "first_sha256": {
+    "cases.csv": "335c8869c6056707fda18c7a050d77d12a8ab5f39f796b6b947ac96515300143",
+    "pairs.csv": "2eddce2b58f840c78f1ed52a0b808751c9caa83ea85e02098bd1fce8e86b4e2a",
+    "summary.csv": "0fd6a5506095be9384cd7e36bfd3a4019b1efccff679e6c30fde8f458f8dc8ed",
+    "verification.csv": "232ea7e83e782c4d5863897323a903656c8729aab5ae0adc7487e0e4daf9da09",
+    "probe-samples.csv": "ca41c5f979d78425037b784811fb72d0b1de599f3bb518c5f311770abca1ec56",
+    "sources.json": "67991ea2f8afc96ebdecfa18e6a061ac750625badf352dc424ef6ebe8f59da68"
+  },
+  "second_sha256": {
+    "cases.csv": "335c8869c6056707fda18c7a050d77d12a8ab5f39f796b6b947ac96515300143",
+    "pairs.csv": "2eddce2b58f840c78f1ed52a0b808751c9caa83ea85e02098bd1fce8e86b4e2a",
+    "summary.csv": "0fd6a5506095be9384cd7e36bfd3a4019b1efccff679e6c30fde8f458f8dc8ed",
+    "verification.csv": "232ea7e83e782c4d5863897323a903656c8729aab5ae0adc7487e0e4daf9da09",
+    "probe-samples.csv": "ca41c5f979d78425037b784811fb72d0b1de599f3bb518c5f311770abca1ec56",
+    "sources.json": "67991ea2f8afc96ebdecfa18e6a061ac750625badf352dc424ef6ebe8f59da68"
+  },
+  "byte_identical": true,
+  "full_test_suite_before_pilot": {
+    "tests": 1322,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 39.782681711003534,
+    "success": true
+  },
+  "python": "3.12.14",
+  "native_tests": 24,
+  "retained_raw_bytes": 1303741994,
+  "tracked_sha256": {
+    "cases.csv": "335c8869c6056707fda18c7a050d77d12a8ab5f39f796b6b947ac96515300143",
+    "pairs.csv": "2eddce2b58f840c78f1ed52a0b808751c9caa83ea85e02098bd1fce8e86b4e2a",
+    "summary.csv": "0fd6a5506095be9384cd7e36bfd3a4019b1efccff679e6c30fde8f458f8dc8ed",
+    "verification.csv": "232ea7e83e782c4d5863897323a903656c8729aab5ae0adc7487e0e4daf9da09",
+    "probe-samples.csv": "ca41c5f979d78425037b784811fb72d0b1de599f3bb518c5f311770abca1ec56",
+    "sources.json": "67991ea2f8afc96ebdecfa18e6a061ac750625badf352dc424ef6ebe8f59da68",
+    "all-results.csv": "8aec94e0595ab8ee15253afa3971a9d63ac4f8fde14526b525e5dad172e0e7b8",
+    "raw-provenance.json": "eaafffb6cf20d8d8019daa9bf627977b41746e7801d41a1889435baa1637a117",
+    "build-sources.json": "daaa761822d9a0053fd8e22407fae76ca0156e0e6a624dd15ac47bc88fe52189",
+    "candidate.diff": "e30ed048f964fe55b191cb6f9a6b1b91062288db1279360436faa04ab24b35e9",
+    "native-tests.log": "52792214d7ed0f45a1d46184e35c9eb59b175cd7d4780d709c47e391a9edfdab"
+  }
+}

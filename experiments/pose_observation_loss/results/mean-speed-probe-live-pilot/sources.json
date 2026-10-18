@@ -1,0 +1,52 @@
+{
+  "method": "complete full-precision sidecar/window, dynamics/contact/hold and inherited gate/filter audit; predeclared sampled probe geometry",
+  "analyzer_sha256": "118c90302019c609a02654362a37b0baae83e1bd13114aedc57183f8f47df3ae",
+  "protocol_sha256": "928a66cfd56f47597de45acf02d0cfb1b094f64db121ddf66575598592c22dab",
+  "freeze_sha256": "34070fe78d5e9ef293e5fde89d26bf4a063cedf41c4d1f8c6ce8ed24c32a0aaf",
+  "input_sha256": {
+    "Cargo.lock": "1d6a6378d391960d1f695719ca6a018b73c6a276f92977c0a927956aa618be7c",
+    "Cargo.toml": "a2ac81d1341535803135caa58d2440077c7367f0adea279ef9e341048d90541d",
+    "crates/rust_robotics_control/Cargo.toml": "b363ae0a9a7008d501a74810a653dc5b6ff547322d36bc88f059037beaa17c2f",
+    "crates/rust_robotics_control/examples/pose_observation_loss.rs": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "crates/rust_robotics_control/src/pure_pursuit.rs": "e6a818f32a3f396b7056a9b1d788d2f8d2b497511bad4f926614bbfc40063deb",
+    "crates/rust_robotics_core/Cargo.toml": "c31aef6f0346a92035f5d3a81d0a33dc7a2dea1b7e703ca628c4fbe758144008",
+    "crates/rust_robotics_core/src/types.rs": "19c5cf3473851102b84caa21eaa2149c9bffd7d113a0a035622bf53164bde80f",
+    "experiments/pose_observation_loss/analyze_entry_cycles.py": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+    "experiments/pose_observation_loss/analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+    "experiments/pose_observation_loss/analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+    "experiments/pose_observation_loss/analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+    "experiments/pose_observation_loss/analyze_reset_mean_probe.py": "6589f00a0553dc33c2742f2a96d7bdb901a75bd36fde54c0171a23a343354ada",
+    "experiments/pose_observation_loss/analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+    "experiments/pose_observation_loss/analyze_stationary_epoch_fusion.py": "1d730cb485768c564ae8a79600a3121cef5609eda95bd3435b18c0ef3e89b3b9",
+    "experiments/pose_observation_loss/analyze_terminal_steering_preview.py": "0a02dfc06a6386391682eb34b60f8def986fddc27e29e4b1c30cf0ab94329ba7",
+    "experiments/pose_observation_loss/compare_correlations.py": "77d8b812d413b79ad887f0d464780533c559a341aac7d8f9ecca2816f75d5d36",
+    "experiments/pose_observation_loss/results/fusion-return-reset-mean-probe/independent-verification.json": "73490766356c256cdd2eb4dcb40992523ef64badc93687d5de3db48b47572469",
+    "experiments/pose_observation_loss/results/fusion-return-reset-mean-probe/reprobes.csv": "3dcf1e312916e0b2134d0e75b4f4520c5a6c90a02be64fd3c0ab61ba2039f77c",
+    "experiments/pose_observation_loss/results/mean-speed-probe-live-pilot/seed-audit.json": "2015e2dce423758b7a150e8046a6752440a76787144647fb1b09c1c82b98e14e",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+    "experiments/pose_observation_loss/summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+    "experiments/pose_observation_loss/verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+    "experiments/pose_observation_loss/verify_motion_filter.py": "7911b7747013b9440e87e147b05b11bed045bc53013bda9e553af678bda35fd0",
+    "experiments/pose_observation_loss/verify_restart_consistency.py": "f1872ab6a5e4485de5cec92c8976528f53576109eddfc975d0d314e24fcf72b8",
+    "experiments/pose_observation_loss/verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+  },
+  "raw_provenance_sha256": "eaafffb6cf20d8d8019daa9bf627977b41746e7801d41a1889435baa1637a117",
+  "implementation_commit": "6497a30a64ae2a2b677dfa1e53f648f217800b78",
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "physical_steps": 788988,
+    "sidecar_decisions": 788988,
+    "geometry_samples": 4400,
+    "regression_cases": 18
+  },
+  "output_sha256": {
+    "cases.csv": "335c8869c6056707fda18c7a050d77d12a8ab5f39f796b6b947ac96515300143",
+    "pairs.csv": "2eddce2b58f840c78f1ed52a0b808751c9caa83ea85e02098bd1fce8e86b4e2a",
+    "summary.csv": "0fd6a5506095be9384cd7e36bfd3a4019b1efccff679e6c30fde8f458f8dc8ed",
+    "verification.csv": "232ea7e83e782c4d5863897323a903656c8729aab5ae0adc7487e0e4daf9da09",
+    "probe-samples.csv": "ca41c5f979d78425037b784811fb72d0b1de599f3bb518c5f311770abca1ec56"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "base_main": "836697cebf36041de0c7d57d3f1add9f40f83d13",
+  "generator_sha256": "58cc880ef86c955e82862b8a508c6c91d27971271b3a1ea814cc4cdd7c626d13",
+  "protocol_sha256": "928a66cfd56f47597de45acf02d0cfb1b094f64db121ddf66575598592c22dab",
+  "freeze_sha256": "34070fe78d5e9ef293e5fde89d26bf4a063cedf41c4d1f8c6ce8ed24c32a0aaf",
+  "input_sha256": {
+    "Cargo.lock": "1d6a6378d391960d1f695719ca6a018b73c6a276f92977c0a927956aa618be7c",
+    "Cargo.toml": "a2ac81d1341535803135caa58d2440077c7367f0adea279ef9e341048d90541d",
+    "crates/rust_robotics_control/Cargo.toml": "b363ae0a9a7008d501a74810a653dc5b6ff547322d36bc88f059037beaa17c2f",
+    "crates/rust_robotics_control/examples/pose_observation_loss.rs": "81711bb44ae1741c5f0e1f71180b047284bf098066f9b1246915130b094f9228",
+    "crates/rust_robotics_control/src/pure_pursuit.rs": "e6a818f32a3f396b7056a9b1d788d2f8d2b497511bad4f926614bbfc40063deb",
+    "crates/rust_robotics_core/Cargo.toml": "c31aef6f0346a92035f5d3a81d0a33dc7a2dea1b7e703ca628c4fbe758144008",
+    "crates/rust_robotics_core/src/types.rs": "19c5cf3473851102b84caa21eaa2149c9bffd7d113a0a035622bf53164bde80f",
+    "experiments/pose_observation_loss/analyze_entry_cycles.py": "d6b85548dbf25afbe744ab52933788aa574baa042e226aae29cea079440b4398",
+    "experiments/pose_observation_loss/analyze_epoch_preview.py": "aa8e46896dc8a70157e73ab5a0bf50820576b9c901edce6fe5db4bc3ede3f810",
+    "experiments/pose_observation_loss/analyze_recovery_arcs.py": "fadc722e09f726156f1538b164ba821a2e18f240d1ccb9c2e0c5f92949306bff",
+    "experiments/pose_observation_loss/analyze_recovery_stalls.py": "81607e3b8df6d213c4a8ecf412445d0e80725bf1b50a736767567eb206fc4a2d",
+    "experiments/pose_observation_loss/analyze_reset_mean_probe.py": "6589f00a0553dc33c2742f2a96d7bdb901a75bd36fde54c0171a23a343354ada",
+    "experiments/pose_observation_loss/analyze_robust_arc_selection.py": "30dccf677ee96e50e8a4b93008c0dac39acca32f27f7c87e895a0106bf3f004f",
+    "experiments/pose_observation_loss/analyze_stationary_epoch_fusion.py": "1d730cb485768c564ae8a79600a3121cef5609eda95bd3435b18c0ef3e89b3b9",
+    "experiments/pose_observation_loss/analyze_terminal_steering_preview.py": "0a02dfc06a6386391682eb34b60f8def986fddc27e29e4b1c30cf0ab94329ba7",
+    "experiments/pose_observation_loss/compare_correlations.py": "77d8b812d413b79ad887f0d464780533c559a341aac7d8f9ecca2816f75d5d36",
+    "experiments/pose_observation_loss/results/fusion-return-reset-mean-probe/independent-verification.json": "73490766356c256cdd2eb4dcb40992523ef64badc93687d5de3db48b47572469",
+    "experiments/pose_observation_loss/results/fusion-return-reset-mean-probe/reprobes.csv": "3dcf1e312916e0b2134d0e75b4f4520c5a6c90a02be64fd3c0ab61ba2039f77c",
+    "experiments/pose_observation_loss/results/mean-speed-probe-live-pilot/seed-audit.json": "2015e2dce423758b7a150e8046a6752440a76787144647fb1b09c1c82b98e14e",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/obstacles.csv": "59ff820ccbf076cfd90906da055c4f0b95c58207652d7d28610b294f6c51b3e4",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/paths.csv": "afad17a50d7036ec46e8a476516222eacf8e95c2df50588b8063d84459562996",
+    "experiments/pose_observation_loss/results/planning-clearance/fixtures/fine-padding/planning.csv": "d7efb9650e75873925f80cffb31a5a2f640ef0cb48abc537b3e6bcedf85f4f50",
+    "experiments/pose_observation_loss/summarize_stopping_preview.py": "1e174b179cefd6131c1f61e3062db650a917d86ccf16cee4f5933e26b3a4f029",
+    "experiments/pose_observation_loss/verify_joint_recovery.py": "52c093f74b4ebbe854e45783ac75b9e13167756b4baf18c6ef7a49dfe8309885",
+    "experiments/pose_observation_loss/verify_motion_filter.py": "7911b7747013b9440e87e147b05b11bed045bc53013bda9e553af678bda35fd0",
+    "experiments/pose_observation_loss/verify_restart_consistency.py": "f1872ab6a5e4485de5cec92c8976528f53576109eddfc975d0d314e24fcf72b8",
+    "experiments/pose_observation_loss/verify_stopping_preview.py": "e5e75cf130dce0731eedde475b515d34a9931ba2f480827c6b9a1099a8f2bfca"
+  },
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+  "cargo_command": [
+    "cargo",
+    "build",
+    "--locked",
+    "--release",
+    "-p",
+    "rust_robotics_control",
+    "--no-default-features",
+    "--example",
+    "pose_observation_loss",
+    "--message-format=json"
+  ],
+  "libraries": {
+    "rust_robotics_control": {
+      "filename": "librust_robotics_control-170cc6299b5dc91b.rlib",
+      "sha256": "110647baad60b1189c09390311cd684ff56e7fc0f9a36e3d377ceb64b1ca7c24"
+    },
+    "rust_robotics_core": {
+      "filename": "librust_robotics_core-e39589db0ff98370.rlib",
+      "sha256": "73193543f0d2b0bc32ed4d6b46729283510e09da1fc6d32a13a466329d30936c"
+    }
+  },
+  "generated_source_sha256": "b3fd243bc9b70981cec5b2d8682bbafcb45d8920e1a421fe45e4747f5c5f86c3",
+  "diff_sha256": "e30ed048f964fe55b191cb6f9a6b1b91062288db1279360436faa04ab24b35e9",
+  "candidate_binary_sha256": "e4b543fa7296aec9477930ccc5469b3e9fb41bbb93858411c380f8ebf263071a",
+  "original_binary_sha256": "3cf64cd3c2e68ca901d209c881c6586ce0c3b36d3e50b751808eefa98994b1fe",
+  "native_tests": 24,
+  "native_tests_sha256": "52792214d7ed0f45a1d46184e35c9eb59b175cd7d4780d709c47e391a9edfdab"
+}

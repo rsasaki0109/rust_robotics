@@ -4696,6 +4696,9 @@ whether using the existing stationary recovery mean for the speed probe's x/y
 changes actual recovery and hold outcomes. It fixes one new seed, two noise
 correlation times, three availability modes, three maps and three planners:
 108 cases, or 54 raw/mean pairs. Keep the complete fixed grid, including failures.
+The [recorded report](results/mean-speed-probe-live-pilot/report.md) retains all
+outcomes: both arms held in 24/54 cases, with no gained or lost holds in any
+pair. This pilot did not establish an increase in successful holds.
 
 ```bash
 python3 -B experiments/pose_observation_loss/run_mean_speed_probe.py \
