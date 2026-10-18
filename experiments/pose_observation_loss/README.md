@@ -4224,3 +4224,49 @@ figure shows all 25 windows and compares overlapping failure endings with
 distinct case/step resets by full gate mask. Repeat all five tables/provenance
 and all plot artifacts byte for byte. See the
 [run-breaks report](results/fusion-return-run-breaks/report.md).
+
+## Link the 19 reset edges to original probe evidence
+
+The [fixed protocol](results/fusion-return-reset-probes/protocol.md) joins all
+19 distinct resets to their original decisions by case, event and exact 50-Hz
+step. It preserves their 185 overlapping window-ending records and excludes
+the six context boundaries. Geometry, native dataset execution and original
+weights/outcomes remain inherited; no new extraction or rollout is required.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reset_probes.py \
+  --output /tmp/fusion-return-reset-probes
+MPLCONFIGDIR=/tmp/reset-probes-mpl python3 experiments/pose_observation_loss/plot_reset_probes.py \
+  --results /tmp/fusion-return-reset-probes --output /tmp/reset-probes-figures
+python3 experiments/pose_observation_loss/verify_reset_probes.py \
+  --results /tmp/fusion-return-reset-probes --figures /tmp/reset-probes-figures \
+  --output /tmp/reset-probes-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output directories and an unused proof filename, without Python -O.
+Collection/verification use the standard library; plotting uses Matplotlib.
+The full test suite also needs the saved Rust toolchain for existing native
+unit fixtures. The new audit uses only the tracked preceding results.
+
+`reset-probes.csv` retains every reset-edge field and every original decision
+field under `decision_`, adding the original failing stage, aggregate test-gap
+bounds and selected blocker IDs. `reset-blockers.csv` keeps every corresponding
+point-witness field and the exact global map-coordinate strings. Global IDs
+are one-based rows of the entire map; duplicate coordinates stay separate.
+The 20 `probe-summary.csv` cells retain empty categories and distinguish
+physical-reset counts from overlapping window-ending counts. Only counts
+add across partitions; distinct sets and maxima do not.
+
+Seventeen resets have a certainly unsafe initial point; two have a safe initial
+point and a directly verified unsafe first chord. All match obstacle IDs 420
+(3, 4) or 1310 (34, 35). The inherited mean point gaps to those blockers are
+clear in all 19 cases; these point predicates do not replace the original
+curved-chord, recovery-segment or whole-probe conditions.
+
+The standalone verifier imports no analyzers or plotters. It independently
+joins identities, selects inherited stage evidence, checks map/witness records
+and interval states, and verifies all exports. The two-panel figure shows all
+19 inherited test-gap intervals and the two counting units by origin. Repeat
+all three tables/provenance and all plot artifacts byte for byte. See the
+[reset-probes report](results/fusion-return-reset-probes/report.md).
