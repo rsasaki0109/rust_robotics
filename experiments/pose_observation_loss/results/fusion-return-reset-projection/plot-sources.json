@@ -1,0 +1,13 @@
+{
+  "script_sha256": "e638b86f5670513075057c8bb09272834cc15e48a67a96664edd29aaf100d82e",
+  "input_sha256": {
+    "sources.json": "563b6549e56ae4ce085d861913ac956922b7617123088220bcd4335222ef7a23",
+    "projections.csv": "b5efcc3a814b85afae3c897fad72d35a59c664af53c90cf5130ee9475df75c11",
+    "projection-summary.csv": "b6247e2b0589f16cc9348859fecdee14958b8abf59f474f21eb822d7e7ab9879"
+  },
+  "output_sha256": {
+    "reset-projection.svg": "096125bf96ab306b3fdeb7fa71209ceb9daffa86bb8c2553823d0bb9b10e8a14",
+    "plot-projections.csv": "b5efcc3a814b85afae3c897fad72d35a59c664af53c90cf5130ee9475df75c11",
+    "plot-values.csv": "b6247e2b0589f16cc9348859fecdee14958b8abf59f474f21eb822d7e7ab9879"
+  }
+}
