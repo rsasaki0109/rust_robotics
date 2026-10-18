@@ -1,0 +1,38 @@
+{
+  "physical_resets": 19,
+  "overlapping_endings": 185,
+  "origins": {
+    "initial_unsafe": 17,
+    "first_chord_by_exclusion": 2
+  },
+  "margin_statuses": {
+    "complete": 19
+  },
+  "radial_gap_states": {
+    "clear": 19
+  },
+  "rebuilt_mean_gap_states": {
+    "clear": 19
+  },
+  "point_gap_categories": {
+    "blocked_to_clear_radial_clear": 17,
+    "already_clear": 2
+  },
+  "summary_rows": 20,
+  "additive_closure_comparisons": 144,
+  "fresh_margin_pairs": 19,
+  "fresh_raw_reads": 0,
+  "fresh_native_runs": 0,
+  "comparisons": 26128,
+  "original_join_comparisons": 131901,
+  "script_sha256": "65343ae1f87d9f22318bd846a6eba01356e1c8dc7ecad5f4cd82d5630c56eaa3",
+  "sources_sha256": "98754f83cc35426f46abd5af33fa37f0f492ce9d7a79007058a9d1fe85c8560b",
+  "plot_sources_sha256": "c3205f729a730ff87d59f5c7db799d9102ce14cdecca77440d68a9273f0fe123",
+  "inherited_reset_projection_proof_sha256": "ded0de2bce633fd9ba6c041c9355a032ee55d018cfe75c0a76a2f8f2ebbd534d",
+  "inherited_geometry_proofs": {
+    "fusion-return-probe-origin": "b6dbf95d64cdff2e052c671b48e17e172d54c9d8d7013514291b5369192e450b",
+    "fusion-return-first-chord": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "fusion-return-point-clearance": "d6f0254d3e70a4bb371ac1cc17cb2cbf506e4f1b6af12751a0201f8df21ab901"
+  },
+  "method": "independent 60-digit Decimal point-gap identities, strict point states/categories, interval extrema/count closures and original census joins; no new raw/native dataset execution"
+}

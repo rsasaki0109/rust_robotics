@@ -1,0 +1,13 @@
+{
+  "script_sha256": "b3e5c2594c3f04a418337fb63dd06acc1aef40b81af1350cf4e862b13139e5af",
+  "input_sha256": {
+    "sources.json": "98754f83cc35426f46abd5af33fa37f0f492ce9d7a79007058a9d1fe85c8560b",
+    "margins.csv": "5a66a56cf541b93fe77cfe9b9b492eef84584ae6d3b397e1e10e3dabd5fc752f",
+    "margin-summary.csv": "bb09318a7fb8fdd1d0a06dbb34ed3354752d27e5b8c498a2084d977c12a2a439"
+  },
+  "output_sha256": {
+    "reset-margin.svg": "982e1635f71fc4a59116e8bc00a7b83cec776984ab5523f46626b717f8c069ed",
+    "plot-margins.csv": "5a66a56cf541b93fe77cfe9b9b492eef84584ae6d3b397e1e10e3dabd5fc752f",
+    "plot-values.csv": "bb09318a7fb8fdd1d0a06dbb34ed3354752d27e5b8c498a2084d977c12a2a439"
+  }
+}

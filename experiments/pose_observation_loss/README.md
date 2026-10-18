@@ -4376,3 +4376,50 @@ empty extrema. The standalone verifier imports no analyzers or plotters and
 independently performs the new arithmetic with 60-digit Decimal. Repeat both
 tables/sources and all five plot artifacts byte for byte. See the
 [reset-projection report](results/fusion-return-reset-projection/report.md).
+
+## Decompose point clearance at the same reset edges
+
+The [fixed protocol](results/fusion-return-reset-margin/protocol.md) keeps the
+same 19 original reset/blocker pairs and all 185 overlapping-ending records.
+It separates each original mean point gap into raw point gap, radial component
+and gain beyond radial. Every preceding projection column remains unchanged.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reset_margin.py \
+  --output /tmp/fusion-return-reset-margin
+MPLCONFIGDIR=/tmp/reset-margin-mpl python3 experiments/pose_observation_loss/plot_reset_margin.py \
+  --results /tmp/fusion-return-reset-margin --output /tmp/reset-margin-figures
+python3 experiments/pose_observation_loss/verify_reset_margin.py \
+  --results /tmp/fusion-return-reset-margin --figures /tmp/reset-margin-figures \
+  --output /tmp/reset-margin-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh output directories and an unused proof filename, without Python -O.
+The standard-library collector/verifier require only tracked preceding results;
+Matplotlib produces the figure. Activate the saved Rust toolchain for the full
+suite's existing native unit fixtures. Raw extraction and native dataset
+execution remain inherited; the new audit adds neither.
+
+For radial component `a` and gain beyond radial `e`, form
+`radial_gap=raw_gap+a` and `rebuilt_mean_gap=radial_gap+e`. Verify the original
+mean gap, the endpoint-minus-common-margin expression, the reconstructed
+distance-minus-margin expression and the remainder with four residual checks.
+Conditional add/subtract intervals retain the frozen 1e-12 padding. Clear
+requires lower>0, blocked requires upper<=0, otherwise the state is unknown;
+numeric comparison tolerance never changes a point state.
+
+The 17 originally blocked raw points all have a positive `raw_gap+a` interval.
+The remaining two pairs already have clear raw and mean points and retain their
+original directly unsafe first-chord evidence. These are same-step point-gap
+identity categories, not successful controller recoveries or path tests.
+
+`margins.csv` retains all 625 preceding columns and adds nine quantity triples,
+status, two gap states and a frozen six-way point category. An incomplete
+projection remains as a row with blank new quantities and explicit status.
+The 20 `margin-summary.csv` cells retain both counting units, all categories
+and interval extrema; empty extrema stay blank, and only counts add across
+partitions. The standalone verifier imports no analyzers or plotters and
+independently checks the arithmetic/classifications with 60-digit Decimal.
+Replay both tables/sources and all five plot artifacts byte for byte. See the
+[reset-margin report](results/fusion-return-reset-margin/report.md).
