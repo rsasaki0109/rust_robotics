@@ -4323,3 +4323,56 @@ figure shows every raw/mean point-gap pair and gain/length pair in original
 case/step order, marking both first-chord rows. Repeat both tables/provenance
 and all five plot artifacts byte for byte. See the
 [reset-displacement report](results/fusion-return-reset-displacement/report.md).
+
+## Resolve radial and transverse position differences at the reset edges
+
+The [fixed protocol](results/fusion-return-reset-projection/protocol.md)
+projects the same 19 raw-to-mean position differences onto radial and signed
+transverse axes of each original blocker. It retains all preceding columns,
+origins and 185 overlapping-ending multiplicities. This compares two estimates
+at the same recorded step; it adds no motion trajectory or policy experiment.
+
+```bash
+python3 experiments/pose_observation_loss/analyze_reset_projection.py \
+  --output /tmp/fusion-return-reset-projection
+MPLCONFIGDIR=/tmp/reset-projection-mpl python3 experiments/pose_observation_loss/plot_reset_projection.py \
+  --results /tmp/fusion-return-reset-projection --output /tmp/reset-projection-figures
+python3 experiments/pose_observation_loss/verify_reset_projection.py \
+  --results /tmp/fusion-return-reset-projection --figures /tmp/reset-projection-figures \
+  --output /tmp/reset-projection-verification.json
+python3 -m unittest discover -s experiments/pose_observation_loss -p 'test_*.py' -q
+```
+
+Use fresh directories and an unused proof filename, without Python -O. The
+standard-library collector/verifier use only tracked preceding artifacts;
+Matplotlib produces the figure. Activate the saved Rust toolchain for the full
+suite's existing native unit fixtures. This audit adds no raw extraction or
+native dataset replay, and verifies the full inherited input/helper/code chain.
+
+For `u=raw-obstacle`, `v=mean-raw`, `r=||u||` and `d=||u+v||`, calculate
+`a=(u dot v)/r` and `b=(u_x*v_y-u_y*v_x)/r`. The new intervals verify
+`||v||^2=a^2+b^2`, reconstruct `d=sqrt((r+a)^2+b^2)`, and compare the
+distance-gain remainder with `b^2/(d+r+a)`. Signed transverse uses the recorded
+x/y convention, with no assigned physical left/right interpretation.
+
+Division requires a certified nonzero interval; these projections require
+`r_lo>0`, and the remainder formula also requires `(d+r+a)_lo>0`. Rows with
+unresolved denominators remain present with explicit status and blank affected
+quantities. Conditional arithmetic preserves inherited boxes and pads each
+operation by 1e-12. Sign decisions never use numeric comparison tolerance;
+the gain-beyond-radial interval is never clipped to a positive value.
+
+All 19 projections and remainder formulas are complete. Eighteen radial
+components are outward and one is inward. The inward case, C0310 at 176.16 s,
+has radial component approximately -0.000942784 m and signed transverse
+component +0.184340303 m. Their finite-distance reconstruction recovers the
+positive distance gain of approximately 0.017426564 m. Every pair has a
+positive distance gain beyond its radial component under the frozen bounds.
+
+`projections.csv` retains all 585 preceding fields and adds 12 quantity triples,
+status and three sign classifications. The 20 `projection-summary.csv` cells
+keep both counting units, status/sign counts and interval extrema, with blank
+empty extrema. The standalone verifier imports no analyzers or plotters and
+independently performs the new arithmetic with 60-digit Decimal. Repeat both
+tables/sources and all five plot artifacts byte for byte. See the
+[reset-projection report](results/fusion-return-reset-projection/report.md).

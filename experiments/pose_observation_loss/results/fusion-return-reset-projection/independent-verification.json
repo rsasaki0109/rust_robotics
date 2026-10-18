@@ -1,0 +1,39 @@
+{
+  "physical_resets": 19,
+  "overlapping_endings": 185,
+  "origins": {
+    "initial_unsafe": 17,
+    "first_chord_by_exclusion": 2
+  },
+  "projection_statuses": {
+    "complete": 19
+  },
+  "radial_states": {
+    "outward": 18,
+    "inward": 1
+  },
+  "transverse_states": {
+    "positive": 13,
+    "negative": 6
+  },
+  "remainder_states": {
+    "positive": 19
+  },
+  "summary_rows": 20,
+  "additive_closure_comparisons": 126,
+  "fresh_projection_pairs": 19,
+  "fresh_raw_reads": 0,
+  "fresh_native_runs": 0,
+  "comparisons": 24870,
+  "original_join_comparisons": 131901,
+  "script_sha256": "49ee6cad7896deb8a41bb96c4494fbf67fafae2bbba967a0d8b139394ea5b853",
+  "sources_sha256": "563b6549e56ae4ce085d861913ac956922b7617123088220bcd4335222ef7a23",
+  "plot_sources_sha256": "82d3e2a7f77d5cfb99b5443a192ccde0649e472e554c5cc16a9db512a5d549af",
+  "inherited_reset_displacement_proof_sha256": "0672f7f6616aab12dd07fe9341cb5f7a535a2fec814114c4e2f88020ac7eb326",
+  "inherited_geometry_proofs": {
+    "fusion-return-probe-origin": "b6dbf95d64cdff2e052c671b48e17e172d54c9d8d7013514291b5369192e450b",
+    "fusion-return-first-chord": "ad7182e599dc7d494c716f4ab7c06770a731833dddf06cd5e798f28edcdf6ec1",
+    "fusion-return-point-clearance": "d6f0254d3e70a4bb371ac1cc17cb2cbf506e4f1b6af12751a0201f8df21ab901"
+  },
+  "method": "independent 60-digit Decimal projections, guarded interval division, norm/distance/remainder identities, strict signs, extrema/count closures and original census identities; no new raw/native dataset execution"
+}
