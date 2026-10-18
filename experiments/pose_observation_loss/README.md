@@ -42,7 +42,9 @@ Download the `reset-evidence-replay` artifact from the workflow run to obtain
 the full `fusion-return-reset-review/` folder, its 18 child logs, the runner
 log, the integrity receipt and the Python/package version record. The upload
 runs on success and failure with 14-day retention; a failed replay retains its
-partial outputs and diagnostics. Check an extracted successful artifact with:
+partial outputs and diagnostics. Failure annotations show the last child and
+runner log lines and the first differences from frozen artifacts.
+Check an extracted successful artifact with:
 
 ```bash
 python3 -B experiments/pose_observation_loss/check_reset_review.py \

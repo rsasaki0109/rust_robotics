@@ -143,6 +143,41 @@ jobs:
             --review "$RUNNER_TEMP/fusion-return-reset-review" \
             | tee "$RUNNER_TEMP/reset-review-receipt.json"
 
+      - name: Annotate replay failure diagnostics
+        if: failure()
+        env:
+          PYTHONPATH: experiments/pose_observation_loss
+        run: |
+          python - <<'PY'
+          import difflib
+          import os
+          from pathlib import Path
+          import review_reset_evidence as review
+
+          root = Path(os.environ["RUNNER_TEMP"])
+          packet = root / "fusion-return-reset-review"
+
+          def annotate(title, message):
+              message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title={title}::{message}")
+
+          logs = list(packet.glob("stages/*/*.log"))
+          if logs:
+              latest = max(logs, key=lambda p: p.stat().st_mtime_ns)
+              annotate("Last replay child log", "\n".join(latest.read_text(errors="replace").splitlines()[-24:]))
+          runner = root / "reset-review-runner.log"
+          if runner.exists():
+              annotate("Replay runner log", "\n".join(runner.read_text(errors="replace").splitlines()[-24:]))
+          for stem in review.STEMS:
+              reference = review.RESULTS / ("fusion-return-" + stem.replace("_", "-"))
+              work = packet / "stages" / stem
+              for fresh in [*work.glob("collector/*"), *work.glob("figures/*"), *work.glob("independent-verification.json")]:
+                  baseline = reference / fresh.name
+                  if fresh.is_file() and baseline.is_file() and review.sha(fresh) != review.sha(baseline):
+                      difference = difflib.unified_diff(baseline.read_text().splitlines(), fresh.read_text().splitlines(), fromfile="frozen", tofile="replayed")
+                      annotate(f"Changed replay artifact: {stem}/{fresh.name}", "\n".join(list(difference)[:30]))
+          PY
+
       - name: Upload replay outputs and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
