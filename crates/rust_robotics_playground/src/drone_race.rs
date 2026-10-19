@@ -1,5 +1,6 @@
 //! Interactive 3-D quadrotor race, with bounded incremental replay generation.
 
+mod checkpoint;
 mod course;
 mod editor;
 mod flight;
@@ -1176,6 +1177,18 @@ impl DroneRaceDemo {
             },
         );
         self.hud(&painter, rect, state.speed(), visual_time);
+        if current.status == Status::Flying && self.error.is_none() {
+            if let Some(checkpoint) =
+                checkpoint::Checkpoint::at(&self.flight, draw_frame, visual_time)
+            {
+                checkpoint.paint(
+                    &painter,
+                    rect,
+                    self.flight.lap.gate_count(),
+                    self.best_split_at(draw_frame).map(|(_, split)| split),
+                );
+            }
+        }
         let mut switch_pilot = false;
         let mut edit_course = false;
         let mut take_photo = false;
@@ -1873,10 +1886,27 @@ impl DroneRaceDemo {
             |editor| (editor.preview(), 0),
         );
         let frame = &flight.frames[cursor];
+        let checkpoint = checkpoint::Checkpoint::at(flight, cursor, cursor as f64 * DT);
         // Accessible scene summary also permits functional browser checks of
         // real flight progress, paused replays and camera changes.
         for (key, value) in [
             ("data-drone-frame", cursor.to_string()),
+            (
+                "data-drone-clear-gate",
+                checkpoint.map_or_else(String::new, |c| c.gate.to_string()),
+            ),
+            (
+                "data-drone-clear-time",
+                checkpoint.map_or_else(String::new, |c| format!("{:.2}", c.time())),
+            ),
+            (
+                "data-drone-clear-age",
+                checkpoint.map_or_else(String::new, |c| format!("{:.3}", c.age)),
+            ),
+            (
+                "data-drone-clear-finish",
+                checkpoint.map_or_else(String::new, |c| u8::from(c.finish).to_string()),
+            ),
             (
                 "data-drone-start-age",
                 self.start

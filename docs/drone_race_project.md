@@ -69,6 +69,28 @@ history and does not add a countdown to the flight time.
 The [start receipt](assets/drone-start-flight.json) observes all three lights and
 GO at frame zero, a real two-finger launch, and the identical shared replay.
 
+## Feel each checkpoint
+
+![A real gate crossing, paused with its checkpoint time and neon flare](assets/playground/drone-checkpoint.png)
+
+Crossing a gate lights a cyan ring and sparks around that gate, with a brief
+**GATE CLEAR** card showing its actual crossing time. When racing your best,
+the card also shows the signed split against that flight's same gate. The
+finished flight holds a gold flare at the last gate beside the result card.
+
+The effect lasts one second of simulation time. Pausing freezes it; slow
+playback stretches it with the flight. Replays, shared flights and the Moment
+selector in Photo mode reconstruct it from the selected history, including
+when future frames have already been generated. Retry returns to a clear
+start. The world-space flare is included in exported photos; the GATE CLEAR
+interface card stays in the flight view.
+
+![The same gate flare in an exported flight photograph](assets/drone-checkpoint-photo.png)
+
+The [checkpoint receipt](assets/drone-checkpoint-flight.json) records a real
+manual crossing, its paused shared replay in a new browser context, the expired
+effect after flying away, and a new five-gate finish.
+
 ## Beat your personal best
 
 ![A new personal best after a faster live flight](assets/playground/drone-best.png)
@@ -338,7 +360,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 34-case
+To verify the actual GitHub Pages project path, build and run the 36-case
 browser suite from the repository root:
 
 ```sh
@@ -368,13 +390,16 @@ Two start cases hold real touch contacts through all three lights and GO,
 check that countdown time is excluded from flight history, reconstruct that
 flight in a fresh visitor context, and cancel starts with pause, retry, guide,
 photo mode, menu opening, and a tab switch.
+Two checkpoint cases exercise actual manual and autonomous crossings, frozen
+feedback, the exported photo, identical shared feedback, expiry, retry, finish,
+and portrait/landscape phone views at 2× pixel density.
 CI uses this same public-URL build and suite before publication.
 The suite uses Playwright's full Chromium channel. The focus-loss case opens
 a browser window because headless versions differ in whether a tab switch
 changes focus. It disables Playwright's usual focus override, verifies that the
 original page really loses focus, and checks cancellation after returning.
 Linux CI runs this window under Xvfb, installed by Playwright's `--with-deps`;
-the other 33 cases remain headless. With a desktop display, omit `xvfb-run -a`.
+the other 35 cases remain headless. With a desktop display, omit `xvfb-run -a`.
 Chromium 141 keeps a focus-emulation capture handle per CDP session, so a new
 public CDP session cannot release the override installed by Playwright. The
 focus helper therefore uses Playwright's own session and depends on the pinned

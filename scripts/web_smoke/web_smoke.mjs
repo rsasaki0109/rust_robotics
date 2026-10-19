@@ -18,6 +18,7 @@ import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
 import { checkBestGhost } from './drone_ghost.mjs';
 import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
+import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -75,6 +76,8 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-gate-feedback', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'gate-feedback' },
+  { name: 'drone-gate-feedback-phone', query: 'tab=drone&course=climb&cinema=1&frame=0&playing=0&slow=1', drone: 'gate-feedback-phone', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   { name: 'drone-race-start', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'race-start', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   // Headless Chromium versions differ in whether bringToFront changes focus.
   // Exercise a real browser window for the focus-loss assertion.
@@ -150,7 +153,11 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'race-start') {
+      if (test.drone === 'gate-feedback') {
+        await checkGateFeedback(page, base, shots);
+      } else if (test.drone === 'gate-feedback-phone') {
+        await checkGateFeedbackPhone(page, base, shots);
+      } else if (test.drone === 'race-start') {
         await checkRaceStart(page, base, shots);
       } else if (test.drone === 'start-cancel') {
         await checkStartCancellation(page, base, shots);
