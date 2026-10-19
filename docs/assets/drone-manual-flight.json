@@ -1,0 +1,27 @@
+{
+  "mode": "manual",
+  "firstFlight": {
+    "dronePad": "{\"forward\":[87.0,559.0],\"back\":[87.0,607.0],\"left\":[39.0,607.0],\"right\":[135.0,607.0],\"up\":[1241.0,559.0],\"down\":[1241.0,607.0]}",
+    "droneActions": "{\"pause\":[1062.0,179.0],\"retry\":[1148.0,179.0],\"replay\":[1234.0,179.0]}",
+    "droneFrame": "89",
+    "droneGenerated": "89",
+    "droneGates": "5",
+    "droneStatus": "finished",
+    "droneCamera": "course",
+    "droneCourse": "climb",
+    "droneMode": "manual",
+    "droneReplay": "0",
+    "droneInput": "1,0,0",
+    "droneShare": "tab=drone&course=climb&camera=course&frame=89&playing=0&trail=1&prediction=1&slow=1&cinema=1&mode=manual&ghost=1&inputs=v1.nnnnmmmmmmmmmmmmmmmmmmmmmmmmmmmmnnnneennmmmmmmkkkkkknnmmpppqqqppppmmjjjjjjiiiillllllmmmmm",
+    "droneVelocity": "5.222519,0.222811,-0.738424",
+    "droneGhostFrame": "84",
+    "droneGhostGates": "5",
+    "droneGhostFinish": "4.20",
+    "dronePosition": "20.269817,-0.094237,4.559763",
+    "dronePlanningMs": "0.00",
+    "dronePlaying": "0",
+    "droneCinema": "1",
+    "droneSeeking": "0"
+  },
+  "problems": []
+}

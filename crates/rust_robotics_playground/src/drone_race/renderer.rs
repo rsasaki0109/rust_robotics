@@ -8,6 +8,7 @@ use super::flight::{add, cross, dot, rotate, scale, sub, unit, Flight};
 
 pub const CYAN: Color32 = Color32::from_rgb(82, 232, 226);
 pub const GOLD: Color32 = Color32::from_rgb(255, 193, 100);
+pub const GHOST: Color32 = Color32::from_rgb(199, 155, 255);
 const BG: Color32 = Color32::from_rgb(10, 15, 32);
 const NEAR: f64 = 0.15;
 
@@ -394,10 +395,40 @@ fn drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64) {
     );
 }
 
-pub struct ViewOptions {
+pub struct GhostView<'a> {
+    pub flight: &'a Flight,
+    pub frame: usize,
+    pub state: QuadrotorState,
+}
+
+pub struct ViewOptions<'a> {
     pub camera: CameraMode,
     pub trail: bool,
     pub prediction: bool,
+    pub ghost: Option<GhostView<'a>>,
+}
+
+fn ghost_drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64) {
+    let point = |p| add(state.position, rotate(state.attitude, p));
+    let color = GHOST.gamma_multiply(0.8);
+    for x in [-0.27, 0.27] {
+        for y in [-0.27, 0.27] {
+            scene.glow(point([0.0, 0.0, 0.0]), point([x, y, 0.02]), color, 1.5);
+            for i in 0..16 {
+                let p = |j| {
+                    let angle = j as f64 * std::f64::consts::TAU / 16.0 + time * 4.0;
+                    point([x + angle.cos() * 0.15, y + angle.sin() * 0.15, 0.02])
+                };
+                scene.line(p(i), p(i + 1), Stroke::new(1.0_f32, color));
+            }
+        }
+    }
+    scene.glow(
+        point([0.2, -0.08, 0.0]),
+        point([0.2, 0.08, 0.0]),
+        color,
+        3.0,
+    );
 }
 
 pub fn render(
@@ -407,7 +438,7 @@ pub fn render(
     frame: usize,
     state: QuadrotorState,
     time: f64,
-    options: &ViewOptions,
+    options: &ViewOptions<'_>,
 ) {
     let mut background = egui::epaint::Mesh::default();
     for (pos, color) in [
@@ -512,10 +543,42 @@ pub fn render(
             }
         }
     }
+    if let Some(ghost) = &options.ghost {
+        let start = ghost.frame.saturating_sub(240);
+        if options.trail {
+            for (i, pair) in ghost.flight.frames[start..=ghost.frame]
+                .windows(2)
+                .enumerate()
+            {
+                if i % 2 == 0 {
+                    scene.line(
+                        pair[0].state.position,
+                        pair[1].state.position,
+                        Stroke::new(1.5_f32, GHOST.gamma_multiply(0.5)),
+                    );
+                }
+            }
+        }
+        ghost_drone(&mut scene, ghost.state, time);
+    }
     if options.camera != CameraMode::Pilot {
         drone(&mut scene, state, time);
     }
     scene.paint(painter);
+
+    if let Some(ghost) = &options.ghost {
+        if let Some(pos) = camera.project(add(ghost.state.position, [0.0, 0.0, 0.6])) {
+            if rect.shrink(16.0).contains(pos) && time > 0.3 {
+                painter.text(
+                    pos,
+                    egui::Align2::CENTER_BOTTOM,
+                    "AUTOPILOT",
+                    FontId::monospace(10.0),
+                    GHOST,
+                );
+            }
+        }
+    }
 
     for (i, gate) in flight.lap.gates.iter().enumerate() {
         if options.camera == CameraMode::Chase && i < current.passed {

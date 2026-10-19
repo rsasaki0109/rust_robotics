@@ -22,12 +22,14 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
   <a href="https://rsasaki0109.github.io/rust_robotics/"><b>Browse the gallery</b></a>
 </p>
 
-[![3D autonomous drone race](docs/assets/playground/drone.png)](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1)
+[![Fly against an autonomous drone ghost](docs/assets/playground/drone-manual.png)](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1)
 
-**[Fly the 3D drone race](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1)**
-— an autonomous quadrotor leans through five gates. Switch between chase,
-pilot, and course cameras, replay in slow motion, or share an exact flight
-frame. [Watch the 30-second browser recording](docs/assets/drone-race.mp4).
+**[Race the autopilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1)**
+— fly five 3D gates with WASD + E/Q or the touch pad, alongside an autonomous
+ghost. Assisted controls brake when released; both drones use the same flight
+physics. Switch cameras, replay your attempt, and share its recorded inputs.
+[Watch 30 seconds of browser gameplay](docs/assets/drone-manual.mp4)
+or [watch the autonomous pilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1).
 
 <table>
   <tr>
