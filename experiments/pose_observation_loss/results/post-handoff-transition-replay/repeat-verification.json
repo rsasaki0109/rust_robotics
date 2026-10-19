@@ -1,0 +1,64 @@
+{
+  "method": "Two fresh complete fixed-input replays; byte-for-byte comparison of all exports, native inputs/trace/source/binary/logs and provenance.",
+  "all_equal": true,
+  "files": 14,
+  "implementation_commit": "a556ddcbc7e40e85bd7c923ca1b8052aba8bd87d",
+  "sha256": {
+    "cases.csv": {
+      "bytes": 16564,
+      "sha256": "0e858efae5424ffb0cbaafa8c0dbce666b3fdce0b2c3329b6c9c483ba6a6535b"
+    },
+    "followups.csv": {
+      "bytes": 6786789,
+      "sha256": "6717be5e3dc99ec1b6a26d6fb4235bfeb6a43a8ba8f949fc39451b6e32ec924a"
+    },
+    "native/compiler.log": {
+      "bytes": 1002,
+      "sha256": "40259f211c60586a19a5defacb2e502b6132c47cc0fe4aaee62de349fb157c03"
+    },
+    "native/handoff-transition.rs": {
+      "bytes": 24734,
+      "sha256": "5415706c5e5e284c93dc9d48a7c0e53ee3de48ef58dd67ac5fb8b1f92169304f"
+    },
+    "native/native-handoff-transition": {
+      "bytes": 4695128,
+      "sha256": "ab753344200656d33441d3f210ebc68dcf142ecc47c6ef1b7a2844fb511bc5f8"
+    },
+    "native/native.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native/queries.tsv": {
+      "bytes": 4364513,
+      "sha256": "869b6a00b96c92193f146edc5409aeb4c419ab24aee6fb6cc52efab6f7657946"
+    },
+    "native/trace.csv": {
+      "bytes": 20301340,
+      "sha256": "e6f214af9f81abedd2d157201a7c626c3a26d6ca2c998e85aec3df9eb903bb00"
+    },
+    "pairs.csv": {
+      "bytes": 8427,
+      "sha256": "0fb693aa2c40e9cd7f51487743d51299bcc5c108e33c4043469cb674de3ba82d"
+    },
+    "queries.csv": {
+      "bytes": 24443052,
+      "sha256": "bd6f66091e54cc22ca702396642e15d1e8eceeb58f16381de2295a25c33bfb1a"
+    },
+    "sources.json": {
+      "bytes": 36418,
+      "sha256": "d6ccc8a0e1708349e5b3312e40ac7cfa6397cadd5c8a86630e8406d45c5e6afc"
+    },
+    "summary.csv": {
+      "bytes": 33170,
+      "sha256": "16f8efdaccaddbe32d9fea237106c91b30e5a4b9730c8e050ec946cf34f0b685"
+    },
+    "transitions.csv": {
+      "bytes": 54102,
+      "sha256": "5d172a16884e99998c311728c8039f7f8a1aa1dc47fac61eabd627e6f8842cba"
+    },
+    "verification.csv": {
+      "bytes": 12365,
+      "sha256": "120fb799391bcdede2fbde4559d1deddaaa0b78b43a1221855dd8a4fe01e5eaa"
+    }
+  }
+}
