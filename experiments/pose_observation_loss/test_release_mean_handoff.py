@@ -2,12 +2,14 @@
 
 import copy
 import csv
+import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import analyze_release_mean_handoff as audit
 import analyze_mean_speed_probe as pilot
@@ -432,6 +434,133 @@ class ProgramTests(unittest.TestCase):
                 stderr=subprocess.DEVNULL,
             )
             self.assertNotEqual(result.returncode, 0, field)
+
+    def test_complete_provenance_and_export_pipeline_on_synthetic_cases(self):
+        raw = self.root / "pipeline-raw"
+        raw.mkdir()
+        shutil.copytree(self.root / "build", raw / "build")
+        pins = dict(
+            build.preflight(),
+            seed=17,
+            noise_correlation_times=[0],
+            modes=["blackout"],
+            expected_cases=18,
+            expected_pairs=9,
+            expected_regression_cases=18,
+        )
+        trials, all_rows = [], []
+        for arm, name, enabled in (
+            ("mean_preview", "active_disabled", False),
+            ("one_step_handoff", "active", True),
+        ):
+            relative = f"tau0/{arm}-blackout-17"
+            shutil.copytree(self.root / name, raw / relative)
+            command = [
+                str(self.binary),
+                *build.arguments(
+                    self.root / "loss", self.root / name, "blackout", 17, 0, enabled
+                ),
+            ]
+            trials.append(
+                dict(
+                    tau=0,
+                    arm=arm,
+                    mode="blackout",
+                    seed=17,
+                    directory=relative,
+                    command=command,
+                    sha256={
+                        f: build.sha(raw / relative / f) for f in audit.runner.FILES
+                    },
+                )
+            )
+            all_rows.extend(
+                dict(tau=0, arm=arm, mode="blackout", seed=17, **r)
+                for r in pilot.read(raw / relative / "results.csv")
+            )
+        pilot.write(raw / "all-results.csv", all_rows, tuple(all_rows[0]))
+        specs = [
+            dict(name="legacy", kind="legacy", tau=0, mode="blackout"),
+            dict(name="omitted", kind="omitted", tau=0, mode="blackout"),
+        ]
+        regressions = []
+        for spec, name in zip(specs, ("legacy_loss", "active_omitted")):
+            relative = "regression/" + spec["name"]
+            shutil.copytree(self.root / name, raw / relative)
+            files = tuple(
+                f
+                for f in audit.runner.FILES
+                if spec["kind"] == "omitted" or f != "handoff-inputs.csv"
+            )
+            args = (build if spec["kind"] == "omitted" else build.legacy).arguments(
+                self.root / "loss",
+                self.root / name,
+                "blackout",
+                17,
+                0,
+                None if spec["kind"] == "omitted" else True,
+            )
+            command = [
+                str(self.binary if spec["kind"] == "omitted" else self.legacy),
+                *args,
+            ]
+            regressions.append(
+                dict(
+                    **spec,
+                    command=command,
+                    directory=relative,
+                    sha256={f: build.sha(raw / relative / f) for f in files},
+                    compared=list(audit.runner.BYTE_FILES),
+                    cases=9,
+                )
+            )
+        record = dict(
+            method=audit.runner.METHOD,
+            source_commit=subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=build.REPO, text=True
+            ).strip(),
+            working_tree_clean=True,
+            script_sha256={
+                name: build.sha(build.ROOT / name) for name in build.SCRIPTS
+            },
+            protocol_sha256=build.sha(build.STUDY / "protocol.md"),
+            freeze_sha256=build.sha(build.STUDY / "freeze-pins.json"),
+            input_sha256=pins["input_sha256"],
+            build_sources_sha256=build.sha(raw / "build/build-sources.json"),
+            cases=18,
+            trials=trials,
+            regressions=regressions,
+            all_results_sha256=build.sha(raw / "all-results.csv"),
+            **{
+                k: self.receipt[k]
+                for k in (
+                    "generated_source_sha256",
+                    "candidate_binary_sha256",
+                    "legacy_binary_sha256",
+                    "original_binary_sha256",
+                    "native_tests",
+                )
+            },
+        )
+        (raw / "provenance.json").write_text(json.dumps(record, indent=2) + "\n")
+        with mock.patch.object(
+            build, "preflight", return_value=pins
+        ), mock.patch.object(build, "FIXTURES", self.root / "loss"), mock.patch.object(
+            audit.runner, "regression_plan", return_value=specs
+        ):
+            self.assertEqual(audit.check_provenance(raw, pins)["cases"], 18)
+            result = audit.audit(raw, self.root / "pipeline-audit")
+            self.assertEqual(
+                (result["audit"]["cases"], result["audit"]["pairs"]), (18, 9)
+            )
+            self.assertGreater(result["audit"]["handoff_uses"], 0)
+            self.assertEqual(
+                len(pilot.read(self.root / "pipeline-audit/summary.csv")), 12
+            )
+            changed = dict(record, generated_source_sha256="0" * 64)
+            (raw / "provenance.json").write_text(json.dumps(changed))
+            with self.assertRaises(ValueError):
+                audit.check_provenance(raw, pins)
 
 
 if __name__ == "__main__":

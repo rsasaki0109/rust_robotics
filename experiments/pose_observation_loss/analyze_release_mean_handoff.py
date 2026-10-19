@@ -496,11 +496,21 @@ def check_provenance(raw, pins):
             cwd=build.REPO,
         )
         need(
-            hashlib.sha256(committed).hexdigest()
-            == digest
-            == build.sha(build.ROOT / name),
-            f"Implementation differs: {name}",
+            hashlib.sha256(committed).hexdigest() == digest,
+            f"Original implementation differs: {name}",
         )
+        current = build.sha(build.ROOT / name)
+        if current != digest:
+            amendment = json.loads((build.STUDY / "audit-amendment.json").read_text())
+            need(
+                name
+                in ("analyze_release_mean_handoff.py", "test_release_mean_handoff.py")
+                and amendment["raw_provenance_sha256"]
+                == build.sha(raw / "provenance.json")
+                and amendment["original_script_sha256"][name] == digest
+                and amendment["corrected_script_sha256"][name] == current,
+                f"Undocumented implementation change: {name}",
+            )
     for name, key in (
         ("protocol.md", "protocol_sha256"),
         ("freeze-pins.json", "freeze_sha256"),
@@ -515,7 +525,7 @@ def check_provenance(raw, pins):
     need(
         receipt["input_sha256"] == pins["input_sha256"]
         and receipt["generator_sha256"]
-        == provenance["script_sha256"]["build_mean_guard_preview.py"],
+        == provenance["script_sha256"][build.SCRIPTS[0]],
         "Build inputs differ",
     )
     need(
@@ -662,7 +672,7 @@ def check_provenance(raw, pins):
             and Path(record["command"][0]).name == binary,
             "Regression command differs",
         )
-    for tau in pins["noise_correlation_times"]:
+    for tau in pins["noise_correlation_times"] if "none" in pins["modes"] else ():
         paths = [raw / f"tau{tau:g}/{arm}-none-{pins['seed']}" for arm in pins["arms"]]
         for filename in ("trajectories.csv", "speed-probes.csv"):
             need(
@@ -901,6 +911,13 @@ def audit(raw, output):
         sources = dict(
             method="complete physical/contact/hold/speed-window audit; full independent sensor-estimator and one-shot replay; fixed native geometry and complete release follow-up",
             implementation_commit=provenance["source_commit"],
+            analysis_commit=subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=build.REPO, text=True
+            ).strip(),
+            analysis_script_sha256={
+                name: build.sha(build.ROOT / name) for name in build.SCRIPTS
+            },
+            audit_amendment_sha256=build.sha(build.STUDY / "audit-amendment.json"),
             raw_provenance_sha256=build.sha(raw / "provenance.json"),
             protocol_sha256=build.sha(build.STUDY / "protocol.md"),
             freeze_sha256=build.sha(build.STUDY / "freeze-pins.json"),

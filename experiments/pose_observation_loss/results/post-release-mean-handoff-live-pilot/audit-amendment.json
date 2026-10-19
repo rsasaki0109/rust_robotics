@@ -1,0 +1,23 @@
+{
+  "reason": "The provenance checker retained the predecessor generator key build_mean_guard_preview.py instead of using the current generator name. The first audit stopped during provenance validation before any case or query. Correct metadata binding and add a complete synthetic provenance/export pipeline test; no controller, runner, native evaluator, input, seed, trial or endpoint change.",
+  "original_implementation_commit": "68b29bc9fa8445f85d262ca58bcbda7dbb240ebc",
+  "raw_provenance_sha256": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364",
+  "raw_manifest_sha256": "68cb8e5b72ba46c406ff76cd61b4e819a262a9b4127845262e293fa04c9f0efe",
+  "failure_log_sha256": "03ebcdb18a1d0ace245bff62db60f476b1683a07699754223cd1d65337217738",
+  "original_script_sha256": {
+    "analyze_release_mean_handoff.py": "aec7070db5f31eaaf5f09267debc4c52e0cb82786bff31e3e95b504b97cdf139",
+    "test_release_mean_handoff.py": "2be80cb7e3f19feaf00f300ad2dee72598ece100b393de9f4033601f360ccd83"
+  },
+  "corrected_script_sha256": {
+    "analyze_release_mean_handoff.py": "d12d1d1ee8ecb0e0bd69bbd0197b547a53c9540ba284450acc6a9be12a952568",
+    "test_release_mean_handoff.py": "adee87fcf7214d56f607eb4d8e78e90b9ae23aaa86c1817c1d5f3ec2d3692ad4"
+  },
+  "untouched_scripts": {
+    "build_release_mean_handoff.py": "bbfdaccf9009b89b1208a99fea09c89d1b1787bcc56d89854196ae0eab52a79b",
+    "run_release_mean_handoff.py": "41e0ca2c97f04b1cafbecba559e2144a1eaa5ee1cf7e8df46d568a901c5a0aa0",
+    "native_release_mean_handoff.py": "33c1132268ade6655ebff89cd9795bc2d4faf9272e56427a7743beced34c3978"
+  },
+  "failed_audit_retained": true,
+  "raw_simulator_reexecutions": 0,
+  "policy_or_outcome_retuning": false
+}
