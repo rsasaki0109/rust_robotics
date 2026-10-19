@@ -136,7 +136,7 @@ jobs:
 
     - name: Build playground WASM
       working-directory: crates/rust_robotics_playground
-      run: trunk build index.html --release
+      run: trunk build index.html --release --public-url /rust_robotics/playground/
       env:
         RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         NO_COLOR: "false"
@@ -152,7 +152,7 @@ jobs:
 
     - name: Load every playground tab in headless Chromium
       working-directory: scripts/web_smoke
-      run: node web_smoke.mjs ../../crates/rust_robotics_playground/dist screenshots
+      run: node web_smoke.mjs ../../crates/rust_robotics_playground/dist screenshots ../../docs
 
     - name: Upload screenshots
       if: always()

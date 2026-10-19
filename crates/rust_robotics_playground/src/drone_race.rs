@@ -3,6 +3,7 @@
 mod course;
 mod editor;
 mod flight;
+mod guide;
 mod manual;
 mod pad;
 mod photo;
@@ -20,6 +21,8 @@ pub struct DroneRaceDemo {
     flight: Flight,
     editor: Option<CourseEditor>,
     photo: Option<PhotoMode>,
+    guide: bool,
+    menu_open: bool,
     ghost: Option<Flight>,
     recording: Option<Vec<PilotInput>>,
     input: PilotInput,
@@ -46,6 +49,8 @@ impl Default for DroneRaceDemo {
             flight: Flight::new(Course::NEON),
             editor: None,
             photo: None,
+            guide: false,
+            menu_open: false,
             ghost: None,
             recording: None,
             input: PilotInput::default(),
@@ -125,6 +130,11 @@ impl DroneRaceDemo {
             if let Some(photo) = &mut self.photo {
                 photo.apply_query(query);
             }
+        } else if frame == 0
+            && self.recording.is_none()
+            && crate::share::boolean(query, "intro").unwrap_or(false)
+        {
+            self.begin_guide();
         }
     }
 
@@ -165,11 +175,53 @@ impl DroneRaceDemo {
     }
 
     pub fn cinema(&self) -> bool {
-        self.cinema || self.editor.is_some() || self.photo.is_some()
+        self.cinema || self.editor.is_some() || self.photo.is_some() || self.guide
+    }
+
+    fn begin_guide(&mut self) {
+        if self.editor.is_none()
+            && self.photo.is_none()
+            && self.seek.is_none()
+            && self.error.is_none()
+        {
+            self.guide = true;
+            self.menu_open = false;
+            self.playing = false;
+            self.reset_clock();
+        }
+    }
+
+    fn finish_guide(&mut self, action: guide::Action) {
+        if action == guide::Action::Open {
+            return;
+        }
+        self.guide = false;
+        match action {
+            guide::Action::Fly => {
+                self.choose_pilot(true);
+                self.playing = false;
+                if self.cursor == 0 {
+                    self.has_started = false;
+                }
+            }
+            guide::Action::Watch => {
+                self.choose_pilot(false);
+                if self.flight.frames[self.cursor].status != Status::Flying {
+                    self.replay_run();
+                } else {
+                    self.playing = true;
+                    self.has_started = true;
+                }
+            }
+            guide::Action::Build => self.begin_editor(),
+            guide::Action::Open | guide::Action::Close => {}
+        }
+        self.reset_clock();
     }
 
     fn begin_photo(&mut self) {
         if self.editor.is_none() && self.photo.is_none() && self.error.is_none() {
+            self.menu_open = false;
             self.photo = Some(PhotoMode::new(
                 self.seek.unwrap_or(self.cursor),
                 self.trail,
@@ -187,6 +239,7 @@ impl DroneRaceDemo {
 
     fn begin_editor(&mut self) {
         if self.editor.is_none() {
+            self.menu_open = false;
             self.editor = Some(CourseEditor::new(self.flight.course));
             self.playing = false;
             self.seek = None;
@@ -218,6 +271,8 @@ impl DroneRaceDemo {
     fn reset_course(&mut self, course: Course, manual: bool) {
         self.editor = None;
         self.photo = None;
+        self.guide = false;
+        self.menu_open = false;
         self.flight = if manual {
             Flight::manual(course)
         } else {
@@ -516,6 +571,15 @@ impl DroneRaceDemo {
             self.begin_photo();
             ctx.request_repaint();
         }
+        let help = ui.add_enabled(
+            self.seek.is_none() && self.error.is_none(),
+            egui::Button::new("How to play"),
+        );
+        self.publish_guide_entry(help.rect);
+        if help.clicked() {
+            self.begin_guide();
+            ctx.request_repaint();
+        }
 
         crate::ui_kit::section(ui, "PLAYBACK");
         ui.horizontal(|ui| {
@@ -625,6 +689,22 @@ impl DroneRaceDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.guide {
+            let action = guide::show(
+                ctx,
+                ui,
+                &self.flight,
+                self.cursor,
+                self.ghost.as_ref(),
+                self.recording.is_some(),
+            );
+            self.finish_guide(action);
+            self.publish_status();
+            if action != guide::Action::Open {
+                ctx.request_repaint();
+            }
+            return;
+        }
         if self.photo.is_some() {
             if self.seek.is_some() {
                 self.advance(ctx.input(|input| input.time));
@@ -674,7 +754,22 @@ impl DroneRaceDemo {
             }
             return;
         }
-        if !ctx.wants_keyboard_input()
+        let shortcuts = !ctx.wants_keyboard_input()
+            && !self.menu_open
+            && !ctx.memory(|memory| memory.any_popup_open());
+        if self.menu_open && ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
+            ctx.request_repaint();
+        }
+        if shortcuts
+            && ctx.input(|input| input.key_pressed(egui::Key::H))
+            && self.seek.is_none()
+            && self.error.is_none()
+        {
+            self.begin_guide();
+            ctx.request_repaint();
+            return;
+        }
+        if shortcuts
             && ctx.input(|input| input.key_pressed(egui::Key::P))
             && self.seek.is_none()
             && self.error.is_none()
@@ -683,7 +778,7 @@ impl DroneRaceDemo {
             ctx.request_repaint();
             return;
         }
-        if !ctx.wants_keyboard_input() {
+        if shortcuts {
             ctx.input(|input| {
                 if input.key_pressed(egui::Key::Space) {
                     self.toggle_playing();
@@ -706,7 +801,9 @@ impl DroneRaceDemo {
             });
         }
         let available = ui.available_size();
-        let height = if !self.cinema && ctx.screen_rect().width() < 700.0 {
+        let height = if self.cinema {
+            available.y.max(200.0)
+        } else if ctx.screen_rect().width() < 700.0 {
             if self.flight.is_manual() {
                 (available.x * 1.5).clamp(540.0, 620.0)
             } else {
@@ -719,6 +816,9 @@ impl DroneRaceDemo {
             Vec2::new(available.x.max(120.0), height),
             egui::Sense::click(),
         );
+        if !self.cinema || !pad::compact(rect) {
+            self.menu_open = false;
+        }
         if self.flight.is_manual() {
             if !ctx.input(|input| input.focused) {
                 self.playing = false;
@@ -730,7 +830,8 @@ impl DroneRaceDemo {
                 self.recording.is_none()
                     && self.seek.is_none()
                     && !self.flight.done()
-                    && self.error.is_none(),
+                    && self.error.is_none()
+                    && !self.menu_open,
             );
             if self.cursor == 0
                 && !self.has_started
@@ -803,7 +904,71 @@ impl DroneRaceDemo {
         let mut switch_pilot = false;
         let mut edit_course = false;
         let mut take_photo = false;
-        if self.cinema {
+        let mut show_guide = false;
+        if self.cinema && pad::compact(rect) {
+            let help = Rect::from_min_size(
+                rect.right_top() + Vec2::new(-228.0, 12.0),
+                Vec2::new(108.0, 28.0),
+            );
+            show_guide = ui
+                .put(
+                    help,
+                    egui::Button::new(RichText::new("How to play").size(11.0)),
+                )
+                .clicked();
+            self.publish_guide_entry(help);
+            let menu = Rect::from_min_size(
+                rect.right_top() + Vec2::new(-114.0, 12.0),
+                Vec2::new(98.0, 28.0),
+            );
+            let result = ui
+                .scope_builder(egui::UiBuilder::new().max_rect(menu), |ui| {
+                    let response = ui
+                        .menu_button("Options", |ui| {
+                            for camera in CameraMode::ALL {
+                                let choice =
+                                    ui.selectable_value(&mut self.camera, camera, camera.title());
+                                Self::publish_menu_camera(camera, choice.rect);
+                                if choice.clicked() {
+                                    ui.close_menu();
+                                }
+                            }
+                            ui.separator();
+                            if ui.button("Photo mode").clicked() {
+                                take_photo = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("Edit course").clicked() {
+                                edit_course = true;
+                                ui.close_menu();
+                            }
+                            if ui
+                                .button(if self.flight.is_manual() {
+                                    "Watch autopilot"
+                                } else {
+                                    "Take controls"
+                                })
+                                .clicked()
+                            {
+                                switch_pilot = true;
+                                ui.close_menu();
+                            }
+                            if ui.button("Show controls").clicked() {
+                                self.cinema = false;
+                                ui.close_menu();
+                            }
+                        })
+                        .response;
+                    let open = egui::menu::BarState::load(ctx, ui.id()).is_some();
+                    (response, open)
+                })
+                .inner;
+            if self.menu_open != result.1 {
+                ctx.request_repaint();
+            }
+            self.menu_open = result.1;
+            self.publish_compact_menu(result.0.rect);
+        } else if self.cinema {
             let top = if rect.width() >= 600.0 {
                 rect.right_top() + Vec2::new(-286.0, 50.0)
             } else {
@@ -880,6 +1045,22 @@ impl DroneRaceDemo {
                 )
                 .clicked();
             self.publish_photo_entry(photo);
+            let help = Rect::from_min_size(
+                if rect.width() >= 600.0 {
+                    top + Vec2::new(114.0, -32.0)
+                } else {
+                    rect.right_top() + Vec2::new(-124.0, 52.0)
+                },
+                Vec2::new(108.0, 26.0),
+            );
+            show_guide = ui
+                .put(
+                    help,
+                    egui::Button::new(RichText::new("How to play").size(11.0))
+                        .wrap_mode(egui::TextWrapMode::Extend),
+                )
+                .clicked();
+            self.publish_guide_entry(help);
         }
         let mut retry = false;
         let mut replay = false;
@@ -1053,7 +1234,11 @@ impl DroneRaceDemo {
                 Color32::WHITE,
             );
         }
-        if take_photo {
+        if show_guide {
+            self.begin_guide();
+            ctx.request_repaint();
+            return;
+        } else if take_photo {
             self.begin_photo();
             ctx.request_repaint();
             return;
@@ -1084,6 +1269,52 @@ impl DroneRaceDemo {
     }
 
     fn hud(&self, painter: &egui::Painter, rect: Rect, speed: f64, time: f64) {
+        if pad::compact(rect) {
+            let left = rect.left_top() + Vec2::new(16.0, 12.0);
+            painter.text(
+                left,
+                egui::Align2::LEFT_TOP,
+                self.flight.course.title().to_uppercase(),
+                FontId::proportional(15.0),
+                Color32::WHITE,
+            );
+            painter.text(
+                left + Vec2::new(0.0, 22.0),
+                egui::Align2::LEFT_TOP,
+                if self.playing {
+                    if self.flight.is_manual() {
+                        "YOU ARE FLYING"
+                    } else {
+                        "AUTOPILOT"
+                    }
+                } else {
+                    "PAUSED"
+                },
+                FontId::monospace(10.0),
+                CYAN,
+            );
+            let passed = self.flight.frames[self.cursor].passed;
+            let score = self.ghost.as_ref().map_or_else(
+                || format!("GATES {passed}/5"),
+                |g| {
+                    format!(
+                        "YOU {passed}/5  /  AUTO {}/5",
+                        g.frames[self.cursor.min(g.last_index())].passed
+                    )
+                },
+            );
+            painter.text(
+                rect.center_bottom() + Vec2::new(0.0, -10.0),
+                egui::Align2::CENTER_BOTTOM,
+                format!("{score}   /   {speed:.1} m/s   /   {time:.2} s"),
+                FontId::monospace(11.0),
+                CYAN,
+            );
+            if self.flight.is_manual() {
+                self.next_gate_cue(painter, rect, 112.0);
+            }
+            return;
+        }
         let pad = if rect.width() < 500.0 { 16.0 } else { 26.0 };
         let left = rect.left() + pad;
         let top = rect.top() + pad;
@@ -1132,38 +1363,13 @@ impl DroneRaceDemo {
                 FontId::monospace(11.0),
                 GHOST,
             );
-            let current = &self.flight.frames[self.cursor];
-            if let Some(gate) = self.flight.lap.gates.get(current.passed) {
-                let delta = flight::sub(gate.center(), current.state.position);
-                let center = rect.center_top()
-                    + Vec2::new(0.0, if rect.width() < 600.0 { 236.0 } else { 126.0 });
-                painter.rect_filled(
-                    Rect::from_center_size(
-                        center,
-                        Vec2::new((rect.width() - 28.0).min(450.0), 28.0),
-                    ),
-                    8.0,
-                    Color32::from_rgba_unmultiplied(10, 18, 34, 215),
-                );
-                painter.text(
-                    center,
-                    egui::Align2::CENTER_CENTER,
-                    format!(
-                        "NEXT {:02} / {:.1}m {} / {:.1}m {} / {:.1}m {}",
-                        current.passed + 1,
-                        delta[0].abs(),
-                        if delta[0] >= 0.0 { "fwd" } else { "back" },
-                        delta[1].abs(),
-                        if delta[1] >= 0.0 { "left" } else { "right" },
-                        delta[2].abs(),
-                        if delta[2] >= 0.0 { "up" } else { "down" }
-                    ),
-                    FontId::monospace(if rect.width() < 500.0 { 8.5 } else { 11.0 }),
-                    GOLD,
-                );
-            }
+            self.next_gate_cue(
+                painter,
+                rect,
+                if rect.width() < 600.0 { 236.0 } else { 126.0 },
+            );
         }
-        if rect.width() >= 500.0 {
+        if rect.width() >= 500.0 && !self.cinema {
             painter.text(
                 rect.right_top() + Vec2::new(-pad, pad),
                 egui::Align2::RIGHT_TOP,
@@ -1236,6 +1442,83 @@ impl DroneRaceDemo {
             );
         }
     }
+
+    fn next_gate_cue(&self, painter: &egui::Painter, rect: Rect, height: f32) {
+        let current = &self.flight.frames[self.cursor];
+        if let Some(gate) = self.flight.lap.gates.get(current.passed) {
+            let delta = flight::sub(gate.center(), current.state.position);
+            let center = rect.center_top() + Vec2::new(0.0, height);
+            painter.rect_filled(
+                Rect::from_center_size(center, Vec2::new((rect.width() - 28.0).min(450.0), 28.0)),
+                8.0,
+                Color32::from_rgba_unmultiplied(10, 18, 34, 215),
+            );
+            painter.text(
+                center,
+                egui::Align2::CENTER_CENTER,
+                format!(
+                    "NEXT {:02} / {:.1}m {} / {:.1}m {} / {:.1}m {}",
+                    current.passed + 1,
+                    delta[0].abs(),
+                    if delta[0] >= 0.0 { "fwd" } else { "back" },
+                    delta[1].abs(),
+                    if delta[1] >= 0.0 { "left" } else { "right" },
+                    delta[2].abs(),
+                    if delta[2] >= 0.0 { "up" } else { "down" }
+                ),
+                FontId::monospace(if rect.width() < 500.0 { 8.5 } else { 11.0 }),
+                GOLD,
+            );
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn publish_menu_camera(camera: CameraMode, rect: Rect) {
+        if let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        {
+            let _ = canvas.set_attribute(
+                &format!("data-drone-menu-{}", camera.slug()),
+                &format!("[{:.1},{:.1}]", rect.center().x, rect.center().y),
+            );
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_menu_camera(_camera: CameraMode, _rect: Rect) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn publish_compact_menu(&self, rect: Rect) {
+        if let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        {
+            let _ = canvas.set_attribute(
+                "data-drone-menu",
+                &format!("[{:.1},{:.1}]", rect.center().x, rect.center().y),
+            );
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_compact_menu(&self, _rect: Rect) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn publish_guide_entry(&self, rect: Rect) {
+        if let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        {
+            let _ = canvas.set_attribute(
+                "data-drone-guide-open",
+                &format!("[{:.1},{:.1}]", rect.center().x, rect.center().y),
+            );
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_guide_entry(&self, _rect: Rect) {}
 
     #[cfg(target_arch = "wasm32")]
     fn publish_photo_entry(&self, rect: Rect) {
@@ -1331,6 +1614,8 @@ impl DroneRaceDemo {
         // real flight progress, paused replays and camera changes.
         for (key, value) in [
             ("data-drone-frame", cursor.to_string()),
+            ("data-drone-guide", u8::from(self.guide).to_string()),
+            ("data-drone-menu-open", u8::from(self.menu_open).to_string()),
             (
                 "data-drone-photo",
                 u8::from(self.photo.is_some()).to_string(),
@@ -1696,5 +1981,79 @@ mod tests {
         assert_eq!(demo.ghost.as_ref().unwrap().frames, opponent);
         assert!(demo.recording.is_none());
         assert!(!demo.playing);
+    }
+
+    #[test]
+    fn guide_freezes_manual_history_and_held_keys_then_returns_to_the_attempt() {
+        let mut demo = DroneRaceDemo::default();
+        demo.reset_course(Course::CLIMB, true);
+        for _ in 0..3 {
+            demo.input = PilotInput::new(1, 0, 1);
+            assert!(demo.step_flight());
+        }
+        demo.cursor = 3;
+        demo.playing = true;
+        let original = demo.flight.frames.clone();
+        let opponent = demo.ghost.as_ref().unwrap().frames.clone();
+        demo.begin_guide();
+        let ctx = egui::Context::default();
+        for (i, size) in [Vec2::new(320.0, 740.0), Vec2::new(667.0, 375.0)]
+            .into_iter()
+            .enumerate()
+        {
+            let _ = ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, size)),
+                    time: Some(100.0 + i as f64),
+                    focused: true,
+                    events: [egui::Key::Space, egui::Key::R, egui::Key::W]
+                        .into_iter()
+                        .map(|key| egui::Event::Key {
+                            key,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers: egui::Modifiers::default(),
+                        })
+                        .collect(),
+                    ..Default::default()
+                },
+                |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| demo.scene(ctx, ui));
+                },
+            );
+        }
+        assert!(demo.guide && !demo.playing);
+        assert_eq!(demo.flight.frames, original);
+        assert_eq!(demo.ghost.as_ref().unwrap().frames, opponent);
+        assert_eq!(demo.input, PilotInput::default());
+        demo.finish_guide(guide::Action::Fly);
+        assert!(!demo.guide && !demo.playing);
+        assert_eq!(demo.cursor, 3);
+        assert_eq!(demo.flight.frames, original);
+        assert!(demo.recording.is_none());
+    }
+
+    #[test]
+    fn intro_links_are_opt_in_and_do_not_intercept_replays_photos_or_invalid_courses() {
+        let mut demo = DroneRaceDemo::default();
+        demo.apply_share_query("tab=drone&mode=manual&course=climb&cinema=1&intro=1");
+        assert!(demo.guide && !demo.playing && demo.cinema());
+        assert!(!demo.share_query().contains("intro="));
+        demo.finish_guide(guide::Action::Watch);
+        assert!(!demo.flight.is_manual() && demo.playing && !demo.guide);
+        demo.begin_guide();
+        demo.finish_guide(guide::Action::Build);
+        assert!(demo.editor.is_some() && !demo.guide && !demo.playing);
+        for query in [
+            "tab=drone&mode=manual",
+            "tab=drone&mode=manual&inputs=v1.nnn&frame=0&intro=1",
+            "tab=drone&photo=1&intro=1",
+            "tab=drone&edit=1&intro=1",
+            "tab=drone&course=custom&intro=1",
+        ] {
+            demo.apply_share_query(query);
+            assert!(!demo.guide, "{query}");
+        }
     }
 }

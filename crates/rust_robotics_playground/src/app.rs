@@ -431,7 +431,9 @@ impl PlaygroundApp {
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let narrow = ctx.screen_rect().width() < NARROW_WIDTH;
+        let screen = ctx.screen_rect();
+        let narrow = screen.width() < NARROW_WIDTH
+            || (self.tab == PlaygroundTab::DroneRace && screen.height() < 520.0);
         if self.touch_sized != Some(narrow) {
             crate::ui_kit::set_touch_sized(ctx, narrow);
             self.touch_sized = Some(narrow);

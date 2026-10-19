@@ -2,31 +2,51 @@
 // opens every tab (and a phone-sized viewport) in headless Chromium, pokes
 // at the scene, and fails on any page error or Rust panic message.
 //
-// Usage: node web_smoke.mjs <dist-dir> [screenshot-dir]
+// Build with --public-url /rust_robotics/playground/, as Pages does.
+// Usage: node web_smoke.mjs <dist-dir> [screenshot-dir] [docs-dir]
 // Set CHROMIUM_PATH to use a preinstalled Chromium instead of Playwright's.
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
+import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 
-const [dist, shots] = process.argv.slice(2);
-if (!dist) {
-  console.error('usage: node web_smoke.mjs <dist-dir> [screenshot-dir]');
+const [distArg, shots, docsArg] = process.argv.slice(2);
+if (!distArg) {
+  console.error('usage: node web_smoke.mjs <dist-dir> [screenshot-dir] [docs-dir]');
   process.exit(2);
 }
+const dist = resolve(distArg);
+const docs = resolve(docsArg ?? fileURLToPath(new URL('../../docs/', import.meta.url)));
+const projectPrefix = '/rust_robotics/';
+const playgroundPrefix = `${projectPrefix}playground/`;
 
 const types = {
   '.html': 'text/html',
   '.js': 'text/javascript',
   '.wasm': 'application/wasm',
   '.css': 'text/css',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.gif': 'image/gif',
 };
 const server = createServer(async (request, response) => {
-  const path = normalize(decodeURIComponent(new URL(request.url, 'http://x').pathname));
-  const file = join(dist, path.endsWith('/') ? `${path}index.html` : path);
+  const path = decodeURIComponent(new URL(request.url, 'http://x').pathname);
+  if (!path.startsWith(projectPrefix)) { response.writeHead(404).end(); return; }
+  let root, relative;
+  if (path.startsWith(playgroundPrefix)) {
+    root = dist; relative = path.slice(playgroundPrefix.length);
+  } else if (path.startsWith(`${projectPrefix}img/`)) {
+    root = resolve(docs, '../img'); relative = path.slice(`${projectPrefix}img/`.length);
+  } else {
+    root = docs; relative = path.slice(projectPrefix.length);
+  }
+  const file = resolve(root, relative.endsWith('/') || !relative ? `${relative}index.html` : relative);
+  if (!file.startsWith(`${root}/`)) { response.writeHead(403).end(); return; }
   try {
     const body = await readFile(file);
     response.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream' });
@@ -37,7 +57,9 @@ const server = createServer(async (request, response) => {
   }
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-const base = `http://127.0.0.1:${server.address().port}/`;
+const origin = `http://127.0.0.1:${server.address().port}`;
+const base = `${origin}${playgroundPrefix}`;
+const showcase = `${origin}${projectPrefix}`;
 
 const launch = (scale = 1) => chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -47,6 +69,9 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-v1', home: true, drone: 'v1' },
+  { name: 'drone-v1-phone', home: true, drone: 'v1-phone', viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'drone-v1-landscape', home: true, drone: 'v1-landscape', viewport: { width: 844, height: 390 }, touch: true },
   { name: 'grid', query: 'tab=grid' },
   { name: 'sampling', query: 'tab=sampling&planner=informed', clickScene: true },
   { name: 'parking', query: 'tab=parking', clickScene: true },
@@ -97,7 +122,8 @@ for (const test of cases) {
       problems.push(`console ${message.type()}: ${text.split('\n')[0]}`);
     }
   });
-  await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
+  if (test.home) await openFromShowcase(page, showcase, shots, test.name);
+  else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
   if (test.drone) {
     try {
@@ -106,7 +132,11 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'photo') {
+      if (test.drone === 'v1') {
+        await checkFlightV1(page, base, shots);
+      } else if (test.drone === 'v1-phone' || test.drone === 'v1-landscape') {
+        await checkPhoneV1(page, shots, test.name);
+      } else if (test.drone === 'photo') {
         await checkPhotoDesktop(page, base, shots);
       } else if (test.drone === 'photo-phone') {
         await checkPhotoPhone(page, base, shots);
@@ -171,6 +201,7 @@ for (const test of cases) {
         }
       }
     } catch (error) {
+      console.log(error.stack);
       problems.push(`drone functional check: ${error.message.split('\n')[0]}`);
     }
   }

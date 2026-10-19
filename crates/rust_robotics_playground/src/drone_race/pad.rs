@@ -12,10 +12,14 @@ pub struct FlightPad {
     touches: BTreeMap<TouchId, Pos2>,
 }
 
+pub fn compact(rect: Rect) -> bool {
+    rect.height() < 520.0
+}
+
 pub fn buttons(rect: Rect) -> [(&'static str, Rect); 6] {
-    let side = if rect.width() < 500.0 { 44.0 } else { 42.0 };
+    let side = 44.0;
     let gap = side + 6.0;
-    let origin = rect.left_bottom() + Vec2::new(18.0, -222.0);
+    let origin = rect.left_bottom() + Vec2::new(18.0, if compact(rect) { -128.0 } else { -222.0 });
     let button = |position| Rect::from_min_size(position, Vec2::splat(side));
     [
         ("W", button(origin + Vec2::new(gap, 0.0))),
@@ -34,13 +38,15 @@ pub fn buttons(rect: Rect) -> [(&'static str, Rect); 6] {
 }
 
 pub fn actions(rect: Rect, cinema: bool) -> [Rect; 3] {
-    let top = if rect.width() < 600.0 {
+    let top = if compact(rect) {
+        rect.right_top() + Vec2::new(-274.0, 54.0)
+    } else if rect.width() < 600.0 {
         rect.left_top() + Vec2::new(16.0, if cinema { 180.0 } else { 106.0 })
     } else {
         rect.right_top() + Vec2::new(-258.0, if cinema { 122.0 } else { 50.0 })
     };
     std::array::from_fn(|i| {
-        Rect::from_min_size(top + Vec2::new(i as f32 * 86.0, 0.0), Vec2::new(80.0, 28.0))
+        Rect::from_min_size(top + Vec2::new(i as f32 * 86.0, 0.0), Vec2::new(80.0, 40.0))
     })
 }
 
@@ -135,23 +141,47 @@ impl FlightPad {
                 if enabled { CYAN } else { Color32::GRAY },
             );
         }
-        ui.painter().text(
-            rect.center_bottom() + Vec2::new(0.0, -110.0),
-            egui::Align2::CENTER_BOTTOM,
-            if enabled {
-                "HOLD TO FLY / RELEASE TO BRAKE"
-            } else {
-                "RECORDED FLIGHT / R TO TRY AGAIN"
-            },
-            FontId::monospace(9.0),
-            Color32::from_rgb(158, 180, 201),
-        );
+        if !compact(rect) {
+            ui.painter().text(
+                rect.center_bottom() + Vec2::new(0.0, -110.0),
+                egui::Align2::CENTER_BOTTOM,
+                if enabled {
+                    "HOLD TO FLY / RELEASE TO BRAKE"
+                } else {
+                    "RECORDED FLIGHT / R TO TRY AGAIN"
+                },
+                FontId::monospace(9.0),
+                Color32::from_rgb(158, 180, 201),
+            );
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn phone_controls_fit_portrait_and_landscape_without_overlapping_playback() {
+        for size in [
+            Vec2::new(320.0, 620.0),
+            Vec2::new(667.0, 323.0),
+            Vec2::new(844.0, 268.0),
+        ] {
+            let rect = Rect::from_min_size(Pos2::ZERO, size);
+            let pads = buttons(rect);
+            let actions = actions(rect, true);
+            for (i, (_, button)) in pads.iter().enumerate() {
+                assert!(rect.contains_rect(*button));
+                assert!(button.width() >= 44.0 && button.height() >= 44.0);
+                assert!(actions.iter().all(|action| !action.intersects(*button)));
+                assert!(pads[i + 1..]
+                    .iter()
+                    .all(|(_, other)| !other.intersects(*button)));
+            }
+            assert!(actions.iter().all(|button| rect.contains_rect(*button)));
+        }
+    }
 
     #[test]
     fn simultaneous_touch_commands_release_and_focus_loss_clears_the_pad() {

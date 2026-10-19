@@ -1,6 +1,6 @@
 # 3D Drone Race
 
-[Race the autopilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1),
+[Play Flight Lab v1](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1),
 [watch 30 seconds of browser gameplay](assets/drone-manual.mp4),
 or [watch autonomous flight](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1).
 The [capture receipt](assets/drone-manual-flight.json) includes the recorded
@@ -12,7 +12,42 @@ replay and share the attempt. Both pilots use the existing Rust flight model
 inside the WASM playground. Autopilot mode retains the original watch-and-replay
 experience, three cameras, flown trail, and predicted horizon.
 
-![Manual flight and its autonomous opponent in the browser](assets/playground/drone-manual.png)
+![Manual flight and its autonomous opponent in Flight Lab v1](assets/playground/drone-v1.png)
+
+## Start playing on GitHub Pages
+
+Open [RustRobotics](https://rsasaki0109.github.io/rust_robotics/) and choose
+**Play drone race**. Everything runs in the browser; installation and an
+account are not needed. The opening guide offers **Ready to fly**, **Watch
+the autopilot first**, and **Build your own circuit**.
+
+Choose Ready to fly, then hold **W + E** to move forward and climb, or hold
+the forward and UP buttons with two fingers. The clock waits for that first
+flight input. Aim for the gold gate's opening; numbered gates must be crossed
+forward in order. The purple opponent uses the same simulation clock.
+
+![The opening flight guide](assets/playground/drone-guide.png)
+
+**How to play** or **H** opens the guide during a flight and pauses it. Back
+to flight keeps the attempt and recording at the same position, paused; Space
+or Play resumes. The guide scrolls on short screens, with its three action
+buttons kept outside the scrolling text. New play links add `intro=1`; that
+flag is omitted from shared flights, and does not intercept recordings,
+photos, edited courses, or invalid-link recovery.
+
+On a phone, rotate the screen whenever you like. Short viewports use a compact
+HUD, separate playback and flight buttons, and an **Options** menu for cameras,
+Photo mode, course editing, switching pilots, and the full controls. All six
+flight buttons have 44-point targets. The header keeps Share visible in both
+orientations. Release to brake and use Play/Pause while choosing your next move.
+
+![Phone controls after rotating to landscape](assets/playground/drone-landscape.png)
+
+Flight Lab v1 includes the complete play flow: enter from the showcase,
+read the guide, fly five gates, retry or replay, build a custom course, save
+a photo, and share a reproducible attempt. The [v1 flight receipt](assets/drone-v1-flight.json)
+contains a real keyboard-driven five-gate finish and the receiving browser's
+reconstructed state. Use its `query` to replay that attempt.
 
 ## Use it
 
@@ -231,7 +266,31 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
+To verify the actual GitHub Pages project path, build and run the 28-case
+browser suite from the repository root:
+
+```sh
+cd crates/rust_robotics_playground
+RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build index.html --release --locked --public-url /rust_robotics/playground/
+cd ../../scripts/web_smoke
+npm install
+npx playwright install chromium
+node web_smoke.mjs ../../crates/rust_robotics_playground/dist /tmp/flight-v1-checks ../../docs
+```
+
+The server exposes the showcase and its image directory under `/rust_robotics/`
+and the compiled app under `/rust_robotics/playground/`. It does not alias assets
+to the origin root. The three v1 cases enter through the site's real Play link
+at desktop, 320-pixel portrait with 2× pixel density, and 844-pixel landscape
+sizes. They cover an actual manual finish, PNG download and replay sharing,
+guide pause/resume, simultaneous touch commands, orientation changes, and
+autonomous completion. A missing optional web font is simulated for the site.
+CI uses this same public-URL build and suite before publication.
+
 ## Capture the actual browser
+
+For the root-served capture scripts below, use the earlier build command
+without `--public-url`; the Pages-path browser suite above uses its own server.
 
 Install the dependencies in `scripts/web_smoke/package.json` and Playwright's
 Chromium, or set `CHROMIUM_PATH` to an installed Chromium. From that directory:
