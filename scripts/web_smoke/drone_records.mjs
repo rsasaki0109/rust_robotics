@@ -57,8 +57,10 @@ export async function checkPersonalBest(page, base, shots) {
   // their personal best. This context has a genuinely empty local store.
   const receiverContext = await page.context().browser().newContext({
     deviceScaleFactor: await page.evaluate(() => devicePixelRatio),
+    viewport: page.viewportSize(),
   });
   const receiver = await receiverContext.newPage();
+  await receiver.bringToFront();
   const problems = [];
   receiver.on('pageerror', (error) => problems.push(error.message));
   let shared;
