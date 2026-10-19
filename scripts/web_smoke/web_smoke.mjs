@@ -1,10 +1,11 @@
 // Smoke test for the WASM playground: serves a built `dist/` directory,
-// opens every tab (and a phone-sized viewport) in headless Chromium, pokes
+// opens every tab (and a phone-sized viewport) in Chromium, pokes
 // at the scene, and fails on any page error or Rust panic message.
 //
 // Build with --public-url /rust_robotics/playground/, as Pages does.
 // Usage: node web_smoke.mjs <dist-dir> [screenshot-dir] [docs-dir]
 // Set CHROMIUM_PATH to use a preinstalled Chromium instead of Playwright's.
+// The focus-loss case needs a display; on Linux CI use xvfb-run -a node ...
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
@@ -16,6 +17,7 @@ import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_pho
 import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
 import { checkBestGhost } from './drone_ghost.mjs';
+import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -63,7 +65,9 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const base = `${origin}${playgroundPrefix}`;
 const showcase = `${origin}${projectPrefix}`;
 
-const launch = (scale = 1) => chromium.launch({
+const launch = (scale = 1, headed = false) => chromium.launch({
+  channel: 'chromium',
+  headless: !headed,
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', `--force-device-scale-factor=${scale}`],
 });
@@ -71,6 +75,10 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-race-start', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'race-start', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
+  // Headless Chromium versions differ in whether bringToFront changes focus.
+  // Exercise a real browser window for the focus-loss assertion.
+  { name: 'drone-start-cancel', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'start-cancel', viewport: { width: 844, height: 390 }, touch: true, headed: true },
   { name: 'drone-best-ghost', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'best-ghost', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   { name: 'drone-best-ghost-invalid', query: 'tab=drone&course=climb&mode=manual&cinema=1&rival=best&best_inputs=v1.n&frame=600&playing=1', drone: 'invalid' },
   { name: 'drone-records', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
@@ -113,7 +121,8 @@ for (const test of cases) {
   // Chromium's context-only DPR emulation leaves ResizeObserver's physical
   // box at the host scale. Match the actual display too, as eframe uses that
   // box to size its framebuffer. Otherwise this tests an inconsistent device.
-  const caseBrowser = test.scale > 1 ? await launch(test.scale) : browser;
+  const caseBrowser = test.scale > 1 || test.headed
+    ? await launch(test.scale ?? 1, Boolean(test.headed)) : browser;
   const context = await caseBrowser.newContext({
     viewport: test.viewport ?? { width: 1280, height: 900 },
     hasTouch: Boolean(test.touch),
@@ -141,7 +150,11 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'best-ghost') {
+      if (test.drone === 'race-start') {
+        await checkRaceStart(page, base, shots);
+      } else if (test.drone === 'start-cancel') {
+        await checkStartCancellation(page, base, shots);
+      } else if (test.drone === 'best-ghost') {
         await checkBestGhost(page, base, shots);
       } else if (test.drone === 'records') {
         await checkPersonalBest(page, base, shots);

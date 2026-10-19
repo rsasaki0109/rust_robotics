@@ -90,7 +90,7 @@ pub fn show(
             } else if frame > 0 {
                 "Your flight is paused. Space or Play resumes; Retry starts again."
             } else {
-                "Your clock waits for the first key or flight button. Start with forward + climb."
+                "Hold forward + climb for 3-2-1. Keep holding through GO; that is when your flight clock starts. Space or Pause cancels the countdown."
             }).color(GOLD));
             ui.label(RichText::new("Space: pause · R: retry · P: photo · H: this guide").small());
             ui.label(RichText::new("After flying: replay the attempt, save a photo, or use Share to send the flight to a friend.").small());
