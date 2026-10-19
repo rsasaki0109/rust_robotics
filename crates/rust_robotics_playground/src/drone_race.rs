@@ -1,5 +1,6 @@
 //! Interactive 3-D quadrotor race, with bounded incremental replay generation.
 
+mod checkpoint;
 mod course;
 mod editor;
 mod flight;
@@ -500,27 +501,17 @@ impl DroneRaceDemo {
     }
 
     fn advance(&mut self, now: f64) {
-        let countdown_elapsed = self.last_time.map_or(0.0, |last| {
+        let foreground_elapsed = self.last_time.map_or(0.0, |last| {
             let delta = now - last;
-            // Use foreground elapsed time for the start lights, independently
-            // of the bounded physics budget. Slow painting must not stretch
-            // three seconds into dozens of simulated updates.
+            // Slow foreground paints still advance. Discard background-sized
+            // gaps, then cap the physical work separately below.
             if (0.0..1.0).contains(&delta) {
                 delta
             } else {
                 0.0
             }
         });
-        let elapsed = self.last_time.map_or(0.0, |last| {
-            let delta = now - last;
-            // Changing tabs or restoring a background browser never creates
-            // an unbounded catch-up loop.
-            if (0.0..0.25).contains(&delta) {
-                delta.min(0.1)
-            } else {
-                0.0
-            }
-        });
+        let elapsed = foreground_elapsed.min(2.0 * DT);
         self.last_time = Some(now);
         if self.error.is_some() {
             return;
@@ -549,7 +540,7 @@ impl DroneRaceDemo {
         }
         if let Some(start) = &mut self.start {
             let waiting = start.waiting();
-            start.advance(countdown_elapsed);
+            start.advance(foreground_elapsed);
             if start.finished() {
                 self.start = None;
             }
@@ -1176,6 +1167,18 @@ impl DroneRaceDemo {
             },
         );
         self.hud(&painter, rect, state.speed(), visual_time);
+        if current.status == Status::Flying && self.error.is_none() {
+            if let Some(checkpoint) =
+                checkpoint::Checkpoint::at(&self.flight, draw_frame, visual_time)
+            {
+                checkpoint.paint(
+                    &painter,
+                    rect,
+                    self.flight.lap.gate_count(),
+                    self.best_split_at(draw_frame).map(|(_, split)| split),
+                );
+            }
+        }
         let mut switch_pilot = false;
         let mut edit_course = false;
         let mut take_photo = false;
@@ -1873,10 +1876,27 @@ impl DroneRaceDemo {
             |editor| (editor.preview(), 0),
         );
         let frame = &flight.frames[cursor];
+        let checkpoint = checkpoint::Checkpoint::at(flight, cursor, cursor as f64 * DT);
         // Accessible scene summary also permits functional browser checks of
         // real flight progress, paused replays and camera changes.
         for (key, value) in [
             ("data-drone-frame", cursor.to_string()),
+            (
+                "data-drone-clear-gate",
+                checkpoint.map_or_else(String::new, |c| c.gate.to_string()),
+            ),
+            (
+                "data-drone-clear-time",
+                checkpoint.map_or_else(String::new, |c| format!("{:.2}", c.time())),
+            ),
+            (
+                "data-drone-clear-age",
+                checkpoint.map_or_else(String::new, |c| format!("{:.3}", c.age)),
+            ),
+            (
+                "data-drone-clear-finish",
+                checkpoint.map_or_else(String::new, |c| u8::from(c.finish).to_string()),
+            ),
             (
                 "data-drone-start-age",
                 self.start
@@ -2140,6 +2160,54 @@ mod tests {
         demo.advance(200.0);
         assert_eq!(demo.cursor, 0, "background time must not advance the race");
         assert_eq!(demo.flight.frames, cached);
+    }
+
+    #[test]
+    fn slow_foreground_paints_advance_live_flight_and_exact_replays_with_a_fixed_budget() {
+        for slow in [false, true] {
+            let mut live = DroneRaceDemo::default();
+            live.reset_course(Course::CLIMB, true);
+            live.ghost = None;
+            live.slow = slow;
+            live.has_started = true;
+            live.playing = true;
+            live.input = PilotInput::new(1, 0, 1);
+            live.advance(0.0);
+            let budget = if slow { 1 } else { 2 };
+            for paint in 1..=5 {
+                let before = live.cursor;
+                live.advance(f64::from(paint) * 0.4);
+                assert_eq!(
+                    live.cursor - before,
+                    budget,
+                    "slow painting stalled live flight"
+                );
+            }
+            let cursor = live.cursor;
+            live.advance(500.0);
+            assert_eq!(live.cursor, cursor, "background time advanced the race");
+
+            let mut replay = DroneRaceDemo::default();
+            replay.reset_course(Course::CLIMB, true);
+            replay.ghost = None;
+            replay.slow = slow;
+            replay.recording = Some(live.flight.inputs.clone());
+            replay.has_started = true;
+            replay.playing = true;
+            replay.advance(0.0);
+            for paint in 1..=5 {
+                let before = replay.cursor;
+                replay.advance(f64::from(paint) * 0.4);
+                assert_eq!(
+                    replay.cursor - before,
+                    budget,
+                    "slow painting stalled replay"
+                );
+            }
+            assert!(!replay.playing);
+            assert_eq!(replay.flight.frames, live.flight.frames);
+            assert_eq!(replay.flight.inputs, live.flight.inputs);
+        }
     }
 
     #[test]
@@ -2519,8 +2587,8 @@ mod tests {
         demo.advance(30.0);
         assert_eq!(demo.start.as_ref().unwrap().age, age);
         let mut now = 30.0;
-        // Even at 2.5 paints per second (below the physics gap threshold),
-        // the start lights use real elapsed time and still reach GO.
+        // Even at 2.5 paints per second, the start lights use real elapsed
+        // time and still reach GO.
         for _ in 0..12 {
             now += 0.4;
             demo.advance(now);

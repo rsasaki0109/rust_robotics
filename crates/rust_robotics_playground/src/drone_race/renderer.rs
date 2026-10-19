@@ -484,6 +484,50 @@ fn drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64) {
     );
 }
 
+fn checkpoint_glow(scene: &mut Scene<'_>, flight: &Flight, event: super::checkpoint::Checkpoint) {
+    let gate = &flight.lap.gates[event.gate - 1];
+    // Keep a fading ring from sweeping across the chase camera's near plane.
+    if scene.camera.view(gate.center())[2] < 1.0 {
+        return;
+    }
+    let normal = gate.normal();
+    let up = unit(sub([0.0, 0.0, 1.0], scale(normal, normal[2])));
+    let right = unit(cross(normal, up));
+    let progress = event.progress();
+    let color = if event.finish { GOLD } else { CYAN }.gamma_multiply(event.fade());
+    let point = |angle: f64, expansion: f64| {
+        add(
+            gate.center(),
+            add(
+                scale(right, angle.cos() * (gate.half_width() + expansion)),
+                scale(up, angle.sin() * (gate.half_height() + expansion)),
+            ),
+        )
+    };
+    for i in 0..32 {
+        let angle = |i| f64::from(i) * std::f64::consts::TAU / 32.0;
+        scene.glow(
+            point(angle(i), progress * 0.8),
+            point(angle(i + 1), progress * 0.8),
+            color,
+            1.6,
+        );
+    }
+    // A fixed, bounded set of decorative streaks; it never samples or changes
+    // flight physics. A replay or a paused photograph has the same sparks.
+    for i in 0..20 {
+        let angle = f64::from(i) * std::f64::consts::TAU / 20.0 + event.gate as f64 * 0.137;
+        let outward = add(scale(right, angle.cos()), scale(up, angle.sin()));
+        let travel = progress * (0.5 + f64::from(i % 4) * 0.2);
+        let head = add(point(angle, travel), scale(normal, progress * 0.45));
+        let tail = sub(
+            head,
+            scale(add(outward, scale(normal, 0.3)), 0.10 + progress * 0.12),
+        );
+        scene.glow(tail, head, color, 1.3);
+    }
+}
+
 pub struct GhostView<'a> {
     pub flight: &'a Flight,
     pub frame: usize,
@@ -666,6 +710,9 @@ pub fn render(
     }
     if options.camera != CameraMode::Pilot {
         drone(&mut scene, state, time);
+    }
+    if let Some(event) = super::checkpoint::Checkpoint::at(flight, frame, time) {
+        checkpoint_glow(&mut scene, flight, event);
     }
     scene.paint(painter);
 

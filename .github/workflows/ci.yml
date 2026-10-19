@@ -111,7 +111,9 @@ jobs:
     # Builds the playground exactly like Pages does and loads every tab in
     # Chromium: a Rust panic in the browser (e.g. std::time::Instant
     # on wasm32-unknown-unknown) fails the build instead of the live site.
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 provides browser dependencies for Ubuntu 24.04.
+    # Keep this aligned with Playwright when newer runner images roll out.
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
 
@@ -148,7 +150,26 @@ jobs:
 
     - name: Install Playwright Chromium
       working-directory: scripts/web_smoke
-      run: npm install && npx playwright install --with-deps chromium
+      run: |
+        install_browser() {
+          setup_log="$RUNNER_TEMP/web-smoke-browser-setup.log"
+          set +e
+          "$@" 2>&1 | tee "$setup_log"
+          setup_status=${PIPESTATUS[0]}
+          set -e
+          if [ "$setup_status" -ne 0 ]; then
+            # Surface setup errors beside the existing browser assertions,
+            # including for viewers who cannot open the authenticated logs.
+            setup_detail="$(tail -n 24 "$setup_log")"
+            setup_detail="${setup_detail//'%'/'%25'}"
+            setup_detail="${setup_detail//$'\r'/'%0D'}"
+            setup_detail="${setup_detail//$'\n'/'%0A'}"
+            printf '::error title=Browser setup::%s\n' "$setup_detail"
+            exit "$setup_status"
+          fi
+        }
+        install_browser npm install
+        install_browser npx playwright install --with-deps chromium
 
     - name: Load every playground tab in Chromium
       working-directory: scripts/web_smoke

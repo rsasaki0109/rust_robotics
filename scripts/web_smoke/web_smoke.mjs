@@ -18,6 +18,8 @@ import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
 import { checkBestGhost } from './drone_ghost.mjs';
 import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
+import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mjs';
+import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_slow.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -74,7 +76,11 @@ const launch = (scale = 1, headed = false) => chromium.launch({
 const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
+const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'drone-slow-replay', query: slowReplay.query, drone: 'slow-replay', slowPaint: true, expected: slowReplay.finish },
+  { name: 'drone-gate-feedback', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'gate-feedback' },
+  { name: 'drone-gate-feedback-phone', query: 'tab=drone&course=climb&cinema=1&frame=0&playing=0&slow=1', drone: 'gate-feedback-phone', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   { name: 'drone-race-start', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'race-start', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   // Headless Chromium versions differ in whether bringToFront changes focus.
   // Exercise a real browser window for the focus-loss assertion.
@@ -132,6 +138,7 @@ for (const test of cases) {
     Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('Storage is disabled', 'SecurityError'); } });
   });
   const page = await context.newPage();
+  if (test.slowPaint) await prepareSlowPaints(page);
   const problems = [];
   page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
   page.on('console', (message) => {
@@ -150,7 +157,13 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'race-start') {
+      if (test.drone === 'slow-replay') {
+        await checkSlowReplay(page, test.expected);
+      } else if (test.drone === 'gate-feedback') {
+        await checkGateFeedback(page, base, shots);
+      } else if (test.drone === 'gate-feedback-phone') {
+        await checkGateFeedbackPhone(page, base, shots);
+      } else if (test.drone === 'race-start') {
         await checkRaceStart(page, base, shots);
       } else if (test.drone === 'start-cancel') {
         await checkStartCancellation(page, base, shots);
@@ -230,6 +243,13 @@ for (const test of cases) {
       }
     } catch (error) {
       problems.push(`drone functional check: ${error.stack ?? error.message}`);
+      // Keep enough state to distinguish a paused flight, slow painting and
+      // unfinished seeking when only the public job annotations are visible.
+      const fields = ['frame', 'generated', 'playing', 'status', 'gates', 'mode', 'replay',
+        'seeking', 'start', 'clear-gate', 'clear-age', 'guide', 'photo', 'editor', 'menu-open'];
+      const values = await Promise.all(fields.map((field) => page.locator('#rust_robotics_playground')
+        .getAttribute(`data-drone-${field}`, { timeout: 2000 }).catch(() => null)));
+      problems.push(`flight state: ${JSON.stringify(Object.fromEntries(fields.map((field, i) => [field, values[i]])))}`);
     }
   }
   if (test.clickScene) {
