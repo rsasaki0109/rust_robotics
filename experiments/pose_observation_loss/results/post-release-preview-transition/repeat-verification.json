@@ -1,0 +1,61 @@
+{
+  "method": "Two fresh fixed-input transition audits of every joint resume; all exports, native inputs, traces, source, binary, logs and provenance compared byte for byte.",
+  "all_equal": true,
+  "files": 13,
+  "raw_provenance_sha256": "b9476bc0796a097bb9f80156d52694b0e32fbde56ee1cec06e7be29e926298fd",
+  "implementation_commit": "8989e59faa028abab0c81edb99f20165d2cbf5b9",
+  "sha256": {
+    "cases.csv": {
+      "bytes": 16317,
+      "sha256": "492a5da20d14644d3a1cc8b5437fe446f336bf1e1cd2aa224c1d6e28f02a008f"
+    },
+    "native/compiler.log": {
+      "bytes": 1022,
+      "sha256": "3d698ca88b93619ceb050837039386475f7a4ef0541a666f686734431093446b"
+    },
+    "native/native-post-release": {
+      "bytes": 4693272,
+      "sha256": "a3d56316caa3aea6ff4e3a50146902d7d8745ad93335a3618f9771e272c7c477"
+    },
+    "native/native.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native/post-release-transition.rs": {
+      "bytes": 24012,
+      "sha256": "bbb1905b1e6b96a4ae4cd0d70f09d41b86539bf75056c999a28c5ba789e64fa1"
+    },
+    "native/queries.tsv": {
+      "bytes": 111951,
+      "sha256": "e04d61947b2376e19be1aab556c35c0d83dc54b4efab4347bc9a172c7159696f"
+    },
+    "native/trace.csv": {
+      "bytes": 250984,
+      "sha256": "acfbdd787323bf5c62522f0c6645a70ac1c31840729c2108a54f4ca664b55e8a"
+    },
+    "pairs.csv": {
+      "bytes": 9171,
+      "sha256": "2675c04b3ef90a8338f4d2616ea8ab66629a79f36ada8724bfbcbe6bf4f45887"
+    },
+    "queries.csv": {
+      "bytes": 329432,
+      "sha256": "2e30499dbffc2956dc4ebe3d10b9f568c5675b4dc67946787221db5db2dfa547"
+    },
+    "sources.json": {
+      "bytes": 25891,
+      "sha256": "7d394cf36d1aeb0712b3773f28a5d6672052fb4f0d6ee18d1a6683b26400fec9"
+    },
+    "summary.csv": {
+      "bytes": 6823,
+      "sha256": "1797131454bd7d6fc6d202f5b09bd128efc4203c24c7cb25d39a945eb2f7e7d8"
+    },
+    "transitions.csv": {
+      "bytes": 142369,
+      "sha256": "fa806b6fee0f9db1cac42a9682108506d124ff0ee17797ef6460f6772557b851"
+    },
+    "verification.csv": {
+      "bytes": 11007,
+      "sha256": "ac7b958b8362e45a7e8970eb529d9b5a8ef343850a409d9e766e1f0b23f130ca"
+    }
+  }
+}
