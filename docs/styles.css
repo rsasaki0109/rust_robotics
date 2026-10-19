@@ -93,6 +93,68 @@ h1 {
   max-width: 34ch;
 }
 
+.hero-copy .eyebrow {
+  margin-bottom: 14px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.hero-copy .play-note,
+.play-note,
+.section-note {
+  margin: 16px 0 20px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.play-note a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.quick-start {
+  padding: 8px 0 40px;
+  scroll-margin-top: 20px;
+}
+
+.flight-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding-left: 24px;
+}
+
+.flight-steps li {
+  padding: 12px 16px;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+
+.flight-steps li::marker { color: var(--accent); font-weight: 700; }
+.flight-steps p { margin: 8px 0 0; color: var(--muted); }
+
+kbd {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88em;
+  text-align: center;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -317,6 +379,7 @@ h2 {
 }
 
 @media (max-width: 560px) {
+  .flight-steps { grid-template-columns: 1fr; }
   .topbar {
     flex-direction: column;
     align-items: flex-start;

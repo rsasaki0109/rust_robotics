@@ -4,17 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RustRobotics</title>
-  <meta name="description" content="Robotics algorithms in Rust: SLAM, localization, planning, and control. Drive a robot with live LiDAR SLAM right in your browser.">
+  <meta name="description" content="Fly a drone through five gates, race its autonomous pilot, build a course, and share your flight. Play in your browser, then explore Rust robotics algorithms.">
   <meta name="theme-color" content="#10141a">
   <meta property="og:title" content="RustRobotics">
-  <meta property="og:description" content="Robotics algorithms in Rust. Drive a robot with live LiDAR SLAM right in your browser.">
+  <meta property="og:description" content="Fly five gates, race the autopilot, build a course, and photograph your flight. Play in your browser.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rsasaki0109.github.io/rust_robotics/">
-  <meta property="og:image" content="https://rsasaki0109.github.io/rust_robotics/assets/social-preview.svg">
+  <meta property="og:image" content="https://rsasaki0109.github.io/rust_robotics/assets/drone-photo-wide.png">
+  <meta property="og:image:alt" content="A quadrotor flying through illuminated gates in the browser playground">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="RustRobotics">
-  <meta name="twitter:description" content="Robotics algorithms in Rust. Drive a robot with live LiDAR SLAM right in your browser.">
-  <meta name="twitter:image" content="https://rsasaki0109.github.io/rust_robotics/assets/social-preview.svg">
+  <meta name="twitter:description" content="Fly five gates, race the autopilot, build a course, and photograph your flight. Play in your browser.">
+  <meta name="twitter:image" content="https://rsasaki0109.github.io/rust_robotics/assets/drone-photo-wide.png">
   <link rel="canonical" href="https://rsasaki0109.github.io/rust_robotics/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,26 +37,39 @@
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <h1>Robotics algorithms in Rust.</h1>
+        <p class="eyebrow">FLIGHT LAB · PLAYABLE V1</p>
+        <h1>Fly a drone.<br>Race the autopilot.</h1>
         <p>
-          SLAM, localization, path planning, and control in one workspace.
-          Try them right here in your browser: no install, no gnuplot.
+          Five gates, your controls, a real autonomous opponent.
+          Fly with keys or touch, build a circuit, and share your best moment.
+          Everything runs in your browser.
         </p>
         <div class="actions">
-          <a class="button primary" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1">Race the autopilot</a>
+          <a class="button primary" id="play-drone" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1&amp;intro=1">Play drone race</a>
+          <a class="button" href="playground/?tab=drone&amp;course=climb&amp;cinema=1">Watch a lap</a>
           <a class="button" href="playground/?tab=drone&amp;course=climb&amp;edit=1">Build a circuit</a>
-          <a class="button" href="playground/?tab=drone&amp;course=climb&amp;frame=45&amp;photo=1&amp;distance=3.2">Photo mode</a>
-          <a class="button" href="https://github.com/rsasaki0109/rust_robotics" target="_blank" rel="noreferrer">View on GitHub</a>
         </div>
+        <p class="play-note">No install or account. <a href="#how-to-play">How to play ↓</a></p>
       </div>
-      <a class="hero-shot" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1" aria-label="Fly against an autonomous drone ghost">
-        <img src="assets/playground/drone-manual.png" width="1280" height="760"
-             alt="A manually controlled quadrotor racing through 3D gates alongside a purple autonomous ghost, with touch controls and gate progress">
+      <a class="hero-shot" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1&amp;intro=1" aria-label="Play the drone race">
+        <img src="assets/drone-photo-wide.png" width="1564" height="879"
+             alt="A quadrotor leaning through illuminated 3D gates, photographed in the playground">
       </a>
+    </section>
+
+    <section class="quick-start" id="how-to-play" aria-labelledby="how-to-play-title">
+      <h2 id="how-to-play-title">Your first flight</h2>
+      <ol class="flight-steps">
+        <li><strong>Move forward and climb</strong><p>Hold <kbd>W</kbd> + <kbd>E</kbd>, or hold the forward and UP buttons with two fingers. Release to brake.</p></li>
+        <li><strong>Aim for the gold gate</strong><p>Pass through each numbered opening in order. <kbd>A</kbd> / <kbd>D</kbd> steer; <kbd>Q</kbd> descends. The purple drone is the autopilot.</p></li>
+        <li><strong>Replay, photograph, share</strong><p><kbd>Space</kbd> pauses. <kbd>R</kbd> retries. <kbd>P</kbd> opens Photo mode. Use Share to send the same flight to a friend.</p></li>
+      </ol>
+      <p class="play-note">The flight waits for your first input. Open <strong>How to play</strong> or press <kbd>H</kbd> whenever you need a reminder.</p>
     </section>
 
     <section class="play" id="play">
       <h2>Play in your browser</h2>
+      <p class="section-note">Keep exploring: live LiDAR SLAM, localization, path planning, and control from the RustRobotics workspace.</p>
       <div class="tiles" id="play-tiles"></div>
     </section>
 

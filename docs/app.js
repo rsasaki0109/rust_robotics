@@ -664,8 +664,8 @@ const playTiles = [
   {
     title: "You vs autopilot",
     text: "Fly five 3D gates with keys or touch. Race an autonomous ghost, replay your attempt, and share its inputs.",
-    image: "assets/playground/drone-manual.png",
-    link: "playground/?tab=drone&mode=manual&course=climb&cinema=1"
+    image: "assets/playground/drone-v1.png",
+    link: "playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1"
   },
   {
     title: "Build a drone circuit",

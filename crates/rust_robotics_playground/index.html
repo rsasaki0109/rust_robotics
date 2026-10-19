@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RustRobotics Playground</title>
-  <meta name="description" content="Drive a robot with live LiDAR SLAM, race grid planners, and compare filters and controllers in your browser (Rust + WASM).">
+  <meta name="description" content="Fly a drone, race its autopilot, build a circuit, and share your flight. Explore robotics in your browser with RustRobotics.">
   <link rel="icon" href="data:,">
   <style>
     html, body {
@@ -53,10 +53,11 @@
 </head>
 <body>
   <!-- Removed by the app once it is running (src/main.rs). -->
-  <div class="loading" id="loading">
+  <div class="loading" id="loading" role="status" aria-live="polite">
     <div class="spinner"></div>
     <div id="loading-text">Loading the RustRobotics playground…</div>
   </div>
+  <noscript>Enable JavaScript to play RustRobotics in your browser.</noscript>
   <canvas id="rust_robotics_playground"></canvas>
   <link data-trunk rel="rust" data-bin="rust_robotics_playground" data-cargo-profile="wasm-release" data-wasm-opt="z" />
 </body>

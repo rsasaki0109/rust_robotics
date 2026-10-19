@@ -22,12 +22,14 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
   <a href="https://rsasaki0109.github.io/rust_robotics/"><b>Browse the gallery</b></a>
 </p>
 
-[![Fly against an autonomous drone ghost](docs/assets/playground/drone-manual.png)](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1)
+[![Play Flight Lab v1 against an autonomous drone ghost](docs/assets/playground/drone-v1.png)](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1)
 
-**[Race the autopilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1)**
+**[Play Flight Lab v1](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1)**
 — fly five 3D gates with WASD + E/Q or the touch pad, alongside an autonomous
 ghost. Assisted controls brake when released; both drones use the same flight
 physics. Switch cameras, replay your attempt, and share its recorded inputs.
+The opening guide explains keys and two-finger controls. Press H to reopen it;
+your flight pauses while you read. Phone controls adapt when you rotate the screen.
 [Watch 30 seconds of browser gameplay](docs/assets/drone-manual.mp4)
 or [watch the autonomous pilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1).
 
