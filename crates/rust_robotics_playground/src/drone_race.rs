@@ -7,7 +7,9 @@ mod guide;
 mod manual;
 mod pad;
 mod photo;
+mod records;
 mod renderer;
+mod results;
 
 use editor::{CourseEditor, EditorAction};
 use egui::{Color32, FontId, Rect, RichText, Stroke, Vec2};
@@ -23,6 +25,9 @@ pub struct DroneRaceDemo {
     photo: Option<PhotoMode>,
     guide: bool,
     menu_open: bool,
+    records: records::RecordBook,
+    new_best: Option<records::Improvement>,
+    best_checked: bool,
     ghost: Option<Flight>,
     recording: Option<Vec<PilotInput>>,
     input: PilotInput,
@@ -51,6 +56,9 @@ impl Default for DroneRaceDemo {
             photo: None,
             guide: false,
             menu_open: false,
+            records: records::RecordBook::load(),
+            new_best: None,
+            best_checked: false,
             ghost: None,
             recording: None,
             input: PilotInput::default(),
@@ -269,6 +277,8 @@ impl DroneRaceDemo {
     }
 
     fn reset_course(&mut self, course: Course, manual: bool) {
+        self.new_best = None;
+        self.best_checked = false;
         self.editor = None;
         self.photo = None;
         self.guide = false;
@@ -292,6 +302,8 @@ impl DroneRaceDemo {
         if self.flight.is_manual() == manual {
             return;
         }
+        self.new_best = None;
+        self.best_checked = false;
         let course = self.flight.course;
         if manual {
             self.ghost = Some(std::mem::replace(&mut self.flight, Flight::manual(course)));
@@ -327,6 +339,8 @@ impl DroneRaceDemo {
     }
 
     fn rewind(&mut self) {
+        self.new_best = None;
+        self.best_checked = false;
         if self.flight.is_manual() {
             self.flight = Flight::manual(self.flight.course);
             self.recording = None;
@@ -342,6 +356,7 @@ impl DroneRaceDemo {
     }
 
     fn replay_run(&mut self) {
+        self.new_best = None;
         if self.flight.is_manual()
             && self
                 .recording
@@ -480,6 +495,32 @@ impl DroneRaceDemo {
                 break;
             }
         }
+        self.record_finish();
+    }
+
+    fn record_finish(&mut self) {
+        if !self.best_checked
+            && self.flight.is_manual()
+            && self.recording.is_none()
+            && self.seek.is_none()
+            && self.error.is_none()
+            && self.flight.done()
+            && self.cursor == self.flight.last_index()
+        {
+            self.best_checked = true;
+            self.new_best = self.records.record(&self.flight);
+        }
+    }
+
+    fn replay_best(&mut self) {
+        let Some(best) = self.records.best(self.flight.course).cloned() else {
+            return;
+        };
+        self.choose_pilot(true);
+        self.rewind();
+        self.recording = Some(best.inputs);
+        self.playing = true;
+        self.has_started = true;
     }
 
     fn finish_ghost(&mut self) {
@@ -512,6 +553,26 @@ impl DroneRaceDemo {
             ui.selectable_value(&mut manual, true, "You vs autopilot");
         });
         self.choose_pilot(manual);
+        if manual {
+            if let Some(best) = self.records.best(self.flight.course) {
+                crate::ui_kit::section(ui, "YOUR PERSONAL BEST");
+                ui.colored_label(
+                    GOLD,
+                    format!("{:.2} s · five gates", best.steps() as f64 * DT),
+                );
+                crate::ui_kit::hint(
+                    ui,
+                    if self.records.persistent {
+                        "Saved in this browser for this course."
+                    } else {
+                        "Saved for this session for this course."
+                    },
+                );
+                if ui.button("Replay best").clicked() {
+                    self.replay_best();
+                }
+            }
+        }
         if manual {
             ui.label(RichText::new("Your drone. Same five gates.").color(CYAN));
             crate::ui_kit::hint(ui, "W / S: forward / back · A / D: left / right\nE / Q: climb / descend. Arrow keys also steer.");
@@ -905,6 +966,7 @@ impl DroneRaceDemo {
         let mut edit_course = false;
         let mut take_photo = false;
         let mut show_guide = false;
+        let mut replay_best = false;
         if self.cinema && pad::compact(rect) {
             let help = Rect::from_min_size(
                 rect.right_top() + Vec2::new(-228.0, 12.0),
@@ -1066,6 +1128,9 @@ impl DroneRaceDemo {
         let mut replay = false;
         let mut toggle = false;
         if self.flight.is_manual() {
+            let best_ready = self.recording.is_none()
+                && self.flight.inputs.is_empty()
+                && self.records.best(self.flight.course).is_some();
             pad::FlightPad::paint(
                 ui,
                 rect,
@@ -1075,7 +1140,10 @@ impl DroneRaceDemo {
             for (i, (label, action)) in [
                 (if self.playing { "Pause" } else { "Play" }, &mut toggle),
                 ("Retry", &mut retry),
-                ("Replay", &mut replay),
+                (
+                    if best_ready { "Replay best" } else { "Replay" },
+                    &mut replay,
+                ),
             ]
             .into_iter()
             .enumerate()
@@ -1088,6 +1156,10 @@ impl DroneRaceDemo {
                             .wrap_mode(egui::TextWrapMode::Extend),
                     )
                     .clicked();
+            }
+            if replay && best_ready {
+                replay_best = true;
+                replay = false;
             }
         }
         if self.error.is_some() {
@@ -1127,91 +1199,10 @@ impl DroneRaceDemo {
                 CYAN,
             );
         } else if current.status != Status::Flying || (self.replay_finished() && self.cursor > 0) {
-            let center = rect.center();
-            let card = Rect::from_center_size(
-                center,
-                Vec2::new(
-                    rect.width().min(380.0) - 20.0,
-                    if self.flight.is_manual() {
-                        184.0
-                    } else {
-                        144.0
-                    },
-                ),
-            );
-            painter.rect_filled(card, 12.0, Color32::from_rgba_unmultiplied(10, 18, 34, 240));
-            painter.rect_stroke(
-                card,
-                12.0,
-                Stroke::new(1.0_f32, CYAN.gamma_multiply(0.4)),
-                egui::StrokeKind::Inside,
-            );
-            let title = match current.status {
-                Status::Finished => "COURSE COMPLETE",
-                Status::GroundContact => "GROUND CONTACT",
-                Status::TimeLimit => "TIME LIMIT",
-                Status::Flying => "REPLAY COMPLETE",
-            };
-            painter.text(
-                center + Vec2::new(0.0, -43.0),
-                egui::Align2::CENTER_CENTER,
-                title,
-                FontId::proportional(22.0),
-                CYAN,
-            );
-            painter.text(
-                center + Vec2::new(0.0, -8.0),
-                egui::Align2::CENTER_CENTER,
-                format!(
-                    "{} / {} gates  ·  {:.2} s",
-                    current.passed,
-                    self.flight.lap.gate_count(),
-                    self.cursor as f64 * DT
-                ),
-                FontId::monospace(14.0),
-                Color32::WHITE,
-            );
-            if self.flight.is_manual() {
-                let comparison = self.ghost.as_ref().map_or_else(String::new, |ghost| {
-                    if !ghost.done() {
-                        "Preparing autopilot result...".to_string()
-                    } else if ghost.frames[ghost.last_index()].status == Status::Finished {
-                        let time = ghost.last_index() as f64 * DT;
-                        if current.status == Status::Finished {
-                            format!(
-                                "Autopilot {time:.2} s / You {:+.2} s",
-                                self.cursor as f64 * DT - time
-                            )
-                        } else {
-                            format!("Autopilot finished in {time:.2} s")
-                        }
-                    } else {
-                        "Autopilot did not finish".to_string()
-                    }
-                });
-                painter.text(
-                    center + Vec2::new(0.0, 22.0),
-                    egui::Align2::CENTER_CENTER,
-                    comparison,
-                    FontId::monospace(11.0),
-                    GHOST,
-                );
-            }
-            if ui
-                .put(
-                    Rect::from_center_size(
-                        center + Vec2::new(0.0, if self.flight.is_manual() { 62.0 } else { 36.0 }),
-                        Vec2::new(128.0, 30.0),
-                    ),
-                    egui::Button::new(if self.flight.is_manual() {
-                        "New attempt"
-                    } else {
-                        "Fly again"
-                    }),
-                )
-                .clicked()
-            {
-                retry = true;
+            match results::show(self, ui, rect) {
+                results::Action::Again => retry = true,
+                results::Action::Best => replay_best = true,
+                results::Action::None => {}
             }
         } else if self.flight.is_manual() && self.cursor == 0 && !self.playing {
             let center = rect.center() + Vec2::new(0.0, -10.0);
@@ -1233,6 +1224,18 @@ impl DroneRaceDemo {
                 FontId::monospace(10.0),
                 Color32::WHITE,
             );
+            if let Some(best) = self.records.best(self.flight.course) {
+                painter.text(
+                    center + Vec2::new(0.0, 35.0),
+                    egui::Align2::CENTER_CENTER,
+                    format!(
+                        "YOUR BEST {:.2} s  /  REPLAY BEST TO WATCH",
+                        best.steps() as f64 * DT
+                    ),
+                    FontId::monospace(if rect.width() < 500.0 { 9.0 } else { 11.0 }),
+                    GOLD,
+                );
+            }
         }
         if show_guide {
             self.begin_guide();
@@ -1248,6 +1251,8 @@ impl DroneRaceDemo {
             return;
         } else if switch_pilot {
             self.choose_pilot(!self.flight.is_manual());
+        } else if replay_best {
+            self.replay_best();
         } else if retry {
             self.rewind();
         } else if replay {
@@ -1617,6 +1622,21 @@ impl DroneRaceDemo {
             ("data-drone-guide", u8::from(self.guide).to_string()),
             ("data-drone-menu-open", u8::from(self.menu_open).to_string()),
             (
+                "data-drone-best-steps",
+                self.records
+                    .best(flight.course)
+                    .map_or(0, records::Best::steps)
+                    .to_string(),
+            ),
+            (
+                "data-drone-new-best",
+                u8::from(self.new_best.is_some()).to_string(),
+            ),
+            (
+                "data-drone-best-persistent",
+                u8::from(self.records.persistent).to_string(),
+            ),
+            (
                 "data-drone-photo",
                 u8::from(self.photo.is_some()).to_string(),
             ),
@@ -1750,6 +1770,45 @@ impl DroneRaceDemo {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_live_finishes_set_bests_and_retry_preserves_the_record() {
+        let mut demo = DroneRaceDemo::default();
+        demo.flight = records::tests::finish(Course::CLIMB, 0);
+        demo.cursor = demo.flight.last_index();
+        demo.record_finish();
+        assert!(demo.new_best.is_some());
+        let steps = demo.cursor;
+        let inputs = demo.flight.inputs.clone();
+        demo.record_finish();
+        assert!(
+            demo.new_best.is_some(),
+            "repainting must retain the celebration"
+        );
+        demo.rewind();
+        assert!(demo.new_best.is_none());
+        assert!(demo.recording.is_none());
+        assert!(!demo.playing);
+        assert_eq!(demo.records.best(Course::CLIMB).unwrap().steps(), steps);
+        demo.replay_best();
+        assert_eq!(demo.recording.as_ref().unwrap(), &inputs);
+        assert!(demo.playing);
+        assert!(demo.new_best.is_none());
+        assert_eq!(demo.cursor, 0);
+
+        let mut receiver = DroneRaceDemo::default();
+        let query = demo
+            .share_query()
+            .replacen("frame=0", &format!("frame={steps}"), 1);
+        receiver.apply_share_query(&query);
+        for step in 0..steps + 2 {
+            receiver.advance(step as f64 * 0.01);
+        }
+        assert_eq!(receiver.cursor, steps);
+        receiver.record_finish();
+        assert!(receiver.records.best(Course::CLIMB).is_none());
+        assert!(receiver.new_best.is_none());
+    }
 
     #[test]
     fn share_links_restore_paused_flight_and_all_view_settings() {

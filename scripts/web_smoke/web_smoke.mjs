@@ -14,6 +14,7 @@ import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
 import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
+import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -69,6 +70,8 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-records', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
+  { name: 'drone-records-session', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records-session', viewport: { width: 390, height: 844 }, touch: true, storageBlocked: true },
   { name: 'drone-v1', home: true, drone: 'v1' },
   { name: 'drone-v1-phone', home: true, drone: 'v1-phone', viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'drone-v1-landscape', home: true, drone: 'v1-landscape', viewport: { width: 844, height: 390 }, touch: true },
@@ -113,6 +116,9 @@ for (const test of cases) {
     hasTouch: Boolean(test.touch),
     deviceScaleFactor: test.scale ?? 1,
   });
+  if (test.storageBlocked) await context.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { get() { throw new DOMException('Storage is disabled', 'SecurityError'); } });
+  });
   const page = await context.newPage();
   const problems = [];
   page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
@@ -132,7 +138,11 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'v1') {
+      if (test.drone === 'records') {
+        await checkPersonalBest(page, base, shots);
+      } else if (test.drone === 'records-session') {
+        await checkSessionBest(page, base, shots);
+      } else if (test.drone === 'v1') {
         await checkFlightV1(page, base, shots);
       } else if (test.drone === 'v1-phone' || test.drone === 'v1-landscape') {
         await checkPhoneV1(page, shots, test.name);
@@ -201,8 +211,7 @@ for (const test of cases) {
         }
       }
     } catch (error) {
-      console.log(error.stack);
-      problems.push(`drone functional check: ${error.message.split('\n')[0]}`);
+      problems.push(`drone functional check: ${error.stack ?? error.message}`);
     }
   }
   if (test.clickScene) {
@@ -222,6 +231,12 @@ for (const test of cases) {
   console.log(`${problems.length ? 'FAIL' : 'ok  '} ${test.name}`);
   for (const problem of problems) {
     console.log(`     ${problem}`);
+  }
+  if (problems.length && process.env.GITHUB_ACTIONS === 'true') {
+    // Keep the failing case and stack visible in the job's annotations,
+    // including when the viewer cannot open the authenticated log stream.
+    const detail = problems.join('\n').replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+    console.log(`::error title=Browser smoke ${test.name}::${detail}`);
   }
   failures += problems.length ? 1 : 0;
   await context.close();

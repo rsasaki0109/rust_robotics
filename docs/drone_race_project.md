@@ -49,6 +49,32 @@ a photo, and share a reproducible attempt. The [v1 flight receipt](assets/drone-
 contains a real keyboard-driven five-gate finish and the receiving browser's
 reconstructed state. Use its `query` to replay that attempt.
 
+## Beat your personal best
+
+![A new personal best after a faster live flight](assets/playground/drone-best.png)
+
+
+A live manual finish saves your fastest time and recorded inputs for that exact
+five-gate layout. The result card celebrates a new personal best and shows the
+improvement when you beat it. **New attempt** keeps the record; **Replay best**
+watches its actual flight. After reopening the play link, the ready screen shows
+your best and its Replay button becomes **Replay best**. The full controls also
+provide the saved record and replay action.
+
+Records stay in this browser, without an account or server. At most 12 course
+layouts are kept, with built-in and edited layouts distinguished by all gate
+coordinates. If browser storage is unavailable or a write fails, the record
+stays available for the current session and is labelled accordingly. Clearing
+site data removes saved records. Another browser starts with its own records.
+
+Only a faster, completed live manual attempt updates the best. Watching the
+autopilot, opening a shared recording, seeking, replaying your best, a partial
+flight, ground contact, and a timeout do not earn a personal best. Times use the
+fixed simulation clock; slow playback does not change them. Saved inputs are
+checked by replaying manual physics on load; malformed, incomplete, or
+incompatible records are ignored. The [personal-best flight receipt](assets/drone-best-flight.json)
+contains both actual finishes and the separate visitor's replay state.
+
 ## Use it
 
 - Neon Slalom alternates turns and altitude. Sky Climb adds a taller ascent.
@@ -266,7 +292,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 28-case
+To verify the actual GitHub Pages project path, build and run the 30-case
 browser suite from the repository root:
 
 ```sh
@@ -285,7 +311,11 @@ at desktop, 320-pixel portrait with 2× pixel density, and 844-pixel landscape
 sizes. They cover an actual manual finish, PNG download and replay sharing,
 guide pause/resume, simultaneous touch commands, orientation changes, and
 autonomous completion. A missing optional web font is simulated for the site.
-CI uses this same public-URL build and suite before publication.
+Two additional cases fly real manual laps to test personal bests: a deliberately
+slower hovering lap, portrait/landscape result buttons, persistence after
+reopening, exact saved-flight replay, a faster second finish, a shared replay
+in a fresh visitor context, and blocked browser storage with session-only
+fallback. CI uses this same public-URL build and suite before publication.
 
 ## Capture the actual browser
 
