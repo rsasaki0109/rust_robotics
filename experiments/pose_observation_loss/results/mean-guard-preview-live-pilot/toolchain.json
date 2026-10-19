@@ -1,0 +1,16 @@
+{
+  "rustc_verbose": [
+    "rustc 1.99.0 (b940084d7 2026-09-28)",
+    "binary: rustc",
+    "commit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4",
+    "commit-date: 2026-09-28",
+    "host: x86_64-unknown-linux-gnu",
+    "release: 1.99.0",
+    "LLVM version: 23.1.1"
+  ],
+  "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+  "compiler_sha256": {
+    "bin/rustc": "f3834d26669b03f6855fa54bd2381443123e860167bc0c7a8dd137e5cf6e5e4f",
+    "lib/librustc_driver-999a121de2f042be.so": "f45c41337f1516bb9f4d504a2a507202a01c431fc2063334913dde5480ffee03"
+  }
+}

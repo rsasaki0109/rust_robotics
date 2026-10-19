@@ -1,0 +1,32 @@
+
+running 27 tests
+test epoch_fusion_tests::gives_each_received_epoch_equal_weight ... ok
+test epoch_fusion_tests::missed_correction_is_neither_a_new_epoch_nor_fresh_data ... ok
+test epoch_fusion_tests::transports_with_previous_speed_and_applied_steering ... ok
+test mean_guard_preview_tests::active_changes_only_position_including_zero_speed ... ok
+test mean_guard_preview_tests::every_ineligible_flag_combination_preserves_all_fields ... ok
+test mean_guard_preview_tests::selected_position_reaches_original_stopping_and_terminal_geometry ... ok
+test mean_speed_probe_tests::disabled_is_exact_raw_fallback ... ok
+test mean_speed_probe_tests::first_float_above_speed_and_age_thresholds_falls_back ... ok
+test mean_speed_probe_tests::insufficient_samples_and_unpaused_keep_raw_pose ... ok
+test mean_speed_probe_tests::selected_position_reaches_the_original_full_probe ... ok
+test mean_speed_probe_tests::thresholds_are_inclusive_and_heading_speed_unchanged ... ok
+test motion_filter_tests::aligned_release_implies_entry_clearance_and_keeps_stopping_hysteresis ... ok
+test motion_filter_tests::aligned_release_rejects_a_clear_stop_with_blocked_terminal_entry ... ok
+test motion_filter_tests::circular_heading_mean_respects_wraparound ... ok
+test motion_filter_tests::compensates_straight_motion_and_cancels_alternating_errors ... ok
+test motion_filter_tests::curved_motion_transports_old_heading_before_averaging ... ok
+test motion_filter_tests::recovery_segment_includes_map_boundary ... ok
+test motion_filter_tests::stationary_stop_can_be_clear_while_forward_recovery_is_blocked ... ok
+test motion_filter_tests::terminal_recovery_preview_respects_curved_motion_symmetry ... ok
+test motion_filter_tests::window_is_bounded_and_correction_discards_old_bias ... ok
+test terminal_arc_tests::curves_can_increase_or_decrease_obstacle_clearance ... ok
+test epoch_fusion_tests::bounds_fresh_windows_and_requires_ten_samples_in_older_epochs ... ok
+test epoch_fusion_tests::clears_on_motion_or_precision_but_keeps_the_speed_boundary ... ok
+test terminal_arc_tests::exact_arcs_agree_with_independent_chords ... ok
+test epoch_fusion_tests::expires_after_the_inclusive_fifteen_second_horizon ... ok
+test terminal_arc_tests::includes_interior_wall_minimum ... ok
+test terminal_arc_tests::terminal_change_preserves_stopping_prefix_and_reflection ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
