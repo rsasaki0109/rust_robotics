@@ -18,5 +18,9 @@
 # Trunk WASM build output (deployed via GitHub Pages CI)
 /crates/rust_robotics_playground/dist/
 
+# Browser test dependencies and screenshots
+/scripts/web_smoke/node_modules/
+/scripts/web_smoke/screenshots/
+
 # Embedded reference demo build output (excluded workspace crate)
 /crates/rust_robotics_embedded_demo/target/

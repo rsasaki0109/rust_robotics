@@ -375,6 +375,15 @@ impl QuadrotorMppiController {
         &self.config
     }
 
+    /// Roll out the current warm-start sequence from `start`.
+    ///
+    /// After [`Self::plan`], the sequence has shifted past the returned command.
+    /// Pass the state *after applying that command* to visualize the remaining
+    /// controller horizon. This does not sample, advance the RNG, or replan.
+    pub fn predicted_positions(&self, start: QuadrotorState) -> Vec<[f64; 3]> {
+        self.rollout(start, &self.nominal).0
+    }
+
     fn rollout(
         &self,
         start: QuadrotorState,
@@ -689,6 +698,33 @@ mod tests {
             gate([4.5, 0.0, 0.0], [1.0, 0.0, 0.0]),
         ];
         RacingGateLap3D::open(gates).unwrap()
+    }
+
+    #[test]
+    fn preview_does_not_consume_rng_or_change_the_next_plan() {
+        let params = QuadrotorParams::default();
+        let mut controller = QuadrotorMppiController::new(
+            QuadrotorMppiConfig {
+                samples: 64,
+                horizon: 12,
+                ..Default::default()
+            },
+            params,
+        )
+        .unwrap();
+        let state = QuadrotorState::at(0.0, 0.0, 0.0);
+        let plan = controller.plan(state, &straight_lap(), 0).unwrap();
+        let state = params.step(state, plan.control, controller.config().dt);
+        let mut unobserved = controller.clone();
+        let preview = controller.predicted_positions(state);
+        assert_eq!(preview[0], state.position);
+        assert_eq!(preview.len(), controller.config().horizon + 1);
+        assert!(preview.iter().flatten().all(|v| v.is_finite()));
+        assert_eq!(preview, controller.predicted_positions(state));
+        assert_eq!(
+            controller.plan(state, &straight_lap(), 0).unwrap(),
+            unobserved.plan(state, &straight_lap(), 0).unwrap()
+        );
     }
 
     #[test]
