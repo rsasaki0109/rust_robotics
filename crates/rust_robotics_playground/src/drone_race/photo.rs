@@ -281,7 +281,7 @@ impl PhotoMode {
             },
         );
         if self.caption {
-            self.paint_caption(&painter, rect, flight);
+            self.paint_caption(&painter, rect, flight, ghost.is_some_and(|g| g.is_manual()));
         }
         ui.painter().rect_stroke(
             rect,
@@ -312,7 +312,7 @@ impl PhotoMode {
                 && ctx.input(|input| input.key_pressed(egui::Key::Escape)))
     }
 
-    fn paint_caption(&self, painter: &egui::Painter, rect: Rect, flight: &Flight) {
+    fn paint_caption(&self, painter: &egui::Painter, rect: Rect, flight: &Flight, best: bool) {
         let small = rect.width() < 500.0;
         let pad = if small { 14.0 } else { 24.0 };
         let caption = Rect::from_min_max(
@@ -334,7 +334,11 @@ impl PhotoMode {
                 "{} / {}",
                 flight.course.title(),
                 if flight.is_manual() {
-                    "You vs autopilot"
+                    if best {
+                        "You vs best flight"
+                    } else {
+                        "You vs autopilot"
+                    }
                 } else {
                     "Autonomous flight"
                 }

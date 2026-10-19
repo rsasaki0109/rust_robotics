@@ -3,7 +3,7 @@
 use egui::{Color32, FontId, Rect, Stroke, Vec2};
 
 use super::flight::{Status, DT};
-use super::renderer::{CYAN, GHOST, GOLD};
+use super::renderer::{CYAN, GOLD};
 use super::{pad, DroneRaceDemo};
 
 #[derive(PartialEq, Eq)]
@@ -112,18 +112,23 @@ pub fn show(demo: &DroneRaceDemo, ui: &mut egui::Ui, rect: Rect) -> Action {
         Color32::WHITE,
     );
     if manual {
-        let comparison = demo.ghost.as_ref().map_or_else(String::new, |ghost| {
+        let comparison = demo.rival().map_or_else(String::new, |ghost| {
+            let label = if demo.racing_best() {
+                "Best ghost"
+            } else {
+                "Autopilot"
+            };
             if !ghost.done() {
                 "Preparing autopilot result...".to_string()
             } else if ghost.frames[ghost.last_index()].status == Status::Finished {
                 let time = ghost.last_index() as f64 * DT;
                 if current.status == Status::Finished {
                     format!(
-                        "Autopilot {time:.2} s / You {:+.2} s",
+                        "{label} {time:.2} s / You {:+.2} s",
                         demo.cursor as f64 * DT - time
                     )
                 } else {
-                    format!("Autopilot finished in {time:.2} s")
+                    format!("{label} finished in {time:.2} s")
                 }
             } else {
                 "Autopilot did not finish".to_string()
@@ -134,7 +139,7 @@ pub fn show(demo: &DroneRaceDemo, ui: &mut egui::Ui, rect: Rect) -> Action {
             egui::Align2::CENTER_CENTER,
             comparison,
             FontId::monospace(11.0),
-            GHOST,
+            demo.rival_color(),
         );
         let label = if let Some(improvement) = &demo.new_best {
             improvement.previous_steps.map_or_else(
