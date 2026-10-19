@@ -369,6 +369,9 @@ check that countdown time is excluded from flight history, reconstruct that
 flight in a fresh visitor context, and cancel starts with pause, retry, guide,
 photo mode, menu opening, and a tab switch.
 CI uses this same public-URL build and suite before publication.
+The suite selects Playwright's full Chromium headless channel so tab-focus
+behavior matches a normal browser. The focus-loss case disables Playwright's
+usual focus override and verifies that the original page really loses focus.
 
 ## Capture the actual browser
 

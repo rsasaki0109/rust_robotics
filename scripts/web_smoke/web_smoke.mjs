@@ -65,6 +65,9 @@ const base = `${origin}${playgroundPrefix}`;
 const showcase = `${origin}${projectPrefix}`;
 
 const launch = (scale = 1) => chromium.launch({
+  // Use the full browser's headless mode, including normal window/tab focus.
+  // Playwright's default headless shell has a different focus lifecycle.
+  channel: 'chromium',
   executablePath: process.env.CHROMIUM_PATH || undefined,
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', `--force-device-scale-factor=${scale}`],
 });
