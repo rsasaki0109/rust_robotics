@@ -668,6 +668,12 @@ const playTiles = [
     link: "playground/?tab=drone&mode=manual&course=climb&cinema=1"
   },
   {
+    title: "Build a drone circuit",
+    text: "Drag five gates in Top and Side views. Preview in 3D, fly your layout, and share it.",
+    image: "assets/playground/drone-editor.png",
+    link: "playground/?tab=drone&course=climb&edit=1"
+  },
+  {
     title: "Drive LiDAR SLAM",
     text: "Map a world live, close loops, navigate, explore, get kidnapped.",
     image: "assets/playground/drive.png",

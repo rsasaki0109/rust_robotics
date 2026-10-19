@@ -1,0 +1,37 @@
+{
+  "mode": "editor",
+  "design": {
+    "layout": "v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40",
+    "query": "tab=drone&course=custom&camera=chase&frame=0&playing=0&trail=1&prediction=1&slow=1&cinema=1&mode=auto&ghost=1&edit=1&gates=v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40"
+  },
+  "firstFlight": {
+    "droneEditorHandles": "[[221.8,613.4],[426.3,608.9],[593.5,595.3],[779.4,627.0],[965.2,613.4]]",
+    "droneEditorActions": "{\"fly\":[53.4,131.5],\"cancel\":[134.1,131.5],\"undo\":[200.6,131.5],\"reset\":[264.0,131.5],\"top\":[64.6,480.3],\"side\":[173.9,480.3]}",
+    "droneEditorSelected": "1",
+    "droneEditorView": "top",
+    "droneEditorMap": "[36.0,522.8,1208.0,181.2]",
+    "droneFrame": "80",
+    "droneEditor": "0",
+    "droneLayout": "v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40",
+    "droneGenerated": "80",
+    "droneGates": "5",
+    "droneStatus": "finished",
+    "droneCamera": "course",
+    "droneCourse": "custom",
+    "droneMode": "auto",
+    "droneReplay": "0",
+    "droneInput": "0,0,0",
+    "droneShare": "tab=drone&course=custom&camera=course&frame=80&playing=0&trail=1&prediction=1&slow=1&cinema=1&mode=auto&ghost=1&edit=0&gates=v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40",
+    "droneVelocity": "0.604509,2.208203,-0.458321",
+    "droneGhostFrame": "0",
+    "droneGhostGates": "0",
+    "droneGhostFinish": "",
+    "dronePosition": "20.373234,-0.591395,4.737214",
+    "dronePlanningMs": "26.60",
+    "dronePlaying": "0",
+    "droneCinema": "1",
+    "droneSeeking": "0",
+    "droneEditorOpen": "[1241.0,141.0]"
+  },
+  "problems": []
+}

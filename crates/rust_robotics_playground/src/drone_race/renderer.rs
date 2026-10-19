@@ -53,6 +53,62 @@ struct Camera {
 }
 
 impl Camera {
+    fn course_preview(flight: &Flight, rect: Rect) -> Self {
+        let mut points = vec![[0.0, 0.0, 2.0]];
+        for gate in &flight.lap.gates {
+            let normal = gate.normal();
+            let up = unit(sub([0.0, 0.0, 1.0], scale(normal, normal[2])));
+            let right = unit(cross(normal, up));
+            for side in [-1.0, 1.0] {
+                for height in [-1.0, 1.0] {
+                    points.push(add(
+                        gate.center(),
+                        add(
+                            scale(right, side * (gate.half_width() + 0.12)),
+                            scale(up, height * (gate.half_height() + 0.12)),
+                        ),
+                    ));
+                }
+            }
+            points.push([gate.center()[0], gate.center()[1], 0.0]);
+        }
+        let mut low = [f64::INFINITY; 3];
+        let mut high = [f64::NEG_INFINITY; 3];
+        for point in &points {
+            for i in 0..3 {
+                low[i] = low[i].min(point[i]);
+                high[i] = high[i].max(point[i]);
+            }
+        }
+        let target = scale(add(low, high), 0.5);
+        let direction = unit([-0.65, -1.0, 0.6]);
+        let inner = rect.shrink2(egui::vec2(rect.width() * 0.08, rect.height() * 0.1));
+        let mut distance = 80.0_f64;
+        let mut best = distance;
+        for _ in 0..40 {
+            let camera = Self::new(
+                add(target, scale(direction, distance)),
+                target,
+                [0.0, 0.0, 1.0],
+                rect,
+            );
+            if !points
+                .iter()
+                .all(|p| camera.project(*p).is_some_and(|p| inner.contains(p)))
+            {
+                break;
+            }
+            best = distance;
+            distance *= 0.9;
+        }
+        Self::new(
+            add(target, scale(direction, best)),
+            target,
+            [0.0, 0.0, 1.0],
+            rect,
+        )
+    }
+
     fn new(eye: [f64; 3], target: [f64; 3], up: [f64; 3], rect: Rect) -> Self {
         let forward = unit(sub(target, eye));
         let right = unit(cross(forward, up));
@@ -406,6 +462,7 @@ pub struct ViewOptions<'a> {
     pub trail: bool,
     pub prediction: bool,
     pub ghost: Option<GhostView<'a>>,
+    pub edit_gate: Option<usize>,
 }
 
 fn ghost_drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64) {
@@ -452,7 +509,12 @@ pub fn render(
     background.indices = vec![0, 1, 2, 0, 2, 3];
     painter.add(background);
     let current = &flight.frames[frame];
-    let camera = Camera::for_flight(options.camera, state, rect);
+    let camera = if options.edit_gate.is_some() {
+        Camera::course_preview(flight, rect)
+    } else {
+        Camera::for_flight(options.camera, state, rect)
+    };
+    let active_gate = options.edit_gate.unwrap_or(current.passed);
     let mut floor = Scene {
         camera: &camera,
         shapes: Vec::new(),
@@ -505,7 +567,7 @@ pub fn render(
         }
         let color = if i < current.passed {
             Color32::from_rgb(100, 186, 143)
-        } else if i == current.passed {
+        } else if i == active_gate {
             GOLD
         } else {
             CYAN
@@ -587,7 +649,7 @@ pub fn render(
         let c = gate.center();
         if let Some(pos) = camera.project(add(c, [0.0, 0.0, gate.half_height() + 0.27])) {
             if rect.shrink(16.0).contains(pos) {
-                let color = if i == current.passed {
+                let color = if i == active_gate {
                     GOLD
                 } else {
                     CYAN.gamma_multiply(0.75)
@@ -649,5 +711,29 @@ mod tests {
         assert!(camera.project([0.0, -4.0, 2.0]).is_none());
         assert!(camera.project([1.0, 0.0, 2.0]).unwrap().x > rect.center().x);
         assert!(camera.project([0.0, 0.0, 3.0]).unwrap().y < rect.center().y);
+    }
+
+    #[test]
+    fn editor_camera_keeps_high_and_offset_gates_in_both_preview_shapes() {
+        use crate::drone_race::flight::Course;
+        let flight = Flight::new(
+            Course::CLIMB
+                .moved(0, [2.0, -3.0, 6.0])
+                .moved(4, [24.0, 3.0, 1.2]),
+        );
+        for size in [egui::vec2(1256.0, 280.0), egui::vec2(366.0, 220.0)] {
+            let rect = Rect::from_min_size(Pos2::ZERO, size);
+            let camera = Camera::course_preview(&flight, rect);
+            for gate in &flight.lap.gates {
+                assert!(rect
+                    .shrink(8.0)
+                    .contains(camera.project(gate.center()).unwrap()));
+                assert!(rect.contains(
+                    camera
+                        .project([gate.center()[0], gate.center()[1], 0.0])
+                        .unwrap()
+                ));
+            }
+        }
     }
 }

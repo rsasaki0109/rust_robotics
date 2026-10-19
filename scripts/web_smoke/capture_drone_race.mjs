@@ -1,5 +1,5 @@
 // Capture a real 30-second browser flight, including all three cameras.
-// Usage: node capture_drone_race.mjs <dist-dir> <out-dir> [auto|manual]
+// Usage: node capture_drone_race.mjs <dist-dir> <out-dir> [auto|manual|editor]
 // Requires FFmpeg with libx264 (or set FFMPEG_PATH). Writes flight.mp4.
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -8,10 +8,11 @@ import { once } from 'node:events';
 import { extname, join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { droneState, flyManualCourse, waitDrone } from './drone_manual.mjs';
+import { dragGate, editorAction } from './drone_editor.mjs';
 
 const [distArg, outArg, mode = 'auto'] = process.argv.slice(2);
 if (!distArg || !outArg) throw new Error('usage: capture_drone_race.mjs <dist-dir> <out-dir>');
-if (!['auto', 'manual'].includes(mode)) throw new Error('capture mode must be auto or manual');
+if (!['auto', 'manual', 'editor'].includes(mode)) throw new Error('capture mode must be auto, manual or editor');
 const [dist, out] = [resolve(distArg), resolve(outArg)];
 const ffmpeg = process.env.FFMPEG_PATH || 'ffmpeg';
 if (spawnSync(ffmpeg, ['-version'], { stdio: 'ignore' }).status !== 0) {
@@ -46,7 +47,7 @@ page.on('console', (message) => {
 });
 let stopRecording;
 try {
-  await page.goto(`${base}?tab=drone&playing=0&slow=1&cinema=1${mode === 'manual' ? '&mode=manual&course=climb' : ''}`, { waitUntil: 'load' });
+  await page.goto(`${base}?tab=drone&playing=0&slow=1&cinema=1${mode === 'manual' ? '&mode=manual&course=climb' : mode === 'editor' ? '&course=climb&edit=1' : ''}`, { waitUntil: 'load' });
   await page.waitForFunction(() => document.getElementById('rust_robotics_playground')?.dataset.droneFrame === '0', null, { timeout: 30000 });
   // CDP provides the actual browser frames and timestamps. Repeat the previous
   // frame when the app is idle, preserving wall-clock timing in a 25fps movie.
@@ -103,6 +104,23 @@ try {
   };
   await page.mouse.click(900, 380);
   const started = Date.now();
+  let design;
+  if (mode === 'editor') {
+    await dragGate(page, 1, [0.4, 0.2]);
+    await page.waitForTimeout(800);
+    await editorAction(page, 'side');
+    await dragGate(page, 1, [0, 0.5]);
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: join(out, 'editor-side.png') });
+    await editorAction(page, 'undo');
+    await editorAction(page, 'top');
+    await page.waitForTimeout(300);
+    const d = await droneState(page);
+    design = { layout: d.droneLayout, query: d.droneShare };
+    await page.screenshot({ path: join(out, 'editor.png') });
+    await editorAction(page, 'fly');
+    await waitDrone(page, () => document.querySelector('canvas')?.dataset.droneEditor === '0');
+  }
   if (mode === 'manual') {
     await flyManualCourse(page, async (state) => {
       const passed = Number(state.droneGates);
@@ -112,7 +130,7 @@ try {
     });
     await waitDrone(page, () => Boolean(document.querySelector('canvas')?.dataset.droneGhostFinish));
   } else {
-    await page.keyboard.press('Space');
+    if (mode === 'auto') await page.keyboard.press('Space');
     await page.waitForTimeout(4500);
     await page.screenshot({ path: join(out, 'chase.png') });
     await page.keyboard.press('2');
@@ -147,7 +165,7 @@ try {
     await waitDrone(page, () => document.querySelector('canvas')?.dataset.droneSeeking === '0' && Number(document.querySelector('canvas')?.dataset.droneFrame) > 0);
     await page.screenshot({ path: join(out, 'manual-flight.png') });
   }
-  await writeFile(join(out, 'capture.json'), JSON.stringify({ mode, firstFlight, problems }, null, 2) + '\n');
+  await writeFile(join(out, 'capture.json'), JSON.stringify({ mode, ...(design ? { design } : {}), firstFlight, problems }, null, 2) + '\n');
 } finally {
   try { if (stopRecording) await stopRecording(); }
   finally {

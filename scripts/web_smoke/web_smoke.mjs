@@ -9,6 +9,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { chromium } from 'playwright';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
+import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 
 const [dist, shots] = process.argv.slice(2);
 if (!dist) {
@@ -61,6 +62,9 @@ const cases = [
   { name: 'drone-manual', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'manual' },
   { name: 'drone-manual-phone', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'manual-phone', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'drone-manual-invalid', query: 'tab=drone&mode=manual&cinema=1&inputs=v99.zzz&frame=600&playing=1', drone: 'invalid' },
+  { name: 'drone-editor', query: 'tab=drone&course=climb&cinema=1&frame=30&playing=0', drone: 'editor' },
+  { name: 'drone-editor-phone', query: 'tab=drone&course=climb&mode=manual&cinema=1&edit=1', drone: 'editor-phone', viewport: { width: 390, height: 844 }, touch: true },
+  { name: 'drone-course-invalid', query: 'tab=drone&course=custom&gates=v1.40_0_28&cinema=1&frame=600&playing=1&edit=1', drone: 'course-invalid' },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },
 ];
@@ -92,7 +96,19 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'invalid') {
+      if (test.drone === 'editor') {
+        await checkEditorDesktop(page, base, shots);
+      } else if (test.drone === 'editor-phone') {
+        await checkEditorPhone(page, base, shots);
+      } else if (test.drone === 'course-invalid') {
+        const d = await page.locator(canvas).evaluate((c) => ({ ...c.dataset }));
+        if (d.droneStatus !== 'error' || d.droneGenerated !== '0' || d.droneEditor !== '0') {
+          problems.push('invalid custom course was not rejected before flight or editing');
+        }
+        await page.mouse.click(800, 350);
+        await page.keyboard.press('r');
+        await page.waitForFunction(() => document.querySelector('canvas')?.dataset.droneStatus === 'flying');
+      } else if (test.drone === 'invalid') {
         const d = await page.locator(canvas).evaluate((c) => ({ ...c.dataset }));
         if (d.droneStatus !== 'error' || d.droneGenerated !== '0' || d.dronePlaying !== '0') {
           problems.push('invalid recording was not rejected before generating flight');

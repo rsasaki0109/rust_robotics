@@ -63,7 +63,8 @@ All tabs encode their important configuration in share links:
   start, goal, and obstacles
 - Pushing: goal pose, pusher friction, run state, and obstacles
 - Drone Race: pilot mode, course, camera, replay frame, playback state, slow motion,
-  flight trail, prediction, cinema view, ghost visibility, and manual input recording
+  flight trail, prediction, cinema view, ghost visibility, manual input recording,
+  custom gate layout, and editor state
 
 ## Engagement event hooks
 
@@ -88,6 +89,11 @@ configuration (see the list above).
 
 - **Drone Race** — fly against a seeded MPPI ghost, or watch the autonomous
   pilot, using the same 3-D quadrotor attitude model and five oriented gates.
+  **Edit course:** drag numbered gates in Top view to change X/Y or Side view
+  to change X/Z. The 3D preview highlights the selected gate. Undo/Reset review
+  edits, Cancel returns to the paused original attempt, and Fly course starts
+  a fresh attempt on the draft. Share in the editor opens the same draft;
+  Share during flight includes the custom course and any recorded manual inputs.
   **You vs autopilot:** W/S forward/back, A/D left/right, E/Q climb/descend;
   arrow keys also steer. The screen pad supports simultaneous touches.
   Release to brake and stabilize. Space starts/pauses; R starts a new attempt.
