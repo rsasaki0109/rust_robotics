@@ -109,7 +109,7 @@ jobs:
 
   web-smoke:
     # Builds the playground exactly like Pages does and loads every tab in
-    # headless Chromium: a Rust panic in the browser (e.g. std::time::Instant
+    # Chromium: a Rust panic in the browser (e.g. std::time::Instant
     # on wasm32-unknown-unknown) fails the build instead of the live site.
     runs-on: ubuntu-latest
     steps:
@@ -150,9 +150,11 @@ jobs:
       working-directory: scripts/web_smoke
       run: npm install && npx playwright install --with-deps chromium
 
-    - name: Load every playground tab in headless Chromium
+    - name: Load every playground tab in Chromium
       working-directory: scripts/web_smoke
-      run: node web_smoke.mjs ../../crates/rust_robotics_playground/dist screenshots ../../docs
+      # Playwright's --with-deps installs Xvfb. Only the focus-loss case opens
+      # a window; the remaining cases still run headlessly.
+      run: xvfb-run -a node web_smoke.mjs ../../crates/rust_robotics_playground/dist screenshots ../../docs
 
     - name: Upload screenshots
       if: always()

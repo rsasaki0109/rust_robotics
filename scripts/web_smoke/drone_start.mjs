@@ -109,7 +109,7 @@ export async function checkStartCancellation(page, _base, shots) {
   await other.bringToFront();
   // A hidden tab may suspend painting entirely. Check cancellation on return,
   // when the application receives the queued loss-of-focus event.
-  await other.waitForTimeout(300);
+  await page.waitForFunction(() => !document.hasFocus(), null, { timeout: 5000 });
   assert.equal(await page.evaluate(() => document.hasFocus()), false, 'the browser did not actually move focus');
   await otherSession.detach();
   await other.close();

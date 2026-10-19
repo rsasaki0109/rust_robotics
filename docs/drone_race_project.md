@@ -346,8 +346,8 @@ cd crates/rust_robotics_playground
 RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build index.html --release --locked --public-url /rust_robotics/playground/
 cd ../../scripts/web_smoke
 npm install
-npx playwright install chromium
-node web_smoke.mjs ../../crates/rust_robotics_playground/dist /tmp/flight-v1-checks ../../docs
+npx playwright install --with-deps chromium
+xvfb-run -a node web_smoke.mjs ../../crates/rust_robotics_playground/dist /tmp/flight-v1-checks ../../docs
 ```
 
 The server exposes the showcase and its image directory under `/rust_robotics/`
@@ -369,9 +369,12 @@ check that countdown time is excluded from flight history, reconstruct that
 flight in a fresh visitor context, and cancel starts with pause, retry, guide,
 photo mode, menu opening, and a tab switch.
 CI uses this same public-URL build and suite before publication.
-The suite selects Playwright's full Chromium headless channel so tab-focus
-behavior matches a normal browser. The focus-loss case disables Playwright's
-usual focus override and verifies that the original page really loses focus.
+The suite uses Playwright's full Chromium channel. The focus-loss case opens
+a browser window because headless versions differ in whether a tab switch
+changes focus. It disables Playwright's usual focus override, verifies that the
+original page really loses focus, and checks cancellation after returning.
+Linux CI runs this window under Xvfb, installed by Playwright's `--with-deps`;
+the other 33 cases remain headless. With a desktop display, omit `xvfb-run -a`.
 
 ## Capture the actual browser
 
