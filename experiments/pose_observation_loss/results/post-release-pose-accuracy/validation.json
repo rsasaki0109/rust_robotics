@@ -1,0 +1,84 @@
+{
+  "freeze_commit": "a5d8f0b",
+  "implementation_commit": "45db5e5daaef9514173f4db94428c688e791deb8",
+  "local_tests": {
+    "tests": 1463,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 155.94189138900038
+  },
+  "conservation": {
+    "cases": 108,
+    "case_variant_rows": 756,
+    "pairs": 54,
+    "pair_variant_rows": 378,
+    "resumes": 251,
+    "native_queries": 89607,
+    "summary_cells": 3528,
+    "physical_steps": 827706,
+    "pre_speed_matches": 827706,
+    "post_state_matches": 827706,
+    "window_points": 12801,
+    "prefix_matches": 12801,
+    "transport_matches": 12550,
+    "prior_variant_matches": 37901,
+    "all_case_pair_summary_statistics_match_samples": true,
+    "all_physical_pre_states_match_independent_raw_join": true,
+    "all_query_rows_match_native_inputs_and_trace": true,
+    "all_resume_records_match_prior_replay": true,
+    "truth_references_zero_error": true
+  },
+  "repeat": {
+    "all_equal": true,
+    "files": 13,
+    "proof_sha256": "a39af5805d7e4179262ce366e5e1c019f130c5649bf3ce8128174534da062a85"
+  },
+  "preexisting_files_unchanged": true,
+  "defaults_unchanged": true,
+  "truth_evaluation_only": true,
+  "no_new_treatment_simulation": true,
+  "full_contact_hold_and_estimator_audits_reused_by_hash": true,
+  "physical_alignment_and_dynamics_newly_verified": true,
+  "test_failures": 0,
+  "query_failures": 0,
+  "audit_amendments": 0,
+  "retained_logs": {
+    "evaluation-1.log": {
+      "bytes": 1190,
+      "sha256": "c4ca79e5ed17deab6ec8f02c73172dc5128372e76d9c2b0f05941a279557fb6d"
+    },
+    "evaluation-2.log": {
+      "bytes": 1190,
+      "sha256": "c4ca79e5ed17deab6ec8f02c73172dc5128372e76d9c2b0f05941a279557fb6d"
+    },
+    "export-verification.log": {
+      "bytes": 592,
+      "sha256": "e59e02e647f13294f5579708a823e86bc357302bd3b71f1f99dc0bcc4aa52d90"
+    },
+    "focused-tests-1.log": {
+      "bytes": 2344,
+      "sha256": "1ed5acc3064cf6dd91c20f17da11dfadc4000d6dae7e187297106a560f64ff7c"
+    },
+    "full-tests.log": {
+      "bytes": 244485,
+      "sha256": "6e4f1da2b958ce9d88636c9da07c2fe8d0e456ec1022bece8bbbb4aacf836b32"
+    }
+  },
+  "external_raw": "/workspace/scratch/post-release-mean-handoff-live-pilot/raw",
+  "external_live_audits": [
+    "/workspace/scratch/post-release-mean-handoff-live-pilot/audit-2",
+    "/workspace/scratch/post-release-mean-handoff-live-pilot/audit-3"
+  ],
+  "external_prior_replays": [
+    "/workspace/scratch/post-handoff-transition-replay/query-1",
+    "/workspace/scratch/post-handoff-transition-replay/query-2"
+  ],
+  "external_evaluations": [
+    "/workspace/scratch/post-release-pose-accuracy/evaluation-1",
+    "/workspace/scratch/post-release-pose-accuracy/evaluation-2"
+  ],
+  "independent_export_verifier_sha256": "ef49aba9a0eb9a8490881e656e79d6aeaf3f74e9f3e9c7e94d25d8276f2651b7",
+  "ci_requirement": "The exact final data commit must pass related CI before merge; the exact main merge commit must pass related CI after push. CI run identities and completion are retained externally."
+}
