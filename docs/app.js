@@ -662,10 +662,10 @@ const galleryItems = [
 
 const playTiles = [
   {
-    title: "3D drone race",
-    text: "Five gates, three cameras, one autonomous pilot. Watch, replay, and share a flight.",
-    image: "assets/playground/drone.png",
-    link: "playground/?tab=drone&cinema=1"
+    title: "You vs autopilot",
+    text: "Fly five 3D gates with keys or touch. Race an autonomous ghost, replay your attempt, and share its inputs.",
+    image: "assets/playground/drone-manual.png",
+    link: "playground/?tab=drone&mode=manual&course=climb&cinema=1"
   },
   {
     title: "Drive LiDAR SLAM",

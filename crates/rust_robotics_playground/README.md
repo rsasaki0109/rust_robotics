@@ -62,8 +62,8 @@ All tabs encode their important configuration in share links:
 - MPPI: sample count, horizon, temperature λ, noise σ, moving obstacles,
   start, goal, and obstacles
 - Pushing: goal pose, pusher friction, run state, and obstacles
-- Drone Race: course, camera, replay frame, playback state, slow motion,
-  flight trail, prediction, and cinema view
+- Drone Race: pilot mode, course, camera, replay frame, playback state, slow motion,
+  flight trail, prediction, cinema view, ghost visibility, and manual input recording
 
 ## Engagement event hooks
 
@@ -86,15 +86,22 @@ configuration (see the list above).
 
 ## Tabs
 
-- **Drone Race** — a real 3-D quadrotor attitude model driven by seeded MPPI
-  through five oriented gates. Neon Slalom changes direction and altitude;
+- **Drone Race** — fly against a seeded MPPI ghost, or watch the autonomous
+  pilot, using the same 3-D quadrotor attitude model and five oriented gates.
+  **You vs autopilot:** W/S forward/back, A/D left/right, E/Q climb/descend;
+  arrow keys also steer. The screen pad supports simultaneous touches.
+  Release to brake and stabilize. Space starts/pauses; R starts a new attempt.
+  Replay and the timeline review your recorded commands; sharing includes
+  those inputs and restores the same pose. A received recording is a replay;
+  choose New attempt to fly yourself. Neon Slalom changes direction and altitude;
   Sky Climb adds a taller ascent. Chase follows the drone, Pilot rotates with
   its attitude, and Course shows the whole circuit. Pause, single-step, seek,
   or replay in slow motion; sharing restores the same flight frame and view.
   **Cinema view** fills the scene, with camera buttons and a way back to the
-  controls. Keyboard: Space to pause, R to replay, 1/2/3 to switch cameras,
+  controls. In Autopilot mode, Space pauses and R replays. Use 1/2/3 to switch cameras,
   Escape to leave cinema view. The cyan trail is flown history; the dotted
-  amber line is the controller's warm-start prediction. Histories are computed
+  amber line is the autonomous controller's warm-start prediction; the purple
+  wireframe in manual mode is the opponent at your simulation time. Histories are computed
   incrementally so a shared mid-flight frame yields to the browser while it
   loads. A ground contact or time limit is displayed separately from finishing.
   [Design, model limits, and recording instructions](../../docs/drone_race_project.md).

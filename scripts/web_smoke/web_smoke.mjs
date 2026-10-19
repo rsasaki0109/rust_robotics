@@ -8,6 +8,7 @@ import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { chromium } from 'playwright';
+import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 
 const [dist, shots] = process.argv.slice(2);
 if (!dist) {
@@ -57,6 +58,9 @@ const cases = [
   { name: 'drone', query: 'tab=drone', drone: 'live' },
   { name: 'drone-replay', query: 'tab=drone&frame=40&playing=0&camera=pilot', drone: 'replay' },
   { name: 'drone-phone', query: 'tab=drone&course=climb&camera=course&frame=30&playing=0', drone: 'phone', viewport: { width: 390, height: 844 }, touch: true },
+  { name: 'drone-manual', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'manual' },
+  { name: 'drone-manual-phone', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'manual-phone', viewport: { width: 390, height: 844 }, touch: true },
+  { name: 'drone-manual-invalid', query: 'tab=drone&mode=manual&cinema=1&inputs=v99.zzz&frame=600&playing=1', drone: 'invalid' },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },
 ];
@@ -88,7 +92,22 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'live') {
+      if (test.drone === 'invalid') {
+        const d = await page.locator(canvas).evaluate((c) => ({ ...c.dataset }));
+        if (d.droneStatus !== 'error' || d.droneGenerated !== '0' || d.dronePlaying !== '0') {
+          problems.push('invalid recording was not rejected before generating flight');
+        }
+        const actions = JSON.parse(d.droneActions);
+        await page.mouse.click(...actions.retry);
+        await page.waitForFunction(() => document.querySelector('canvas')?.dataset.droneStatus === 'flying');
+        if (await page.locator(canvas).getAttribute('data-drone-frame') !== '0') {
+          problems.push('retry did not recover a fresh manual attempt');
+        }
+      } else if (test.drone === 'manual') {
+        await checkManualDesktop(page, base, shots);
+      } else if (test.drone === 'manual-phone') {
+        await checkManualPhone(page);
+      } else if (test.drone === 'live') {
         await page.waitForFunction(() => document.getElementById('rust_robotics_playground')?.dataset.droneStatus === 'finished', null, { timeout: 45000 });
         if (await page.locator(canvas).getAttribute('data-drone-gates') !== '5') {
           problems.push('the drone did not pass all five gates');

@@ -6,6 +6,8 @@ use rust_robotics_control::{
 };
 use rust_robotics_core::RoboticsResult;
 
+use super::manual::{self, PilotInput};
+
 pub const DT: f64 = 0.05;
 pub const MAX_STEPS: usize = 600;
 
@@ -104,7 +106,8 @@ pub struct Flight {
     pub course: Course,
     pub lap: RacingGateLap3D,
     pub frames: Vec<FlightFrame>,
-    controller: QuadrotorMppiController,
+    pub inputs: Vec<PilotInput>,
+    controller: Option<QuadrotorMppiController>,
     params: QuadrotorParams,
 }
 
@@ -123,9 +126,20 @@ impl Flight {
                 status: Status::Flying,
                 prediction: Vec::new(),
             }],
-            controller,
+            inputs: Vec::new(),
+            controller: Some(controller),
             params,
         }
+    }
+
+    pub fn manual(course: Course) -> Self {
+        let mut flight = Self::new(course);
+        flight.controller = None;
+        flight
+    }
+
+    pub fn is_manual(&self) -> bool {
+        self.controller.is_none()
     }
 
     pub fn last_index(&self) -> usize {
@@ -138,14 +152,22 @@ impl Flight {
 
     /// Append exactly one physical update. A terminal history never grows.
     pub fn step(&mut self) -> RoboticsResult<bool> {
+        self.step_with_input(PilotInput::default())
+    }
+
+    pub fn step_with_input(&mut self, input: PilotInput) -> RoboticsResult<bool> {
         if self.done() {
             return Ok(false);
         }
         let current = &self.frames[self.last_index()];
-        let plan = self
-            .controller
-            .plan(current.state, &self.lap, current.passed)?;
-        let state = self.params.step(current.state, plan.control, DT);
+        let control = if let Some(controller) = &mut self.controller {
+            controller
+                .plan(current.state, &self.lap, current.passed)?
+                .control
+        } else {
+            manual::command(current.state, input, self.params)
+        };
+        let state = self.params.step(current.state, control, DT);
         let mut passed = current.passed;
         while passed < self.lap.gate_count()
             && self.lap.gates[passed].crosses(
@@ -169,8 +191,14 @@ impl Flight {
             state,
             passed,
             status,
-            prediction: self.controller.predicted_positions(state),
+            prediction: self
+                .controller
+                .as_ref()
+                .map_or_else(Vec::new, |c| c.predicted_positions(state)),
         });
+        if self.is_manual() {
+            self.inputs.push(input);
+        }
         Ok(true)
     }
 }
@@ -301,6 +329,84 @@ mod tests {
             QuadrotorMppiConfig::default().horizon + 1
         );
         assert_eq!(last.prediction[0], last.state.position);
+    }
+
+    #[test]
+    fn manual_commands_cross_all_gates_and_the_recording_reproduces_every_state() {
+        let mut flight = Flight::manual(Course::Climb);
+        // This test driver selects held keys from the next gate. It never
+        // changes position, attitude, or progress outside the flight model.
+        while !flight.done() {
+            let current = flight.frames.last().unwrap();
+            let target = flight.lap.gates[current.passed].center();
+            let delta = sub(
+                target,
+                add(current.state.position, scale(current.state.velocity, 0.4)),
+            );
+            let axis = |error: f64| {
+                if error > 0.25 {
+                    1
+                } else if error < -0.25 {
+                    -1
+                } else {
+                    0
+                }
+            };
+            let forward = if target[0] - current.state.position[0] < -0.5 {
+                -1
+            } else if target[0] - current.state.position[0] < 1.5
+                && (delta[1].abs() > 0.6 || delta[2].abs() > 0.6)
+            {
+                0
+            } else {
+                1
+            };
+            flight
+                .step_with_input(PilotInput::new(forward, -axis(delta[1]), axis(delta[2])))
+                .unwrap();
+        }
+        assert_eq!(flight.frames.last().unwrap().status, Status::Finished);
+        assert_eq!(flight.frames.last().unwrap().passed, 5);
+        for pair in flight.frames.windows(2) {
+            for gate in &flight.lap.gates[pair[0].passed..pair[1].passed] {
+                assert!(gate.crosses(
+                    pair[0].state.position,
+                    pair[1].state.position,
+                    flight.lap.crossing_tolerance
+                ));
+            }
+            assert!(
+                pair[1].prediction.is_empty(),
+                "manual flight has no MPPI prediction"
+            );
+        }
+        let mut replay = Flight::manual(Course::Climb);
+        for input in manual::decode(&manual::encode(&flight.inputs)).unwrap() {
+            replay.step_with_input(input).unwrap();
+        }
+        assert_eq!(replay.frames, flight.frames);
+        assert_eq!(replay.inputs.len(), replay.last_index());
+        assert!(!replay.step_with_input(PilotInput::new(-1, 1, 1)).unwrap());
+        assert_eq!(replay.frames, flight.frames);
+    }
+
+    #[test]
+    fn manual_hover_times_out_and_descent_stops_at_ground_contact() {
+        let mut hover = Flight::manual(Course::Neon);
+        for _ in 0..MAX_STEPS {
+            hover.step().unwrap();
+        }
+        assert_eq!(hover.last_index(), MAX_STEPS);
+        assert_eq!(hover.frames.last().unwrap().status, Status::TimeLimit);
+        assert_eq!(hover.frames.last().unwrap().passed, 0);
+        assert!(!hover.step().unwrap());
+        let mut descent = Flight::manual(Course::Neon);
+        while !descent.done() {
+            descent.step_with_input(PilotInput::new(0, 0, -1)).unwrap();
+        }
+        assert_eq!(descent.frames.last().unwrap().status, Status::GroundContact);
+        assert!(descent.last_index() < MAX_STEPS);
+        assert_eq!(descent.frames.last().unwrap().passed, 0);
     }
 
     #[test]
