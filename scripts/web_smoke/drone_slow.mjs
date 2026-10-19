@@ -16,30 +16,46 @@ export async function prepareSlowPaints(page) {
   await page.addInitScript(() => {
     const request = window.requestAnimationFrame.bind(window);
     const cancel = window.cancelAnimationFrame.bind(window);
-    const jobs = new Map();
+    const callbacks = new Map();
     let next = 0;
+    let timer = null, frame = null, running = false;
     window.__slowPaintTimes = [];
-    window.requestAnimationFrame = (callback) => {
-      const id = ++next;
-      const job = { timer: 0, frame: null };
-      job.timer = window.setTimeout(() => {
-        job.frame = request((time) => {
-          jobs.delete(id);
+    const schedule = () => {
+      if (timer !== null || frame !== null || running || callbacks.size === 0) return;
+      timer = window.setTimeout(() => {
+        timer = null;
+        frame = request((time) => {
+          frame = null;
+          running = true;
           const times = window.__slowPaintTimes;
           if (times.at(-1) !== time) times.push(time);
           if (times.length > 64) times.shift();
-          callback.call(window, time);
+          // Requests made during this batch belong to the next slow frame.
+          const batch = [...callbacks];
+          for (const [id, callback] of batch) {
+            if (callbacks.get(id) !== callback) continue;
+            callbacks.delete(id);
+            callback.call(window, time);
+          }
+          running = false;
+          schedule();
         });
       }, 400);
-      jobs.set(id, job);
+    };
+    window.requestAnimationFrame = (callback) => {
+      const id = ++next;
+      callbacks.set(id, callback);
+      schedule();
       return id;
     };
     window.cancelAnimationFrame = (id) => {
-      const job = jobs.get(id);
-      if (!job) return;
-      window.clearTimeout(job.timer);
-      if (job.frame !== null) cancel(job.frame);
-      jobs.delete(id);
+      callbacks.delete(id);
+      if (callbacks.size === 0 && !running) {
+        window.clearTimeout(timer);
+        timer = null;
+        if (frame !== null) cancel(frame);
+        frame = null;
+      }
     };
   });
 }
@@ -54,5 +70,6 @@ export async function checkSlowReplay(page, expected) {
   assert.equal(d.droneGates, '5');
   assert.equal(d.droneBestSteps, '0', 'a slow shared replay earned a personal best');
   const times = await page.evaluate(() => window.__slowPaintTimes);
-  assert(times.slice(1).some((time, i) => time - times[i] >= 350), 'the browser did not actually slow painting');
+  assert(times.length >= 3 && times.slice(1).every((time, i) => time - times[i] >= 350),
+    'the browser did not keep the slow paint cadence');
 }
