@@ -10,6 +10,7 @@ mod photo;
 mod records;
 mod renderer;
 mod results;
+mod start;
 
 use editor::{CourseEditor, EditorAction};
 use egui::{Color32, FontId, Rect, RichText, Stroke, Vec2};
@@ -38,6 +39,7 @@ pub struct DroneRaceDemo {
     pad: pad::FlightPad,
     show_ghost: bool,
     has_started: bool,
+    start: Option<start::StartSequence>,
     cursor: usize,
     seek: Option<usize>,
     playing: bool,
@@ -71,6 +73,7 @@ impl Default for DroneRaceDemo {
             pad: pad::FlightPad::default(),
             show_ghost: true,
             has_started: false,
+            start: None,
             cursor: 0,
             seek: None,
             playing: true,
@@ -151,6 +154,9 @@ impl DroneRaceDemo {
             crate::share::bounded_usize(query, "frame", MAX_STEPS).unwrap_or(0)
         };
         self.seek_to(frame);
+        if self.playing && self.fresh_manual() {
+            self.begin_start();
+        }
         if self.error.is_none() && crate::share::boolean(query, "edit").unwrap_or(false) {
             self.begin_editor();
         } else if self.error.is_none() && crate::share::boolean(query, "photo").unwrap_or(false) {
@@ -176,7 +182,7 @@ impl DroneRaceDemo {
             course.slug(),
             self.camera.slug(),
             if self.editor.is_some() { 0 } else { self.photo.as_ref().map_or(self.seek.unwrap_or(self.cursor), |p| p.frame) },
-            u8::from(self.playing),
+            u8::from(self.playing && !self.counting_down()),
             u8::from(self.photo.as_ref().map_or(self.trail, |p| p.trail)),
             u8::from(self.prediction),
             u8::from(self.slow),
@@ -296,6 +302,7 @@ impl DroneRaceDemo {
     }
 
     fn reset_clock(&mut self) {
+        self.start = None;
         self.phase = 0.0;
         self.last_time = None;
         self.input = PilotInput::default();
@@ -415,9 +422,38 @@ impl DroneRaceDemo {
         if self.flight.frames[self.cursor].status != Status::Flying || self.replay_finished() {
             self.replay_run();
         } else {
+            let start = !self.playing && self.fresh_manual();
             self.playing = !self.playing;
             self.reset_clock();
+            if start {
+                self.begin_start();
+            }
         }
+    }
+
+    fn fresh_manual(&self) -> bool {
+        self.flight.is_manual()
+            && self.recording.is_none()
+            && self.cursor == 0
+            && self.flight.last_index() == 0
+            && self.seek.is_none()
+            && self.error.is_none()
+    }
+
+    fn counting_down(&self) -> bool {
+        self.start
+            .as_ref()
+            .is_some_and(start::StartSequence::waiting)
+    }
+
+    fn begin_start(&mut self) {
+        self.start = Some(start::StartSequence::default());
+        self.has_started = true;
+        self.playing = true;
+        self.phase = 0.0;
+        self.last_time = None;
+        // Keep held keys and touch contacts: the pilot can line up their
+        // controls during the countdown and carry them across GO.
     }
 
     fn replay_finished(&self) -> bool {
@@ -464,6 +500,17 @@ impl DroneRaceDemo {
     }
 
     fn advance(&mut self, now: f64) {
+        let countdown_elapsed = self.last_time.map_or(0.0, |last| {
+            let delta = now - last;
+            // Use foreground elapsed time for the start lights, independently
+            // of the bounded physics budget. Slow painting must not stretch
+            // three seconds into dozens of simulated updates.
+            if (0.0..1.0).contains(&delta) {
+                delta
+            } else {
+                0.0
+            }
+        });
         let elapsed = self.last_time.map_or(0.0, |last| {
             let delta = now - last;
             // Changing tabs or restoring a background browser never creates
@@ -499,6 +546,17 @@ impl DroneRaceDemo {
         }
         if !self.playing {
             return;
+        }
+        if let Some(start) = &mut self.start {
+            let waiting = start.waiting();
+            start.advance(countdown_elapsed);
+            if start.finished() {
+                self.start = None;
+            }
+            if waiting {
+                self.phase = 0.0;
+                return;
+            }
         }
         if self.flight.frames[self.cursor].status != Status::Flying {
             self.playing = false;
@@ -691,6 +749,7 @@ impl DroneRaceDemo {
         }
         if manual {
             ui.label(RichText::new("Your drone. Same five gates.").color(CYAN));
+            crate::ui_kit::hint(ui, "Hold a flight control or press Play for 3-2-1. Keep holding through GO. Space / Pause cancels the countdown.");
             crate::ui_kit::hint(ui, "W / S: forward / back · A / D: left / right\nE / Q: climb / descend. Arrow keys also steer.");
             crate::ui_kit::hint(ui, "Hold the screen buttons on a phone. Release to brake; the assist keeps the aircraft level. Fly forward through each numbered gate in order.");
             ui.checkbox(&mut self.show_ghost, "Show rival ghost");
@@ -1023,7 +1082,18 @@ impl DroneRaceDemo {
             self.menu_open = false;
         }
         if self.flight.is_manual() {
-            if !ctx.input(|input| input.focused) {
+            if self
+                .start
+                .as_ref()
+                .is_some_and(start::StartSequence::interrupted)
+                || ctx.input(|input| {
+                    !input.focused
+                        || input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::WindowFocused(false)))
+                })
+            {
                 self.playing = false;
                 self.reset_clock();
             }
@@ -1042,8 +1112,7 @@ impl DroneRaceDemo {
                 && self.recording.is_none()
                 && self.error.is_none()
             {
-                self.playing = true;
-                self.has_started = true;
+                self.begin_start();
             }
         }
         let was_playing = self.playing;
@@ -1384,7 +1453,11 @@ impl DroneRaceDemo {
                 if self.recording.is_some() {
                     "PLAY THE RECORDED ATTEMPT"
                 } else {
-                    "HOLD W OR A FLIGHT BUTTON TO START"
+                    if self.has_started {
+                        "PRESS PLAY FOR 3 - 2 - 1"
+                    } else {
+                        "HOLD A FLIGHT CONTROL FOR 3 - 2 - 1"
+                    }
                 },
                 FontId::monospace(10.0),
                 Color32::WHITE,
@@ -1401,6 +1474,14 @@ impl DroneRaceDemo {
                     GOLD,
                 );
             }
+        }
+        if let Some(start) = &self.start {
+            start.paint(&painter, rect);
+        }
+        if self.menu_open && self.counting_down() {
+            self.playing = false;
+            self.reset_clock();
+            ctx.request_repaint();
         }
         if switch_rival || switch_pilot || replay_best || retry || replay || toggle {
             ctx.request_repaint();
@@ -1456,7 +1537,9 @@ impl DroneRaceDemo {
             painter.text(
                 left + Vec2::new(0.0, 22.0),
                 egui::Align2::LEFT_TOP,
-                if self.playing {
+                if self.counting_down() {
+                    "GET READY"
+                } else if self.playing {
                     if self.flight.is_manual() {
                         "YOU ARE FLYING"
                     } else {
@@ -1499,7 +1582,9 @@ impl DroneRaceDemo {
             FontId::proportional(if rect.width() < 500.0 { 22.0 } else { 30.0 }),
             Color32::WHITE,
         );
-        let mode = if self.seek.is_some() {
+        let mode = if self.counting_down() {
+            "GET READY / FLIGHT CLOCK HELD"
+        } else if self.seek.is_some() {
             "BUILDING REPLAY"
         } else if self.flight.is_manual() && self.recording.is_some() {
             "RECORDED ATTEMPT"
@@ -1792,6 +1877,19 @@ impl DroneRaceDemo {
         // real flight progress, paused replays and camera changes.
         for (key, value) in [
             ("data-drone-frame", cursor.to_string()),
+            (
+                "data-drone-start-age",
+                self.start
+                    .as_ref()
+                    .map_or_else(String::new, |s| format!("{:.3}", s.age)),
+            ),
+            (
+                "data-drone-start",
+                self.start
+                    .as_ref()
+                    .map_or("", start::StartSequence::label)
+                    .to_owned(),
+            ),
             ("data-drone-guide", u8::from(self.guide).to_string()),
             ("data-drone-menu-open", u8::from(self.menu_open).to_string()),
             (
@@ -2404,5 +2502,101 @@ mod tests {
             assert!(!restored.playing);
             assert_eq!(restored.flight.last_index(), 0);
         }
+    }
+
+    #[test]
+    fn countdown_holds_both_flights_and_keeps_the_first_command_across_go() {
+        let mut demo = DroneRaceDemo::default();
+        demo.reset_course(Course::CLIMB, true);
+        demo.slow = true;
+        let input = PilotInput::new(1, 0, 1);
+        demo.input = input;
+        demo.begin_start();
+        demo.advance(0.0);
+        demo.advance(0.1);
+        let age = demo.start.as_ref().unwrap().age;
+        // A background-sized time gap contributes no countdown or flight time.
+        demo.advance(30.0);
+        assert_eq!(demo.start.as_ref().unwrap().age, age);
+        let mut now = 30.0;
+        // Even at 2.5 paints per second (below the physics gap threshold),
+        // the start lights use real elapsed time and still reach GO.
+        for _ in 0..12 {
+            now += 0.4;
+            demo.advance(now);
+            assert_eq!(demo.flight.last_index(), 0);
+            assert_eq!(demo.ghost.as_ref().unwrap().last_index(), 0);
+            assert_eq!(demo.input, input);
+            if !demo.counting_down() {
+                break;
+            }
+        }
+        assert_eq!(demo.start.as_ref().unwrap().label(), "go");
+        for _ in 0..3 {
+            now += 0.1;
+            demo.advance(now);
+            if demo.flight.last_index() > 0 {
+                break;
+            }
+        }
+        assert_eq!(demo.flight.inputs.first(), Some(&input));
+        assert_eq!(demo.flight.last_index(), 1);
+        assert_eq!(demo.ghost.as_ref().unwrap().last_index(), 1);
+        assert_eq!(demo.cursor, 1);
+    }
+
+    #[test]
+    fn countdown_cancellation_and_sharing_return_to_a_stationary_start() {
+        let mut demo = DroneRaceDemo::default();
+        demo.reset_course(Course::CLIMB, true);
+        demo.toggle_playing();
+        assert!(demo.counting_down() && demo.playing);
+        let query = demo.share_query();
+        assert!(query.contains("&playing=0&"));
+        let mut visitor = DroneRaceDemo::default();
+        visitor.apply_share_query(&query);
+        assert!(!visitor.playing && visitor.start.is_none());
+        assert_eq!(visitor.flight.last_index(), 0);
+        demo.toggle_playing();
+        assert!(!demo.playing && demo.start.is_none());
+        demo.toggle_playing();
+        assert_eq!(demo.start.as_ref().unwrap().label(), "3");
+        demo.begin_guide();
+        assert!(!demo.playing && demo.start.is_none());
+        demo.finish_guide(guide::Action::Fly);
+        demo.toggle_playing();
+        demo.begin_photo();
+        assert!(!demo.playing && demo.start.is_none());
+        demo.close_photo();
+        demo.toggle_playing();
+        demo.rewind();
+        assert!(!demo.playing && demo.start.is_none() && !demo.has_started);
+        assert_eq!(demo.flight.last_index(), 0);
+        assert!(demo.flight.inputs.is_empty());
+        assert!(demo.records.best(Course::CLIMB).is_none());
+        demo.toggle_playing();
+        let ctx = egui::Context::default();
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    Vec2::new(844.0, 390.0),
+                )),
+                focused: true,
+                events: vec![
+                    egui::Event::WindowFocused(false),
+                    egui::Event::WindowFocused(true),
+                ],
+                ..Default::default()
+            },
+            |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| demo.scene(ctx, ui));
+            },
+        );
+        assert!(
+            !demo.playing && demo.start.is_none(),
+            "a hidden tab resumed its countdown after focus returned"
+        );
+        assert_eq!(demo.flight.last_index(), 0);
     }
 }

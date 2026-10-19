@@ -16,6 +16,7 @@ import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_pho
 import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
 import { checkBestGhost } from './drone_ghost.mjs';
+import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -71,6 +72,8 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-race-start', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'race-start', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
+  { name: 'drone-start-cancel', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'start-cancel', viewport: { width: 844, height: 390 }, touch: true },
   { name: 'drone-best-ghost', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'best-ghost', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   { name: 'drone-best-ghost-invalid', query: 'tab=drone&course=climb&mode=manual&cinema=1&rival=best&best_inputs=v1.n&frame=600&playing=1', drone: 'invalid' },
   { name: 'drone-records', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
@@ -141,7 +144,11 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'best-ghost') {
+      if (test.drone === 'race-start') {
+        await checkRaceStart(page, base, shots);
+      } else if (test.drone === 'start-cancel') {
+        await checkStartCancellation(page, base, shots);
+      } else if (test.drone === 'best-ghost') {
         await checkBestGhost(page, base, shots);
       } else if (test.drone === 'records') {
         await checkPersonalBest(page, base, shots);

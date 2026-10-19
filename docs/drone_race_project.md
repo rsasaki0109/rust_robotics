@@ -22,8 +22,9 @@ account are not needed. The opening guide offers **Ready to fly**, **Watch
 the autopilot first**, and **Build your own circuit**.
 
 Choose Ready to fly, then hold **W + E** to move forward and climb, or hold
-the forward and UP buttons with two fingers. The clock waits for that first
-flight input. Aim for the gold gate's opening; numbered gates must be crossed
+the forward and UP buttons with two fingers. A **3-2-1-GO** countdown holds
+both aircraft still; keep holding your controls through GO to launch. Aim for
+the gold gate's opening; numbered gates must be crossed
 forward in order. The purple opponent uses the same simulation clock.
 
 ![The opening flight guide](assets/playground/drone-guide.png)
@@ -48,6 +49,25 @@ read the guide, fly five gates, retry or replay, build a custom course, save
 a photo, and share a reproducible attempt. The [v1 flight receipt](assets/drone-v1-flight.json)
 contains a real keyboard-driven five-gate finish and the receiving browser's
 reconstructed state. Use its `query` to replay that attempt.
+
+## Ready, set, GO
+
+<img src="assets/playground/drone-start.png" width="320" alt="A real two-finger countdown before launch">
+
+Hold a flight control, or choose **Play**, to light up **3-2-1-GO**. Keep your
+keys or fingers held through GO to carry the same command into the first flight
+update. During the countdown, both aircraft stay at the start, the flight clock
+stays at zero, and no commands are added to the recording. Slow motion changes
+flight playback speed; it does not slow the countdown.
+
+**Space / Pause**, **Retry**, opening the guide, photo mode, or the landscape
+Options menu cancels the countdown. Returning from another tab leaves the race
+paused, ready for a fresh countdown. Sharing during the countdown opens a paused
+start for the visitor. Recorded-flight replay starts directly from its existing
+history and does not add a countdown to the flight time.
+
+The [start receipt](assets/drone-start-flight.json) observes all three lights and
+GO at frame zero, a real two-finger launch, and the identical shared replay.
 
 ## Beat your personal best
 
@@ -105,8 +125,9 @@ best, the faster attempt, and the new visitor's matching replay state.
 - Neon Slalom alternates turns and altitude. Sky Climb adds a taller ascent.
 - Choose **You fly** to fly. W/S move forward/back, A/D left/right,
   and E/Q climb/descend. Arrow keys also steer. Hold the screen buttons with
-  one or more fingers on a phone. The clock waits for the first flight input
-  or Play. Releasing requests zero velocity: the assist brakes and stabilizes
+  one or more fingers on a phone. The first flight input or Play starts a
+  3-2-1 countdown; the flight clock and recorded inputs begin at GO.
+  Releasing requests zero velocity: the assist brakes and stabilizes
   the aircraft, with some stopping distance.
 - Controls follow the course axes in every camera: forward is +x, right is -y,
   up is +z. There is no manual yaw. The next-gate cue gives distance in those
@@ -317,7 +338,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 32-case
+To verify the actual GitHub Pages project path, build and run the 34-case
 browser suite from the repository root:
 
 ```sh
@@ -343,6 +364,10 @@ in a fresh visitor context, and blocked browser storage with session-only
 fallback. Two ghost cases cover both rival selectors, a real checkpoint split,
 paused ghost positions, a fresh visitor's matching two-flight replay, photo
 mode, fixed rivals across record updates, and rejection of an incomplete ghost.
+Two start cases hold real touch contacts through all three lights and GO,
+check that countdown time is excluded from flight history, reconstruct that
+flight in a fresh visitor context, and cancel starts with pause, retry, guide,
+photo mode, menu opening, and a tab switch.
 CI uses this same public-URL build and suite before publication.
 
 ## Capture the actual browser
