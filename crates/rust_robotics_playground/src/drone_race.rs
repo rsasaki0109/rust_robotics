@@ -5,18 +5,21 @@ mod editor;
 mod flight;
 mod manual;
 mod pad;
+mod photo;
 mod renderer;
 
 use editor::{CourseEditor, EditorAction};
 use egui::{Color32, FontId, Rect, RichText, Stroke, Vec2};
 use flight::{Course, Flight, Status, DT, MAX_STEPS};
 use manual::PilotInput;
+use photo::PhotoMode;
 use renderer::{CameraMode, GhostView, ViewOptions, CYAN, GHOST, GOLD};
 use web_time::Instant;
 
 pub struct DroneRaceDemo {
     flight: Flight,
     editor: Option<CourseEditor>,
+    photo: Option<PhotoMode>,
     ghost: Option<Flight>,
     recording: Option<Vec<PilotInput>>,
     input: PilotInput,
@@ -42,6 +45,7 @@ impl Default for DroneRaceDemo {
         Self {
             flight: Flight::new(Course::NEON),
             editor: None,
+            photo: None,
             ghost: None,
             recording: None,
             input: PilotInput::default(),
@@ -116,6 +120,11 @@ impl DroneRaceDemo {
         self.seek_to(frame);
         if self.error.is_none() && crate::share::boolean(query, "edit").unwrap_or(false) {
             self.begin_editor();
+        } else if self.error.is_none() && crate::share::boolean(query, "photo").unwrap_or(false) {
+            self.begin_photo();
+            if let Some(photo) = &mut self.photo {
+                photo.apply_query(query);
+            }
         }
     }
 
@@ -128,14 +137,14 @@ impl DroneRaceDemo {
             "tab=drone&course={}&camera={}&frame={}&playing={}&trail={}&prediction={}&slow={}&cinema={}&mode={}&ghost={}&edit={}",
             course.slug(),
             self.camera.slug(),
-            if self.editor.is_some() { 0 } else { self.seek.unwrap_or(self.cursor) },
+            if self.editor.is_some() { 0 } else { self.photo.as_ref().map_or(self.seek.unwrap_or(self.cursor), |p| p.frame) },
             u8::from(self.playing),
-            u8::from(self.trail),
+            u8::from(self.photo.as_ref().map_or(self.trail, |p| p.trail)),
             u8::from(self.prediction),
             u8::from(self.slow),
             u8::from(self.cinema),
             if self.flight.is_manual() { "manual" } else { "auto" },
-            u8::from(self.show_ghost),
+            u8::from(self.photo.as_ref().map_or(self.show_ghost, |p| p.ghost)),
             u8::from(self.editor.is_some())
         );
         if course.is_custom() {
@@ -149,11 +158,31 @@ impl DroneRaceDemo {
                 query.push_str(&manual::encode(inputs));
             }
         }
+        if let Some(photo) = &self.photo {
+            query.push_str(&photo.query());
+        }
         query
     }
 
     pub fn cinema(&self) -> bool {
-        self.cinema || self.editor.is_some()
+        self.cinema || self.editor.is_some() || self.photo.is_some()
+    }
+
+    fn begin_photo(&mut self) {
+        if self.editor.is_none() && self.photo.is_none() && self.error.is_none() {
+            self.photo = Some(PhotoMode::new(
+                self.seek.unwrap_or(self.cursor),
+                self.trail,
+                self.show_ghost,
+            ));
+            self.playing = false;
+            self.reset_clock();
+        }
+    }
+
+    fn close_photo(&mut self) {
+        self.photo = None;
+        self.reset_clock();
     }
 
     fn begin_editor(&mut self) {
@@ -188,6 +217,7 @@ impl DroneRaceDemo {
 
     fn reset_course(&mut self, course: Course, manual: bool) {
         self.editor = None;
+        self.photo = None;
         self.flight = if manual {
             Flight::manual(course)
         } else {
@@ -477,6 +507,15 @@ impl DroneRaceDemo {
         if ui.button("Cinema view").clicked() {
             self.cinema = true;
         }
+        let photo = ui.add_enabled(
+            self.seek.is_none() && self.error.is_none(),
+            egui::Button::new("Photo mode"),
+        );
+        self.publish_photo_entry(photo.rect);
+        if photo.clicked() {
+            self.begin_photo();
+            ctx.request_repaint();
+        }
 
         crate::ui_kit::section(ui, "PLAYBACK");
         ui.horizontal(|ui| {
@@ -542,9 +581,9 @@ impl DroneRaceDemo {
         crate::ui_kit::hint(
             ui,
             if manual {
-                "Space: start / pause · R: new attempt · 1 / 2 / 3: camera"
+                "Space: start / pause · R: new attempt · 1 / 2 / 3: camera · P: photo"
             } else {
-                "Space: pause · R: replay · 1 / 2 / 3: camera"
+                "Space: pause · R: replay · 1 / 2 / 3: camera · P: photo"
             },
         );
 
@@ -586,6 +625,42 @@ impl DroneRaceDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.photo.is_some() {
+            if self.seek.is_some() {
+                self.advance(ctx.input(|input| input.time));
+                if self.seek.is_none() {
+                    self.photo.as_mut().unwrap().frame = self.cursor;
+                }
+            }
+            if self.error.is_some() {
+                self.close_photo();
+            } else {
+                if self.seek.is_some() {
+                    ui.centered_and_justified(|ui| {
+                        ui.colored_label(CYAN, "PREPARING SHARED PHOTO")
+                    });
+                    ctx.request_repaint();
+                } else {
+                    let close = egui::Frame::new()
+                        .inner_margin(12)
+                        .show(ui, |ui| {
+                            self.photo.as_mut().unwrap().show(
+                                ctx,
+                                ui,
+                                &self.flight,
+                                self.ghost.as_ref(),
+                            )
+                        })
+                        .inner;
+                    if close {
+                        self.close_photo();
+                        ctx.request_repaint();
+                    }
+                }
+                self.publish_status();
+                return;
+            }
+        }
         if let Some(editor) = &mut self.editor {
             let action = egui::Frame::new()
                 .inner_margin(12)
@@ -597,6 +672,15 @@ impl DroneRaceDemo {
             if finished {
                 ctx.request_repaint();
             }
+            return;
+        }
+        if !ctx.wants_keyboard_input()
+            && ctx.input(|input| input.key_pressed(egui::Key::P))
+            && self.seek.is_none()
+            && self.error.is_none()
+        {
+            self.begin_photo();
+            ctx.request_repaint();
             return;
         }
         if !ctx.wants_keyboard_input() {
@@ -692,6 +776,7 @@ impl DroneRaceDemo {
             visual_time,
             &ViewOptions {
                 camera: self.camera,
+                orbit: None,
                 trail: self.trail,
                 prediction: self.prediction && !self.flight.is_manual(),
                 edit_gate: None,
@@ -717,6 +802,7 @@ impl DroneRaceDemo {
         self.hud(&painter, rect, state.speed(), visual_time);
         let mut switch_pilot = false;
         let mut edit_course = false;
+        let mut take_photo = false;
         if self.cinema {
             let top = if rect.width() >= 600.0 {
                 rect.right_top() + Vec2::new(-286.0, 50.0)
@@ -778,6 +864,22 @@ impl DroneRaceDemo {
                 )
                 .clicked();
             self.publish_editor_entry(edit);
+            let photo = Rect::from_min_size(
+                if rect.width() >= 600.0 {
+                    top + Vec2::new(0.0, -32.0)
+                } else {
+                    rect.right_top() + Vec2::new(-124.0, 16.0)
+                },
+                Vec2::new(108.0, 26.0),
+            );
+            take_photo = ui
+                .put(
+                    photo,
+                    egui::Button::new(RichText::new("Photo mode").size(11.0))
+                        .wrap_mode(egui::TextWrapMode::Extend),
+                )
+                .clicked();
+            self.publish_photo_entry(photo);
         }
         let mut retry = false;
         let mut replay = false;
@@ -951,7 +1053,11 @@ impl DroneRaceDemo {
                 Color32::WHITE,
             );
         }
-        if edit_course {
+        if take_photo {
+            self.begin_photo();
+            ctx.request_repaint();
+            return;
+        } else if edit_course {
             self.begin_editor();
             ctx.request_repaint();
             return;
@@ -1132,6 +1238,22 @@ impl DroneRaceDemo {
     }
 
     #[cfg(target_arch = "wasm32")]
+    fn publish_photo_entry(&self, rect: Rect) {
+        if let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        {
+            let _ = canvas.set_attribute(
+                "data-drone-photo-open",
+                &format!("[{:.1},{:.1}]", rect.center().x, rect.center().y),
+            );
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_photo_entry(&self, _rect: Rect) {}
+
+    #[cfg(target_arch = "wasm32")]
     fn publish_editor_entry(&self, rect: Rect) {
         if let Some(canvas) = web_sys::window()
             .and_then(|w| w.document())
@@ -1195,15 +1317,24 @@ impl DroneRaceDemo {
         else {
             return;
         };
-        let (flight, cursor) = self
-            .editor
-            .as_ref()
-            .map_or((&self.flight, self.cursor), |editor| (editor.preview(), 0));
+        let (flight, cursor) = self.editor.as_ref().map_or(
+            (
+                &self.flight,
+                self.photo
+                    .as_ref()
+                    .map_or(self.cursor, |p| p.frame.min(self.flight.last_index())),
+            ),
+            |editor| (editor.preview(), 0),
+        );
         let frame = &flight.frames[cursor];
         // Accessible scene summary also permits functional browser checks of
         // real flight progress, paused replays and camera changes.
         for (key, value) in [
             ("data-drone-frame", cursor.to_string()),
+            (
+                "data-drone-photo",
+                u8::from(self.photo.is_some()).to_string(),
+            ),
             (
                 "data-drone-editor",
                 u8::from(self.editor.is_some()).to_string(),
@@ -1527,5 +1658,43 @@ mod tests {
             assert!(!demo.playing);
             assert_eq!(demo.flight.last_index(), 0);
         }
+    }
+
+    #[test]
+    fn photo_links_restore_a_real_manual_moment_without_changing_the_original_attempt() {
+        let mut demo = DroneRaceDemo::default();
+        demo.reset_course(Course::CLIMB.moved(1, [8.4, 0.2, 4.0]), true);
+        for _ in 0..6 {
+            demo.input = PilotInput::new(1, 0, 1);
+            assert!(demo.step_flight());
+        }
+        demo.cursor = 6;
+        let history = demo.flight.frames.clone();
+        let inputs = demo.flight.inputs.clone();
+        let opponent = demo.ghost.as_ref().unwrap().frames.clone();
+        demo.playing = true;
+        demo.begin_photo();
+        assert!(!demo.playing);
+        assert_eq!(demo.input, PilotInput::default());
+        let photo = demo.photo.as_mut().unwrap();
+        photo.frame = 3;
+        photo.apply_query("yaw=156.25&pitch=37.5&distance=4.125&format=portrait&caption=0");
+        let query = demo.share_query();
+        let mut restored = DroneRaceDemo::default();
+        restored.apply_share_query(&query);
+        for i in 0..8 {
+            restored.advance(i as f64 * DT);
+        }
+        assert_eq!(restored.photo.as_ref().unwrap().frame, 3);
+        assert_eq!(restored.flight.frames[3], history[3]);
+        assert_eq!(restored.share_query(), query);
+        assert!(!restored.playing);
+        demo.close_photo();
+        assert_eq!(demo.cursor, 6);
+        assert_eq!(demo.flight.frames, history);
+        assert_eq!(demo.flight.inputs, inputs);
+        assert_eq!(demo.ghost.as_ref().unwrap().frames, opponent);
+        assert!(demo.recording.is_none());
+        assert!(!demo.playing);
     }
 }

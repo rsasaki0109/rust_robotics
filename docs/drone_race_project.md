@@ -45,7 +45,7 @@ experience, three cameras, flown trail, and predicted horizon.
   New attempt hands control back to you. A receiving browser reconstructs
   the required prefix incrementally rather than blocking on a whole race.
 - Space starts/pauses/resumes, R starts a fresh manual attempt (or replays
-  Autopilot), 1/2/3 select cameras, and Escape leaves cinema view. Losing browser
+  Autopilot), 1/2/3 select cameras, P opens Photo mode, and Escape leaves cinema view. Losing browser
   focus pauses manual flight and clears held touch commands.
 
 ## Flight and rendering
@@ -110,6 +110,56 @@ calls and yields between batches. It bounds stored flight length and discards
 large background-tab time gaps instead of running a long catch-up loop. A
 single controller call still runs on the browser thread; low-power-device
 frame rates should be measured before increasing the sampling load.
+
+## Photograph a flight
+
+[Open Photo mode](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&course=climb&frame=45&photo=1&distance=3.2)
+at a real paused flight state. Press **P**, or choose **Photo mode** in the
+controls or cinema view, during any autonomous or manual flight, including
+custom courses and completed attempts.
+
+![A photograph exported by the playground](assets/drone-photo-wide.png)
+
+- Drag the photograph to orbit around the quadrotor. Scroll, or use **+ / −**
+  on a phone, to zoom. **Hero**, **Side**, and **Above** restore camera presets.
+- Choose **16:9**, **1:1**, or **4:5**. The composition adapts to the available
+  screen space. Trail, the manual opponent, and the caption can be hidden.
+- **Moment** selects an actual state from the history already generated.
+  It neither plans future flight nor changes the attempt's playback position.
+  Resume flight first if you need more history.
+- **Save PNG** downloads the photograph without the interface, playback HUD,
+  touch controls, or result dialog. The image uses the displayed composition's
+  physical pixels at the device's pixel ratio; it is not upscaled to a fixed
+  advertised resolution. A larger browser window produces a larger photograph.
+- **Share** retains the chosen moment, orbit, zoom, format, caption, course,
+  and trail/ghost visibility. Manual photos retain the recorded inputs too.
+  The receiver reconstructs the required physical prefix in bounded batches,
+  then opens the paused photograph. Photo links do not start playing.
+- **Back to flight** or Escape returns to the original playback position,
+  paused. Your recording and opponent history stay intact. Space resumes.
+  Flight keys do not move the aircraft while taking a photograph.
+
+PNG download is available in the browser build; the native playground keeps
+the camera and history viewer with its Save button disabled. All images come
+from eframe's screenshot event after rendering, cropped to the composition
+using that frame's pixel ratio. The browser encodes those RGBA pixels as PNG.
+No simulation states are inserted to make the shot. If the screenshot dimensions
+do not contain the requested crop, saving asks the user to try again.
+
+The [capture receipt](assets/drone-photo-capture.json) records each photograph's
+query, actual physical pose, dimensions, and byte count. It can be reproduced
+with the same built WASM and the checked-in capture script:
+
+```sh
+cd scripts/web_smoke
+npm install
+npx playwright install chromium
+node capture_drone_photo.mjs ../../crates/rust_robotics_playground/dist /tmp/drone-photos
+```
+
+The script uses ordinary camera gestures and Save PNG clicks. It writes
+`wide.png`, `square.png`, `portrait.png`, a screenshot of Photo mode, and
+`capture.json`. `CHROMIUM_PATH` can select an existing Chromium installation.
 
 ## Build and share a course
 

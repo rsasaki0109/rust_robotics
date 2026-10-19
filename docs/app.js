@@ -674,6 +674,12 @@ const playTiles = [
     link: "playground/?tab=drone&course=climb&edit=1"
   },
   {
+    title: "Photograph your flight",
+    text: "Freeze a flight moment, orbit the camera, and save a landscape, square, or portrait PNG. Share the same shot.",
+    image: "assets/drone-photo-wide.png",
+    link: "playground/?tab=drone&course=climb&frame=45&photo=1&distance=3.2"
+  },
+  {
     title: "Drive LiDAR SLAM",
     text: "Map a world live, close loops, navigate, explore, get kidnapped.",
     image: "assets/playground/drive.png",

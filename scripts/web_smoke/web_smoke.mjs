@@ -10,6 +10,7 @@ import { extname, join, normalize } from 'node:path';
 import { chromium } from 'playwright';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
+import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
 
 const [dist, shots] = process.argv.slice(2);
 if (!dist) {
@@ -38,10 +39,11 @@ const server = createServer(async (request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}/`;
 
-const browser = await chromium.launch({
+const launch = (scale = 1) => chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
-  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+  args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', `--force-device-scale-factor=${scale}`],
 });
+const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
@@ -65,6 +67,9 @@ const cases = [
   { name: 'drone-editor', query: 'tab=drone&course=climb&cinema=1&frame=30&playing=0', drone: 'editor' },
   { name: 'drone-editor-phone', query: 'tab=drone&course=climb&mode=manual&cinema=1&edit=1', drone: 'editor-phone', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'drone-course-invalid', query: 'tab=drone&course=custom&gates=v1.40_0_28&cinema=1&frame=600&playing=1&edit=1', drone: 'course-invalid' },
+  { name: 'drone-photo', query: 'tab=drone&course=custom&gates=v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40&cinema=1&frame=45&playing=0', drone: 'photo' },
+  { name: 'drone-photo-phone', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'photo-phone', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
+  { name: 'drone-photo-query', query: 'tab=drone&photo=1&frame=36&yaw=NaN&pitch=100&distance=0&format=bad&playing=1', drone: 'photo-query' },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },
 ];
@@ -74,9 +79,14 @@ if (shots) {
   await mkdir(shots, { recursive: true });
 }
 for (const test of cases) {
-  const context = await browser.newContext({
+  // Chromium's context-only DPR emulation leaves ResizeObserver's physical
+  // box at the host scale. Match the actual display too, as eframe uses that
+  // box to size its framebuffer. Otherwise this tests an inconsistent device.
+  const caseBrowser = test.scale > 1 ? await launch(test.scale) : browser;
+  const context = await caseBrowser.newContext({
     viewport: test.viewport ?? { width: 1280, height: 900 },
     hasTouch: Boolean(test.touch),
+    deviceScaleFactor: test.scale ?? 1,
   });
   const page = await context.newPage();
   const problems = [];
@@ -96,7 +106,13 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'editor') {
+      if (test.drone === 'photo') {
+        await checkPhotoDesktop(page, base, shots);
+      } else if (test.drone === 'photo-phone') {
+        await checkPhotoPhone(page, base, shots);
+      } else if (test.drone === 'photo-query') {
+        await checkPhotoQuery(page);
+      } else if (test.drone === 'editor') {
         await checkEditorDesktop(page, base, shots);
       } else if (test.drone === 'editor-phone') {
         await checkEditorPhone(page, base, shots);
@@ -178,6 +194,7 @@ for (const test of cases) {
   }
   failures += problems.length ? 1 : 0;
   await context.close();
+  if (caseBrowser !== browser) await caseBrowser.close();
 }
 
 await browser.close();

@@ -174,6 +174,7 @@ impl CourseEditor {
             self.preview().frames[0].state,
             0.0,
             &ViewOptions {
+                orbit: None,
                 camera: CameraMode::Course,
                 trail: false,
                 prediction: false,

@@ -44,6 +44,23 @@ impl CameraMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Orbit {
+    pub yaw: f32,
+    pub pitch: f32,
+    pub distance: f32,
+}
+
+impl Default for Orbit {
+    fn default() -> Self {
+        Self {
+            yaw: 235.0,
+            pitch: 20.0,
+            distance: 5.0,
+        }
+    }
+}
+
 struct Camera {
     eye: [f64; 3],
     right: [f64; 3],
@@ -53,6 +70,22 @@ struct Camera {
 }
 
 impl Camera {
+    fn orbit(orbit: Orbit, target: [f64; 3], rect: Rect) -> Self {
+        let yaw = f64::from(orbit.yaw).to_radians();
+        let pitch = f64::from(orbit.pitch).to_radians();
+        let direction = [
+            yaw.cos() * pitch.cos(),
+            yaw.sin() * pitch.cos(),
+            pitch.sin(),
+        ];
+        Self::new(
+            add(target, scale(direction, f64::from(orbit.distance))),
+            target,
+            [0.0, 0.0, 1.0],
+            rect,
+        )
+    }
+
     fn course_preview(flight: &Flight, rect: Rect) -> Self {
         let mut points = vec![[0.0, 0.0, 2.0]];
         for gate in &flight.lap.gates {
@@ -459,6 +492,7 @@ pub struct GhostView<'a> {
 
 pub struct ViewOptions<'a> {
     pub camera: CameraMode,
+    pub orbit: Option<Orbit>,
     pub trail: bool,
     pub prediction: bool,
     pub ghost: Option<GhostView<'a>>,
@@ -509,7 +543,9 @@ pub fn render(
     background.indices = vec![0, 1, 2, 0, 2, 3];
     painter.add(background);
     let current = &flight.frames[frame];
-    let camera = if options.edit_gate.is_some() {
+    let camera = if let Some(orbit) = options.orbit {
+        Camera::orbit(orbit, state.position, rect)
+    } else if options.edit_gate.is_some() {
         Camera::course_preview(flight, rect)
     } else {
         Camera::for_flight(options.camera, state, rect)
