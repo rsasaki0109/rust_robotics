@@ -62,6 +62,8 @@ All tabs encode their important configuration in share links:
 - MPPI: sample count, horizon, temperature λ, noise σ, moving obstacles,
   start, goal, and obstacles
 - Pushing: goal pose, pusher friction, run state, and obstacles
+- Drone Race: course, camera, replay frame, playback state, slow motion,
+  flight trail, prediction, and cinema view
 
 ## Engagement event hooks
 
@@ -84,6 +86,18 @@ configuration (see the list above).
 
 ## Tabs
 
+- **Drone Race** — a real 3-D quadrotor attitude model driven by seeded MPPI
+  through five oriented gates. Neon Slalom changes direction and altitude;
+  Sky Climb adds a taller ascent. Chase follows the drone, Pilot rotates with
+  its attitude, and Course shows the whole circuit. Pause, single-step, seek,
+  or replay in slow motion; sharing restores the same flight frame and view.
+  **Cinema view** fills the scene, with camera buttons and a way back to the
+  controls. Keyboard: Space to pause, R to replay, 1/2/3 to switch cameras,
+  Escape to leave cinema view. The cyan trail is flown history; the dotted
+  amber line is the controller's warm-start prediction. Histories are computed
+  incrementally so a shared mid-flight frame yields to the browser while it
+  loads. A ground contact or time limit is displayed separately from finishing.
+  [Design, model limits, and recording instructions](../../docs/drone_race_project.md).
 - **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.
 - **Sampling Planners** — RRT, RRT\*, Informed RRT\* (with its sampling
   ellipse), and PRM growing around circular obstacles you place; drag the

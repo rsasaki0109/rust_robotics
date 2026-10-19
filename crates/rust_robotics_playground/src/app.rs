@@ -2,6 +2,7 @@
 
 use crate::admm_formation::AdmmFormationDemo;
 use crate::controller_arena::ControllerArenaDemo;
+use crate::drone_race::DroneRaceDemo;
 use crate::engagement::Experiment;
 use crate::grid_planners::GridPlannerDemo;
 use crate::localization::LocalizationDemo;
@@ -22,6 +23,7 @@ enum PlaygroundTab {
     ControllerArena,
     Mppi,
     Pushing,
+    DroneRace,
 }
 
 pub struct PlaygroundApp {
@@ -35,6 +37,7 @@ pub struct PlaygroundApp {
     controller_arena_demo: ControllerArenaDemo,
     mppi_demo: MppiDemo,
     pushing_demo: PushingDemo,
+    drone_race_demo: DroneRaceDemo,
     share_status: Option<&'static str>,
     onboarding_step: Option<u8>,
     recent_experiments: Vec<Experiment>,
@@ -70,6 +73,8 @@ impl PlaygroundApp {
         if query.contains("tab=pushing") {
             pushing_demo.apply_share_query(&query);
         }
+        let mut drone_race_demo = DroneRaceDemo::default();
+        drone_race_demo.apply_share_query(&query);
         crate::engagement::track("playground_loaded");
         if !query.is_empty() {
             crate::engagement::track("shared_experiment_opened");
@@ -85,6 +90,7 @@ impl PlaygroundApp {
             controller_arena_demo,
             mppi_demo,
             pushing_demo,
+            drone_race_demo,
             share_status: None,
             onboarding_step: (!crate::engagement::onboarding_complete() && query.is_empty())
                 .then_some(0),
@@ -108,6 +114,7 @@ impl PlaygroundApp {
             PlaygroundTab::ControllerArena => "Controller Arena",
             PlaygroundTab::Mppi => "MPPI",
             PlaygroundTab::Pushing => "Pushing",
+            PlaygroundTab::DroneRace => "Drone Race",
         }
     }
 
@@ -122,6 +129,7 @@ impl PlaygroundApp {
             PlaygroundTab::ControllerArena => self.controller_arena_demo.share_query(),
             PlaygroundTab::Mppi => self.mppi_demo.share_query(),
             PlaygroundTab::Pushing => self.pushing_demo.share_query(),
+            PlaygroundTab::DroneRace => self.drone_race_demo.share_query(),
         }
     }
 
@@ -144,6 +152,7 @@ impl PlaygroundApp {
         if self.tab == PlaygroundTab::Pushing {
             self.pushing_demo.apply_share_query(query);
         }
+        self.drone_race_demo.apply_share_query(query);
         self.share_status = None;
     }
 
@@ -253,6 +262,9 @@ impl PlaygroundApp {
                 "See every sampled rollout as MPPI steers a robot through moving obstacles."
             }
             PlaygroundTab::Pushing => "Push a box to a goal pose with face-switching MPPI.",
+            PlaygroundTab::DroneRace => {
+                "Fly a 3D quadrotor race: five gates, three cameras, one autonomous pilot."
+            }
         }
     }
 }
@@ -269,12 +281,13 @@ impl PlaygroundTab {
             "arena" => Some(Self::ControllerArena),
             "mppi" => Some(Self::Mppi),
             "pushing" => Some(Self::Pushing),
+            "drone" => Some(Self::DroneRace),
             _ => None,
         }
     }
 }
 
-const TABS: [PlaygroundTab; 9] = [
+const TABS: [PlaygroundTab; 10] = [
     PlaygroundTab::GridPlanners,
     PlaygroundTab::Sampling,
     PlaygroundTab::Parking,
@@ -284,13 +297,14 @@ const TABS: [PlaygroundTab; 9] = [
     PlaygroundTab::ControllerArena,
     PlaygroundTab::Mppi,
     PlaygroundTab::Pushing,
+    PlaygroundTab::DroneRace,
 ];
 
 /// Below this width \[points\] the controls move below the scene (phones).
 const NARROW_WIDTH: f32 = 700.0;
 /// Below this width \[points\] the tab row no longer fits the header and
 /// becomes a drop-down.
-const TAB_ROW_WIDTH: f32 = 980.0;
+const TAB_ROW_WIDTH: f32 = 1360.0;
 
 impl PlaygroundApp {
     fn controls_ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
@@ -304,6 +318,7 @@ impl PlaygroundApp {
             PlaygroundTab::ControllerArena => self.controller_arena_demo.controls(ctx, ui),
             PlaygroundTab::Mppi => self.mppi_demo.controls(ctx, ui),
             PlaygroundTab::Pushing => self.pushing_demo.controls(ctx, ui),
+            PlaygroundTab::DroneRace => self.drone_race_demo.controls(ctx, ui),
         }
     }
 
@@ -318,6 +333,7 @@ impl PlaygroundApp {
             PlaygroundTab::ControllerArena => self.controller_arena_demo.scene(ctx, ui),
             PlaygroundTab::Mppi => self.mppi_demo.scene(ctx, ui),
             PlaygroundTab::Pushing => self.pushing_demo.scene(ctx, ui),
+            PlaygroundTab::DroneRace => self.drone_race_demo.scene(ctx, ui),
         }
     }
 
@@ -429,7 +445,11 @@ impl eframe::App for PlaygroundApp {
             )
             .show(ctx, |ui| self.header_ui(ctx, ui, narrow));
 
-        if narrow {
+        if self.tab == PlaygroundTab::DroneRace && self.drone_race_demo.cinema() {
+            egui::CentralPanel::default()
+                .frame(egui::Frame::new().fill(bar).inner_margin(0))
+                .show(ctx, |ui| self.drone_race_demo.scene(ctx, ui));
+        } else if narrow {
             // Phones: the scene first, the controls below it (scroll down).
             egui::CentralPanel::default().show(ctx, |ui| {
                 egui::ScrollArea::vertical()

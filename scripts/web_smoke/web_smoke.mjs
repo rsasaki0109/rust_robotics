@@ -54,6 +54,9 @@ const cases = [
   { name: 'mppi', query: 'tab=mppi', clickScene: true },
   { name: 'arena-course', query: 'tab=arena&course=5.0,5.0;20.0,5.0;30.0,15.0;45.0,15.0;50.0,25.0' },
   { name: 'pushing', query: 'tab=pushing' },
+  { name: 'drone', query: 'tab=drone', drone: 'live' },
+  { name: 'drone-replay', query: 'tab=drone&frame=40&playing=0&camera=pilot', drone: 'replay' },
+  { name: 'drone-phone', query: 'tab=drone&course=climb&camera=course&frame=30&playing=0', drone: 'phone', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'drive-phone', query: 'tab=slam&algorithm=drive', viewport: { width: 390, height: 844 }, touch: true },
   { name: 'grid-phone', query: 'tab=grid', viewport: { width: 390, height: 844 }, touch: true },
 ];
@@ -78,6 +81,48 @@ for (const test of cases) {
   });
   await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.drone) {
+    try {
+      const canvas = '#rust_robotics_playground';
+      await page.waitForFunction(() => {
+        const c = document.getElementById('rust_robotics_playground');
+        return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
+      }, null, { timeout: 30000 });
+      if (test.drone === 'live') {
+        await page.waitForFunction(() => document.getElementById('rust_robotics_playground')?.dataset.droneStatus === 'finished', null, { timeout: 45000 });
+        if (await page.locator(canvas).getAttribute('data-drone-gates') !== '5') {
+          problems.push('the drone did not pass all five gates');
+        }
+        // Exercise the real canvas keyboard controls and cached replay.
+        await page.mouse.click(900, 380);
+        await page.keyboard.press('r');
+        await page.waitForFunction(() => {
+          const d = document.getElementById('rust_robotics_playground')?.dataset;
+          return d?.dronePlaying === '1' && Number(d.droneFrame) < 10;
+        });
+        await page.keyboard.press('2');
+        await page.waitForFunction(() => document.getElementById('rust_robotics_playground')?.dataset.droneCamera === 'pilot');
+        await page.keyboard.press('Space');
+        await page.waitForFunction(() => document.getElementById('rust_robotics_playground')?.dataset.dronePlaying === '0');
+        const frame = await page.locator(canvas).getAttribute('data-drone-frame');
+        await page.waitForTimeout(250);
+        if (await page.locator(canvas).getAttribute('data-drone-frame') !== frame) {
+          problems.push('paused drone replay continued to advance');
+        }
+      } else {
+        const expected = test.drone === 'phone' ? '30' : '40';
+        const frame = await page.locator(canvas).getAttribute('data-drone-frame');
+        const position = await page.locator(canvas).getAttribute('data-drone-position');
+        if (frame !== expected) problems.push(`shared drone frame is ${frame}, expected ${expected}`);
+        await page.waitForTimeout(250);
+        if (await page.locator(canvas).getAttribute('data-drone-position') !== position) {
+          problems.push('shared paused drone pose changed');
+        }
+      }
+    } catch (error) {
+      problems.push(`drone functional check: ${error.message.split('\n')[0]}`);
+    }
+  }
   if (test.clickScene) {
     // Send the robot somewhere (the scene fills the right of the side
     // panel): exercises planning and the navigator.

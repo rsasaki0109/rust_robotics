@@ -22,6 +22,13 @@ extended with benchmarks, ROS2/Gazebo demos, and a visual showcase.
   <a href="https://rsasaki0109.github.io/rust_robotics/"><b>Browse the gallery</b></a>
 </p>
 
+[![3D autonomous drone race](docs/assets/playground/drone.png)](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1)
+
+**[Fly the 3D drone race](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1)**
+— an autonomous quadrotor leans through five gates. Switch between chase,
+pilot, and course cameras, replay in slow motion, or share an exact flight
+frame. [Watch the 30-second browser recording](docs/assets/drone-race.mp4).
+
 <table>
   <tr>
     <td align="center"><a href="#rapidly-exploring-random-trees-rrt"><img src="./media/gallery/rrt.gif" width="260" alt="RRT tree growth"/></a><br/><b>RRT</b></td>

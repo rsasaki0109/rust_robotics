@@ -55,6 +55,7 @@ const shots = [
   { name: 'mppi', query: 'tab=mppi', wait: 1200 },
   { name: 'pushing', query: 'tab=pushing', wait: 600 },
   { name: 'admm', query: 'tab=admm', wait: 2600 },
+  { name: 'drone', query: 'tab=drone&frame=30&playing=0&camera=chase&cinema=1', wait: 500, size: [1280, 760] },
 ];
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.wasm': 'application/wasm', '.css': 'text/css' };
@@ -83,6 +84,12 @@ for (const shot of shots.filter((s) => !only.length || only.includes(s.name))) {
   const page = await browser.newPage({ viewport: { width, height } });
   await page.goto(`${base}?${shot.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(3000);
+  if (shot.name === 'drone') {
+    await page.waitForFunction(() => {
+      const c = document.getElementById('rust_robotics_playground');
+      return c?.dataset.droneFrame === '30' && c.dataset.droneSeeking === '0';
+    }, null, { timeout: 45000 });
+  }
   if (shot.goal) {
     await page.mouse.click(...shot.goal);
   }
