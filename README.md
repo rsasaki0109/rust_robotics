@@ -35,6 +35,10 @@ or [watch the autonomous pilot](https://rsasaki0109.github.io/rust_robotics/play
 — drag gates in Top and Side views with a live 3D preview, then fly or share
 the layout. [Watch the editor-to-flight recording](docs/assets/drone-editor.mp4).
 
+**[Photograph your flight](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&course=climb&frame=45&photo=1&distance=3.2)**
+— freeze a real flight moment, orbit the camera, and save a landscape, square,
+or portrait PNG. [See an exported photograph](docs/assets/drone-photo-wide.png).
+
 <table>
   <tr>
     <td align="center"><a href="#rapidly-exploring-random-trees-rrt"><img src="./media/gallery/rrt.gif" width="260" alt="RRT tree growth"/></a><br/><b>RRT</b></td>
