@@ -375,6 +375,10 @@ changes focus. It disables Playwright's usual focus override, verifies that the
 original page really loses focus, and checks cancellation after returning.
 Linux CI runs this window under Xvfb, installed by Playwright's `--with-deps`;
 the other 33 cases remain headless. With a desktop display, omit `xvfb-run -a`.
+Chromium 141 keeps a focus-emulation capture handle per CDP session, so a new
+public CDP session cannot release the override installed by Playwright. The
+focus helper therefore uses Playwright's own session and depends on the pinned
+Playwright 1.56.1 implementation; recheck this helper when upgrading it.
 
 ## Capture the actual browser
 

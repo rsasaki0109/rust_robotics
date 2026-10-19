@@ -16,6 +16,15 @@ async function stationary(page, extra = () => true) {
   assert(extra(await droneState(page)));
 }
 
+async function focusOverride(page, enabled) {
+  // Chromium 141 keeps a capture handle per CDP session. A new public
+  // CDPSession cannot release the handle Playwright installed on its own
+  // session. Use that session in our pinned Playwright 1.56.1 instead.
+  const client = page._connection?.toImpl?.(page)?.delegate?._mainFrameSession?._client;
+  assert(client, 'Update the focus helper when upgrading pinned Playwright');
+  await client.send('Emulation.setFocusEmulationEnabled', { enabled });
+}
+
 export async function checkRaceStart(page, base, shots) {
   const initial = await droneState(page);
   await page.evaluate(() => {
@@ -101,22 +110,21 @@ export async function checkStartCancellation(page, _base, shots) {
   await start();
   // Playwright normally forces every page to appear focused. Restore normal
   // browser focus here so this exercises a genuine window/tab transition.
-  const sourceSession = await page.context().newCDPSession(page);
-  await sourceSession.send('Emulation.setFocusEmulationEnabled', { enabled: false });
+  await focusOverride(page, false);
   const other = await page.context().newPage();
-  const otherSession = await page.context().newCDPSession(other);
-  await otherSession.send('Emulation.setFocusEmulationEnabled', { enabled: false });
-  await other.bringToFront();
-  // A hidden tab may suspend painting entirely. Check cancellation on return,
-  // when the application receives the queued loss-of-focus event.
-  await page.waitForFunction(() => !document.hasFocus(), null, { timeout: 5000 });
-  assert.equal(await page.evaluate(() => document.hasFocus()), false, 'the browser did not actually move focus');
-  await otherSession.detach();
-  await other.close();
-  await page.bringToFront();
+  try {
+    await focusOverride(other, false);
+    await other.bringToFront();
+    // A hidden tab may suspend painting entirely. Check cancellation on return,
+    // when the application receives the queued loss-of-focus event.
+    await page.waitForFunction(() => !document.hasFocus(), null, { timeout: 5000 });
+    assert.equal(await page.evaluate(() => document.hasFocus()), false, 'the browser did not actually move focus');
+  } finally {
+    await other.close();
+    await page.bringToFront();
+    await focusOverride(page, true);
+  }
   await stationary(page);
-  await sourceSession.send('Emulation.setFocusEmulationEnabled', { enabled: true });
-  await sourceSession.detach();
 
   await start();
   await page.touchscreen.tap(...JSON.parse((await droneState(page)).droneMenu));
