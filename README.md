@@ -32,6 +32,8 @@ The opening guide explains keys and two-finger controls. Press H to reopen it;
 your flight pauses while you read. Phone controls adapt when you rotate the screen.
 [Watch 30 seconds of browser gameplay](docs/assets/drone-manual.mp4)
 or [watch the autonomous pilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1).
+Your fastest completed manual flight stays saved in this browser for each course.
+Choose **Replay best** to watch it, or **New attempt** to beat it.
 
 **[Build your own circuit](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&course=climb&edit=1)**
 — drag gates in Top and Side views with a live 3D preview, then fly or share

@@ -701,6 +701,9 @@ mod tests {
 
     #[test]
     fn every_planner_finds_a_collision_free_path_on_the_default_field() {
+        // Independent finite random searches do not guarantee RRT* is shorter
+        // than RRT. Check feasible completion here; the planning crate covers
+        // RRT/RRT* geometry and rewiring with fixed upstream sample fixtures.
         let demo = SamplingDemo::default();
         for kind in SamplingKind::ALL {
             // Sampling planners are random: allow one unlucky run of three.
@@ -712,19 +715,6 @@ mod tests {
                 .count();
             assert!(found >= 2, "{} found {found}/3 paths", kind.label());
         }
-    }
-
-    #[test]
-    fn rrt_star_paths_are_shorter_than_rrt_paths() {
-        let demo = SamplingDemo::default();
-        let mean = |kind| {
-            (0..4)
-                .filter_map(|_| plan(kind, &demo.obstacles, demo.start, demo.goal).length())
-                .sum::<f64>()
-                / 4.0
-        };
-        let (rrt, star) = (mean(SamplingKind::Rrt), mean(SamplingKind::RrtStar));
-        assert!(star < rrt, "RRT* {star:.1} m vs RRT {rrt:.1} m");
     }
 
     #[test]
