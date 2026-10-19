@@ -1,0 +1,51 @@
+{
+  "result_commit": "c56752dd532aa558e6fc4e716de05120f1ccf0bb",
+  "tested_tree": "7b99c0c6aecce39ebada846cf1881ce55866cebb",
+  "python_native_suite": {
+    "tests": 1389,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 54.73858697600008
+  },
+  "generated_rust_tests": 27,
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "physical_steps": 799688,
+    "estimator_decisions": 799688,
+    "native_geometry_queries": 24675,
+    "guard_uses": 20686,
+    "speed_geometry_samples": 6101,
+    "regression_cases": 72
+  },
+  "repeated_outputs": 14,
+  "all_repeated_outputs_byte_equal": true,
+  "archival_whitespace_exemptions": {
+    "candidate.diff": "Exact raw unified diff retains its required blank-context prefix.",
+    "native-tests.log": "Exact successful Rust test stdout retains its final blank line."
+  },
+  "evidence_sha256": {
+    "all-results.csv": "8531f1205af7755665f610422c966a97e354627ced98dd4b3904a4e8f51bd674",
+    "build-sources.json": "d896e7877cd9de6085aecaba3a7bc70808043483514ae3d3991e32962391a0f5",
+    "candidate.diff": "5de96ca2c2b40850a0d9864d19970e02254bc009ca2f7cb949b3e07eba2b60de",
+    "cases.csv": "3feba2361a8b4bd75b345004faeada93dbf685614ec7d18b789d59e9188b61d5",
+    "freeze-pins.json": "f5c606fc1be037c5b967df436b593b245fa8a5f7668c1d94f09c58eb8180679a",
+    "guard-preview.rs": "f483105efd64142ecc7169f9f2c039c73f790b8e829600b79d3410dc51077ed3",
+    "history-checks.csv": "c8900d8a674bb88930c08ffc222526c3d18123de162ee8110f35775ecb8c9383",
+    "native-tests.log": "ea50099475890957b962e194dff07049d3af144367e332cf11c24e5cda8edc78",
+    "pairs.csv": "3af39778ffa343fe823a3873e7e0c0eed09fe1104224d951b288e4a7f5f2d393",
+    "probe-samples.csv": "856c1be67ff74138b5bc772444354358e0b7850dd805e215a63024f0da524fe7",
+    "protocol.md": "6a8e9d7bbc1f4d8a45444e9348592cda40ac927c4eec12db54103bf860e243f4",
+    "raw-file-manifest.json": "c4fc6064753963294b22d1fc35d9e643c85754bd40fef1e57101b84874774f94",
+    "raw-provenance.json": "b9476bc0796a097bb9f80156d52694b0e32fbde56ee1cec06e7be29e926298fd",
+    "repeat-verification.json": "97d140a57bc181797b1d2170b529e76e65b48a54d9c4c8630914b94138b8efd3",
+    "report.md": "9a30f52084d580af1a8095d2655a2bfb54e733ccb88b57581d03d3acd31d6883",
+    "seed-audit.json": "37a09dc31b33b621900374a201578ed8259ea3a6572faef97d3ca70380eaa581",
+    "sources.json": "876d66dff95ff399d791e7f7fec6418249cba15f8f75a17ec2837b8f45953979",
+    "summary.csv": "8aa1579f7dcd063cbc68877a5ec1c9a5517a59cb52cabfb5e10b1e551ad3a0cb",
+    "toolchain.json": "9ccda0c08cce335913780588969412129442ee7213f273db7c25a2027dd77cdd",
+    "verification.csv": "6726836df1b5d7ed1ad50079f867ba5fd8d16aba4bfb984f7cd8713a76166eff"
+  }
+}
