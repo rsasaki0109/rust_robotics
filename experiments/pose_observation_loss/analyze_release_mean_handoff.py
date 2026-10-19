@@ -853,7 +853,9 @@ def audit(raw, output):
             and len(pairs) == pins["expected_pairs"],
             "Audited population differs",
         )
-        evaluation = native.evaluate(work, work / "history.tsv")
+        evaluation = native.evaluate(
+            work, work / "history.tsv", build.FIXTURES / "obstacles.csv"
+        )
         histories = pilot.read(work / "history-checks.csv", native.CHECK_FIELDS)
         need(
             [r["case_id"] for r in histories] == [r["case_id"] for r in cases],

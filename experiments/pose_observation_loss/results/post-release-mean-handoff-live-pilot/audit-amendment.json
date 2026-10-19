@@ -1,5 +1,5 @@
 {
-  "reason": "The provenance checker retained the predecessor generator key build_mean_guard_preview.py instead of using the current generator name. The first audit stopped during provenance validation before any case or query. Correct metadata binding and add a complete synthetic provenance/export pipeline test; no controller, runner, native evaluator, input, seed, trial or endpoint change.",
+  "reason": "The provenance checker retained the predecessor generator key build_mean_guard_preview.py instead of using the current generator name. The first audit stopped during provenance validation before any case or query. Correct metadata binding and add a complete synthetic provenance/export pipeline test; no controller, runner, native evaluator, input, seed, trial or endpoint change. The complete synthetic pipeline also exposed an early-bound default obstacle-map path. Pass the configured map explicitly to native replay, matching the Python collision auditor; the real pilot uses the same original map in both versions.",
   "original_implementation_commit": "68b29bc9fa8445f85d262ca58bcbda7dbb240ebc",
   "raw_provenance_sha256": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364",
   "raw_manifest_sha256": "68cb8e5b72ba46c406ff76cd61b4e819a262a9b4127845262e293fa04c9f0efe",
@@ -9,7 +9,7 @@
     "test_release_mean_handoff.py": "2be80cb7e3f19feaf00f300ad2dee72598ece100b393de9f4033601f360ccd83"
   },
   "corrected_script_sha256": {
-    "analyze_release_mean_handoff.py": "d12d1d1ee8ecb0e0bd69bbd0197b547a53c9540ba284450acc6a9be12a952568",
+    "analyze_release_mean_handoff.py": "af10d98d7ea8f67a323357c410d980a222b62f1bac58b9d33378fc1a11e31b4e",
     "test_release_mean_handoff.py": "adee87fcf7214d56f607eb4d8e78e90b9ae23aaa86c1817c1d5f3ec2d3692ad4"
   },
   "untouched_scripts": {
@@ -19,5 +19,6 @@
   },
   "failed_audit_retained": true,
   "raw_simulator_reexecutions": 0,
-  "policy_or_outcome_retuning": false
+  "policy_or_outcome_retuning": false,
+  "synthetic_pipeline_failure_log_sha256": "b11f52034374b9dde0b753941a779c6ab6b7e64d55b34d771574b9daaded52f0"
 }
