@@ -211,8 +211,7 @@ for (const test of cases) {
         }
       }
     } catch (error) {
-      console.log(error.stack);
-      problems.push(`drone functional check: ${error.message.split('\n')[0]}`);
+      problems.push(`drone functional check: ${error.stack ?? error.message}`);
     }
   }
   if (test.clickScene) {
@@ -232,6 +231,12 @@ for (const test of cases) {
   console.log(`${problems.length ? 'FAIL' : 'ok  '} ${test.name}`);
   for (const problem of problems) {
     console.log(`     ${problem}`);
+  }
+  if (problems.length && process.env.GITHUB_ACTIONS === 'true') {
+    // Keep the failing case and stack visible in the job's annotations,
+    // including when the viewer cannot open the authenticated log stream.
+    const detail = problems.join('\n').replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+    console.log(`::error title=Browser smoke ${test.name}::${detail}`);
   }
   failures += problems.length ? 1 : 0;
   await context.close();
