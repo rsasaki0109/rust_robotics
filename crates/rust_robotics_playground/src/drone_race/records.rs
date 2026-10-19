@@ -21,6 +21,17 @@ impl Best {
     pub fn steps(&self) -> usize {
         self.inputs.len()
     }
+
+    /// Reconstruct a bounded, complete manual flight using the real dynamics.
+    /// Reject truncated runs and commands appended after a terminal frame.
+    pub fn flight(&self) -> Option<Flight> {
+        let mut flight = Flight::manual(self.course);
+        let valid = self
+            .inputs
+            .iter()
+            .all(|&input| flight.step_with_input(input).unwrap_or(false));
+        (valid && flight.frames[flight.last_index()].status == Status::Finished).then_some(flight)
+    }
 }
 
 pub struct Improvement {
@@ -147,12 +158,9 @@ fn decode(value: &str) -> Vec<Best> {
         // A valid encoding alone is insufficient: retain only a real finish,
         // with no commands after the terminal state. Manual physics is cheap;
         // no autonomous planning is run while loading these bounded records.
-        let mut flight = Flight::manual(course);
-        let valid = inputs
-            .iter()
-            .all(|&input| flight.step_with_input(input).unwrap_or(false));
-        if valid && flight.frames[flight.last_index()].status == Status::Finished {
-            book.merge(Best { course, inputs });
+        let best = Best { course, inputs };
+        if best.flight().is_some() {
+            book.merge(best);
         }
     }
     book.entries

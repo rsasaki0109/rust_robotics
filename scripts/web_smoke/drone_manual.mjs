@@ -25,7 +25,15 @@ export async function flyManualCourse(page, onProgress = () => {}) {
       assert.equal(d.droneCourse, 'climb');
       assert.equal(d.droneReplay, '0');
       const gate = Number(d.droneGates);
-      if (gate !== lastGate) { await onProgress(d); lastGate = gate; }
+      if (gate !== lastGate) {
+        // A callback that switches browser windows can ask us to reacquire
+        // held keys after focus loss clears the application's input state.
+        if (await onProgress(d)) {
+          for (const key of held) await page.keyboard.up(key);
+          held.clear();
+        }
+        lastGate = gate;
+      }
       const position = d.dronePosition.split(',').map(Number);
       const velocity = d.droneVelocity.split(',').map(Number);
       const target = centers[gate];

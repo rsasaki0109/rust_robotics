@@ -499,9 +499,9 @@ pub struct ViewOptions<'a> {
     pub edit_gate: Option<usize>,
 }
 
-fn ghost_drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64) {
+fn ghost_drone(scene: &mut Scene<'_>, state: QuadrotorState, time: f64, color: Color32) {
     let point = |p| add(state.position, rotate(state.attitude, p));
-    let color = GHOST.gamma_multiply(0.8);
+    let color = color.gamma_multiply(0.8);
     for x in [-0.27, 0.27] {
         for y in [-0.27, 0.27] {
             scene.glow(point([0.0, 0.0, 0.0]), point([x, y, 0.02]), color, 1.5);
@@ -642,6 +642,11 @@ pub fn render(
         }
     }
     if let Some(ghost) = &options.ghost {
+        let color = if ghost.flight.is_manual() {
+            GOLD
+        } else {
+            GHOST
+        };
         let start = ghost.frame.saturating_sub(240);
         if options.trail {
             for (i, pair) in ghost.flight.frames[start..=ghost.frame]
@@ -652,12 +657,12 @@ pub fn render(
                     scene.line(
                         pair[0].state.position,
                         pair[1].state.position,
-                        Stroke::new(1.5_f32, GHOST.gamma_multiply(0.5)),
+                        Stroke::new(1.5_f32, color.gamma_multiply(0.5)),
                     );
                 }
             }
         }
-        ghost_drone(&mut scene, ghost.state, time);
+        ghost_drone(&mut scene, ghost.state, time, color);
     }
     if options.camera != CameraMode::Pilot {
         drone(&mut scene, state, time);
@@ -670,9 +675,17 @@ pub fn render(
                 painter.text(
                     pos,
                     egui::Align2::CENTER_BOTTOM,
-                    "AUTOPILOT",
+                    if ghost.flight.is_manual() {
+                        "BEST FLIGHT"
+                    } else {
+                        "AUTOPILOT"
+                    },
                     FontId::monospace(10.0),
-                    GHOST,
+                    if ghost.flight.is_manual() {
+                        GOLD
+                    } else {
+                        GHOST
+                    },
                 );
             }
         }

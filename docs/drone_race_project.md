@@ -75,10 +75,35 @@ checked by replaying manual physics on load; malformed, incomplete, or
 incompatible records are ignored. The [personal-best flight receipt](assets/drone-best-flight.json)
 contains both actual finishes and the separate visitor's replay state.
 
+### Race your best as a ghost
+
+![Two real flights compared at the same simulation time](assets/playground/drone-ghost.png)
+
+After your first finish, **New attempt** races a gold ghost of your best flight
+for that exact layout. It replays the saved commands through the same physics.
+Both aircraft use your simulation clock; pausing, replaying, and taking a photo
+keep the comparison aligned. Without a saved best, the purple autopilot is your
+rival. **Race autopilot** / **Race your best** starts a new attempt against the
+other rival; on a landscape phone, find it in **Options**.
+
+The signed time beside the gate counts compares your latest completed gate
+with the best flight's crossing of that same gate. A negative split means you
+crossed sooner. It is a checkpoint split, rather than a projected finish time.
+The rival stays fixed for the whole attempt, even if you beat the record; your
+next attempt picks up the new best.
+
+**Share** includes the rival's versioned inputs as well as your attempt, so a
+visitor without local records sees the same two flights, gate counts, and split.
+Opening the link does not add a personal best to their browser. **Retry** returns
+to their own saved best, or to the autopilot if they have none. Invalid or
+incomplete ghost recordings stop before playback and can be cleared with Retry.
+The [ghost-flight receipt](assets/drone-ghost-flight.json) records a real earned
+best, the faster attempt, and the new visitor's matching replay state.
+
 ## Use it
 
 - Neon Slalom alternates turns and altitude. Sky Climb adds a taller ascent.
-- Choose **You vs autopilot** to fly. W/S move forward/back, A/D left/right,
+- Choose **You fly** to fly. W/S move forward/back, A/D left/right,
   and E/Q climb/descend. Arrow keys also steer. Hold the screen buttons with
   one or more fingers on a phone. The clock waits for the first flight input
   or Play. Releasing requests zero velocity: the assist brakes and stabilizes
@@ -292,7 +317,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 30-case
+To verify the actual GitHub Pages project path, build and run the 32-case
 browser suite from the repository root:
 
 ```sh
@@ -315,7 +340,10 @@ Two additional cases fly real manual laps to test personal bests: a deliberately
 slower hovering lap, portrait/landscape result buttons, persistence after
 reopening, exact saved-flight replay, a faster second finish, a shared replay
 in a fresh visitor context, and blocked browser storage with session-only
-fallback. CI uses this same public-URL build and suite before publication.
+fallback. Two ghost cases cover both rival selectors, a real checkpoint split,
+paused ghost positions, a fresh visitor's matching two-flight replay, photo
+mode, fixed rivals across record updates, and rejection of an incomplete ghost.
+CI uses this same public-URL build and suite before publication.
 
 ## Capture the actual browser
 

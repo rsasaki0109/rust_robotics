@@ -15,6 +15,7 @@ import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
 import { openFromShowcase, checkFlightV1, checkPhoneV1 } from './drone_v1.mjs';
 import { checkPersonalBest, checkSessionBest } from './drone_records.mjs';
+import { checkBestGhost } from './drone_ghost.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -70,6 +71,8 @@ const browser = await launch();
 
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const cases = [
+  { name: 'drone-best-ghost', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'best-ghost', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
+  { name: 'drone-best-ghost-invalid', query: 'tab=drone&course=climb&mode=manual&cinema=1&rival=best&best_inputs=v1.n&frame=600&playing=1', drone: 'invalid' },
   { name: 'drone-records', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
   { name: 'drone-records-session', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'records-session', viewport: { width: 390, height: 844 }, touch: true, storageBlocked: true },
   { name: 'drone-v1', home: true, drone: 'v1' },
@@ -138,7 +141,9 @@ for (const test of cases) {
         const c = document.getElementById('rust_robotics_playground');
         return c?.dataset.droneFrame !== undefined && c.dataset.droneSeeking === '0';
       }, null, { timeout: 30000 });
-      if (test.drone === 'records') {
+      if (test.drone === 'best-ghost') {
+        await checkBestGhost(page, base, shots);
+      } else if (test.drone === 'records') {
         await checkPersonalBest(page, base, shots);
       } else if (test.drone === 'records-session') {
         await checkSessionBest(page, base, shots);

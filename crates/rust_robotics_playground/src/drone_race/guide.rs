@@ -75,7 +75,11 @@ pub fn show(
             for (title, text, color) in [
                 ("01 / STEER", "W / S: forward / back\nA / D: left / right · E / Q: climb / descend", CYAN),
                 ("02 / ON A PHONE", "Hold the flight buttons. Use two fingers to move forward and climb together. Release to brake.", CYAN),
-                ("03 / FOLLOW THE GATES", "The gold gate is next. The purple drone is the autopilot at your flight time. You can pass through it.", GHOST),
+                ("03 / FOLLOW THE GATES", if ghost.is_some_and(|g| g.is_manual()) {
+                    "The gold gate is next. The gold ghost replays the best flight for this course. Negative gate splits mean you crossed sooner. You can pass through the ghost."
+                } else {
+                    "The gold gate is next. The purple drone is the autopilot at your flight time. Finish once to race your best as a gold ghost next time. You can pass through it."
+                }, if ghost.is_some_and(|g| g.is_manual()) { GOLD } else { GHOST }),
             ] {
                 ui.label(RichText::new(title).color(color).strong().size(11.0));
                 ui.label(text);
