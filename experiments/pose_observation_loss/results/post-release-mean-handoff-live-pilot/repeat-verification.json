@@ -1,0 +1,74 @@
+{
+  "method": "Two complete fresh audits of the same frozen raw packet, with byte-for-byte comparison of all tables, native histories/queries/traces/source/binary/logs and provenance.",
+  "all_equal": true,
+  "files": 16,
+  "raw_provenance_sha256": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364",
+  "implementation_commit": "68b29bc9fa8445f85d262ca58bcbda7dbb240ebc",
+  "analysis_commit": "39955d2be811c6ffbab4ca1152d21d6fefcd3bb4",
+  "sha256": {
+    "cases.csv": {
+      "bytes": 26383,
+      "sha256": "e6121622b1e841025d9c6e4fa089e4246c6001c77e290e7d7f16432ee003db6e"
+    },
+    "history-checks.csv": {
+      "bytes": 7757,
+      "sha256": "9bdd6afb358c049b8cc1dbc68117ff40b0474dcbe831e2ae7b44fcc4518d3181"
+    },
+    "native-queries.csv": {
+      "bytes": 13851962,
+      "sha256": "4ba79878af8dde3fc06962d17509f78db21f2765a73f81c292194d6ee8a3f578"
+    },
+    "native/compiler.log": {
+      "bytes": 990,
+      "sha256": "1d9a46ba6b6e1c252a3e743d1ac9f3da08ab49dfb93edc8934d654bbd2ec10d8"
+    },
+    "native/handoff-history.rs": {
+      "bytes": 27840,
+      "sha256": "9bdef221fd426aea0fca62bf1b2c87fdca689326a731aabc605dd144a1e5e285"
+    },
+    "native/history-checks.csv": {
+      "bytes": 7757,
+      "sha256": "9bdd6afb358c049b8cc1dbc68117ff40b0474dcbe831e2ae7b44fcc4518d3181"
+    },
+    "native/history.tsv": {
+      "bytes": 686173152,
+      "sha256": "0f9462c945aa0cd502adeacf708e1d242eb452592b3ff514ba330ed7b21c0141"
+    },
+    "native/native-handoff-history": {
+      "bytes": 4727960,
+      "sha256": "714deb630558df20b2d01317892729dfaed4592954a0421ff6807ba14ef4070a"
+    },
+    "native/native.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native/trace.csv": {
+      "bytes": 13851962,
+      "sha256": "4ba79878af8dde3fc06962d17509f78db21f2765a73f81c292194d6ee8a3f578"
+    },
+    "pairs.csv": {
+      "bytes": 14868,
+      "sha256": "3a2a290e614b1c9769729f75849e3c5e7e9d0144746a00a64f37485b0adf3805"
+    },
+    "probe-samples.csv": {
+      "bytes": 384922,
+      "sha256": "836fcfe1adb13bb8d58a4f74717ca0b4d86b310c2a96fc2e758741d6b5fdb93d"
+    },
+    "release-followups.csv": {
+      "bytes": 53243,
+      "sha256": "ae1a158a421cb7da33c83843d71170d792087a07b36e1744e8c2a9b73f0f1c92"
+    },
+    "sources.json": {
+      "bytes": 29607,
+      "sha256": "faea307e07b78ad338f2f0f794e8c7321af44ff4eb4ccaee55970d30248ab62d"
+    },
+    "summary.csv": {
+      "bytes": 4068,
+      "sha256": "5482c0b60d71be359781703e8fceb0abbd414515f59e753cdc967e49cdbf3a88"
+    },
+    "verification.csv": {
+      "bytes": 19995,
+      "sha256": "9993c82607314c3223bb6c0b6f5de9af8fbea34986c69891f9f9c6271d2b2511"
+    }
+  }
+}

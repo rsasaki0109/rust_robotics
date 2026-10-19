@@ -1,0 +1,14 @@
+{
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)",
+  "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)",
+  "libraries": {
+    "rust_robotics_control": {
+      "filename": "librust_robotics_control-170cc6299b5dc91b.rlib",
+      "sha256": "110647baad60b1189c09390311cd684ff56e7fc0f9a36e3d377ceb64b1ca7c24"
+    },
+    "rust_robotics_core": {
+      "filename": "librust_robotics_core-e39589db0ff98370.rlib",
+      "sha256": "73193543f0d2b0bc32ed4d6b46729283510e09da1fc6d32a13a466329d30936c"
+    }
+  }
+}
