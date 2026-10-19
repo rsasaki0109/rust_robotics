@@ -1,0 +1,55 @@
+{
+  "implementation_commit": "8989e59faa028abab0c81edb99f20165d2cbf5b9",
+  "python_native_suite": {
+    "tests": 1420,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 57.10929314899931
+  },
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "retained_census_rows": 799688,
+    "joint_resumes": 137,
+    "following_decisions": 137,
+    "packet_endpoints": 0,
+    "native_inputs": 274,
+    "native_queries": 548,
+    "recorded_geometry_matches": 274,
+    "fresh_simulator_steps": 0
+  },
+  "conservation": {
+    "case_bindings": 108,
+    "pairs": 54,
+    "transition_records": 137,
+    "variant_queries": 548,
+    "retained_census_rows": 799688,
+    "recorded_geometry_matches": 274,
+    "summary_cells": 72,
+    "both_flip_directions": true,
+    "fixed_variant_inputs": true,
+    "all_case_and_summary_counts_conserved": true,
+    "all_pairs_bound": true,
+    "no_loss_controls": true
+  },
+  "frozen_inputs": 148,
+  "all_existing_files_unchanged": true,
+  "repeated_files": 13,
+  "all_repeated_files_byte_equal": true,
+  "evidence_sha256": {
+    "cases.csv": "492a5da20d14644d3a1cc8b5437fe446f336bf1e1cd2aa224c1d6e28f02a008f",
+    "freeze-pins.json": "c107b4a00d8e3517937b03121657a8e33fab44870d46d4404dce0ff10afe5930",
+    "pairs.csv": "2675c04b3ef90a8338f4d2616ea8ab66629a79f36ada8724bfbcbe6bf4f45887",
+    "post-release-transition.rs": "bbb1905b1e6b96a4ae4cd0d70f09d41b86539bf75056c999a28c5ba789e64fa1",
+    "protocol.md": "351fc169de3a22a4f60e2dcd2c51909df8380de015fa334e715094e975344e97",
+    "queries.csv": "2e30499dbffc2956dc4ebe3d10b9f568c5675b4dc67946787221db5db2dfa547",
+    "repeat-verification.json": "e24239996d5ea1a2e42b5eabdd100c4421a8508b22ae6211b42d35a1d2dd926f",
+    "report.md": "af631facb759c1f958656babdbf7825e71ac50e9bf04f8ec4bdcab2b08dc9273",
+    "sources.json": "7d394cf36d1aeb0712b3773f28a5d6672052fb4f0d6ee18d1a6683b26400fec9",
+    "summary.csv": "1797131454bd7d6fc6d202f5b09bd128efc4203c24c7cb25d39a945eb2f7e7d8",
+    "transitions.csv": "fa806b6fee0f9db1cac42a9682108506d124ff0ee17797ef6460f6772557b851",
+    "verification.csv": "ac7b958b8362e45a7e8970eb529d9b5a8ef343850a409d9e766e1f0b23f130ca"
+  }
+}
