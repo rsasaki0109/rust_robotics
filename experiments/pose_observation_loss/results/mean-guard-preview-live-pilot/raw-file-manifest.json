@@ -1,0 +1,451 @@
+{
+  "raw_provenance_sha256": "b9476bc0796a097bb9f80156d52694b0e32fbde56ee1cec06e7be29e926298fd",
+  "files": 111,
+  "bytes": 2150590639,
+  "sha256": {
+    "all-results.csv": {
+      "bytes": 23751,
+      "sha256": "8531f1205af7755665f610422c966a97e354627ced98dd4b3904a4e8f51bd674"
+    },
+    "build/build-sources.json": {
+      "bytes": 18876,
+      "sha256": "d896e7877cd9de6085aecaba3a7bc70808043483514ae3d3991e32962391a0f5"
+    },
+    "build/candidate.diff": {
+      "bytes": 12926,
+      "sha256": "5de96ca2c2b40850a0d9864d19970e02254bc009ca2f7cb949b3e07eba2b60de"
+    },
+    "build/legacy/build-sources.json": {
+      "bytes": 5267,
+      "sha256": "fb0b0f9a9c0846516e0950be60aa928b542feb3d76f5387eb977be53839aea2b"
+    },
+    "build/legacy/candidate.diff": {
+      "bytes": 8722,
+      "sha256": "e30ed048f964fe55b191cb6f9a6b1b91062288db1279360436faa04ab24b35e9"
+    },
+    "build/legacy/cargo-artifacts.jsonl": {
+      "bytes": 15643,
+      "sha256": "857fe2c610ab85f81e113f17c650ab734858dad516036e0a6f93907fd64bf9e1"
+    },
+    "build/legacy/cargo.log": {
+      "bytes": 62,
+      "sha256": "765f1396d07f30f3a451cd3f9d9cad4e83c92c8e0aecf955ffc09061a6cf1e02"
+    },
+    "build/legacy/mean-speed-probe": {
+      "bytes": 4783352,
+      "sha256": "2a738ca093d3a11431e37dbffbc40f708da0b83e5635977524a32ea03b8bfee4"
+    },
+    "build/legacy/mean-speed-probe.rs": {
+      "bytes": 69249,
+      "sha256": "b3fd243bc9b70981cec5b2d8682bbafcb45d8920e1a421fe45e4747f5c5f86c3"
+    },
+    "build/legacy/native-tests": {
+      "bytes": 7299648,
+      "sha256": "f156b2a0c2615ddadb703558767ffe7cb0db5b79c3c58ad1d3f54970ad4347ca"
+    },
+    "build/legacy/native-tests.log": {
+      "bytes": 2148,
+      "sha256": "86ffa96ec576b6529db8ff64740102a1137a6867e8186ebccff44e9a2972dfde"
+    },
+    "build/legacy/rustc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build/mean-guard-preview": {
+      "bytes": 4785568,
+      "sha256": "b55c476bbc4b7ac3960f57b9bfa6c85ac2f21c0aebf169e2852e2231a7523aed"
+    },
+    "build/mean-guard-preview.rs": {
+      "bytes": 73052,
+      "sha256": "3a47319038c346dcdd629c28f6d84d7c0b3c1c95fe728921c17f9058318c02ac"
+    },
+    "build/native-tests": {
+      "bytes": 7313424,
+      "sha256": "4417c31741648e5304361d8c4ac9e0e1fb12b087ec280cfea38886f1fa7ed47a"
+    },
+    "build/native-tests.log": {
+      "bytes": 2433,
+      "sha256": "ea50099475890957b962e194dff07049d3af144367e332cf11c24e5cda8edc78"
+    },
+    "build/original/pose_observation_loss": {
+      "bytes": 648448,
+      "sha256": "3cf64cd3c2e68ca901d209c881c6586ce0c3b36d3e50b751808eefa98994b1fe"
+    },
+    "build/rustc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "provenance.json": {
+      "bytes": 46668,
+      "sha256": "b9476bc0796a097bb9f80156d52694b0e32fbde56ee1cec06e7be29e926298fd"
+    },
+    "regression/legacy-tau0-blackout/results.csv": {
+      "bytes": 2020,
+      "sha256": "40c8a53abf9fe7ced6f20aebfa26f598a9a97e8f306ee1edf81f188e5b6dbae6"
+    },
+    "regression/legacy-tau0-blackout/simulation.log": {
+      "bytes": 821,
+      "sha256": "24a0df1bd52a3a503978fd2271803dccc510f00b7c24c83284cfaea182070972"
+    },
+    "regression/legacy-tau0-blackout/speed-probes.csv": {
+      "bytes": 43417196,
+      "sha256": "ea4d32fc554a054ae73ab3b27cb9985a6a81b0d8249b5c60cfb99b53be69a2c6"
+    },
+    "regression/legacy-tau0-blackout/trajectories.csv": {
+      "bytes": 57815632,
+      "sha256": "1c3d5b4b6ce50a613b8fe253f582f4181d8fbecfb4aaef6c334c77de78e6ed88"
+    },
+    "regression/legacy-tau0-none/results.csv": {
+      "bytes": 2004,
+      "sha256": "3038527e44ca848b02fd09ff2006d7cb03dec7b739c5fa2a1a62bbf73c4c4a30"
+    },
+    "regression/legacy-tau0-none/simulation.log": {
+      "bytes": 818,
+      "sha256": "1be97c214ace93dccd41252259b62eb628a241a59a3a306a1de7e5a2d5c99558"
+    },
+    "regression/legacy-tau0-none/speed-probes.csv": {
+      "bytes": 39456992,
+      "sha256": "a50ad12ada9fdfd36183c43801e66769a29fbe5da56437bf7424c3c2b41b074a"
+    },
+    "regression/legacy-tau0-none/trajectories.csv": {
+      "bytes": 52436323,
+      "sha256": "732a3206d3b505cb674e92bec2c72198b5a0e07308138308691f6bf4cbd4f9d2"
+    },
+    "regression/legacy-tau0-random/results.csv": {
+      "bytes": 2029,
+      "sha256": "3027772f2e4e1f8ba72a752376da25fbfadf47caae9d909ba6786dd2cca85ff2"
+    },
+    "regression/legacy-tau0-random/simulation.log": {
+      "bytes": 825,
+      "sha256": "6406c0cf6360ce079501092dcf4882f1c386706d4167f612a7fad886e33db000"
+    },
+    "regression/legacy-tau0-random/speed-probes.csv": {
+      "bytes": 44747820,
+      "sha256": "e969391dace9123bbf4811157af9f463da11c4ba06c2b73ed6db0cab6cfb6a02"
+    },
+    "regression/legacy-tau0-random/trajectories.csv": {
+      "bytes": 59460204,
+      "sha256": "d0c9a6ff322153b7253003e9261f8975c2e93bbe845277a441e43fe520c2956e"
+    },
+    "regression/legacy-tau1-blackout/results.csv": {
+      "bytes": 2020,
+      "sha256": "5e480bb230488fb4e3b5975fea12989771ed8bc96b6d4b0767297e232e471c2b"
+    },
+    "regression/legacy-tau1-blackout/simulation.log": {
+      "bytes": 817,
+      "sha256": "838686fd3c887288b6b7f42ca1bf3bea3af9c35ae16d2a11b8b2f28cce555a80"
+    },
+    "regression/legacy-tau1-blackout/speed-probes.csv": {
+      "bytes": 41760039,
+      "sha256": "ee1e18dbab36f280e6c582742861cff42409ceff117df0313ed92d16cb1382ed"
+    },
+    "regression/legacy-tau1-blackout/trajectories.csv": {
+      "bytes": 55455757,
+      "sha256": "b4e0f838c3b8f57e316769a5baf20a9c609fbe672f571b49fef22baf52ac32e0"
+    },
+    "regression/legacy-tau1-none/results.csv": {
+      "bytes": 2000,
+      "sha256": "842e380419bbb7469a2769ee6877e365a5f3b705d4bc0955330777b2cbb700ee"
+    },
+    "regression/legacy-tau1-none/simulation.log": {
+      "bytes": 814,
+      "sha256": "f98c2ab3f0a223d731a6c0b6c5567f86695b1499fd84b10083cb39a597dab7c5"
+    },
+    "regression/legacy-tau1-none/speed-probes.csv": {
+      "bytes": 36544520,
+      "sha256": "ce9e9cffd037fab90b8e43e2d295c755aa6d7182c33a3640ca9b11854413b1cc"
+    },
+    "regression/legacy-tau1-none/trajectories.csv": {
+      "bytes": 48492702,
+      "sha256": "d0e687425194aa57b67d2f0ffb6f21218af983b6d276254df76382b3679cc920"
+    },
+    "regression/legacy-tau1-random/results.csv": {
+      "bytes": 2020,
+      "sha256": "4f206ffbb1999fdaece916558760847c06cb857cf0d97c56a6ad4c755721e634"
+    },
+    "regression/legacy-tau1-random/simulation.log": {
+      "bytes": 817,
+      "sha256": "0d89400b233514d5689de94fd5112659c9d97862d081725bd4e6b5bdd6544b78"
+    },
+    "regression/legacy-tau1-random/speed-probes.csv": {
+      "bytes": 42654224,
+      "sha256": "df93b040df33dec219eaade4d1a0e221269bb26d1ff1766fc4016b7b3cf7beb8"
+    },
+    "regression/legacy-tau1-random/trajectories.csv": {
+      "bytes": 56687743,
+      "sha256": "b51eeb112e256c3789b619ad508a07de154a424c9bbbd5b6fe57d2dc87ab205e"
+    },
+    "regression/omitted/guard-preview-inputs.csv": {
+      "bytes": 18052937,
+      "sha256": "b7404bfa8d16f9051bcf5a9c1b31e54e0df5971e54b6b3360ed845e27a67f862"
+    },
+    "regression/omitted/results.csv": {
+      "bytes": 2004,
+      "sha256": "3038527e44ca848b02fd09ff2006d7cb03dec7b739c5fa2a1a62bbf73c4c4a30"
+    },
+    "regression/omitted/simulation.log": {
+      "bytes": 818,
+      "sha256": "1be97c214ace93dccd41252259b62eb628a241a59a3a306a1de7e5a2d5c99558"
+    },
+    "regression/omitted/speed-probes.csv": {
+      "bytes": 39456992,
+      "sha256": "a50ad12ada9fdfd36183c43801e66769a29fbe5da56437bf7424c3c2b41b074a"
+    },
+    "regression/omitted/trajectories.csv": {
+      "bytes": 52436323,
+      "sha256": "732a3206d3b505cb674e92bec2c72198b5a0e07308138308691f6bf4cbd4f9d2"
+    },
+    "regression/original/results.csv": {
+      "bytes": 2004,
+      "sha256": "3038527e44ca848b02fd09ff2006d7cb03dec7b739c5fa2a1a62bbf73c4c4a30"
+    },
+    "regression/original/simulation.log": {
+      "bytes": 818,
+      "sha256": "1be97c214ace93dccd41252259b62eb628a241a59a3a306a1de7e5a2d5c99558"
+    },
+    "regression/original/trajectories.csv": {
+      "bytes": 52436323,
+      "sha256": "732a3206d3b505cb674e92bec2c72198b5a0e07308138308691f6bf4cbd4f9d2"
+    },
+    "tau0/fused_preview-blackout-1002/guard-preview-inputs.csv": {
+      "bytes": 19867015,
+      "sha256": "ee86bb196eee36d0ca3e083fcfa7cb55fc2ac8aa661878eab875480eeaa173c0"
+    },
+    "tau0/fused_preview-blackout-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "40c8a53abf9fe7ced6f20aebfa26f598a9a97e8f306ee1edf81f188e5b6dbae6"
+    },
+    "tau0/fused_preview-blackout-1002/simulation.log": {
+      "bytes": 821,
+      "sha256": "24a0df1bd52a3a503978fd2271803dccc510f00b7c24c83284cfaea182070972"
+    },
+    "tau0/fused_preview-blackout-1002/speed-probes.csv": {
+      "bytes": 43417196,
+      "sha256": "ea4d32fc554a054ae73ab3b27cb9985a6a81b0d8249b5c60cfb99b53be69a2c6"
+    },
+    "tau0/fused_preview-blackout-1002/trajectories.csv": {
+      "bytes": 57815632,
+      "sha256": "1c3d5b4b6ce50a613b8fe253f582f4181d8fbecfb4aaef6c334c77de78e6ed88"
+    },
+    "tau0/fused_preview-none-1002/guard-preview-inputs.csv": {
+      "bytes": 18052937,
+      "sha256": "b7404bfa8d16f9051bcf5a9c1b31e54e0df5971e54b6b3360ed845e27a67f862"
+    },
+    "tau0/fused_preview-none-1002/results.csv": {
+      "bytes": 2004,
+      "sha256": "3038527e44ca848b02fd09ff2006d7cb03dec7b739c5fa2a1a62bbf73c4c4a30"
+    },
+    "tau0/fused_preview-none-1002/simulation.log": {
+      "bytes": 818,
+      "sha256": "1be97c214ace93dccd41252259b62eb628a241a59a3a306a1de7e5a2d5c99558"
+    },
+    "tau0/fused_preview-none-1002/speed-probes.csv": {
+      "bytes": 39456992,
+      "sha256": "a50ad12ada9fdfd36183c43801e66769a29fbe5da56437bf7424c3c2b41b074a"
+    },
+    "tau0/fused_preview-none-1002/trajectories.csv": {
+      "bytes": 52436323,
+      "sha256": "732a3206d3b505cb674e92bec2c72198b5a0e07308138308691f6bf4cbd4f9d2"
+    },
+    "tau0/fused_preview-random-1002/guard-preview-inputs.csv": {
+      "bytes": 20442378,
+      "sha256": "b5e8bedb9d35b0eb05ff129a6138fec1f180b29d886ad8ebd111aa6d616da58a"
+    },
+    "tau0/fused_preview-random-1002/results.csv": {
+      "bytes": 2029,
+      "sha256": "3027772f2e4e1f8ba72a752376da25fbfadf47caae9d909ba6786dd2cca85ff2"
+    },
+    "tau0/fused_preview-random-1002/simulation.log": {
+      "bytes": 825,
+      "sha256": "6406c0cf6360ce079501092dcf4882f1c386706d4167f612a7fad886e33db000"
+    },
+    "tau0/fused_preview-random-1002/speed-probes.csv": {
+      "bytes": 44747820,
+      "sha256": "e969391dace9123bbf4811157af9f463da11c4ba06c2b73ed6db0cab6cfb6a02"
+    },
+    "tau0/fused_preview-random-1002/trajectories.csv": {
+      "bytes": 59460204,
+      "sha256": "d0c9a6ff322153b7253003e9261f8975c2e93bbe845277a441e43fe520c2956e"
+    },
+    "tau0/mean_preview-blackout-1002/guard-preview-inputs.csv": {
+      "bytes": 19795151,
+      "sha256": "4ab5fcb3d4a1a6da4b546c7122809ba59930f517a20db059ca1ff36fd0cd447a"
+    },
+    "tau0/mean_preview-blackout-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "40c8a53abf9fe7ced6f20aebfa26f598a9a97e8f306ee1edf81f188e5b6dbae6"
+    },
+    "tau0/mean_preview-blackout-1002/simulation.log": {
+      "bytes": 821,
+      "sha256": "24a0df1bd52a3a503978fd2271803dccc510f00b7c24c83284cfaea182070972"
+    },
+    "tau0/mean_preview-blackout-1002/speed-probes.csv": {
+      "bytes": 43417196,
+      "sha256": "ea4d32fc554a054ae73ab3b27cb9985a6a81b0d8249b5c60cfb99b53be69a2c6"
+    },
+    "tau0/mean_preview-blackout-1002/trajectories.csv": {
+      "bytes": 57815632,
+      "sha256": "e65992ebe2f825a527aaf63b3016f2b4339d90d2db1c92fde578df20250c6782"
+    },
+    "tau0/mean_preview-none-1002/guard-preview-inputs.csv": {
+      "bytes": 17989371,
+      "sha256": "7408a48a73dc8028be76326a4e653cf2baa438d996f770c9a618e7fcfe166694"
+    },
+    "tau0/mean_preview-none-1002/results.csv": {
+      "bytes": 2004,
+      "sha256": "3038527e44ca848b02fd09ff2006d7cb03dec7b739c5fa2a1a62bbf73c4c4a30"
+    },
+    "tau0/mean_preview-none-1002/simulation.log": {
+      "bytes": 818,
+      "sha256": "1be97c214ace93dccd41252259b62eb628a241a59a3a306a1de7e5a2d5c99558"
+    },
+    "tau0/mean_preview-none-1002/speed-probes.csv": {
+      "bytes": 39456992,
+      "sha256": "a50ad12ada9fdfd36183c43801e66769a29fbe5da56437bf7424c3c2b41b074a"
+    },
+    "tau0/mean_preview-none-1002/trajectories.csv": {
+      "bytes": 52436323,
+      "sha256": "732a3206d3b505cb674e92bec2c72198b5a0e07308138308691f6bf4cbd4f9d2"
+    },
+    "tau0/mean_preview-random-1002/guard-preview-inputs.csv": {
+      "bytes": 20359655,
+      "sha256": "4680e60866905e11b49486e2230df8d390b09813e9148c058c82a5277808071e"
+    },
+    "tau0/mean_preview-random-1002/results.csv": {
+      "bytes": 2027,
+      "sha256": "3ace0359018d476c5e24f61d7a85512b736566d6afda1fd7b6f18c7bb4e84a30"
+    },
+    "tau0/mean_preview-random-1002/simulation.log": {
+      "bytes": 825,
+      "sha256": "c0ae501e7780e091a233877a62f7eaf9ac179abd68afad28ce7a070c45b94255"
+    },
+    "tau0/mean_preview-random-1002/speed-probes.csv": {
+      "bytes": 44722221,
+      "sha256": "9889f987742028c6da79023964e34dd88cc53224203af824b563d566205421fc"
+    },
+    "tau0/mean_preview-random-1002/trajectories.csv": {
+      "bytes": 59469775,
+      "sha256": "0e3466423e80a5ab65ec2b9186ee9c7f85f080ca6c85fc4f0ae38a9ee0e2cceb"
+    },
+    "tau1/fused_preview-blackout-1002/guard-preview-inputs.csv": {
+      "bytes": 19110770,
+      "sha256": "5dcdb5fb48aeaa98ccb8d67328470db04f223345867a4172db3a103869c3daca"
+    },
+    "tau1/fused_preview-blackout-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "5e480bb230488fb4e3b5975fea12989771ed8bc96b6d4b0767297e232e471c2b"
+    },
+    "tau1/fused_preview-blackout-1002/simulation.log": {
+      "bytes": 817,
+      "sha256": "838686fd3c887288b6b7f42ca1bf3bea3af9c35ae16d2a11b8b2f28cce555a80"
+    },
+    "tau1/fused_preview-blackout-1002/speed-probes.csv": {
+      "bytes": 41760039,
+      "sha256": "ee1e18dbab36f280e6c582742861cff42409ceff117df0313ed92d16cb1382ed"
+    },
+    "tau1/fused_preview-blackout-1002/trajectories.csv": {
+      "bytes": 55455757,
+      "sha256": "b4e0f838c3b8f57e316769a5baf20a9c609fbe672f571b49fef22baf52ac32e0"
+    },
+    "tau1/fused_preview-none-1002/guard-preview-inputs.csv": {
+      "bytes": 16709567,
+      "sha256": "5f1a9bf7f112eec3572f9cc1174e40ee98be2ecd9b65e229ddb5f9fe305c048d"
+    },
+    "tau1/fused_preview-none-1002/results.csv": {
+      "bytes": 2000,
+      "sha256": "842e380419bbb7469a2769ee6877e365a5f3b705d4bc0955330777b2cbb700ee"
+    },
+    "tau1/fused_preview-none-1002/simulation.log": {
+      "bytes": 814,
+      "sha256": "f98c2ab3f0a223d731a6c0b6c5567f86695b1499fd84b10083cb39a597dab7c5"
+    },
+    "tau1/fused_preview-none-1002/speed-probes.csv": {
+      "bytes": 36544520,
+      "sha256": "ce9e9cffd037fab90b8e43e2d295c755aa6d7182c33a3640ca9b11854413b1cc"
+    },
+    "tau1/fused_preview-none-1002/trajectories.csv": {
+      "bytes": 48492702,
+      "sha256": "d0e687425194aa57b67d2f0ffb6f21218af983b6d276254df76382b3679cc920"
+    },
+    "tau1/fused_preview-random-1002/guard-preview-inputs.csv": {
+      "bytes": 19502288,
+      "sha256": "1218992846ced6f6285aac6b5000b72cd522e731b916cfc3202a9dbaf54605f2"
+    },
+    "tau1/fused_preview-random-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "4f206ffbb1999fdaece916558760847c06cb857cf0d97c56a6ad4c755721e634"
+    },
+    "tau1/fused_preview-random-1002/simulation.log": {
+      "bytes": 817,
+      "sha256": "0d89400b233514d5689de94fd5112659c9d97862d081725bd4e6b5bdd6544b78"
+    },
+    "tau1/fused_preview-random-1002/speed-probes.csv": {
+      "bytes": 42654224,
+      "sha256": "df93b040df33dec219eaade4d1a0e221269bb26d1ff1766fc4016b7b3cf7beb8"
+    },
+    "tau1/fused_preview-random-1002/trajectories.csv": {
+      "bytes": 56687743,
+      "sha256": "b51eeb112e256c3789b619ad508a07de154a424c9bbbd5b6fe57d2dc87ab205e"
+    },
+    "tau1/mean_preview-blackout-1002/guard-preview-inputs.csv": {
+      "bytes": 19132522,
+      "sha256": "2bdb448225eca41a1d3d3bd17bf1c84f40eac025271c7dc8e5b7f123ba55bb00"
+    },
+    "tau1/mean_preview-blackout-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "d659fe72997ebe6ae20a9fbe9cfd081611b44986e41cf25184ad1ef3c6e7843c"
+    },
+    "tau1/mean_preview-blackout-1002/simulation.log": {
+      "bytes": 817,
+      "sha256": "57eccfce6f409649bcc18a5f1ae5fa67a72523817bb928878dcdf503f07c0f06"
+    },
+    "tau1/mean_preview-blackout-1002/speed-probes.csv": {
+      "bytes": 41967382,
+      "sha256": "eab3855add2c73f47045aaf926270aaee38025f2bacefd0db0f740a18199b934"
+    },
+    "tau1/mean_preview-blackout-1002/trajectories.csv": {
+      "bytes": 55742137,
+      "sha256": "c7150656380a29622ed33d6804868f4de6d51203ed5d449486d8e7b0a10a07fd"
+    },
+    "tau1/mean_preview-none-1002/guard-preview-inputs.csv": {
+      "bytes": 16650863,
+      "sha256": "cdcdf3fc21b0f5335e03729a2603f48794fdb1b97c38ca940f2dc2524e31ff7d"
+    },
+    "tau1/mean_preview-none-1002/results.csv": {
+      "bytes": 2000,
+      "sha256": "842e380419bbb7469a2769ee6877e365a5f3b705d4bc0955330777b2cbb700ee"
+    },
+    "tau1/mean_preview-none-1002/simulation.log": {
+      "bytes": 814,
+      "sha256": "f98c2ab3f0a223d731a6c0b6c5567f86695b1499fd84b10083cb39a597dab7c5"
+    },
+    "tau1/mean_preview-none-1002/speed-probes.csv": {
+      "bytes": 36544520,
+      "sha256": "ce9e9cffd037fab90b8e43e2d295c755aa6d7182c33a3640ca9b11854413b1cc"
+    },
+    "tau1/mean_preview-none-1002/trajectories.csv": {
+      "bytes": 48492702,
+      "sha256": "d0e687425194aa57b67d2f0ffb6f21218af983b6d276254df76382b3679cc920"
+    },
+    "tau1/mean_preview-random-1002/guard-preview-inputs.csv": {
+      "bytes": 19219601,
+      "sha256": "307fd132a815d6113f882ecd8d84bc014410a7e1b7ce607b37bc6c99e34a8ba1"
+    },
+    "tau1/mean_preview-random-1002/results.csv": {
+      "bytes": 2020,
+      "sha256": "8ddd54986c54c069a6c4019c93a7f87b5a648969f47b00877647fb1732114fa6"
+    },
+    "tau1/mean_preview-random-1002/simulation.log": {
+      "bytes": 817,
+      "sha256": "8c1b9bba30587cf95155f9a4b2285a3e9f2dce867bd46f8e1422739f22967de5"
+    },
+    "tau1/mean_preview-random-1002/speed-probes.csv": {
+      "bytes": 42200734,
+      "sha256": "7af3f15d0756354a3c2ec19bb13c82a29742601b9a89b968d9c59c73aedebe73"
+    },
+    "tau1/mean_preview-random-1002/trajectories.csv": {
+      "bytes": 56086134,
+      "sha256": "bd1e2c84b1ba07a1603942c3616d8f4f55d91bc53a6399aab626fd4e3e832217"
+    }
+  }
+}
