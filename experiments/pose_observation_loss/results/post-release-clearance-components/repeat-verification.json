@@ -1,0 +1,36 @@
+{
+  "method": "Two complete fresh scalar annotations, all exports/provenance byte identical; independently checked against parent native bounds using four-predicate truth table, gaps and pooled category statistics.",
+  "all_equal": true,
+  "files": 7,
+  "implementation_commit": "ba2b59ff730bbce01bb3ead28d337788b967c165",
+  "sha256": {
+    "annotations.csv": {
+      "bytes": 57401014,
+      "sha256": "74e25f9059227acc73a9c3524b4849a380a285e4fcc6fc3c1d00730e4bfa9fc4"
+    },
+    "cases.csv": {
+      "bytes": 204878,
+      "sha256": "eaab3b20c02dc11773cd93a296118df1c8c6a2fffae0c04a01ff53683fb4f952"
+    },
+    "pairs.csv": {
+      "bytes": 140937,
+      "sha256": "e623c8955e5e958c13cf54187cba7d9f4d4dc0f17073a98fee04403fa7399f90"
+    },
+    "resumes.csv": {
+      "bytes": 76509,
+      "sha256": "4ac7777e392bde909d8c444fc4b1bf8671a135822babeeb6138a269e24c8ff95"
+    },
+    "sources.json": {
+      "bytes": 38675,
+      "sha256": "36e67094b901edf91c8ff40eddd1846bbbc7b311ad5e81cdcef0331777676ba3"
+    },
+    "summary.csv": {
+      "bytes": 782195,
+      "sha256": "64876c783ff4f463090b882f30895eaea92bfcfc37062f17c7518a6994281236"
+    },
+    "verification.csv": {
+      "bytes": 12293,
+      "sha256": "f7e7528d35a1cff1cc83a041f977b03256c4a6837ebcd3adcc3d82502320b5e9"
+    }
+  }
+}
