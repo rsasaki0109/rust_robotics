@@ -1,0 +1,60 @@
+{
+  "method": "Two complete fresh evaluations, all outputs byte identical, independently checked against preceding full-precision raw physical checkpoints and pooled exported error statistics.",
+  "all_equal": true,
+  "files": 13,
+  "implementation_commit": "45db5e5daaef9514173f4db94428c688e791deb8",
+  "sha256": {
+    "cases.csv": {
+      "bytes": 208918,
+      "sha256": "ff6888efd560b7e867d55272acf205482ca8053b54df4333d17686dcb377e72e"
+    },
+    "native/compiler.log": {
+      "bytes": 986,
+      "sha256": "d5169a9415deab87e27ca8160fff50eb10457bbf671205d1084a6ede3d74e379"
+    },
+    "native/native-release-census": {
+      "bytes": 4682880,
+      "sha256": "221ae5334e531295c083bc231e194d85972e616e76d5422e9a804cd20e69414d"
+    },
+    "native/native.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "native/queries.tsv": {
+      "bytes": 24613957,
+      "sha256": "20d99d4865cc9aed8f6a488a7fa89f1de72f13d68c37cb4ff8430eb6feddd9a4"
+    },
+    "native/release-census.rs": {
+      "bytes": 20954,
+      "sha256": "771f1ecafd95e8c3da93b02f80449417660f701835f35ac1501691cdfd206333"
+    },
+    "native/trace.csv": {
+      "bytes": 25845305,
+      "sha256": "24921a045d4229cb0db5b7cb921c7f21e3445eff463b794cf52a32682b98eea2"
+    },
+    "pairs.csv": {
+      "bytes": 144939,
+      "sha256": "abe252fc957acf20452ac736a36c465f95ab08f5cf03f65150a303e7fa018bba"
+    },
+    "resumes.csv": {
+      "bytes": 99107,
+      "sha256": "704136681ddca30feaa8933138a8e0d5c7a98246b1043d51e22eb31fbaab8216"
+    },
+    "samples.csv": {
+      "bytes": 77172398,
+      "sha256": "a26aa47bb22b18a0c0006b87db8e04974916a5a4c170caf6f6f1299aa42b125c"
+    },
+    "sources.json": {
+      "bytes": 36506,
+      "sha256": "0f031faddd50ef1a7100be7e652450b2a93718738d6bb4e5da2313b8ab7f36b4"
+    },
+    "summary.csv": {
+      "bytes": 812299,
+      "sha256": "87519f766d95531af903de08cc96ef36ca86db033d2790efd9c27ff603e7b025"
+    },
+    "verification.csv": {
+      "bytes": 13178,
+      "sha256": "91b62ce67814564c72b269ce789e53212d5cd5be9c519e661aeb59606295d367"
+    }
+  }
+}
