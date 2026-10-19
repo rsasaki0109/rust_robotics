@@ -236,8 +236,11 @@ Display interpolation does not alter the stored physical states.
 
 The frontend limits each replay-generation batch to at most two controller
 calls and yields between batches. It bounds stored flight length and discards
-large background-tab time gaps instead of running a long catch-up loop. A
-single controller call still runs on the browser thread; low-power-device
+large background-tab time gaps instead of running a long catch-up loop.
+Slow foreground paints still advance at most two fixed updates: a 250–999 ms
+frame interval cannot hold live flight or a recorded replay at one checkpoint.
+Gaps of one second or more are discarded, and pause keeps the selected frame.
+A single controller call still runs on the browser thread; low-power-device
 frame rates should be measured before increasing the sampling load.
 
 ## Photograph a flight
@@ -360,7 +363,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 36-case
+To verify the actual GitHub Pages project path, build and run the 37-case
 browser suite from the repository root:
 
 ```sh
@@ -393,6 +396,8 @@ photo mode, menu opening, and a tab switch.
 Two checkpoint cases exercise actual manual and autonomous crossings, frozen
 feedback, the exported photo, identical shared feedback, expiry, retry, finish,
 and portrait/landscape phone views at 2× pixel density.
+A slow-paint case schedules actual browser paints at 400 ms intervals, then
+replays the recorded manual finish and checks its exact final frame and pose.
 CI uses this same public-URL build and suite before publication.
 Browser CI pins Ubuntu 24.04, supported by Playwright 1.56.1. Installation
 failures include the command's final error lines in the job annotations.
@@ -401,7 +406,7 @@ a browser window because headless versions differ in whether a tab switch
 changes focus. It disables Playwright's usual focus override, verifies that the
 original page really loses focus, and checks cancellation after returning.
 Linux CI runs this window under Xvfb, installed by Playwright's `--with-deps`;
-the other 35 cases remain headless. With a desktop display, omit `xvfb-run -a`.
+the other 36 cases remain headless. With a desktop display, omit `xvfb-run -a`.
 Chromium 141 keeps a focus-emulation capture handle per CDP session, so a new
 public CDP session cannot release the override installed by Playwright. The
 focus helper therefore uses Playwright's own session and depends on the pinned
