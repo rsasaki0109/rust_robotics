@@ -111,6 +111,47 @@ large background-tab time gaps instead of running a long catch-up loop. A
 single controller call still runs on the browser thread; low-power-device
 frame rates should be measured before increasing the sampling load.
 
+## Build and share a course
+
+[Open the editor](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&course=climb&edit=1)
+or [watch editing turn into a flight](assets/drone-editor.mp4).
+
+![Course editor with a fitted 3D preview](assets/playground/drone-editor.png)
+
+Choose Edit course in the panel, or Edit in cinema view. Top view drags X/Y;
+Side view drags X/Z. The X/Y/Z values also accept precise edits. The selected
+gate is highlighted in both the map and 3D preview. The preview fits the
+actual gate corners and supports into its viewport; editing never runs MPPI.
+
+The first editor supports exactly five ordered gates. X is 2–24 m with at
+least 2 m between successive gates, Y is -3–3 m, and Z is 1.2–6 m. Coordinates
+snap to 0.1 m. Dragging clamps to that envelope and preserves gate order;
+gate normals are rebuilt from the preceding center, starting at [0, 0, 2].
+Undo keeps up to 32 draft changes. Reset restores the layout at editor entry.
+Cancel returns to the original attempt, paused at the same physical state.
+Fly course applies the draft and resets the flight and autonomous opponent;
+manual mode waits for the first input as usual.
+
+Share inside the editor opens the draft with `edit=1`, without attaching inputs
+from the previous attempt. During flight, Share includes the applied course
+and any manual recording. The same layout is used for the player, opponent,
+gate crossing tests, seeking and replay. Retry and pilot changes retain it.
+
+`course.rs` owns the validated layout. Built-in links retain `course=neon` or
+`course=climb`; custom layouts add `course=custom&gates=v1.<centers>`. Five dot-
+separated centers contain integer decimeter coordinates joined by underscores,
+for example `v1.40_0_28.84_2_40.120_8_52.160_-6_56.200_0_40`.
+All characters survive URLSearchParams without percent decoding. Only canonical
+encodings up to 128 bytes, known versions, exactly five centers, and valid
+bounds/order are accepted. Invalid course links stop before seeking or replaying
+and show a recovery action.
+
+Geometric validation does not certify that MPPI will finish every layout.
+Custom flights use the same real crossing predicate, ground-contact outcome
+and simulation limit as the presets. A modified Sky Climb fixture finishes
+all five gates in the native test; browser tests also fly an edited course to
+completion and reconstruct an exact paused pose from its shared link.
+
 ## Run and verify
 
 ```sh
@@ -153,6 +194,10 @@ node capture_drone_race.mjs ../../crates/rust_robotics_playground/dist /tmp/dron
 cp /tmp/drone-manual/flight.mp4 ../../docs/assets/drone-manual.mp4
 cp /tmp/drone-manual/manual-flight.png ../../docs/assets/playground/drone-manual.png
 cp /tmp/drone-manual/capture.json ../../docs/assets/drone-manual-flight.json
+node capture_drone_race.mjs ../../crates/rust_robotics_playground/dist /tmp/drone-editor editor
+cp /tmp/drone-editor/flight.mp4 ../../docs/assets/drone-editor.mp4
+cp /tmp/drone-editor/editor.png ../../docs/assets/playground/drone-editor.png
+cp /tmp/drone-editor/capture.json ../../docs/assets/drone-editor-flight.json
 ```
 
 The recording switches cameras during real playback and checks that the first
@@ -165,5 +210,7 @@ repeating the preceding image across idle frames. The MP4, camera screenshots an
 capture receipt remain in the selected output directory. The PNG thumbnail
 waits for its requested shared frame to finish reconstructing.
 
-Gate editing can build on the same engine. Both modes currently use two fixed
-courses so the full browser experience and reproduction can be verified together.
+Editor capture uses actual mouse drags, changes height, undoes that change,
+then flies the edited layout through all five gates. Its
+[capture receipt](assets/drone-editor-flight.json) stores the draft in `design`
+and the completed race in `firstFlight`. No physical states are injected.

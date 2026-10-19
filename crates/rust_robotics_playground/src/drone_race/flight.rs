@@ -2,7 +2,6 @@
 
 use rust_robotics_control::{
     QuadrotorMppiConfig, QuadrotorMppiController, QuadrotorParams, QuadrotorState, RacingGateLap3D,
-    RacingGatePlane3D,
 };
 use rust_robotics_core::RoboticsResult;
 
@@ -11,68 +10,7 @@ use super::manual::{self, PilotInput};
 pub const DT: f64 = 0.05;
 pub const MAX_STEPS: usize = 600;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Course {
-    #[default]
-    Neon,
-    Climb,
-}
-
-impl Course {
-    pub const ALL: [Self; 2] = [Self::Neon, Self::Climb];
-
-    pub fn slug(self) -> &'static str {
-        match self {
-            Self::Neon => "neon",
-            Self::Climb => "climb",
-        }
-    }
-
-    pub fn title(self) -> &'static str {
-        match self {
-            Self::Neon => "Neon slalom",
-            Self::Climb => "Sky climb",
-        }
-    }
-
-    pub fn from_slug(value: &str) -> Option<Self> {
-        match value {
-            "neon" => Some(Self::Neon),
-            "climb" => Some(Self::Climb),
-            _ => None,
-        }
-    }
-
-    pub fn lap(self) -> RacingGateLap3D {
-        let centers = match self {
-            Self::Neon => vec![
-                [4.0, 1.2, 2.4],
-                [8.0, -1.2, 3.4],
-                [12.0, 1.2, 2.5],
-                [16.0, -1.2, 3.4],
-                [20.0, 0.0, 2.4],
-            ],
-            Self::Climb => vec![
-                [4.0, 0.0, 2.8],
-                [8.0, 0.0, 4.0],
-                [12.0, 0.8, 5.2],
-                [16.0, -0.6, 5.6],
-                [20.0, 0.0, 4.0],
-            ],
-        };
-        let mut previous = [0.0, 0.0, 2.0];
-        let gates = centers
-            .into_iter()
-            .map(|center| {
-                let direction = sub(center, previous);
-                previous = center;
-                RacingGatePlane3D::new(center, direction, [0.0, 0.0, 1.0], 0.9, 0.9)
-                    .expect("built-in race gate is valid")
-            })
-            .collect();
-        RacingGateLap3D::open(gates).expect("built-in race has gates")
-    }
-}
+pub use super::course::Course;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
@@ -274,8 +212,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn both_courses_finish_by_actual_ordered_gate_crossings() {
-        for course in Course::ALL {
+    fn presets_and_a_custom_layout_finish_by_actual_ordered_gate_crossings() {
+        for course in Course::ALL
+            .into_iter()
+            .chain([Course::CLIMB.moved(1, [8.4, 0.2, 4.0])])
+        {
             let mut flight = Flight::new(course);
             while !flight.done() {
                 flight.step().unwrap();
@@ -317,7 +258,7 @@ mod tests {
 
     #[test]
     fn independent_histories_and_prediction_are_identical() {
-        let (mut a, mut b) = (Flight::new(Course::Neon), Flight::new(Course::Neon));
+        let (mut a, mut b) = (Flight::new(Course::NEON), Flight::new(Course::NEON));
         for _ in 0..12 {
             a.step().unwrap();
             b.step().unwrap();
@@ -333,7 +274,7 @@ mod tests {
 
     #[test]
     fn manual_commands_cross_all_gates_and_the_recording_reproduces_every_state() {
-        let mut flight = Flight::manual(Course::Climb);
+        let mut flight = Flight::manual(Course::CLIMB);
         // This test driver selects held keys from the next gate. It never
         // changes position, attitude, or progress outside the flight model.
         while !flight.done() {
@@ -380,7 +321,7 @@ mod tests {
                 "manual flight has no MPPI prediction"
             );
         }
-        let mut replay = Flight::manual(Course::Climb);
+        let mut replay = Flight::manual(Course::CLIMB);
         for input in manual::decode(&manual::encode(&flight.inputs)).unwrap() {
             replay.step_with_input(input).unwrap();
         }
@@ -392,7 +333,7 @@ mod tests {
 
     #[test]
     fn manual_hover_times_out_and_descent_stops_at_ground_contact() {
-        let mut hover = Flight::manual(Course::Neon);
+        let mut hover = Flight::manual(Course::NEON);
         for _ in 0..MAX_STEPS {
             hover.step().unwrap();
         }
@@ -400,7 +341,7 @@ mod tests {
         assert_eq!(hover.frames.last().unwrap().status, Status::TimeLimit);
         assert_eq!(hover.frames.last().unwrap().passed, 0);
         assert!(!hover.step().unwrap());
-        let mut descent = Flight::manual(Course::Neon);
+        let mut descent = Flight::manual(Course::NEON);
         while !descent.done() {
             descent.step_with_input(PilotInput::new(0, 0, -1)).unwrap();
         }

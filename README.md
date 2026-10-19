@@ -31,6 +31,10 @@ physics. Switch cameras, replay your attempt, and share its recorded inputs.
 [Watch 30 seconds of browser gameplay](docs/assets/drone-manual.mp4)
 or [watch the autonomous pilot](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&cinema=1).
 
+**[Build your own circuit](https://rsasaki0109.github.io/rust_robotics/playground/?tab=drone&course=climb&edit=1)**
+— drag gates in Top and Side views with a live 3D preview, then fly or share
+the layout. [Watch the editor-to-flight recording](docs/assets/drone-editor.mp4).
+
 <table>
   <tr>
     <td align="center"><a href="#rapidly-exploring-random-trees-rrt"><img src="./media/gallery/rrt.gif" width="260" alt="RRT tree growth"/></a><br/><b>RRT</b></td>
