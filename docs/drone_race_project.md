@@ -394,6 +394,8 @@ Two checkpoint cases exercise actual manual and autonomous crossings, frozen
 feedback, the exported photo, identical shared feedback, expiry, retry, finish,
 and portrait/landscape phone views at 2× pixel density.
 CI uses this same public-URL build and suite before publication.
+Browser CI pins Ubuntu 24.04, supported by Playwright 1.56.1. Installation
+failures include the command's final error lines in the job annotations.
 The suite uses Playwright's full Chromium channel. The focus-loss case opens
 a browser window because headless versions differ in whether a tab switch
 changes focus. It disables Playwright's usual focus override, verifies that the
