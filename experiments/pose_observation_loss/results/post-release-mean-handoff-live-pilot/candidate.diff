@@ -1,0 +1,304 @@
+--- pinned-pose-observation-loss.rs
++++ release-mean-handoff.rs
+@@ -852,8 +852,8 @@
+ 
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let args: Vec<String> = std::env::args().collect();
+-    if !(15..=29).contains(&args.len()) {
+-        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE [STATIONARY_EPOCH_FUSION [TERMINAL_STEERING_PREVIEW]]]]]]]]]]]]]]; see experiments/pose_observation_loss/run.py".into());
++    if !(15..=32).contains(&args.len()) {
++        return Err("usage: pose_observation_loss INPUT OUTPUT LOOKAHEAD POSITION_SIGMA YAW_SIGMA_DEG SEED DRIFT_SPEED DRIFT_YAW_DEG_S CORRECTION_PERIOD SLOWDOWN STOP_HOLD PRECISE_TERMINAL LOSS_MODE LOSS_AWARE [AVERAGED_RECOVERY [NOISE_CORRELATION_TIME_S [STOPPING_GUARD [CONSISTENT_RESTART [ANTICIPATORY_SPEED [JOINT_RECOVERY [RECOVERY_GUARD_BUFFER [MOTION_ENTRY_BUFFER [MOTION_FILTER [RECOVERY_PREVIEW [TERMINAL_ENTRY_ONLY [ALIGNED_TERMINAL_RELEASE [STATIONARY_EPOCH_FUSION [TERMINAL_STEERING_PREVIEW]]]]]]]]]]]]]]; optional MEAN_SPEED_PROBE, MEAN_GUARD_PREVIEW and final POST_RELEASE_MEAN_HANDOFF booleans; see experiments/pose_observation_loss/run_mean_speed_probe.py".into());
+     }
+     let input = Path::new(&args[1]);
+     let output = Path::new(&args[2]);
+@@ -951,6 +951,14 @@
+         .transpose()?
+         .unwrap_or(false);
+     assert!(!terminal_steering_preview || stationary_epoch_fusion);
++    let mean_speed_probe = args.get(29).map(|s| s.parse::<bool>()).transpose()?.unwrap_or(false);
++    assert!(!mean_speed_probe || (joint_recovery && averaged_recovery));
++    let mean_guard_preview = args.get(30).map(|s| s.parse::<bool>()).transpose()?.unwrap_or(false);
++    let post_release_mean_handoff = args.get(31).map(|s| s.parse::<bool>()).transpose()?.unwrap_or(false);
++    assert!(!post_release_mean_handoff || mean_guard_preview);
++    assert!(!mean_guard_preview || (mean_speed_probe && joint_recovery && averaged_recovery
++        && stopping_guard && motion_filter && stationary_epoch_fusion && terminal_steering_preview
++        && recovery_preview && aligned_terminal_release && terminal_entry_only && !consistent_restart));
+     assert!(!joint_recovery || anticipatory_speed);
+     assert!(!anticipatory_speed || (stopping_guard && !consistent_restart));
+     assert!(!consistent_restart || stopping_guard);
+@@ -999,6 +1007,12 @@
+             .push(Point2D::new(f[1].parse()?, f[2].parse()?));
+     }
+     let mut tracks = BufWriter::new(File::create(output.join("trajectories.csv"))?);
++    let mut handoff_log = BufWriter::new(File::create(output.join("handoff-inputs.csv"))?);
++    writeln!(handoff_log, "scenario,planner,step,time_s,enabled,available,valid,used,seeded,correction,received,precision_activation,joint_pending,observation_age,count,before_x,before_y,before_yaw,before_v,selected_x,selected_y,selected_yaw,selected_v,carry_x,carry_y,carry_yaw,carry_speed,carry_steering")?;
++    let mut guard_log = BufWriter::new(File::create(output.join("guard-preview-inputs.csv"))?);
++    writeln!(guard_log, "scenario,planner,step,time_s,enabled,used,joint_pending,speed_used,base_x,base_y,base_yaw,base_v,selected_x,selected_y,selected_yaw,selected_v,base_x_9,base_y_9,base_yaw_9")?;
++    let mut probe_log = BufWriter::new(File::create(output.join("speed-probes.csv"))?);
++    writeln!(probe_log, "scenario,planner,step,time_s,enabled,used,paused,observation_age,measured_speed,correction,received,precision_activation,count,raw_x,raw_y,raw_yaw,mean_x,mean_y,mean_yaw,probe_x,probe_y,probe_yaw,steering,margin,free_distance,cap,uncapped_target,nominal_target,true_x,true_y,true_yaw,true_v,applied_target,applied_steering,applied_acceleration")?;
+     let mut summary = BufWriter::new(File::create(output.join("results.csv"))?);
+     writeln!(
+         tracks,
+@@ -1074,6 +1088,7 @@
+         let mut pose_filter = MotionPoseFilter::default();
+         let mut epoch_fusion = StationaryEpochFusion::default();
+         let mut previous_steering = 0.0;
++        let mut post_release_snapshot: Option<ReleaseMean> = None;
+         let mut recovery_samples: VecDeque<(f64, f64, f64)> = VecDeque::new();
+         for step in 1..=(MAX_TIME / DT) as usize {
+             let from = Point2D::new(state.x, state.y);
+@@ -1296,8 +1311,13 @@
+             } else {
+                 0.0
+             };
++            let speed_probe_paused = safety_paused;
++            let (speed_probe_pose, mean_speed_probe_used) = mean_speed_probe_pose(
++                sensed, mean_speed_probe, safety_paused, observation_age,
++                recovery_sample_count, recovery_x, recovery_y,
++            );
+             let speed_free_distance = if anticipatory_speed {
+-                speed_free_distance(sensed, steering, speed_margin, obs)
++                speed_free_distance(speed_probe_pose, steering, speed_margin, obs)
+             } else {
+                 2.0
+             };
+@@ -1386,6 +1406,19 @@
+                 preview_pose.x = x;
+                 preview_pose.y = y;
+             }
++            let mean_guard_base_pose = preview_pose;
++            let (selected_guard_pose, mean_guard_preview_used) = mean_guard_preview_pose(
++                preview_pose, mean_guard_preview, joint_pending, mean_speed_probe_used,
++                recovery_x, recovery_y,
++            );
++            let handoff_before = selected_guard_pose;
++            let handoff_snapshot = post_release_snapshot.take();
++            let handoff_available = handoff_snapshot.is_some();
++            let handoff_valid = release_mean_valid(joint_pending, correction, correction_received,
++                precision_activation, measured_speed, observation_age, recovery_sample_count);
++            let (selected_guard_pose, handoff_used) = release_mean_preview(selected_guard_pose,
++                handoff_snapshot, post_release_mean_handoff, handoff_valid);
++            preview_pose = selected_guard_pose;
+             let (preview_pose_x, preview_pose_y, preview_pose_yaw) =
+                 (preview_pose.x, preview_pose.y, preview_pose.yaw);
+             let (stop_preview_clearance_lower_bound, terminal_recovery_clearance) =
+@@ -1520,6 +1553,15 @@
+                 hold_time_s = 0.0;
+                 max_hold_distance = 0.0;
+             }
++            writeln!(probe_log, "{scenario},{planner},{step},{observation_time:.17e},{mean_speed_probe},{mean_speed_probe_used},{speed_probe_paused},{observation_age:.17e},{:.17e},{correction},{correction_received},{precision_activation},{recovery_sample_count},{:.17e},{:.17e},{:.17e},{recovery_x:.17e},{recovery_y:.17e},{recovery_yaw:.17e},{:.17e},{:.17e},{:.17e},{nominal_steering:.17e},{speed_margin:.17e},{speed_free_distance:.17e},{speed_cap:.17e},{uncapped_target_speed:.17e},{nominal_target_speed:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{target_speed:.17e},{steering:.17e},{acceleration:.17e}", sensed.v, sensed.x, sensed.y, sensed.yaw, speed_probe_pose.x, speed_probe_pose.y, speed_probe_pose.yaw, state.x, state.y, state.yaw, state.v)?;
++            writeln!(guard_log, "{scenario},{planner},{step},{observation_time:.17e},{mean_guard_preview},{mean_guard_preview_used},{joint_pending},{mean_speed_probe_used},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.9},{:.9},{:.9}", mean_guard_base_pose.x, mean_guard_base_pose.y, mean_guard_base_pose.yaw, mean_guard_base_pose.v, selected_guard_pose.x, selected_guard_pose.y, selected_guard_pose.yaw, selected_guard_pose.v, mean_guard_base_pose.x, mean_guard_base_pose.y, mean_guard_base_pose.yaw)?;
++            let handoff_seeded = post_release_mean_handoff && resumed;
++            if handoff_seeded {
++                post_release_snapshot = Some(ReleaseMean { x: recovery_x, y: recovery_y,
++                    yaw: recovery_yaw, speed: measured_speed, steering });
++            }
++            let logged_carry = handoff_snapshot.unwrap_or(ReleaseMean { x:0.0,y:0.0,yaw:0.0,speed:0.0,steering:0.0 });
++            writeln!(handoff_log, "{scenario},{planner},{step},{observation_time:.17e},{post_release_mean_handoff},{handoff_available},{handoff_valid},{handoff_used},{handoff_seeded},{correction},{correction_received},{precision_activation},{joint_pending},{observation_age:.17e},{recovery_sample_count},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e},{:.17e}", handoff_before.x,handoff_before.y,handoff_before.yaw,handoff_before.v,selected_guard_pose.x,selected_guard_pose.y,selected_guard_pose.yaw,selected_guard_pose.v,logged_carry.x,logged_carry.y,logged_carry.yaw,logged_carry.speed,logged_carry.steering)?;
+             writeln!(tracks, "{scenario},{planner},{time:.6},{:.9},{:.9},{:.9},{:.9},{error:.9},{step_clearance:.9},{noise_x:.9},{noise_y:.9},{noise_yaw:.9},{bias_x:.9},{bias_y:.9},{bias_yaw:.9},{correction},{target_speed:.9},{sensed_goal_distance:.9},{filtered_goal_distance:.9},{stop_latched},{hold_time_s:.6},{restart_limited},{precision_active},{effective_position_sigma:.9},{effective_yaw_sigma:.9},{precision_activation},{observation_available},{correction_received},{loss_uniform:.12},{observation_age:.6},{safety_paused},{recovery_evidence:.6},{recovery_clearance:.9},{resumed},{steering:.9},{acceleration:.9},{recovery_x:.9},{recovery_y:.9},{recovery_yaw:.9},{recovery_sample_count},{:.12},{:.12},{:.12},{noise_rho:.12},{guard_active},{guard_triggered},{guard_released},{guard_release_evidence:.6},{preview_clearance_lower_bound:.9},{preview_margin:.9},{nominal_target_speed:.9},{nominal_steering:.9},{consistency_ready},{pre_sample_count},{stationary_sample_count},{consistency_age:.6},{position_delta:.9},{yaw_delta_rad:.9},{preview_pose_x:.9},{preview_pose_y:.9},{preview_pose_yaw:.9},{speed_free_distance:.9},{speed_cap:.9},{speed_margin:.9},{speed_braking},{uncapped_target_speed:.9},{guard_release_margin:.9},{guard_entry_extra:.9},{motion_filter_sample_count},{recovery_preview},{stop_preview_clearance_lower_bound:.9},{terminal_recovery_clearance:.9},{terminal_entry_only},{release_preview_clearance_lower_bound:.9},{aligned_terminal_release},{stationary_epoch_fusion},{epoch_fusion_available},{epoch_fusion_group_count},{motion_filter_pose_x:.9},{motion_filter_pose_y:.9},{measured_speed:.17e},{terminal_steering_preview}", state.x, state.y, state.yaw, state.v, innovations[0], innovations[1], innovations[2])?;
+             collision = step_clearance <= RADIUS;
+             reached = controller.is_goal_reached(&state);
+@@ -1558,3 +1600,203 @@
+     summary.flush()?;
+     Ok(())
+ }
++
++// The archived probe reads only position and yaw. All other policy inputs stay raw.
++fn mean_speed_probe_pose(
++    sensed: VehicleState,
++    enabled: bool,
++    paused: bool,
++    age: f64,
++    count: usize,
++    mean_x: f64,
++    mean_y: f64,
++) -> (VehicleState, bool) {
++    let used = enabled && paused && sensed.v.abs() <= 0.02 && age <= 1.5 && count >= 10;
++    if used {
++        (VehicleState::new(mean_x, mean_y, sensed.yaw, sensed.v, sensed.wheelbase), true)
++    } else {
++        (sensed, false)
++    }
++}
++
++#[cfg(test)]
++mod mean_speed_probe_tests {
++    use super::*;
++    fn state(speed: f64) -> VehicleState { VehicleState::new(10.0, 10.0, 0.7, speed, 0.4) }
++    #[test]
++    fn disabled_is_exact_raw_fallback() {
++        let (p, used) = mean_speed_probe_pose(state(0.0), false, true, 0.0, 25, 20.0, 21.0);
++        assert!(!used); assert_eq!((p.x, p.y, p.yaw, p.v), (10.0, 10.0, 0.7, 0.0));
++    }
++    #[test]
++    fn thresholds_are_inclusive_and_heading_speed_unchanged() {
++        for speed in [0.02, -0.02] {
++            let (p, used) = mean_speed_probe_pose(state(speed), true, true, 1.5, 10, 20.0, 21.0);
++            assert!(used); assert_eq!((p.x, p.y, p.yaw, p.v), (20.0, 21.0, 0.7, speed));
++        }
++    }
++    #[test]
++    fn insufficient_samples_and_unpaused_keep_raw_pose() {
++        for (paused, count) in [(true, 9), (false, 25)] {
++            let (p, used) = mean_speed_probe_pose(state(0.0), true, paused, 0.0, count, 20.0, 21.0);
++            assert!(!used); assert_eq!((p.x, p.y), (10.0, 10.0));
++        }
++    }
++    #[test]
++    fn first_float_above_speed_and_age_thresholds_falls_back() {
++        let speed = f64::from_bits(0.02_f64.to_bits() + 1);
++        let age = f64::from_bits(1.5_f64.to_bits() + 1);
++        assert!(!mean_speed_probe_pose(state(speed), true, true, 0.0, 25, 20.0, 21.0).1);
++        assert!(!mean_speed_probe_pose(state(-speed), true, true, 0.0, 25, 20.0, 21.0).1);
++        assert!(!mean_speed_probe_pose(state(0.0), true, true, age, 25, 20.0, 21.0).1);
++    }
++    #[test]
++    fn selected_position_reaches_the_original_full_probe() {
++        let raw = VehicleState::new(10.0, 10.0, 0.0, 0.0, 0.4);
++        let obs = [Point2D::new(10.4, 10.0)];
++        let (p, used) = mean_speed_probe_pose(raw, true, true, 0.0, 10, 12.0, 10.0);
++        assert!(used);
++        assert_eq!(speed_free_distance(raw, 0.0, 0.5, &obs), 0.0);
++        assert_eq!(speed_free_distance(p, 0.0, 0.5, &obs), 2.0);
++    }
++}
++
++// Only the guard-preview position changes; every other state field is preserved.
++fn mean_guard_preview_pose(
++    mut preview: VehicleState, enabled: bool, joint_pending: bool,
++    mean_speed_probe_used: bool, mean_x: f64, mean_y: f64,
++) -> (VehicleState, bool) {
++    let used = enabled && joint_pending && mean_speed_probe_used;
++    if used { preview.x = mean_x; preview.y = mean_y; }
++    (preview, used)
++}
++
++#[cfg(test)]
++mod mean_guard_preview_tests {
++    use super::*;
++    #[test]
++    fn every_ineligible_flag_combination_preserves_all_fields() {
++        for enabled in [false, true] { for pending in [false, true] { for speed_used in [false, true] {
++            let raw = VehicleState::new(10.0, 11.0, 0.7, -0.02, 0.4);
++            let (pose, used) = mean_guard_preview_pose(raw, enabled, pending, speed_used, 20.0, 21.0);
++            assert_eq!(used, enabled && pending && speed_used);
++            if !used { assert_eq!((pose.x, pose.y), (raw.x, raw.y)); }
++            assert_eq!((pose.yaw, pose.v, pose.wheelbase, pose.rear_x, pose.rear_y),
++                (raw.yaw, raw.v, raw.wheelbase, raw.rear_x, raw.rear_y));
++        } } }
++    }
++    #[test]
++    fn active_changes_only_position_including_zero_speed() {
++        for speed in [0.0, 0.02, -0.02] {
++            let raw = VehicleState::new(10.0, 11.0, 0.7, speed, 0.4);
++            let (pose, used) = mean_guard_preview_pose(raw, true, true, true, 20.0, 21.0);
++            assert!(used); assert_eq!((pose.x, pose.y), (20.0, 21.0));
++            assert_eq!((pose.yaw, pose.v, pose.wheelbase, pose.rear_x, pose.rear_y),
++                (raw.yaw, raw.v, raw.wheelbase, raw.rear_x, raw.rear_y));
++        }
++    }
++    #[test]
++    fn selected_position_reaches_original_stopping_and_terminal_geometry() {
++        let raw = VehicleState::new(10.0, 10.0, 0.0, 0.0, 0.4);
++        let obs = [Point2D::new(10.4, 10.0)];
++        let (pose, _) = mean_guard_preview_pose(raw, true, true, true, 12.0, 10.0);
++        for target in [0.0, 0.2] {
++            let a = stopping_preview(raw, target, 0.0, 0.5, &obs, true, true);
++            let b = stopping_preview(pose, target, 0.0, 0.5, &obs, true, true);
++            assert_ne!(a, b); assert!(a.0 < b.0); assert!(a.1 < b.1);
++        }
++    }
++}
++
++#[derive(Clone, Copy)]
++struct ReleaseMean { x: f64, y: f64, yaw: f64, speed: f64, steering: f64 }
++
++fn release_mean_preview(mut preview: VehicleState, snapshot: Option<ReleaseMean>,
++    enabled: bool, valid: bool) -> (VehicleState, bool) {
++    if enabled && valid {
++        if let Some(old) = snapshot {
++            let mut transport = MotionPoseFilter {
++                samples: VecDeque::from([(old.x, old.y, old.yaw)]),
++                previous_speed: old.speed,
++            };
++            transport.observe(preview, old.steering, false);
++            let carried = transport.samples.front().unwrap();
++            preview.x = carried.0; preview.y = carried.1;
++            return (preview, true);
++        }
++    }
++    (preview, false)
++}
++
++fn release_mean_valid(pending: bool, correction: bool, received: bool,
++    precision_activation: bool, speed: f64, age: f64, count: usize) -> bool {
++    !pending && !correction && !received && !precision_activation
++        && speed.abs() <= 0.02 && age <= 1.5 && count >= 10
++}
++
++#[cfg(test)]
++mod release_mean_handoff_tests {
++    use super::*;
++    fn snapshot() -> ReleaseMean { ReleaseMean { x: 12.0, y: 13.0, yaw: 1.1, speed: -0.02, steering: 0.35 } }
++    #[test]
++    fn consumes_exactly_once_even_without_a_second_resume() {
++        let mut stored = Some(snapshot());
++        let p = VehicleState::new(10.0, 11.0, -0.4, 0.017, WHEELBASE);
++        assert!(release_mean_preview(p, stored.take(), true, true).1);
++        assert!(!release_mean_preview(p, stored.take(), true, true).1);
++    }
++    #[test]
++    fn invalid_consumption_cannot_reappear() {
++        let mut stored = Some(snapshot());
++        let p = VehicleState::new(10.0, 11.0, 0.0, 0.0, WHEELBASE);
++        assert!(!release_mean_preview(p, stored.take(), true, false).1);
++        assert!(!release_mean_preview(p, stored.take(), true, true).1);
++    }
++    #[test]
++    fn transport_uses_old_measured_speed_and_heading_not_new_heading() {
++        let old = snapshot();
++        let p = VehicleState::new(10.0, 11.0, -0.4, 0.017, WHEELBASE);
++        let (q, used) = release_mean_preview(p, Some(old), true, true);
++        assert!(used);
++        assert_eq!(q.x, old.x + old.speed * DT * old.yaw.cos());
++        assert_eq!(q.y, old.y + old.speed * DT * old.yaw.sin());
++        assert_eq!((q.yaw,q.v,q.wheelbase,q.rear_x,q.rear_y), (p.yaw,p.v,p.wheelbase,p.rear_x,p.rear_y));
++    }
++    #[test]
++    fn disabled_or_invalid_preserves_every_field() {
++        for enabled in [false,true] { for valid in [false,true] {
++            if enabled && valid { continue; }
++            let p=VehicleState::new(10.0,11.0,0.7,-0.02,WHEELBASE);
++            let (q,used)=release_mean_preview(p,Some(snapshot()),enabled,valid);
++            assert!(!used);
++            assert_eq!((q.x,q.y,q.yaw,q.v,q.wheelbase,q.rear_x,q.rear_y),(p.x,p.y,p.yaw,p.v,p.wheelbase,p.rear_x,p.rear_y));
++        } }
++    }
++    #[test]
++    fn each_reset_or_joint_pause_invalidates() {
++        for i in 0..4 {
++            let mut flags=[false;4];flags[i]=true;
++            assert!(!release_mean_valid(flags[0],flags[1],flags[2],flags[3],0.0,0.0,25));
++        }
++    }
++    #[test]
++    fn exact_stationary_age_and_count_boundaries() {
++        assert!(release_mean_valid(false,false,false,false,0.02,1.5,10));
++        assert!(release_mean_valid(false,false,false,false,-0.02,1.5,10));
++        assert!(!release_mean_valid(false,false,false,false,0.020001,1.5,10));
++        assert!(!release_mean_valid(false,false,false,false,0.0,1.500001,10));
++        assert!(!release_mean_valid(false,false,false,false,0.0,1.5,9));
++    }
++    #[test]
++    fn no_snapshot_cannot_invent_a_handoff() {
++        let p=VehicleState::new(10.0,11.0,0.7,0.0,WHEELBASE);
++        assert!(!release_mean_preview(p,None,true,true).1);
++    }
++    #[test]
++    fn changed_position_reaches_original_curved_preview() {
++        let p=VehicleState::new(10.0,10.0,0.0,0.0,WHEELBASE);
++        let (q,_)=release_mean_preview(p,Some(snapshot()),true,true);
++        let obs=[Point2D::new(10.4,10.0)];
++        assert_ne!(stopping_preview(p,0.4,0.35,0.5,&obs,true,true),stopping_preview(q,0.4,0.35,0.5,&obs,true,true));
++    }
++}

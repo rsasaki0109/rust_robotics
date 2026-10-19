@@ -1,0 +1,89 @@
+{
+  "implementation_commit": "68b29bc9fa8445f85d262ca58bcbda7dbb240ebc",
+  "analysis_commit": "39955d2be811c6ffbab4ca1152d21d6fefcd3bb4",
+  "python_native_suite_before_pilot": {
+    "tests": 1432,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 99.65413803000047
+  },
+  "python_native_suite_amended": {
+    "tests": 1433,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 143.43763729799866
+  },
+  "native_program_tests": 35,
+  "audit": {
+    "cases": 108,
+    "pairs": 54,
+    "physical_steps": 827706,
+    "estimator_decisions": 827706,
+    "native_geometry_queries": 45002,
+    "guard_uses": 28295,
+    "handoff_uses": 126,
+    "release_followups": 251,
+    "speed_geometry_samples": 5380,
+    "regression_cases": 72
+  },
+  "conservation": {
+    "cases": 108,
+    "pairs": 54,
+    "summary_cells": 12,
+    "physical_and_estimator_steps": 827706,
+    "native_queries": 45002,
+    "release_followups": 251,
+    "native_outcomes_bound": true,
+    "case_followup_counts_conserved": true,
+    "one_shot_snapshots_conserved": true,
+    "all_native_uses_queried": true,
+    "all_summary_counts_conserved": true,
+    "all_pairs_bound": true,
+    "no_loss_controls": true,
+    "independent_streaming_raw_event_check": true
+  },
+  "all_existing_files_unchanged": true,
+  "all_raw_files_unchanged": true,
+  "repeated_files": 16,
+  "all_repeated_files_byte_equal": true,
+  "compact_handoff_queries": {
+    "rule": "Every native query with handoff_used true; no outcome or target filter",
+    "rows": 126,
+    "sha256": "6e1c55926a08edc6b8b71b07d9ed75bf8b2fdb618c21d705e064664ffbb122ea"
+  },
+  "external_query_table": {
+    "path": "/workspace/scratch/post-release-mean-handoff-live-pilot/audit-2/native-queries.csv",
+    "rows": 45002,
+    "sha256": "4ba79878af8dde3fc06962d17509f78db21f2765a73f81c292194d6ee8a3f578"
+  },
+  "evidence_sha256": {
+    "all-results.csv": "e26ee157545e359a09d9b86bd5368b4cac4eb16f7a1c381a8c8400e874988b5e",
+    "audit-amendment.json": "b5d195ef3b794f1cb1c0445671bfc897a29c29c2da3b6786f049240f648cdbd2",
+    "build-sources.json": "3fb55ee219aefd00c9aae60522655e1db35d6428b8642cb10e3f4c2e126afb4e",
+    "candidate.diff": "9cb029bd7be111adce1ed45a005ae4cf7e96401396024560fed05f7c7b7a5086",
+    "cases.csv": "e6121622b1e841025d9c6e4fa089e4246c6001c77e290e7d7f16432ee003db6e",
+    "freeze-pins.json": "e0ff3ab5f043f33a6cf1fed2c5f201250e1f2475851b879c19956577d8c0d9c1",
+    "handoff-history.rs": "9bdef221fd426aea0fca62bf1b2c87fdca689326a731aabc605dd144a1e5e285",
+    "handoff-queries.csv": "6e1c55926a08edc6b8b71b07d9ed75bf8b2fdb618c21d705e064664ffbb122ea",
+    "history-checks.csv": "9bdd6afb358c049b8cc1dbc68117ff40b0474dcbe831e2ae7b44fcc4518d3181",
+    "native-tests.log": "35383441d2cd3b870fe360af111647233b8495ecdfa6b561bd49c5fbe0776812",
+    "pairs.csv": "3a2a290e614b1c9769729f75849e3c5e7e9d0144746a00a64f37485b0adf3805",
+    "probe-samples.csv": "836fcfe1adb13bb8d58a4f74717ca0b4d86b310c2a96fc2e758741d6b5fdb93d",
+    "protocol.md": "08e7e5fe46f58a16208c9c0fd2aa3d085343f741288317f57f92c53d1f398e41",
+    "raw-file-manifest.json": "68cb8e5b72ba46c406ff76cd61b4e819a262a9b4127845262e293fa04c9f0efe",
+    "raw-provenance.json": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364",
+    "release-followups.csv": "ae1a158a421cb7da33c83843d71170d792087a07b36e1744e8c2a9b73f0f1c92",
+    "release-mean-handoff.rs": "04b9c5486fa4bb6c7694c1eb125d36d1773255dc3a3b5207b62f89dfd59633fc",
+    "repeat-verification.json": "b5c3fe44c6c20c483b1b99f36af7288cdde77cf8cd24cfddadfa831e5c8dad06",
+    "report.md": "8b705bb56bed3e7926fa3a61253249f9d368e5cfd91a79a19278bc8c1b60e5c6",
+    "seed-audit.json": "27a5b897be4dc758bfab01a742dede35253df32160fef0b1fe830792e1e91f46",
+    "sources.json": "faea307e07b78ad338f2f0f794e8c7321af44ff4eb4ccaee55970d30248ab62d",
+    "summary.csv": "5482c0b60d71be359781703e8fceb0abbd414515f59e753cdc967e49cdbf3a88",
+    "toolchain.json": "1b6f4342fb951746012e29c83aa9fe2ceaafc21aaf99ecb72fee06a7da3192ce",
+    "verification.csv": "9993c82607314c3223bb6c0b6f5de9af8fbea34986c69891f9f9c6271d2b2511"
+  }
+}

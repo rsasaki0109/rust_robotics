@@ -1,0 +1,555 @@
+{
+  "raw_provenance_sha256": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364",
+  "files": 137,
+  "bytes": 2743837500,
+  "sha256": {
+    "all-results.csv": {
+      "bytes": 23915,
+      "sha256": "e26ee157545e359a09d9b86bd5368b4cac4eb16f7a1c381a8c8400e874988b5e"
+    },
+    "build/build-sources.json": {
+      "bytes": 28178,
+      "sha256": "3fb55ee219aefd00c9aae60522655e1db35d6428b8642cb10e3f4c2e126afb4e"
+    },
+    "build/candidate.diff": {
+      "bytes": 19816,
+      "sha256": "9cb029bd7be111adce1ed45a005ae4cf7e96401396024560fed05f7c7b7a5086"
+    },
+    "build/legacy/build-sources.json": {
+      "bytes": 18876,
+      "sha256": "e557bee69d99b2bd00d705529c3b04603f87b3c6ddc331928f0b351af4775119"
+    },
+    "build/legacy/candidate.diff": {
+      "bytes": 12926,
+      "sha256": "5de96ca2c2b40850a0d9864d19970e02254bc009ca2f7cb949b3e07eba2b60de"
+    },
+    "build/legacy/legacy/build-sources.json": {
+      "bytes": 5267,
+      "sha256": "11ad69467ddf5d35dc4f040c975d3cc11b1ef3899d840e272f8f17c7711a8473"
+    },
+    "build/legacy/legacy/candidate.diff": {
+      "bytes": 8722,
+      "sha256": "e30ed048f964fe55b191cb6f9a6b1b91062288db1279360436faa04ab24b35e9"
+    },
+    "build/legacy/legacy/cargo-artifacts.jsonl": {
+      "bytes": 15643,
+      "sha256": "5754732f82f478f70f9992fb63f88ef5e1e509befb3031bce7ee4e931974f685"
+    },
+    "build/legacy/legacy/cargo.log": {
+      "bytes": 62,
+      "sha256": "c663462ee6e8bd687c13f4f43386d516f3f0bb8fc1cb3522d98b83bf3664d8fd"
+    },
+    "build/legacy/legacy/mean-speed-probe": {
+      "bytes": 4783368,
+      "sha256": "f6f7da5ed694c6ce656ab91c5fe05ae7ae576d99f5e982dafecc105749e01371"
+    },
+    "build/legacy/legacy/mean-speed-probe.rs": {
+      "bytes": 69249,
+      "sha256": "b3fd243bc9b70981cec5b2d8682bbafcb45d8920e1a421fe45e4747f5c5f86c3"
+    },
+    "build/legacy/legacy/native-tests": {
+      "bytes": 7299704,
+      "sha256": "668bb9414986ff1953313922cdc397fc393d8c6d323350550b17993f458595bc"
+    },
+    "build/legacy/legacy/native-tests.log": {
+      "bytes": 2148,
+      "sha256": "445a07c972f51a7766e291a5315b3af691614f0bbb1d457ca78a4d859131ea28"
+    },
+    "build/legacy/legacy/rustc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build/legacy/mean-guard-preview": {
+      "bytes": 4785568,
+      "sha256": "b55c476bbc4b7ac3960f57b9bfa6c85ac2f21c0aebf169e2852e2231a7523aed"
+    },
+    "build/legacy/mean-guard-preview.rs": {
+      "bytes": 73052,
+      "sha256": "3a47319038c346dcdd629c28f6d84d7c0b3c1c95fe728921c17f9058318c02ac"
+    },
+    "build/legacy/native-tests": {
+      "bytes": 7313424,
+      "sha256": "4417c31741648e5304361d8c4ac9e0e1fb12b087ec280cfea38886f1fa7ed47a"
+    },
+    "build/legacy/native-tests.log": {
+      "bytes": 2433,
+      "sha256": "0622072034c95d79255acf61858216b1ebff637d5311565eafcc9330b471bb0d"
+    },
+    "build/legacy/original/pose_observation_loss": {
+      "bytes": 648448,
+      "sha256": "3cf64cd3c2e68ca901d209c881c6586ce0c3b36d3e50b751808eefa98994b1fe"
+    },
+    "build/legacy/rustc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "build/native-tests": {
+      "bytes": 7324624,
+      "sha256": "0e69db9f01c1f832247569f4043fdcf77a6fc4612bf1975628811159690871d4"
+    },
+    "build/native-tests.log": {
+      "bytes": 3109,
+      "sha256": "35383441d2cd3b870fe360af111647233b8495ecdfa6b561bd49c5fbe0776812"
+    },
+    "build/release-mean-handoff": {
+      "bytes": 4789224,
+      "sha256": "173fb9c3c0db21bfd63e0e41db690e5a819c4638d8d205b4fc20b9576e38d989"
+    },
+    "build/release-mean-handoff.rs": {
+      "bytes": 79449,
+      "sha256": "04b9c5486fa4bb6c7694c1eb125d36d1773255dc3a3b5207b62f89dfd59633fc"
+    },
+    "build/rustc.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "provenance.json": {
+      "bytes": 58823,
+      "sha256": "5ea90d8cc29390225f4f93a5a0e9d7ddad4a08e425bfa4aec5b7e636f7185364"
+    },
+    "regression/legacy-tau0-blackout/guard-preview-inputs.csv": {
+      "bytes": 20047161,
+      "sha256": "ea1a08ba90372464c2b63488b20ae2dc625c850ef9a7a5ca2f62d9cca1b8cceb"
+    },
+    "regression/legacy-tau0-blackout/results.csv": {
+      "bytes": 2022,
+      "sha256": "abd7959cd8d5fa47aa3db0cce330bffad93ecb497fd47b4513d8f0523361285c"
+    },
+    "regression/legacy-tau0-blackout/simulation.log": {
+      "bytes": 824,
+      "sha256": "ae67cc8c4993f37d7269596a566d05bb0834cd9df11d830f560d172571065598"
+    },
+    "regression/legacy-tau0-blackout/speed-probes.csv": {
+      "bytes": 43946581,
+      "sha256": "6860d9ab4e58310937b16aeddebd0b0b120bebd23ab2fbfcbb6c33d643de43c3"
+    },
+    "regression/legacy-tau0-blackout/trajectories.csv": {
+      "bytes": 58480125,
+      "sha256": "8a610433971374cacdf0cccf7e5fb19a027984fd9925e3eaa3e41072ab3c4419"
+    },
+    "regression/legacy-tau0-none/guard-preview-inputs.csv": {
+      "bytes": 18595567,
+      "sha256": "1bc56f1eab9cf23731c89ab11cf07830243a263191fe0c7d6ee66ee902bebfae"
+    },
+    "regression/legacy-tau0-none/results.csv": {
+      "bytes": 2008,
+      "sha256": "90237d7558fa0a7fc572791025aacde4a17e0ff36f6c17b688aadff37bd5e535"
+    },
+    "regression/legacy-tau0-none/simulation.log": {
+      "bytes": 822,
+      "sha256": "2ce845cc29831703df7d7260b787940bab1670891e7dee1c872c98bf7541470a"
+    },
+    "regression/legacy-tau0-none/speed-probes.csv": {
+      "bytes": 40767343,
+      "sha256": "58be4c162bb037ab49f3bd3f4f47322ce7e26318ba2382b60ad1a9d7cc6d2d1f"
+    },
+    "regression/legacy-tau0-none/trajectories.csv": {
+      "bytes": 54160993,
+      "sha256": "7a8b031f8441edd9acf98dcf665174957f9687ab4df328121c23488bd8371015"
+    },
+    "regression/legacy-tau0-random/guard-preview-inputs.csv": {
+      "bytes": 22007990,
+      "sha256": "9e92b413c7bba49a24ea9debd4aae7236e49ffe01d198b8f589e11e7534953ff"
+    },
+    "regression/legacy-tau0-random/results.csv": {
+      "bytes": 2027,
+      "sha256": "a1b9709d7778dd9a2656d79da44244e23d5a91cf44fba6e5aeab676e639c2bf8"
+    },
+    "regression/legacy-tau0-random/simulation.log": {
+      "bytes": 825,
+      "sha256": "45a757b01e7877c5a8faff6cdfeac9afd034fc28af15988e540801918696962f"
+    },
+    "regression/legacy-tau0-random/speed-probes.csv": {
+      "bytes": 48307024,
+      "sha256": "8009d883a360b657dda6a51fbaf3bb2a11b027adb1e7f525ceef21acd97b3416"
+    },
+    "regression/legacy-tau0-random/trajectories.csv": {
+      "bytes": 64320631,
+      "sha256": "51fc223c647b4d07f65b0395863e60fe2777d80757ca9f37dc574f9faf90b255"
+    },
+    "regression/legacy-tau1-blackout/guard-preview-inputs.csv": {
+      "bytes": 19247110,
+      "sha256": "50f00c15a7f0c416d575065652d63852bc09cc852cb06430bcac17fd1560b06c"
+    },
+    "regression/legacy-tau1-blackout/results.csv": {
+      "bytes": 2020,
+      "sha256": "3eaef13c5090782b4e3c388d27435d0889098a7f558ae67b79a8af8ddc0b766b"
+    },
+    "regression/legacy-tau1-blackout/simulation.log": {
+      "bytes": 821,
+      "sha256": "cfb12ec161573e3e3461a46e668884255af5a36151cc90928de248ae3e87e77b"
+    },
+    "regression/legacy-tau1-blackout/speed-probes.csv": {
+      "bytes": 42151525,
+      "sha256": "4eacb8f8547a3d04c2e500b73a5de448b838b6934b519ffc886074aa635b7346"
+    },
+    "regression/legacy-tau1-blackout/trajectories.csv": {
+      "bytes": 56171925,
+      "sha256": "c4a2299302adb41f671ad55b635f9f0418b9d363f7840eeebb50500d76e459c7"
+    },
+    "regression/legacy-tau1-none/guard-preview-inputs.csv": {
+      "bytes": 15783667,
+      "sha256": "0c27680568fe6bc2e1e2121427088b2ae2a85981493afb6c5f14213478e3f9e3"
+    },
+    "regression/legacy-tau1-none/results.csv": {
+      "bytes": 1997,
+      "sha256": "8c1fd740414df7fa3a8855c0e3f95281d607db044843a5bb8202817f375f89d2"
+    },
+    "regression/legacy-tau1-none/simulation.log": {
+      "bytes": 812,
+      "sha256": "49cd3d02bc311505da624db59d20938de585f426b75434eff97d7d97769439f6"
+    },
+    "regression/legacy-tau1-none/speed-probes.csv": {
+      "bytes": 34625141,
+      "sha256": "13a98d9a02fb3c07a44ff8e82d86280f4b95a3edd24c4a6ca05f682cd0172c0b"
+    },
+    "regression/legacy-tau1-none/trajectories.csv": {
+      "bytes": 46002405,
+      "sha256": "affd33c7605a48ae48e256e630373b0c06e4e51c160032c2ac30f4732612ccd3"
+    },
+    "regression/legacy-tau1-random/guard-preview-inputs.csv": {
+      "bytes": 21348973,
+      "sha256": "414d6d7a56c5fe692cc05ce62b3bd55285aed6f2bf9ca80b6ad6ffb4f4e34892"
+    },
+    "regression/legacy-tau1-random/results.csv": {
+      "bytes": 2019,
+      "sha256": "42a1f5d9b3f09d900c62b35d7f408df5407c1838911469456c19af04717768f4"
+    },
+    "regression/legacy-tau1-random/simulation.log": {
+      "bytes": 817,
+      "sha256": "d9ba5cb0b8b30eeb83a429ab37bd65904295d04673acc786885640f9d07275f6"
+    },
+    "regression/legacy-tau1-random/speed-probes.csv": {
+      "bytes": 46819718,
+      "sha256": "993ec69fc5d1d52fbc4db5ec74713bc63bc1d0a23ae19131f9bfaaedc73fdc93"
+    },
+    "regression/legacy-tau1-random/trajectories.csv": {
+      "bytes": 62468496,
+      "sha256": "734a4a08f91c119ded958943f101d910d5b29f21b2e14222d9d8a23f78ea1149"
+    },
+    "regression/omitted/guard-preview-inputs.csv": {
+      "bytes": 22007990,
+      "sha256": "9e92b413c7bba49a24ea9debd4aae7236e49ffe01d198b8f589e11e7534953ff"
+    },
+    "regression/omitted/handoff-inputs.csv": {
+      "bytes": 32023435,
+      "sha256": "c6edf4c1dd3df40f73e61a9b029f6996d87a8ac5d090d927c2e8924989b11e69"
+    },
+    "regression/omitted/results.csv": {
+      "bytes": 2027,
+      "sha256": "a1b9709d7778dd9a2656d79da44244e23d5a91cf44fba6e5aeab676e639c2bf8"
+    },
+    "regression/omitted/simulation.log": {
+      "bytes": 825,
+      "sha256": "45a757b01e7877c5a8faff6cdfeac9afd034fc28af15988e540801918696962f"
+    },
+    "regression/omitted/speed-probes.csv": {
+      "bytes": 48307024,
+      "sha256": "8009d883a360b657dda6a51fbaf3bb2a11b027adb1e7f525ceef21acd97b3416"
+    },
+    "regression/omitted/trajectories.csv": {
+      "bytes": 64320631,
+      "sha256": "51fc223c647b4d07f65b0395863e60fe2777d80757ca9f37dc574f9faf90b255"
+    },
+    "regression/original/results.csv": {
+      "bytes": 2008,
+      "sha256": "90237d7558fa0a7fc572791025aacde4a17e0ff36f6c17b688aadff37bd5e535"
+    },
+    "regression/original/simulation.log": {
+      "bytes": 822,
+      "sha256": "2ce845cc29831703df7d7260b787940bab1670891e7dee1c872c98bf7541470a"
+    },
+    "regression/original/trajectories.csv": {
+      "bytes": 54160993,
+      "sha256": "7a8b031f8441edd9acf98dcf665174957f9687ab4df328121c23488bd8371015"
+    },
+    "tau0/mean_preview-blackout-1003/guard-preview-inputs.csv": {
+      "bytes": 20047161,
+      "sha256": "ea1a08ba90372464c2b63488b20ae2dc625c850ef9a7a5ca2f62d9cca1b8cceb"
+    },
+    "tau0/mean_preview-blackout-1003/handoff-inputs.csv": {
+      "bytes": 29136173,
+      "sha256": "5faaf862a951c72661fbffdc8f34e47bee0c1c24b95752eef70e10a0fbe8e3f0"
+    },
+    "tau0/mean_preview-blackout-1003/results.csv": {
+      "bytes": 2022,
+      "sha256": "abd7959cd8d5fa47aa3db0cce330bffad93ecb497fd47b4513d8f0523361285c"
+    },
+    "tau0/mean_preview-blackout-1003/simulation.log": {
+      "bytes": 824,
+      "sha256": "ae67cc8c4993f37d7269596a566d05bb0834cd9df11d830f560d172571065598"
+    },
+    "tau0/mean_preview-blackout-1003/speed-probes.csv": {
+      "bytes": 43946581,
+      "sha256": "6860d9ab4e58310937b16aeddebd0b0b120bebd23ab2fbfcbb6c33d643de43c3"
+    },
+    "tau0/mean_preview-blackout-1003/trajectories.csv": {
+      "bytes": 58480125,
+      "sha256": "8a610433971374cacdf0cccf7e5fb19a027984fd9925e3eaa3e41072ab3c4419"
+    },
+    "tau0/mean_preview-none-1003/guard-preview-inputs.csv": {
+      "bytes": 18595567,
+      "sha256": "1bc56f1eab9cf23731c89ab11cf07830243a263191fe0c7d6ee66ee902bebfae"
+    },
+    "tau0/mean_preview-none-1003/handoff-inputs.csv": {
+      "bytes": 27025012,
+      "sha256": "76d879a8e75cd78f4545d7e3557b8e8bcdc9fc6e20cd9914c79da845202437c1"
+    },
+    "tau0/mean_preview-none-1003/results.csv": {
+      "bytes": 2008,
+      "sha256": "90237d7558fa0a7fc572791025aacde4a17e0ff36f6c17b688aadff37bd5e535"
+    },
+    "tau0/mean_preview-none-1003/simulation.log": {
+      "bytes": 822,
+      "sha256": "2ce845cc29831703df7d7260b787940bab1670891e7dee1c872c98bf7541470a"
+    },
+    "tau0/mean_preview-none-1003/speed-probes.csv": {
+      "bytes": 40767343,
+      "sha256": "58be4c162bb037ab49f3bd3f4f47322ce7e26318ba2382b60ad1a9d7cc6d2d1f"
+    },
+    "tau0/mean_preview-none-1003/trajectories.csv": {
+      "bytes": 54160993,
+      "sha256": "7a8b031f8441edd9acf98dcf665174957f9687ab4df328121c23488bd8371015"
+    },
+    "tau0/mean_preview-random-1003/guard-preview-inputs.csv": {
+      "bytes": 22007990,
+      "sha256": "9e92b413c7bba49a24ea9debd4aae7236e49ffe01d198b8f589e11e7534953ff"
+    },
+    "tau0/mean_preview-random-1003/handoff-inputs.csv": {
+      "bytes": 32023435,
+      "sha256": "c6edf4c1dd3df40f73e61a9b029f6996d87a8ac5d090d927c2e8924989b11e69"
+    },
+    "tau0/mean_preview-random-1003/results.csv": {
+      "bytes": 2027,
+      "sha256": "a1b9709d7778dd9a2656d79da44244e23d5a91cf44fba6e5aeab676e639c2bf8"
+    },
+    "tau0/mean_preview-random-1003/simulation.log": {
+      "bytes": 825,
+      "sha256": "45a757b01e7877c5a8faff6cdfeac9afd034fc28af15988e540801918696962f"
+    },
+    "tau0/mean_preview-random-1003/speed-probes.csv": {
+      "bytes": 48307024,
+      "sha256": "8009d883a360b657dda6a51fbaf3bb2a11b027adb1e7f525ceef21acd97b3416"
+    },
+    "tau0/mean_preview-random-1003/trajectories.csv": {
+      "bytes": 64320631,
+      "sha256": "51fc223c647b4d07f65b0395863e60fe2777d80757ca9f37dc574f9faf90b255"
+    },
+    "tau0/one_step_handoff-blackout-1003/guard-preview-inputs.csv": {
+      "bytes": 20047161,
+      "sha256": "2e6395820206948964ce2f188a0d5d548406a35520a894bdf4bb7f419254d16f"
+    },
+    "tau0/one_step_handoff-blackout-1003/handoff-inputs.csv": {
+      "bytes": 29065338,
+      "sha256": "72907e69e75e41d78ec5fb2d8625ef1bb2e0d89f96555d100c598a70ea1dde64"
+    },
+    "tau0/one_step_handoff-blackout-1003/results.csv": {
+      "bytes": 2022,
+      "sha256": "4df9885a47332732189df728465dd45052cda5a18e4d194920c33562e4dd666d"
+    },
+    "tau0/one_step_handoff-blackout-1003/simulation.log": {
+      "bytes": 824,
+      "sha256": "80a67c73413e882952aa9871b02a7f18eacec96b1cecab6d8157a54cba7afbed"
+    },
+    "tau0/one_step_handoff-blackout-1003/speed-probes.csv": {
+      "bytes": 43946577,
+      "sha256": "32dfc679214de793d05358f50a2bd9c495ac1c70b3e164229deeeaed3ea71479"
+    },
+    "tau0/one_step_handoff-blackout-1003/trajectories.csv": {
+      "bytes": 58480123,
+      "sha256": "06565ee8913cba40202930183e2346744cbba04a3de4c031a15c160084e12d4d"
+    },
+    "tau0/one_step_handoff-none-1003/guard-preview-inputs.csv": {
+      "bytes": 18595567,
+      "sha256": "1bc56f1eab9cf23731c89ab11cf07830243a263191fe0c7d6ee66ee902bebfae"
+    },
+    "tau0/one_step_handoff-none-1003/handoff-inputs.csv": {
+      "bytes": 26959351,
+      "sha256": "0f129c0759565810a66c692ebf7cefbda7451a3d456fdcb612d9fe66123d3623"
+    },
+    "tau0/one_step_handoff-none-1003/results.csv": {
+      "bytes": 2008,
+      "sha256": "90237d7558fa0a7fc572791025aacde4a17e0ff36f6c17b688aadff37bd5e535"
+    },
+    "tau0/one_step_handoff-none-1003/simulation.log": {
+      "bytes": 822,
+      "sha256": "2ce845cc29831703df7d7260b787940bab1670891e7dee1c872c98bf7541470a"
+    },
+    "tau0/one_step_handoff-none-1003/speed-probes.csv": {
+      "bytes": 40767343,
+      "sha256": "58be4c162bb037ab49f3bd3f4f47322ce7e26318ba2382b60ad1a9d7cc6d2d1f"
+    },
+    "tau0/one_step_handoff-none-1003/trajectories.csv": {
+      "bytes": 54160993,
+      "sha256": "7a8b031f8441edd9acf98dcf665174957f9687ab4df328121c23488bd8371015"
+    },
+    "tau0/one_step_handoff-random-1003/guard-preview-inputs.csv": {
+      "bytes": 22007723,
+      "sha256": "8395deeb68aa52fad172f39b09f9c883896eb324072bdf170c62288dc3bb8349"
+    },
+    "tau0/one_step_handoff-random-1003/handoff-inputs.csv": {
+      "bytes": 31945212,
+      "sha256": "ef5cd3843568824536331ebe5677e7fc25e7550ed1d63de899bc87464ddf117b"
+    },
+    "tau0/one_step_handoff-random-1003/results.csv": {
+      "bytes": 2027,
+      "sha256": "22945e95343a7dc9e94e3864223ae502176be6a464e4e332593c4a5f021dc558"
+    },
+    "tau0/one_step_handoff-random-1003/simulation.log": {
+      "bytes": 825,
+      "sha256": "4123d4dcb5278f12907eb4d825d880379c41d16d96070121b3d06b7d98eb7f3f"
+    },
+    "tau0/one_step_handoff-random-1003/speed-probes.csv": {
+      "bytes": 48305106,
+      "sha256": "33b41a4283cf0ed32208acd99ac78018f816ea704bc21c5888ae142eb3fd381c"
+    },
+    "tau0/one_step_handoff-random-1003/trajectories.csv": {
+      "bytes": 64319628,
+      "sha256": "f8fa5473c2bc2eec0ad7de850f4af2b981a2aae76f3362d188dcd28460e492b4"
+    },
+    "tau1/mean_preview-blackout-1003/guard-preview-inputs.csv": {
+      "bytes": 19247110,
+      "sha256": "50f00c15a7f0c416d575065652d63852bc09cc852cb06430bcac17fd1560b06c"
+    },
+    "tau1/mean_preview-blackout-1003/handoff-inputs.csv": {
+      "bytes": 27954684,
+      "sha256": "07ab6359601e005cc5d74d1d492cbb58bd3bd4f6d8b292d2d934400eafbd97af"
+    },
+    "tau1/mean_preview-blackout-1003/results.csv": {
+      "bytes": 2020,
+      "sha256": "3eaef13c5090782b4e3c388d27435d0889098a7f558ae67b79a8af8ddc0b766b"
+    },
+    "tau1/mean_preview-blackout-1003/simulation.log": {
+      "bytes": 821,
+      "sha256": "cfb12ec161573e3e3461a46e668884255af5a36151cc90928de248ae3e87e77b"
+    },
+    "tau1/mean_preview-blackout-1003/speed-probes.csv": {
+      "bytes": 42151525,
+      "sha256": "4eacb8f8547a3d04c2e500b73a5de448b838b6934b519ffc886074aa635b7346"
+    },
+    "tau1/mean_preview-blackout-1003/trajectories.csv": {
+      "bytes": 56171925,
+      "sha256": "c4a2299302adb41f671ad55b635f9f0418b9d363f7840eeebb50500d76e459c7"
+    },
+    "tau1/mean_preview-none-1003/guard-preview-inputs.csv": {
+      "bytes": 15783667,
+      "sha256": "0c27680568fe6bc2e1e2121427088b2ae2a85981493afb6c5f14213478e3f9e3"
+    },
+    "tau1/mean_preview-none-1003/handoff-inputs.csv": {
+      "bytes": 22935536,
+      "sha256": "d5ddda910757f2f62939e7bd9390fb2342eb2b62d018e7c4b530673744212527"
+    },
+    "tau1/mean_preview-none-1003/results.csv": {
+      "bytes": 1997,
+      "sha256": "8c1fd740414df7fa3a8855c0e3f95281d607db044843a5bb8202817f375f89d2"
+    },
+    "tau1/mean_preview-none-1003/simulation.log": {
+      "bytes": 812,
+      "sha256": "49cd3d02bc311505da624db59d20938de585f426b75434eff97d7d97769439f6"
+    },
+    "tau1/mean_preview-none-1003/speed-probes.csv": {
+      "bytes": 34625141,
+      "sha256": "13a98d9a02fb3c07a44ff8e82d86280f4b95a3edd24c4a6ca05f682cd0172c0b"
+    },
+    "tau1/mean_preview-none-1003/trajectories.csv": {
+      "bytes": 46002405,
+      "sha256": "affd33c7605a48ae48e256e630373b0c06e4e51c160032c2ac30f4732612ccd3"
+    },
+    "tau1/mean_preview-random-1003/guard-preview-inputs.csv": {
+      "bytes": 21348973,
+      "sha256": "414d6d7a56c5fe692cc05ce62b3bd55285aed6f2bf9ca80b6ad6ffb4f4e34892"
+    },
+    "tau1/mean_preview-random-1003/handoff-inputs.csv": {
+      "bytes": 31052751,
+      "sha256": "6130cde6b91c010749aec1382e409c8e2a377bb370d175e969e874d431aa762d"
+    },
+    "tau1/mean_preview-random-1003/results.csv": {
+      "bytes": 2019,
+      "sha256": "42a1f5d9b3f09d900c62b35d7f408df5407c1838911469456c19af04717768f4"
+    },
+    "tau1/mean_preview-random-1003/simulation.log": {
+      "bytes": 817,
+      "sha256": "d9ba5cb0b8b30eeb83a429ab37bd65904295d04673acc786885640f9d07275f6"
+    },
+    "tau1/mean_preview-random-1003/speed-probes.csv": {
+      "bytes": 46819718,
+      "sha256": "993ec69fc5d1d52fbc4db5ec74713bc63bc1d0a23ae19131f9bfaaedc73fdc93"
+    },
+    "tau1/mean_preview-random-1003/trajectories.csv": {
+      "bytes": 62468496,
+      "sha256": "734a4a08f91c119ded958943f101d910d5b29f21b2e14222d9d8a23f78ea1149"
+    },
+    "tau1/one_step_handoff-blackout-1003/guard-preview-inputs.csv": {
+      "bytes": 19247110,
+      "sha256": "b3f5881ede3e126a4a9999827fbd966d632fe84117147f2a3085249028004a6d"
+    },
+    "tau1/one_step_handoff-blackout-1003/handoff-inputs.csv": {
+      "bytes": 27886722,
+      "sha256": "4e7eb557a1c8d8d61eb1cc71a9894fbd9c267af3e20f1a70452c66999f4f7a86"
+    },
+    "tau1/one_step_handoff-blackout-1003/results.csv": {
+      "bytes": 2020,
+      "sha256": "8f12581e36f885fc5ee4f1d1c79d982f2547ac7e914820a7c44ff0f0c0d040c9"
+    },
+    "tau1/one_step_handoff-blackout-1003/simulation.log": {
+      "bytes": 821,
+      "sha256": "cfb12ec161573e3e3461a46e668884255af5a36151cc90928de248ae3e87e77b"
+    },
+    "tau1/one_step_handoff-blackout-1003/speed-probes.csv": {
+      "bytes": 42151524,
+      "sha256": "363d8f463aaa69e737adfaf286dbdc5ea995f49a5fe3ba823cfaebf5f2ba0822"
+    },
+    "tau1/one_step_handoff-blackout-1003/trajectories.csv": {
+      "bytes": 56171923,
+      "sha256": "ea0ddedd43c74183121d0bfbb87269aa90d786ce4663a6a26d240bc731f1a6d2"
+    },
+    "tau1/one_step_handoff-none-1003/guard-preview-inputs.csv": {
+      "bytes": 15783667,
+      "sha256": "0c27680568fe6bc2e1e2121427088b2ae2a85981493afb6c5f14213478e3f9e3"
+    },
+    "tau1/one_step_handoff-none-1003/handoff-inputs.csv": {
+      "bytes": 22879787,
+      "sha256": "9bb77b208da65babef5246e78e47fd5aefc0d0d8e1b2c9dacfb9d22e2e18b528"
+    },
+    "tau1/one_step_handoff-none-1003/results.csv": {
+      "bytes": 1997,
+      "sha256": "8c1fd740414df7fa3a8855c0e3f95281d607db044843a5bb8202817f375f89d2"
+    },
+    "tau1/one_step_handoff-none-1003/simulation.log": {
+      "bytes": 812,
+      "sha256": "49cd3d02bc311505da624db59d20938de585f426b75434eff97d7d97769439f6"
+    },
+    "tau1/one_step_handoff-none-1003/speed-probes.csv": {
+      "bytes": 34625141,
+      "sha256": "13a98d9a02fb3c07a44ff8e82d86280f4b95a3edd24c4a6ca05f682cd0172c0b"
+    },
+    "tau1/one_step_handoff-none-1003/trajectories.csv": {
+      "bytes": 46002405,
+      "sha256": "affd33c7605a48ae48e256e630373b0c06e4e51c160032c2ac30f4732612ccd3"
+    },
+    "tau1/one_step_handoff-random-1003/guard-preview-inputs.csv": {
+      "bytes": 21348861,
+      "sha256": "fe4b92d96a91ebd8a775a671e46a3251db555aaae2ea2f7dfe71cef2c94f72bb"
+    },
+    "tau1/one_step_handoff-random-1003/handoff-inputs.csv": {
+      "bytes": 30977047,
+      "sha256": "38e5137a366e706c6b7f395a1195950c1f67bb346c144b91432ef19b07351704"
+    },
+    "tau1/one_step_handoff-random-1003/results.csv": {
+      "bytes": 2019,
+      "sha256": "16b5f3948a706affe450e3757133d36af49171036f32eeb08d5c3f4e2824bb20"
+    },
+    "tau1/one_step_handoff-random-1003/simulation.log": {
+      "bytes": 817,
+      "sha256": "98c024549e38d00ca39a57bb23f2df902870c76dfa40b47a021d3cdfa0d8ca60"
+    },
+    "tau1/one_step_handoff-random-1003/speed-probes.csv": {
+      "bytes": 46819596,
+      "sha256": "3c9a124d1068900ac1fdba1287ee62cee7e7a4f20d0ef2f03366e9abf00796aa"
+    },
+    "tau1/one_step_handoff-random-1003/trajectories.csv": {
+      "bytes": 62468429,
+      "sha256": "9e9a263c4f9bece233eaadce4d529b5a86a9d5b7f1ed0bb9ecfbbcb95670425a"
+    }
+  }
+}
