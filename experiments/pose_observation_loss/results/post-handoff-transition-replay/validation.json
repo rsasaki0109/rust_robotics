@@ -1,0 +1,78 @@
+{
+  "freeze_commit": "03bef3a",
+  "implementation_commit": "a556ddcbc7e40e85bd7c923ca1b8052aba8bd87d",
+  "local_tests": {
+    "tests": 1451,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "elapsed_s": 139.08818172200154
+  },
+  "conservation": {
+    "cases": 108,
+    "pairs": 54,
+    "resumes": 251,
+    "following": 12550,
+    "window_inputs": 12801,
+    "native_queries": 37901,
+    "summary_cells": 360,
+    "recorded_geometry_matches": 12801,
+    "transport_matches": 12550,
+    "prior_physical_estimator_decisions_bound": 827706,
+    "prior_native_queries_bound": 45002,
+    "all_export_counts_conserved": true,
+    "all_followup_events_match_prior_audit": true,
+    "all_query_rows_match_native_trace": true,
+    "all_invalid_gated_rows_equal_recorded": true
+  },
+  "repeat": {
+    "files": 14,
+    "all_byte_identical": true,
+    "proof_sha256": "ff71fc7dd84a884569f5e36f78917b534c685cd48774c2f9888e93551ad0b8dd"
+  },
+  "preexisting_files_unchanged": true,
+  "defaults_unchanged": true,
+  "no_new_simulation": true,
+  "prior_full_audits_reused_by_hash": true,
+  "query_failures": 0,
+  "retained_test_attempts": {
+    "focused-tests-1.log": {
+      "bytes": 3139,
+      "sha256": "3a4c6e71d2da763f828bf10024f7ab38d74fdb539975d7d3f14262e8a5f4f62d"
+    },
+    "focused-tests-2.log": {
+      "bytes": 3902,
+      "sha256": "614cbdcf4d2b59e940731c61ab50af68a6eac5bbd759f157a9b38e2500216a8c"
+    },
+    "focused-tests-3.log": {
+      "bytes": 3429,
+      "sha256": "32b63cc135037767991f650f416d89e0a491541adf2e1e3ce7dd595d2287706f"
+    },
+    "full-tests.log": {
+      "bytes": 242240,
+      "sha256": "1bb5840cfc68e169c64be0cc7274c41de3d22ec73be3e58c55291523e1ae78ba"
+    }
+  },
+  "retained_query_logs": {
+    "query-1.log": {
+      "bytes": 926,
+      "sha256": "78920971024c76b7bd363847a4cff890cff0e74e6fd6be3bdfcd87d8c722fe20"
+    },
+    "query-2.log": {
+      "bytes": 926,
+      "sha256": "78920971024c76b7bd363847a4cff890cff0e74e6fd6be3bdfcd87d8c722fe20"
+    }
+  },
+  "external_raw": "/workspace/scratch/post-release-mean-handoff-live-pilot/raw",
+  "external_prior_audits": [
+    "/workspace/scratch/post-release-mean-handoff-live-pilot/audit-2",
+    "/workspace/scratch/post-release-mean-handoff-live-pilot/audit-3"
+  ],
+  "external_replays": [
+    "/workspace/scratch/post-handoff-transition-replay/query-1",
+    "/workspace/scratch/post-handoff-transition-replay/query-2"
+  ],
+  "test_command": "source /workspace/.cloud-env/rust_robotics/activate.sh; PYTHONDONTWRITEBYTECODE=1 /workspace/.cloud-env/rust_robotics/python-ci/bin/python -B -m unittest discover -s experiments/pose_observation_loss -p test_*.py -v",
+  "ci_requirement": "The exact final data commit must pass related CI before merge; the exact main merge commit must pass related CI after push. Runtime CI records are retained outside Git."
+}
