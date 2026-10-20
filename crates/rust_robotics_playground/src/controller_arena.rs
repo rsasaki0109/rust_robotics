@@ -41,6 +41,7 @@ pub struct ControllerArenaDemo {
     replay_rate: f64,
     focus: ArenaControllerKind,
     actions: BTreeMap<&'static str, [f32; 2]>,
+    action_hits: BTreeMap<&'static str, bool>,
     scene_rect: Option<Rect>,
     plot_rects: [Option<Rect>; 2],
     #[cfg(target_arch = "wasm32")]
@@ -92,6 +93,7 @@ impl ControllerArenaDemo {
             replay_rate: 1.0,
             focus: ArenaControllerKind::PurePursuit,
             actions: BTreeMap::new(),
+            action_hits: BTreeMap::new(),
             scene_rect: None,
             plot_rects: [None; 2],
             #[cfg(target_arch = "wasm32")]
@@ -331,6 +333,7 @@ impl ControllerArenaDemo {
 
     fn action(&mut self, name: &'static str, response: &egui::Response) {
         self.actions.insert(name, response.rect.center().into());
+        self.action_hits.insert(name, response.hovered());
         if response.clicked() {
             #[cfg(target_arch = "wasm32")]
             {
@@ -349,7 +352,7 @@ impl ControllerArenaDemo {
             .unwrap_or(0)
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         crate::ui_kit::section(ui, "Course");
         ui.horizontal_wrapped(|ui| {
             for (preset, label) in ArenaPreset::ALL
@@ -462,7 +465,7 @@ impl ControllerArenaDemo {
             self.ui_revision += 1;
         }
         if let Some(rect) = self.scene_rect {
-            self.publish_state(rect);
+            self.publish_state(ctx, rect);
         }
     }
 
@@ -474,7 +477,7 @@ impl ControllerArenaDemo {
                 self.ui_revision += 1;
             }
             if let Some(rect) = self.scene_rect {
-                self.publish_state(rect);
+                self.publish_state(ctx, rect);
             }
             return;
         }
@@ -510,7 +513,7 @@ impl ControllerArenaDemo {
         {
             self.ui_revision += 1;
         }
-        self.publish_state(rect);
+        self.publish_state(ctx, rect);
         if self.playing {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
@@ -822,10 +825,10 @@ impl ControllerArenaDemo {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn publish_state(&self, _rect: Rect) {}
+    fn publish_state(&self, _ctx: &egui::Context, _rect: Rect) {}
 
     #[cfg(target_arch = "wasm32")]
-    fn publish_state(&self, rect: Rect) {
+    fn publish_state(&self, ctx: &egui::Context, rect: Rect) {
         let Some(canvas) = web_sys::window()
             .and_then(|w| w.document())
             .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
@@ -906,6 +909,15 @@ impl ControllerArenaDemo {
                 },
             )
         });
+        let hits = self
+            .action_hits
+            .iter()
+            .map(|(key, hit)| format!("\"{key}\":{hit}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let pointer = ctx
+            .input(|i| i.pointer.hover_pos())
+            .map_or_else(|| "null".to_owned(), |p| format!("[{:.2},{:.2}]", p.x, p.y));
         for (key, value) in [
             ("data-arena-frame", self.frame_idx.to_string()),
             ("data-arena-total", self.max_frame().to_string()),
@@ -930,6 +942,8 @@ impl ControllerArenaDemo {
                     .map_or_else(|| "null".to_owned(), encode_point),
             ),
             ("data-arena-actions", format!("{{{actions}}}")),
+            ("data-arena-hits", format!("{{{hits}}}")),
+            ("data-arena-pointer", pointer),
             ("data-arena-plots", format!("[{},{}]", plots[0], plots[1])),
             ("data-arena-action-count", self.action_count.to_string()),
             ("data-arena-last-action", self.last_action.to_owned()),

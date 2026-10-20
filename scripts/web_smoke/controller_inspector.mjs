@@ -17,6 +17,44 @@ function point(d, name, fraction) {
   return [x + width * fraction, y + height / 2];
 }
 
+async function aim(page, name, target, fraction) {
+  // A layout revision can belong to hover, before a queued wheel is applied.
+  // Process two real pointer moves, then require the actual widget hit test.
+  // Never retry a tap: a delayed first tap could toggle a control twice.
+  for (const dx of [-2, 0]) {
+    const before = await state(page);
+    // eframe reads MouseEvent.clientX/Y as integer CSS coordinates.
+    const position = [Math.floor(target[0] + dx), Math.floor(target[1])];
+    await page.mouse.move(...position);
+    await page.waitForFunction(({ revision, position }) => {
+      const d = document.querySelector('canvas')?.dataset;
+      const pointer = JSON.parse(d?.arenaPointer ?? 'null');
+      return Number(d?.arenaUiRevision) > revision && pointer && Math.hypot(pointer[0] - position[0], pointer[1] - position[1]) < 0.75;
+    }, { revision: Number(before.arenaUiRevision), position });
+    const after = await state(page);
+    const current = point(after, name, fraction);
+    if (Math.hypot(current[0] - target[0], current[1] - target[1]) > 1) return false;
+  }
+  return JSON.parse((await state(page)).arenaHits)[name] === true;
+}
+
+async function scrollAction(page, name, fraction) {
+  const before = await state(page);
+  const previous = point(before, name, fraction)[1];
+  // Leaving the drawing canvas can relayout between the scroll decision and
+  // this processed hover. Recheck before asking a boundary to scroll further.
+  if (previous >= 64 && previous <= page.viewportSize().height - 24) return;
+  const delta = previous < 64 ? -280 : 280;
+  await page.mouse.wheel(0, delta);
+  await page.waitForFunction(({ revision, name, fraction, previous, delta }) => {
+    const d = document.querySelector('canvas')?.dataset;
+    if (!d || Number(d.arenaUiRevision) <= revision) return false;
+    const y = fraction === undefined ? JSON.parse(d.arenaActions)[name][1]
+      : (() => { const r = JSON.parse(d.arenaPlots)[name === 'turn-plot' ? 1 : 0]; return r[1] + r[3] / 2; })();
+    return delta < 0 ? y > previous + 1 : y < previous - 1;
+  }, { revision: Number(before.arenaUiRevision), name, fraction, previous, delta });
+}
+
 async function action(page, name, touch, fraction) {
   for (let attempt = 0; attempt < 14; attempt++) {
     const target = point(await state(page), name, fraction);
@@ -24,25 +62,46 @@ async function action(page, name, touch, fraction) {
     const { width, height } = page.viewportSize();
     if (target[0] >= 0 && target[0] <= width && target[1] >= 64 && target[1] <= height - 24) {
       await settle(page);
+      if (!await aim(page, name, target, fraction)) continue;
       const before = await state(page);
       const current = point(before, name, fraction);
       if (Math.hypot(current[0] - target[0], current[1] - target[1]) > 1) continue;
+      if (!JSON.parse(before.arenaHits)[name]) continue;
       if (touch) await page.touchscreen.tap(...current);
       else await page.mouse.click(...current);
       await page.waitForFunction((count) => Number(document.querySelector('canvas')?.dataset.arenaActionCount) > count, Number(before.arenaActionCount));
       const after = await state(page);
       assert.equal(after.arenaLastAction, name, `input hit a different control than ${name}`);
       assert.equal(Number(after.arenaActionCount), Number(before.arenaActionCount) + 1, `${name} was handled more than once`);
-      receipts.get(page)?.push({ name, count: Number(after.arenaActionCount), frame: Number(after.arenaFrame), playing: after.arenaPlaying });
+      receipts.get(page)?.push({ name, count: Number(after.arenaActionCount), frame: Number(after.arenaFrame), playing: after.arenaPlaying,
+        position: current, pointer: JSON.parse(before.arenaPointer), hit: JSON.parse(before.arenaHits)[name] });
       return after;
     }
     await page.mouse.move(Math.min(width - 20, Math.max(20, target[0])), height - 60);
-    const revision = Number((await state(page)).arenaUiRevision);
-    await page.mouse.wheel(0, target[1] < 64 ? -280 : 280);
-    await page.waitForFunction((previous) => Number(document.querySelector('canvas')?.dataset.arenaUiRevision) > previous, revision);
+    await scrollAction(page, name, fraction);
     await settle(page);
   }
   throw Error(`arena action is unreachable: ${name}`);
+}
+
+export async function checkControllerScroll(page, shots) {
+  receipts.set(page, []);
+  await page.waitForFunction(() => document.querySelector('canvas')?.dataset.arenaReady === '1');
+  const initial = await state(page);
+  assert.equal(initial.arenaFrame, '100');
+  checkMetrics(initial);
+  for (const [name, fraction] of [['lqr', 0.6], ['pp', 0.25], ['stanley', 0.6]]) {
+    const before = await state(page);
+    const selected = await action(page, name, true);
+    assert.equal(selected.arenaFocus, name);
+    assert.deepEqual(snapshot(selected), snapshot(before));
+    const inspected = await action(page, 'error-plot', true, fraction);
+    assert.equal(Number(inspected.arenaFrame), Math.round(Number(inspected.arenaTotal) * fraction));
+    checkMetrics(inspected);
+  }
+  const times = await page.evaluate(() => window.__slowPaintTimes);
+  assert(times.length >= 3 && times.slice(1).every((time, i) => time - times[i] >= 350), 'scroll regression did not use slow paints');
+  if (shots) await writeFile(join(shots, 'controller-inspector-scroll.json'), JSON.stringify({ paintTimes: times, inputs: receipts.get(page), inspected: await state(page) }, null, 2));
 }
 
 async function mapVisible(page) {

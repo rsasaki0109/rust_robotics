@@ -64,8 +64,13 @@ the real `/rust_robotics/playground/` prefix.
 The tests recompute every reported metric from the visible prefix and check
 the applied command against the next pose, then exercise both graphs, stepping,
 playback, response changes, course drawing, reset, and exact-moment sharing.
+After scrolling, they wait for the target's position to move and for real pointer
+events and the widget's hit test to confirm the current layout before tapping.
 They wait for the actual egui input response rather than assuming a fixed
 post-click delay. The [desktop receipt](assets/controller-inspector.json) and
 [phone receipt](assets/controller-inspector-phone.json) record these real samples
-and input acknowledgements. Run the complete 46-case suite with the
+and input acknowledgements. A further touch case limits painting to 2.5 Hz,
+repeatedly scrolling between controller cards and a graph; its
+[scroll receipt](assets/controller-inspector-scroll.json) records all six inputs
+and actual paint intervals. Run the complete 47-case suite with the
 [browser verification command](drone_race_project.md).

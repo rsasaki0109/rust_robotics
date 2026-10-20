@@ -23,7 +23,7 @@ import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_s
 import { checkShowcase } from './showcase.mjs';
 import { checkGridSearch } from './grid_search.mjs';
 import { checkLocalization } from './localization.mjs';
-import { checkControllerInspector } from './controller_inspector.mjs';
+import { checkControllerInspector, checkControllerScroll } from './controller_inspector.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -82,6 +82,7 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'controller-inspector-slow-scroll', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'controller-inspector', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true },
   { name: 'controller-inspector-phone', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'localization-slow-input', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -167,11 +168,14 @@ for (const test of cases) {
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
   if (test.controllerInspector) {
-    try { await checkControllerInspector(page, base, shots, Boolean(test.touch)); }
+    try {
+      if (test.slowPaint) await checkControllerScroll(page, shots);
+      else await checkControllerInspector(page, base, shots, Boolean(test.touch));
+    }
     catch (error) {
       const d = await page.locator('#rust_robotics_playground').evaluate((c) => ({ ...c.dataset }));
       problems.push(`${test.name}: ${error.stack ?? error.message}`);
-      problems.push(`arena input: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => ['arenaActionCount', 'arenaLastAction', 'arenaUiRevision', 'arenaPlaying', 'arenaFrame', 'arenaActions'].includes(key))))}`);
+      problems.push(`arena input: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => ['arenaActionCount', 'arenaLastAction', 'arenaUiRevision', 'arenaPlaying', 'arenaFrame', 'arenaActions', 'arenaHits', 'arenaPointer'].includes(key))))}`);
     }
   }
   if (test.localization) {
