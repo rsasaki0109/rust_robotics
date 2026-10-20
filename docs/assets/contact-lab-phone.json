@@ -1,0 +1,370 @@
+{
+  "initial": {
+    "labMode": "contact",
+    "labPose": "[0,0,0]",
+    "labNext": "[0.003,0,0]",
+    "labTwist": "[0.03,0,-0]",
+    "labContact": "[-0.05,0]",
+    "labNormal": "[1,0]",
+    "labTangent": "[0,1]",
+    "labRequested": "[0.03,0]",
+    "labRealized": "[0.03,0]",
+    "labRegime": "Sticking",
+    "labSteps": "0",
+    "labMu": "0.3",
+    "labCommand": "[0,0,0.03,0]",
+    "labActions": "{\"aim\":[160,202.44],\"back\":[37.640625,749.375],\"center\":[44.25,626.875],\"contact\":[59.546875,507.375],\"delivery\":[179.07813,507.375],\"edge\":[139,626.875],\"front\":[162.59375,749.375],\"glance\":[239.96875,626.875],\"high\":[148.96875,1119.875],\"low\":[51.15625,1119.875],\"minus-y\":[223.92188,749.375],\"plus-y\":[99.015625,749.375],\"push\":[54.90625,1165.875],\"release\":[47.53125,672.875],\"reset-pose\":[161.84375,1165.875]}",
+    "labHits": "{\"aim\":false,\"back\":false,\"center\":false,\"contact\":false,\"delivery\":false,\"edge\":false,\"front\":false,\"glance\":false,\"high\":false,\"low\":false,\"minus-y\":false,\"plus-y\":false,\"push\":false,\"release\":false,\"reset-pose\":false}",
+    "labPointer": "null",
+    "labActionCount": "0",
+    "labLastAction": "",
+    "labUiRevision": "6",
+    "labShare": "tab=pushing&push_mode=contact&lab_face=0&lab_contact=0&lab_normal=0.03&lab_tangent=0&lab_mu=0.3&lab_x=0&lab_y=0&lab_theta=0",
+    "labRect": "[8,93,304,218.88]"
+  },
+  "low": {
+    "labMode": "contact",
+    "labPose": "[0,0,0]",
+    "labNext": "[0.003,0.00030000000000000003,-0.016666666666666673]",
+    "labTwist": "[0.03,0.003,-0.1666666666666667]",
+    "labContact": "[-0.05,0]",
+    "labNormal": "[1,0]",
+    "labTangent": "[0,1]",
+    "labRequested": "[0.03,0.06]",
+    "labRealized": "[0.03,0.011333333333333338]",
+    "labRegime": "Sliding +t",
+    "labSteps": "0",
+    "labMu": "0.1",
+    "labCommand": "[0,0,0.03,0.06]",
+    "labActions": "{\"aim\":[160,-357.56],\"back\":[37.640625,205.875],\"center\":[44.25,83.375],\"contact\":[59.546875,-36.125],\"delivery\":[179.07813,-36.125],\"edge\":[139,83.375],\"front\":[162.59375,205.875],\"glance\":[239.96875,83.375],\"high\":[148.96875,576.375],\"low\":[51.15625,576.375],\"minus-y\":[223.92188,205.875],\"plus-y\":[99.015625,205.875],\"push\":[54.90625,622.375],\"release\":[47.53125,129.375],\"reset-pose\":[161.84375,622.375]}",
+    "labHits": "{\"aim\":false,\"back\":false,\"center\":false,\"contact\":false,\"delivery\":false,\"edge\":false,\"front\":false,\"glance\":false,\"high\":false,\"low\":true,\"minus-y\":false,\"plus-y\":false,\"push\":false,\"release\":false,\"reset-pose\":false}",
+    "labPointer": "[51,576]",
+    "labActionCount": "5",
+    "labLastAction": "low",
+    "labUiRevision": "108",
+    "labShare": "tab=pushing&push_mode=contact&lab_face=0&lab_contact=0&lab_normal=0.03&lab_tangent=0.06&lab_mu=0.1&lab_x=0&lab_y=0&lab_theta=0",
+    "labRect": "[8,-467,304,218.88]"
+  },
+  "high": {
+    "labMode": "contact",
+    "labPose": "[0,0,0]",
+    "labNext": "[0.003,0.001588235294117647,-0.08823529411764706]",
+    "labTwist": "[0.03,0.01588235294117647,-0.8823529411764706]",
+    "labContact": "[-0.05,0]",
+    "labNormal": "[1,0]",
+    "labTangent": "[0,1]",
+    "labRequested": "[0.03,0.06]",
+    "labRealized": "[0.03,0.06]",
+    "labRegime": "Sticking",
+    "labSteps": "0",
+    "labMu": "0.8",
+    "labCommand": "[0,0,0.03,0.06]",
+    "labActions": "{\"aim\":[160,-357.56],\"back\":[37.640625,205.875],\"center\":[44.25,83.375],\"contact\":[59.546875,-36.125],\"delivery\":[179.07813,-36.125],\"edge\":[139,83.375],\"front\":[162.59375,205.875],\"glance\":[239.96875,83.375],\"high\":[148.96875,576.375],\"low\":[51.15625,576.375],\"minus-y\":[223.92188,205.875],\"plus-y\":[99.015625,205.875],\"push\":[54.90625,622.375],\"release\":[47.53125,129.375],\"reset-pose\":[161.84375,622.375]}",
+    "labHits": "{\"aim\":false,\"back\":false,\"center\":false,\"contact\":false,\"delivery\":false,\"edge\":false,\"front\":false,\"glance\":false,\"high\":true,\"low\":false,\"minus-y\":false,\"plus-y\":false,\"push\":false,\"release\":false,\"reset-pose\":false}",
+    "labPointer": "[148,576]",
+    "labActionCount": "6",
+    "labLastAction": "high",
+    "labUiRevision": "120",
+    "labShare": "tab=pushing&push_mode=contact&lab_face=0&lab_contact=0&lab_normal=0.03&lab_tangent=0.06&lab_mu=0.8&lab_x=0&lab_y=0&lab_theta=0",
+    "labRect": "[8,-467,304,218.88]"
+  },
+  "saved": {
+    "labMode": "contact",
+    "labPose": "[0.0023684210526315795,0.0007105263157894738,-0.03947368421052633]",
+    "labNext": "[0.004763036949746234,0.0013270331148303445,-0.07894736842105265]",
+    "labTwist": "[0.023684210526315794,0.007105263157894738,-0.3947368421052633]",
+    "labContact": "[-0.05,0]",
+    "labNormal": "[1,0]",
+    "labTangent": "[0,1]",
+    "labRequested": "[0.023684210526315794,0.04046316046463816]",
+    "labRealized": "[0.023684210526315794,0.026842105263157903]",
+    "labRegime": "Sliding +t",
+    "labSteps": "1",
+    "labMu": "0.3",
+    "labCommand": "[0,0,0.023684210526315794,0.04046316046463816]",
+    "labActions": "{\"aim\":[160,-357.56],\"back\":[37.640625,205.875],\"center\":[44.25,83.375],\"contact\":[59.546875,-36.125],\"delivery\":[179.07813,-36.125],\"edge\":[139,83.375],\"front\":[162.59375,205.875],\"glance\":[239.96875,83.375],\"high\":[148.96875,576.375],\"low\":[51.15625,576.375],\"minus-y\":[223.92188,205.875],\"plus-y\":[99.015625,205.875],\"push\":[54.90625,622.375],\"release\":[47.53125,129.375],\"reset-pose\":[161.84375,622.375]}",
+    "labHits": "{\"aim\":false,\"back\":false,\"center\":false,\"contact\":false,\"delivery\":false,\"edge\":false,\"front\":false,\"glance\":false,\"high\":false,\"low\":false,\"minus-y\":false,\"plus-y\":false,\"push\":true,\"release\":false,\"reset-pose\":false}",
+    "labPointer": "[54,622]",
+    "labActionCount": "12",
+    "labLastAction": "push",
+    "labUiRevision": "262",
+    "labShare": "tab=pushing&push_mode=contact&lab_face=0&lab_contact=0&lab_normal=0.023684210526315794&lab_tangent=0.04046316046463816&lab_mu=0.3&lab_x=0.0023684210526315795&lab_y=0.0007105263157894738&lab_theta=-0.03947368421052633",
+    "labRect": "[8,-467,304,218.88]"
+  },
+  "shared": {
+    "labMode": "contact",
+    "labPose": "[0.0023684210526315795,0.0007105263157894738,-0.03947368421052633]",
+    "labNext": "[0.004763036949746234,0.0013270331148303445,-0.07894736842105265]",
+    "labTwist": "[0.023684210526315794,0.007105263157894738,-0.3947368421052633]",
+    "labContact": "[-0.05,0]",
+    "labNormal": "[1,0]",
+    "labTangent": "[0,1]",
+    "labRequested": "[0.023684210526315794,0.04046316046463816]",
+    "labRealized": "[0.023684210526315794,0.026842105263157903]",
+    "labRegime": "Sliding +t",
+    "labSteps": "0",
+    "labMu": "0.3",
+    "labCommand": "[0,0,0.023684210526315794,0.04046316046463816]",
+    "labActions": "{\"aim\":[160,202.44],\"back\":[37.640625,765.875],\"center\":[44.25,643.375],\"contact\":[59.546875,523.875],\"delivery\":[179.07813,523.875],\"edge\":[139,643.375],\"front\":[162.59375,765.875],\"glance\":[239.96875,643.375],\"high\":[148.96875,1136.375],\"low\":[51.15625,1136.375],\"minus-y\":[223.92188,765.875],\"plus-y\":[99.015625,765.875],\"push\":[54.90625,1182.375],\"release\":[47.53125,689.375],\"reset-pose\":[161.84375,1182.375]}",
+    "labHits": "{\"aim\":false,\"back\":false,\"center\":false,\"contact\":false,\"delivery\":false,\"edge\":false,\"front\":false,\"glance\":false,\"high\":false,\"low\":false,\"minus-y\":false,\"plus-y\":false,\"push\":false,\"release\":false,\"reset-pose\":false}",
+    "labPointer": "null",
+    "labActionCount": "0",
+    "labLastAction": "",
+    "labUiRevision": "4",
+    "labShare": "tab=pushing&push_mode=contact&lab_face=0&lab_contact=0&lab_normal=0.023684210526315794&lab_tangent=0.04046316046463816&lab_mu=0.3&lab_x=0.0023684210526315795&lab_y=0.0007105263157894738&lab_theta=-0.03947368421052633",
+    "labRect": "[8,93,304,218.88]"
+  },
+  "inputs": [
+    {
+      "name": "push",
+      "count": 1,
+      "regime": "Sticking",
+      "pose": [
+        0.003,
+        0,
+        0
+      ],
+      "position": [
+        54.90625,
+        605.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "edge",
+      "count": 2,
+      "regime": "Sliding -t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        139,
+        66.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "push",
+      "count": 3,
+      "regime": "Sliding -t",
+      "pose": [
+        0.0016874999999999998,
+        -0.00050625,
+        -0.037500000000000006
+      ],
+      "position": [
+        54.90625,
+        605.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "glance",
+      "count": 4,
+      "regime": "Sliding +t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        239.96875,
+        66.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "low",
+      "count": 5,
+      "regime": "Sliding +t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        51.15625,
+        576.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "high",
+      "count": 6,
+      "regime": "Sticking",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        148.96875,
+        576.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "front",
+      "count": 7,
+      "regime": "Sticking",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        162.59375,
+        189.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "release",
+      "count": 8,
+      "regime": "Separated",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        47.53125,
+        112.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "push",
+      "count": 9,
+      "regime": "Separated",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        54.90625,
+        622.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "center",
+      "count": 10,
+      "regime": "Sticking",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        44.25,
+        83.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "aim",
+      "count": 11,
+      "command": [
+        0,
+        0,
+        0.023684210526315794,
+        0.04046316046463816
+      ],
+      "touch": true
+    },
+    {
+      "name": "push",
+      "count": 12,
+      "regime": "Sliding +t",
+      "pose": [
+        0.0023684210526315795,
+        0.0007105263157894738,
+        -0.03947368421052633
+      ],
+      "position": [
+        54.90625,
+        622.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "delivery",
+      "count": 13,
+      "regime": "Sliding +t",
+      "pose": [
+        0.0023684210526315795,
+        0.0007105263157894738,
+        -0.03947368421052633
+      ],
+      "position": [
+        179.07813,
+        243.875
+      ],
+      "hit": true
+    },
+    {
+      "name": "contact",
+      "count": 14,
+      "regime": "Sliding +t",
+      "pose": [
+        0.0023684210526315795,
+        0.0007105263157894738,
+        -0.03947368421052633
+      ],
+      "position": [
+        59.546875,
+        151.65625
+      ],
+      "hit": true
+    },
+    {
+      "name": "reset-pose",
+      "count": 15,
+      "regime": "Sliding +t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        161.84375,
+        622.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "glance",
+      "count": 16,
+      "regime": "Sliding +t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        239.96875,
+        83.375
+      ],
+      "hit": true
+    },
+    {
+      "name": "low",
+      "count": 17,
+      "regime": "Sliding +t",
+      "pose": [
+        0,
+        0,
+        0
+      ],
+      "position": [
+        51.15625,
+        576.375
+      ],
+      "hit": true
+    }
+  ]
+}
