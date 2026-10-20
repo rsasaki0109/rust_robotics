@@ -95,6 +95,12 @@ pub struct LocalizationDemo {
     anchor: usize,
     actions: BTreeMap<&'static str, [f32; 2]>,
     scene_rect: Option<Rect>,
+    #[cfg(target_arch = "wasm32")]
+    action_count: u64,
+    #[cfg(target_arch = "wasm32")]
+    last_action: &'static str,
+    #[cfg(target_arch = "wasm32")]
+    ui_revision: u64,
 }
 
 /// Corners of the automatic tour around the landmarks.
@@ -152,6 +158,12 @@ impl Default for LocalizationDemo {
             anchor: 0,
             actions: BTreeMap::new(),
             scene_rect: None,
+            #[cfg(target_arch = "wasm32")]
+            action_count: 0,
+            #[cfg(target_arch = "wasm32")]
+            last_action: "",
+            #[cfg(target_arch = "wasm32")]
+            ui_revision: 0,
         }
     }
 }
@@ -367,6 +379,11 @@ impl LocalizationDemo {
     fn action(&mut self, name: &'static str, response: &egui::Response) {
         self.actions.insert(name, response.rect.center().into());
         if response.clicked() {
+            #[cfg(target_arch = "wasm32")]
+            {
+                self.action_count += 1;
+                self.last_action = name;
+            }
             response.ctx.request_repaint();
         }
     }
@@ -740,6 +757,10 @@ impl LocalizationDemo {
              filters starts a fresh run. The EKF ellipse describes model uncertainty, \
              not a guarantee that the true robot stays inside it.",
         );
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.ui_revision += 1;
+        }
         if let Some(rect) = self.scene_rect {
             self.publish_state(rect);
         }
@@ -869,6 +890,9 @@ impl LocalizationDemo {
                 ),
             ),
             ("data-loc-actions", format!("{{{actions}}}")),
+            ("data-loc-action-count", self.action_count.to_string()),
+            ("data-loc-last-action", self.last_action.to_owned()),
+            ("data-loc-ui-revision", self.ui_revision.to_string()),
             (
                 "aria-label",
                 format!(

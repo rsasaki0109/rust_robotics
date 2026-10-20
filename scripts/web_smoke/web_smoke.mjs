@@ -81,6 +81,7 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'localization-slow-input', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'localization-observations', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true },
   { name: 'localization-observations-phone', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'grid-search', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true },
@@ -163,8 +164,12 @@ for (const test of cases) {
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
   if (test.localization) {
-    try { await checkLocalization(page, base, shots, Boolean(test.touch)); }
-    catch (error) { problems.push(`localization check: ${error.stack ?? error.message}`); }
+    try { await checkLocalization(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d = await page.locator('#rust_robotics_playground').evaluate((c) => ({ ...c.dataset }));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`localization input: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => ['locActionCount', 'locLastAction', 'locUiRevision', 'locPlaying', 'locSteps', 'locActions'].includes(key))))}`);
+    }
   }
   if (test.gridSearch) {
     try { await checkGridSearch(page, base, shots, Boolean(test.touch)); }

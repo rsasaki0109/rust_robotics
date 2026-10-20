@@ -7,6 +7,11 @@ const canvas = '#rust_robotics_playground';
 const state = (page) => page.locator(canvas).evaluate((c) => Object.fromEntries(
   Object.entries(c.dataset).filter(([key]) => key.startsWith('loc'))));
 const settle = (page) => page.waitForTimeout(100);
+const inputReceipts = new WeakMap();
+
+async function layoutAfter(page, revision) {
+  await page.waitForFunction((previous) => Number(document.querySelector('canvas')?.dataset.locUiRevision) > previous, Number(revision));
+}
 
 async function action(page, name, touch) {
   for (let attempt = 0; attempt < 14; attempt++) {
@@ -15,15 +20,24 @@ async function action(page, name, touch) {
     const { width, height } = page.viewportSize();
     if (point[1] >= 64 && point[1] <= height - 24) {
       await settle(page);
-      const current = JSON.parse((await state(page)).locActions)[name];
+      const before = await state(page);
+      const current = JSON.parse(before.locActions)[name];
       if (Math.abs(current[0] - point[0]) > 1 || Math.abs(current[1] - point[1]) > 1) continue;
       if (touch) await page.touchscreen.tap(...current);
       else await page.mouse.click(...current);
-      await settle(page);
+      // Touch release can be queued until the next egui frame. Wait for the
+      // actual response, never assume a fixed delay means the input was handled.
+      await page.waitForFunction((count) => Number(document.querySelector('canvas')?.dataset.locActionCount) > count, Number(before.locActionCount));
+      const after = await state(page);
+      assert.equal(after.locLastAction, name, `input hit a different control than ${name}`);
+      assert.equal(Number(after.locActionCount), Number(before.locActionCount) + 1, `${name} was handled more than once`);
+      inputReceipts.get(page)?.push({ name, count: Number(after.locActionCount), layout: Number(after.locUiRevision), playing: after.locPlaying, steps: Number(after.locSteps) });
       return;
     }
     await page.mouse.move(Math.min(width - 20, Math.max(20, point[0])), height - 60);
+    const revision = (await state(page)).locUiRevision;
     await page.mouse.wheel(0, point[1] < 64 ? -280 : 280);
+    await layoutAfter(page, revision);
     await settle(page);
   }
   throw Error(`localization action is unreachable: ${name}`);
@@ -34,7 +48,9 @@ async function mapVisible(page) {
     const rect = JSON.parse((await state(page)).locRect);
     if (rect[1] >= 48 && rect[1] + rect[3] <= page.viewportSize().height) return rect;
     await page.mouse.move(page.viewportSize().width / 2, 120);
+    const revision = (await state(page)).locUiRevision;
     await page.mouse.wheel(0, -300);
+    await layoutAfter(page, revision);
     await settle(page);
   }
   throw Error('localization map is unreachable');
@@ -51,7 +67,8 @@ function checkError(d) {
     'the graph does not report the actual estimate error');
 }
 
-export async function checkLocalization(page, base, shots, touch) {
+export async function checkLocalization(page, base, shots, touch, slowPaint = false) {
+  inputReceipts.set(page, []);
   await page.waitForFunction(() => document.querySelector('canvas')?.dataset.locPlaying === '0');
   const initial = await state(page);
   assert.equal(initial.locSteps, '0');
@@ -146,6 +163,14 @@ export async function checkLocalization(page, base, shots, touch) {
   assert.equal(cleared.locFix, 'null');
   assert.equal(cleared.locErrors, '[]');
   assert.equal(cleared.locPlaying, '0');
+  if (slowPaint) {
+    const times = await page.evaluate(() => window.__slowPaintTimes);
+    assert(times.length >= 3 && times.slice(1).every((time, i) => time - times[i] >= 350),
+      'localization input regression did not actually use slow paints');
+    if (shots) await writeFile(join(shots, 'localization-input-sync.json'), JSON.stringify({
+      paintTimes: times, inputs: inputReceipts.get(page), paused: sample(pf), cleared: sample(cleared),
+    }, null, 2));
+  }
   if (shots && !touch) await writeFile(join(shots, 'localization-observations.json'), JSON.stringify(
     Object.fromEntries(Object.entries({ stationary, pf, shared, ekf, cleared }).map(([key, d]) => [key, Object.fromEntries(
       Object.entries(d).filter(([field]) => !['locActions', 'locRect'].includes(field)))])), null, 2));
