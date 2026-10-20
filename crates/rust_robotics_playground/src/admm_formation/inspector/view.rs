@@ -241,6 +241,18 @@ impl AdmmFormationDemo {
     }
 
     pub(in crate::admm_formation) fn inspector_scene(&mut self, ui: &mut egui::Ui) {
+        // The outer app scrolls phones. Desktop's central panel needs its own
+        // scroll area when stacked maps or a short window exceed its height.
+        if ui.ctx().screen_rect().width() >= 700.0 {
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| self.inspector_content(ui));
+        } else {
+            self.inspector_content(ui);
+        }
+    }
+
+    fn inspector_content(&mut self, ui: &mut egui::Ui) {
         ui.heading("Formation lab");
         ui.label(format!(
             "Step {} / {CYCLES} · same noise, different smoothness",
@@ -372,15 +384,16 @@ impl AdmmFormationDemo {
         }
     }
 
-    fn residuals(&self, ui: &mut egui::Ui) {
-        let (rect, _) =
+    fn residuals(&mut self, ui: &mut egui::Ui) {
+        let (rect, response) =
             ui.allocate_exact_size(egui::vec2(ui.available_width(), 112.0), Sense::hover());
+        self.inspector.widget("residual", &response);
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 7.0, Color32::from_rgb(17, 25, 35));
         painter.text(
             rect.min + egui::vec2(5.0, 2.0),
             egui::Align2::LEFT_TOP,
-            "Next solve · ADMM residual (log₁₀) · bright: primal · faint: dual",
+            "ADMM log₁₀ residual · bright primal / faint dual",
             egui::FontId::proportional(11.0),
             Color32::LIGHT_GRAY,
         );

@@ -177,6 +177,10 @@ export async function checkFormationLab(page,base,shots,touch=false,slow=false) 
   const saved=await action(page,'before',touch);
   assert.equal((await action(page,'overlay',touch)).formationActive,'0');
   const inspected=await action(page,'inspect',touch);assert.equal(inspected.formationRuns,saved.formationRuns);
+  // The final graph must be reachable below both maps, including a compact
+  // desktop where the central scene and left controls scroll independently.
+  await visible(page,'residual');
+  assert.equal(JSON.parse((await state(page)).formationHits).residual,true);
   const receipts=inputs.get(page);assert.equal(receipts.length,20);assert(receipts.every((i)=>i.hit));
   let paintTimes;
   if(slow) {paintTimes=await page.evaluate(()=>window.__slowPaintTimes);assert(paintTimes.length>=3&&paintTimes.slice(1).every((t,i)=>t-paintTimes[i]>=350),'slow paints were not capped');}
@@ -186,7 +190,7 @@ export async function checkFormationLab(page,base,shots,touch=false,slow=false) 
   for(const key of ['formationFrame','formationNoise','formationHorizon','formationObservations','formationRuns']) assert.equal(shared[key],saved[key],`shared ${key} changed`);
   assert.equal(shared.formationPlaying,'0');
   if(shots) {
-    const suffix=`${touch?'-phone':''}${slow?'-slow':''}`;
+    const suffix=`${touch?'-phone':''}${slow?'-slow':''}${page.viewportSize().width===900?'-compact':''}`;
     await page.screenshot({path:join(shots,`formation-lab${suffix}-feature.png`)});
     await writeFile(join(shots,`formation-lab${suffix}.json`),JSON.stringify({initial,before,stepped,heavy,clean,noisy,result,paused,scrubbed,saved,shared,inputs:receipts,paintTimes},null,2));
   }

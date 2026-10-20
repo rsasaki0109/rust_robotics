@@ -23,6 +23,8 @@ differences (λ = 8).
   both runs and keeps the selected step paused.
 - Tap or drag the tracking-error graph. Both maps, plans, applied trails and
   statistics follow that shared step. **−1** restores the previous plan.
+  Scroll down to inspect both maps and convergence on a narrow or short
+  screen. On desktop, the scene and left controls scroll independently.
 - Choose **Result**. Compare mean tracking error and RMS second difference
   over all applied positions. A smoother path can trade tracking accuracy
   for smaller changes in its spatial steps.
@@ -60,7 +62,8 @@ cargo test --locked -p rust_robotics_control --lib admm_consensus::
 
 The lab records the existing [horizon-consensus solver](../crates/rust_robotics_control/src/admm_consensus.rs)
 without changing its algorithm. The [browser checks](../scripts/web_smoke/formation_lab.mjs)
-use actual mouse and touch input at desktop, 320 px phone and 2.5 Hz paint
-rates. They independently check noisy observations, consensus means, primal
+use actual mouse and touch input at desktop, compact 900 × 700 desktop,
+320 px phone and 2.5 Hz paint rates. They independently check noisy
+observations, consensus means, primal
 residuals, command application, prefix statistics, actual painted coordinates,
 layer toggles, graph seeking and exact paused sharing.

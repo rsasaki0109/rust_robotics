@@ -90,6 +90,7 @@ const slowReplay = await slowReplayFixture(docs);
 const cases = [
   { name: 'formation-lab', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true },
   { name: 'formation-lab-phone', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'formation-lab-compact', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 900, height: 700 } },
   { name: 'formation-lab-slow', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'slam-loop', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true },
   { name: 'slam-loop-phone', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
