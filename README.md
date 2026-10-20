@@ -131,12 +131,17 @@ Open the visual gallery: <https://rsasaki0109.github.io/rust_robotics/>
 ## Quick Start
 
 Try the interactive grid and sampling planners, Hybrid A\* parking,
-localization, SLAM, multi-agent formation, MPPI, box pushing, and
+localization, SLAM, multi-agent formation, MPPI, robot arm motion, box pushing, and
 path-tracking controller comparison with no installation:
 
 [Choose an experiment](https://rsasaki0109.github.io/rust_robotics/): explore
 planning, localization and SLAM, control, or manipulation and flight. Each
 topic offers a real playground preview and a small change to try.
+
+[Move a robot arm](https://rsasaki0109.github.io/rust_robotics/playground/?tab=arm):
+drag a target, compare both inverse-kinematics solutions, or move the joints
+yourself. Explore full stretch, folding, and goals outside its reach.
+[Read the arm lab guide](docs/arm_lab.md).
 
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one

@@ -6,9 +6,9 @@ const topics = [
   { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
   { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'localization' },
   { id: 'control', label: 'Control', count: 3, tab: 'arena' },
-  { id: 'interaction', label: 'Manipulation & flight', count: 2, tab: 'pushing' },
+  { id: 'interaction', label: 'Manipulation & flight', count: 3, tab: 'arm' },
 ];
-const ids = ['grid', 'sampling', 'parking', 'localization', 'slam', 'arena', 'mppi', 'admm', 'pushing', 'drone'];
+const ids = ['grid', 'sampling', 'parking', 'localization', 'slam', 'arena', 'mppi', 'admm', 'arm', 'pushing', 'drone'];
 
 async function fits(page) {
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'showcase overflows horizontally');
@@ -73,6 +73,13 @@ export async function checkShowcase(page, home, shots, name) {
       assert.equal(JSON.parse(replay.rrtCosts).length,250);
       assert(JSON.parse(replay.rrtRewires).length>0,'the featured iteration did not show a real rewire');
     }
+    if (topic.tab === 'arm') {
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.armActive === '1');
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      assert.equal(d.armReachable,'1');
+      assert.equal(d.armPlaying,'0');
+      assert.notDeepEqual(JSON.parse(d.armSolution),JSON.parse(d.armAlternate),'the featured arm must show two distinct IK solutions');
+    }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });
     await page.locator(`[data-experiment-filter="${topic.id}"][aria-pressed="true"]`).waitFor();
@@ -82,7 +89,7 @@ export async function checkShowcase(page, home, shots, name) {
   await page.reload({ waitUntil: 'load' });
   await page.locator('[data-experiment-filter="interaction"][aria-pressed="true"]').waitFor();
   await page.locator('[data-experiment-filter="all"]').click();
-  assert.equal(await page.locator('.tile').count(), 10);
+  assert.equal(await page.locator('.tile').count(), 11);
   assert.equal(new URL(page.url()).searchParams.has('topic'), false);
   for (const link of await page.locator('.tile').all()) {
     const target = new URL(await link.getAttribute('href'), home);
@@ -110,7 +117,7 @@ export async function checkShowcase(page, home, shots, name) {
 
   await page.goto(`${home}?topic=unknown`, { waitUntil: 'load' });
   await page.locator('[data-experiment-filter="all"][aria-pressed="true"]').waitFor();
-  assert.equal(await page.locator('.tile').count(), 10);
+  assert.equal(await page.locator('.tile').count(), 11);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto');
   await fits(page);

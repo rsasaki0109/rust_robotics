@@ -718,6 +718,13 @@ const playTiles = [
     link: "playground/?tab=admm"
   },
   {
+    id: "arm", topic: "interaction",
+    title: "Arm lab",
+    text: "Drag a target, compare two ways to bend, and explore the reachable workspace. Move the joints yourself, too.",
+    image: "assets/playground/arm.png",
+    link: "playground/?tab=arm"
+  },
+  {
     id: "pushing", topic: "interaction",
     title: "Box pushing",
     text: "Aim a push, change friction, and discover when a box turns or slides. Try MPPI delivery, too.",
@@ -756,11 +763,11 @@ const experimentTopics = [
     alt: "Three controller trajectories with applied turn rates and errors at the selected simulation time"
   },
   {
-    id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "pushing",
+    id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "arm",
     title: "Put physics in your hands.",
-    description: "Explore how contact moves a box, or pilot a quadrotor through a circuit you build.",
-    task: "Try this: choose Glancing, then switch Low / High friction. Watch the velocity arrows separate and meet.",
-    alt: "A contact experiment with a box, a colored velocity fan, and different pusher and box contact velocities"
+    description: "Guide a robot arm, explore how contact moves a box, or pilot a quadrotor through your own circuit.",
+    task: "Try this: Snap to a target, switch Bend + / -, then Snap again. Two joint poses reach the same point.",
+    alt: "A two-link robot arm, two inverse-kinematics solutions, and its circular reachable workspace"
   }
 ];
 const requestedTopic = new URLSearchParams(location.search).get("topic");

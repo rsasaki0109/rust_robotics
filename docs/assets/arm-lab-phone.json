@@ -1,0 +1,517 @@
+{
+  "initial": {
+    "armActive": "1",
+    "armAngles": "[-0.35,0.4]",
+    "armTarget": "[1.2,1.1]",
+    "armTip": "[1.9381229732423453,-0.292918638184773]",
+    "armElbow": "[0.9393727128473789,-0.34289780745545134]",
+    "armSolution": "[0.12205496865311649,1.239784598705602]",
+    "armAlternate": "[1.3618395673587185,-1.239784598705602]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "1.576403456045007",
+    "armDeterminant": "0.3894183423086505",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[1.9381229732423453,-0.292918638184773]]",
+    "armActions": "{\"aim\":[160,258],\"elbow\":[73,1184.5],\"fk\":[162.34375,1039.5],\"fold\":[36.296875,701.5],\"ik\":[56.03125,1039.5],\"negative\":[127.390625,920],\"other\":[232.40625,920],\"outside\":[211.28125,655.5],\"play\":[35.484375,790.5],\"positive\":[45.15625,920],\"reach\":[41.9375,655.5],\"reset\":[80.09375,1310],\"shoulder\":[73,1112],\"snap\":[212.82813,790.5],\"step\":[122.875,790.5],\"stretch\":[123.5625,655.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "null",
+    "armActionCount": "0",
+    "armLastAction": "none",
+    "armUiRevision": "3",
+    "armShare": "tab=arm&arm_x=1.2&arm_y=1.1&arm_a=-0.35&arm_b=0.4&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,106,304,304]"
+  },
+  "positive": {
+    "armActive": "1",
+    "armAngles": "[0.12205496865311627,1.2397845987056018]",
+    "armTarget": "[1.2,1.1]",
+    "armTip": "[1.2000000000000004,1.0999999999999999]",
+    "armElbow": "[0.9925605349304814,0.12175214371220203]",
+    "armSolution": "[0.12205496865311649,1.239784598705602]",
+    "armAlternate": "[1.3618395673587185,-1.239784598705602]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "0.0000000000000004965068306494546",
+    "armDeterminant": "0.9457140159688867",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[1.2000000000000004,1.0999999999999999]]",
+    "armActions": "{\"aim\":[160,-22],\"elbow\":[73,904.5],\"fk\":[162.34375,759.5],\"fold\":[36.296875,421.5],\"ik\":[56.03125,759.5],\"negative\":[127.390625,640],\"other\":[232.40625,640],\"outside\":[211.28125,375.5],\"play\":[35.484375,510.5],\"positive\":[45.15625,640],\"reach\":[41.9375,375.5],\"reset\":[80.09375,1030],\"shoulder\":[73,832],\"snap\":[212.82813,510.5],\"step\":[122.875,510.5],\"stretch\":[123.5625,375.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":true,\"step\":false,\"stretch\":false}",
+    "armPointer": "[212,510]",
+    "armActionCount": "2",
+    "armLastAction": "snap",
+    "armUiRevision": "32",
+    "armShare": "tab=arm&arm_x=1.2&arm_y=1.1&arm_a=0.12205496865311627&arm_b=1.2397845987056018&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-174,304,304]"
+  },
+  "negative": {
+    "armActive": "1",
+    "armAngles": "[1.361839567358718,-1.239784598705602]",
+    "armTarget": "[1.2,1.1]",
+    "armTip": "[1.2000000000000004,1.0999999999999996]",
+    "armElbow": "[0.20743946506951913,0.9782478562877978]",
+    "armSolution": "[1.3618395673587185,-1.239784598705602]",
+    "armAlternate": "[0.12205496865311649,1.239784598705602]",
+    "armReachable": "1",
+    "armBranch": "negative",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "0.0000000000000006280369834735101",
+    "armDeterminant": "-0.9457140159688868",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[1.2000000000000004,1.0999999999999996]]",
+    "armActions": "{\"aim\":[160,-22],\"elbow\":[73,904.5],\"fk\":[162.34375,759.5],\"fold\":[36.296875,421.5],\"ik\":[56.03125,759.5],\"negative\":[127.390625,640],\"other\":[232.40625,640],\"outside\":[211.28125,375.5],\"play\":[35.484375,510.5],\"positive\":[45.15625,640],\"reach\":[41.9375,375.5],\"reset\":[80.09375,1030],\"shoulder\":[73,832],\"snap\":[212.82813,510.5],\"step\":[122.875,510.5],\"stretch\":[123.5625,375.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":true,\"step\":false,\"stretch\":false}",
+    "armPointer": "[212,510]",
+    "armActionCount": "4",
+    "armLastAction": "snap",
+    "armUiRevision": "49",
+    "armShare": "tab=arm&arm_x=1.2&arm_y=1.1&arm_a=1.361839567358718&arm_b=-1.239784598705602&arm_branch=negative&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-174,304,304]"
+  },
+  "stretch": {
+    "armActive": "1",
+    "armAngles": "[0,0]",
+    "armTarget": "[2,0]",
+    "armTip": "[2,0]",
+    "armElbow": "[1,0]",
+    "armSolution": "[0,0]",
+    "armAlternate": "[0,-0]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "0",
+    "armDeterminant": "0",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[2,0]]",
+    "armActions": "{\"aim\":[160,-22],\"elbow\":[73,904.5],\"fk\":[162.34375,759.5],\"fold\":[36.296875,421.5],\"ik\":[56.03125,759.5],\"negative\":[127.390625,640],\"other\":[232.40625,640],\"outside\":[211.28125,375.5],\"play\":[35.484375,510.5],\"positive\":[45.15625,640],\"reach\":[41.9375,375.5],\"reset\":[80.09375,1056.5],\"shoulder\":[73,832],\"snap\":[212.82813,510.5],\"step\":[122.875,510.5],\"stretch\":[123.5625,375.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":true,\"step\":false,\"stretch\":false}",
+    "armPointer": "[212,510]",
+    "armActionCount": "8",
+    "armLastAction": "snap",
+    "armUiRevision": "81",
+    "armShare": "tab=arm&arm_x=2&arm_y=0&arm_a=0&arm_b=0&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-174,304,304]"
+  },
+  "fold": {
+    "armActive": "1",
+    "armAngles": "[0,-3.141592653589793]",
+    "armTarget": "[0,0]",
+    "armTip": "[0,-0.00000000000000012246467991473532]",
+    "armElbow": "[1,0]",
+    "armSolution": "[0,3.141592653589793]",
+    "armAlternate": "[0,-3.141592653589793]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "0.00000000000000012246467991473532",
+    "armDeterminant": "-0.00000000000000012246467991473532",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[0,-0.00000000000000012246467991473532]]",
+    "armActions": "{\"aim\":[160,-22],\"elbow\":[73,904.5],\"fk\":[162.34375,759.5],\"fold\":[36.296875,421.5],\"ik\":[56.03125,759.5],\"negative\":[127.390625,640],\"other\":[232.40625,640],\"outside\":[211.28125,375.5],\"play\":[35.484375,510.5],\"positive\":[45.15625,640],\"reach\":[41.9375,375.5],\"reset\":[80.09375,1056.5],\"shoulder\":[73,832],\"snap\":[212.82813,510.5],\"step\":[122.875,510.5],\"stretch\":[123.5625,375.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":true,\"step\":false,\"stretch\":false}",
+    "armPointer": "[212,510]",
+    "armActionCount": "10",
+    "armLastAction": "snap",
+    "armUiRevision": "96",
+    "armShare": "tab=arm&arm_x=0&arm_y=0&arm_a=0&arm_b=-3.141592653589793&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-174,304,304]"
+  },
+  "outside": {
+    "armActive": "1",
+    "armAngles": "[-0.35,0.4]",
+    "armTarget": "[2.3,0.7]",
+    "armTip": "[1.9381229732423453,-0.292918638184773]",
+    "armElbow": "[0.9393727128473789,-0.34289780745545134]",
+    "armSolution": "null",
+    "armAlternate": "null",
+    "armReachable": "0",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "1.0568076478478305",
+    "armDeterminant": "0.3894183423086505",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[1.9381229732423453,-0.292918638184773]]",
+    "armActions": "{\"aim\":[160,-22],\"elbow\":[73,904.5],\"fk\":[162.34375,759.5],\"fold\":[36.296875,421.5],\"ik\":[56.03125,759.5],\"negative\":[127.390625,640],\"other\":[232.40625,640],\"outside\":[211.28125,375.5],\"play\":[35.484375,510.5],\"positive\":[45.15625,640],\"reach\":[41.9375,375.5],\"reset\":[80.09375,1030],\"shoulder\":[73,832],\"snap\":[212.82813,510.5],\"step\":[122.875,510.5],\"stretch\":[123.5625,375.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":true,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "[211,375]",
+    "armActionCount": "11",
+    "armLastAction": "outside",
+    "armUiRevision": "102",
+    "armShare": "tab=arm&arm_x=2.3&arm_y=0.7&arm_a=-0.35&arm_b=0.4&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-174,304,304]"
+  },
+  "paused": {
+    "armActive": "1",
+    "armAngles": "[0.016345397623506397,1.051727538444732]",
+    "armTarget": "[1.2,1.1]",
+    "armTip": "[1.4816801749089497,0.8926183157826092]",
+    "armElbow": "[0.999866416962442,0.016344669794402994]",
+    "armSolution": "[0.12205496865311649,1.239784598705602]",
+    "armAlternate": "[1.3618395673587185,-1.239784598705602]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "0.34978691211304364",
+    "armDeterminant": "0.868281503916807",
+    "armElapsed": "0.3741000000089407",
+    "armSteps": "12",
+    "armTrail": "[[1.9381229732423453,-0.292918638184773],[1.9405247964323151,-0.20944898509359122],[1.9235382699503023,0.02640124068272548],[1.8873327459919351,0.20142719521579472],[1.8348933008394703,0.36172664776940266],[1.7852551415904079,0.47531028900159583],[1.7123483088102898,0.607665745795279],[1.6590897074801008,0.6877439578785082],[1.6042534251500074,0.7597631414768655],[1.5275935867703843,0.8467516738010067],[1.4863783456582684,0.8881152792971975],[1.482198883293385,0.8921231965773518],[1.4816801749089497,0.8926183157826092]]",
+    "armActions": "{\"aim\":[160,-468],\"elbow\":[73,458.5],\"fk\":[162.34375,313.5],\"fold\":[36.296875,-24.5],\"ik\":[56.03125,313.5],\"negative\":[127.390625,194],\"other\":[232.40625,194],\"outside\":[211.28125,-70.5],\"play\":[41.53125,64.5],\"positive\":[45.15625,194],\"reach\":[41.9375,-70.5],\"reset\":[80.09375,584],\"shoulder\":[73,386],\"snap\":[224.92188,64.5],\"step\":[134.96875,64.5],\"stretch\":[123.5625,-70.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":true,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "[41,64]",
+    "armActionCount": "14",
+    "armLastAction": "play",
+    "armUiRevision": "149",
+    "armShare": "tab=arm&arm_x=1.2&arm_y=1.1&arm_a=0.016345397623506397&arm_b=1.051727538444732&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,-620,304,304]"
+  },
+  "aimed": {
+    "armActive": "1",
+    "armAngles": "[0.016345397623506397,1.051727538444732]",
+    "armTarget": "[-0.7526315789473684,1.2486842105263158]",
+    "armTip": "[1.4816801749089497,0.8926183157826092]",
+    "armElbow": "[0.999866416962442,0.016344669794402994]",
+    "armSolution": "[1.3592670802672464,1.5079216330352003]",
+    "armAlternate": "[2.867188713302447,-1.5079216330352003]",
+    "armReachable": "1",
+    "armBranch": "positive",
+    "armMode": "ik",
+    "armOther": "1",
+    "armPlaying": "0",
+    "armError": "2.262505676196224",
+    "armDeterminant": "0.868281503916807",
+    "armElapsed": "0.3741000000089407",
+    "armSteps": "12",
+    "armTrail": "[[1.9381229732423453,-0.292918638184773],[1.9405247964323151,-0.20944898509359122],[1.9235382699503023,0.02640124068272548],[1.8873327459919351,0.20142719521579472],[1.8348933008394703,0.36172664776940266],[1.7852551415904079,0.47531028900159583],[1.7123483088102898,0.607665745795279],[1.6590897074801008,0.6877439578785082],[1.6042534251500074,0.7597631414768655],[1.5275935867703843,0.8467516738010067],[1.4863783456582684,0.8881152792971975],[1.482198883293385,0.8921231965773518],[1.4816801749089497,0.8926183157826092]]",
+    "armActions": "{\"aim\":[160,258],\"elbow\":[73,1184.5],\"fk\":[162.34375,1039.5],\"fold\":[36.296875,701.5],\"ik\":[56.03125,1039.5],\"negative\":[127.390625,920],\"other\":[232.40625,920],\"outside\":[211.28125,655.5],\"play\":[35.484375,790.5],\"positive\":[45.15625,920],\"reach\":[41.9375,655.5],\"reset\":[80.09375,1310],\"shoulder\":[73,1112],\"snap\":[212.82813,790.5],\"step\":[122.875,790.5],\"stretch\":[123.5625,655.5]}",
+    "armHits": "{\"aim\":true,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "[116,185]",
+    "armActionCount": "15",
+    "armLastAction": "aim",
+    "armUiRevision": "177",
+    "armShare": "tab=arm&arm_x=-0.7526315789473684&arm_y=1.2486842105263158&arm_a=0.016345397623506397&arm_b=1.051727538444732&arm_branch=positive&arm_mode=ik&arm_other=1&arm_playing=0",
+    "armRect": "[8,106,304,304]"
+  },
+  "saved": {
+    "armActive": "1",
+    "armAngles": "[-1.8325957145940461,-1.5079216330352003]",
+    "armTarget": "[-0.7526315789473684,1.2486842105263158]",
+    "armTip": "[-1.2390986866011127,-0.7683104815827617]",
+    "armElbow": "[-0.25881904510252085,-0.9659258262890683]",
+    "armSolution": "[2.867188713302447,-1.5079216330352003]",
+    "armAlternate": "[1.3592670802672464,1.5079216330352003]",
+    "armReachable": "1",
+    "armBranch": "negative",
+    "armMode": "fk",
+    "armOther": "0",
+    "armPlaying": "0",
+    "armError": "2.0748295917557162",
+    "armDeterminant": "-0.9980240375233707",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[-1.2390986866011127,-0.7683104815827617]]",
+    "armActions": "{\"aim\":[160,-302],\"elbow\":[73,624.5],\"fk\":[162.34375,479.5],\"fold\":[36.296875,141.5],\"ik\":[56.03125,479.5],\"negative\":[127.390625,360],\"other\":[232.40625,360],\"outside\":[211.28125,95.5],\"play\":[35.484375,230.5],\"positive\":[45.15625,360],\"reach\":[41.9375,95.5],\"reset\":[80.09375,750],\"shoulder\":[73,552],\"snap\":[212.82813,230.5],\"step\":[122.875,230.5],\"stretch\":[123.5625,95.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":true,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "[232,360]",
+    "armActionCount": "26",
+    "armLastAction": "other",
+    "armUiRevision": "306",
+    "armShare": "tab=arm&arm_x=-0.7526315789473684&arm_y=1.2486842105263158&arm_a=-1.8325957145940461&arm_b=-1.5079216330352003&arm_branch=negative&arm_mode=fk&arm_other=0&arm_playing=0",
+    "armRect": "[8,-454,304,304]"
+  },
+  "shared": {
+    "armActive": "1",
+    "armAngles": "[-1.8325957145940461,-1.5079216330352003]",
+    "armTarget": "[-0.7526315789473684,1.2486842105263158]",
+    "armTip": "[-1.2390986866011127,-0.7683104815827617]",
+    "armElbow": "[-0.25881904510252085,-0.9659258262890683]",
+    "armSolution": "[2.867188713302447,-1.5079216330352003]",
+    "armAlternate": "[1.3592670802672464,1.5079216330352003]",
+    "armReachable": "1",
+    "armBranch": "negative",
+    "armMode": "fk",
+    "armOther": "0",
+    "armPlaying": "0",
+    "armError": "2.0748295917557162",
+    "armDeterminant": "-0.9980240375233707",
+    "armElapsed": "0",
+    "armSteps": "0",
+    "armTrail": "[[-1.2390986866011127,-0.7683104815827617]]",
+    "armActions": "{\"aim\":[160,258],\"elbow\":[73,1184.5],\"fk\":[162.34375,1039.5],\"fold\":[36.296875,701.5],\"ik\":[56.03125,1039.5],\"negative\":[127.390625,920],\"other\":[232.40625,920],\"outside\":[211.28125,655.5],\"play\":[35.484375,790.5],\"positive\":[45.15625,920],\"reach\":[41.9375,655.5],\"reset\":[80.09375,1310],\"shoulder\":[73,1112],\"snap\":[212.82813,790.5],\"step\":[122.875,790.5],\"stretch\":[123.5625,655.5]}",
+    "armHits": "{\"aim\":false,\"elbow\":false,\"fk\":false,\"fold\":false,\"ik\":false,\"negative\":false,\"other\":false,\"outside\":false,\"play\":false,\"positive\":false,\"reach\":false,\"reset\":false,\"shoulder\":false,\"snap\":false,\"step\":false,\"stretch\":false}",
+    "armPointer": "null",
+    "armActionCount": "0",
+    "armLastAction": "none",
+    "armUiRevision": "3",
+    "armShare": "tab=arm&arm_x=-0.7526315789473684&arm_y=1.2486842105263158&arm_a=-1.8325957145940461&arm_b=-1.5079216330352003&arm_branch=negative&arm_mode=fk&arm_other=0&arm_playing=0",
+    "armRect": "[8,106,304,304]"
+  },
+  "inputs": [
+    {
+      "name": "step",
+      "count": 1,
+      "position": [
+        122.875,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 2,
+      "position": [
+        212.82813,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "negative",
+      "count": 3,
+      "position": [
+        127.390625,
+        640
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 4,
+      "position": [
+        212.82813,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "other",
+      "count": 5,
+      "position": [
+        232.40625,
+        640
+      ],
+      "hit": true
+    },
+    {
+      "name": "other",
+      "count": 6,
+      "position": [
+        232.40625,
+        640
+      ],
+      "hit": true
+    },
+    {
+      "name": "stretch",
+      "count": 7,
+      "position": [
+        123.5625,
+        375.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 8,
+      "position": [
+        212.82813,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "fold",
+      "count": 9,
+      "position": [
+        36.296875,
+        421.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 10,
+      "position": [
+        212.82813,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "outside",
+      "count": 11,
+      "position": [
+        211.28125,
+        375.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "reset",
+      "count": 12,
+      "position": [
+        80.09375,
+        584
+      ],
+      "hit": true
+    },
+    {
+      "name": "play",
+      "count": 13,
+      "position": [
+        35.484375,
+        64.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "play",
+      "count": 14,
+      "position": [
+        41.53125,
+        64.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "aim",
+      "count": 15,
+      "position": [
+        116,
+        185
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 16,
+      "position": [
+        212.82813,
+        510.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "fk",
+      "count": 17,
+      "position": [
+        162.34375,
+        479.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "shoulder",
+      "count": 18,
+      "position": [
+        43,
+        552
+      ],
+      "hit": true
+    },
+    {
+      "name": "elbow",
+      "count": 19,
+      "position": [
+        113,
+        625
+      ],
+      "hit": true
+    },
+    {
+      "name": "ik",
+      "count": 20,
+      "position": [
+        56.03125,
+        479.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 21,
+      "position": [
+        212.82813,
+        230.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "negative",
+      "count": 22,
+      "position": [
+        127.390625,
+        360
+      ],
+      "hit": true
+    },
+    {
+      "name": "snap",
+      "count": 23,
+      "position": [
+        212.82813,
+        230.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "fk",
+      "count": 24,
+      "position": [
+        162.34375,
+        479.5
+      ],
+      "hit": true
+    },
+    {
+      "name": "shoulder",
+      "count": 25,
+      "position": [
+        43,
+        552
+      ],
+      "hit": true
+    },
+    {
+      "name": "other",
+      "count": 26,
+      "position": [
+        232.40625,
+        360
+      ],
+      "hit": true
+    },
+    {
+      "name": "reset",
+      "count": 27,
+      "position": [
+        80.09375,
+        584
+      ],
+      "hit": true
+    }
+  ]
+}
