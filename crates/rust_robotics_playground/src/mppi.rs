@@ -2,6 +2,8 @@
 //! circular obstacles, drawn with its whole sample cloud: every rollout of
 //! every control step, shaded by its path-integral weight.
 
+mod inspector;
+
 use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke};
 use rust_robotics_control::{
     MppiCircularObstacle2D, MppiConfig, MppiControl2D, MppiController2D, MppiMovingObstacle2D,
@@ -157,6 +159,9 @@ pub struct MppiDemo {
     controller: Option<MppiController2D>,
     /// The latest step's sample cloud.
     cloud: Option<MppiSampledPlan2D>,
+    /// State from which the current cloud and all nominal controls were planned.
+    plan_start: Option<MppiState2D>,
+    inspector: inspector::Inspector,
     trail: Vec<[f64; 2]>,
     playing: bool,
     show_samples: bool,
@@ -184,6 +189,8 @@ impl Default for MppiDemo {
             state: MppiState2D::new(start[0], start[1], 0.0, 0.0),
             controller: None,
             cloud: None,
+            plan_start: None,
+            inspector: inspector::Inspector::default(),
             trail: vec![start],
             playing: true,
             show_samples: true,
@@ -236,6 +243,11 @@ impl MppiDemo {
         if crate::share::value(query, "tab") != Some("mppi") {
             return;
         }
+        if crate::share::boolean(query, "mppi_inspect") == Some(true)
+            && crate::share::value(query, "mppi_case") == Some("circle")
+        {
+            self.inspector_circle();
+        }
         let number = |key| crate::share::value(query, key).and_then(|v| v.parse::<f64>().ok());
         if let Some(samples) = number("samples").filter(|v| v.is_finite()) {
             self.knobs.samples = (samples as usize).clamp(16, 1024);
@@ -274,9 +286,13 @@ impl MppiDemo {
                 .collect();
         }
         self.restart();
+        self.apply_inspector_query(query);
     }
 
     pub fn share_query(&self) -> String {
+        if self.inspector.active {
+            return self.inspector_query();
+        }
         let obstacles: Vec<String> = self
             .obstacles
             .iter()
@@ -307,6 +323,7 @@ impl MppiDemo {
         self.arrived_at = None;
         self.pending = 0.0;
         self.cloud = None;
+        self.plan_start = None;
         self.controller = None;
     }
 
@@ -314,11 +331,15 @@ impl MppiDemo {
     fn rebuild(&mut self) {
         self.controller = None;
         self.cloud = None;
+        self.plan_start = None;
     }
 
     fn controller(&mut self) -> &mut MppiController2D {
         if self.controller.is_none() {
-            let config = self.knobs.config(&self.obstacles);
+            let mut config = self.knobs.config(&self.obstacles);
+            if self.inspector.active {
+                config.seed = self.inspector.seed;
+            }
             self.controller = Some(
                 MppiController2D::new(config).expect("the panel only offers valid MPPI settings"),
             );
@@ -328,14 +349,7 @@ impl MppiDemo {
 
     /// One control period: plan, apply the first control, move everything.
     fn step(&mut self) {
-        let movers: Vec<MppiMovingObstacle2D> = if self.moving {
-            self.movers
-                .iter()
-                .map(|m| MppiMovingObstacle2D::new(m.x, m.y, m.vx, m.vy, m.radius))
-                .collect()
-        } else {
-            Vec::new()
-        };
+        let movers = self.predicted_movers();
         let state = self.state;
         let goal = (self.goal[0], self.goal[1]);
         let controller = self.controller();
@@ -346,10 +360,26 @@ impl MppiDemo {
             Ok(cloud) => {
                 let control = cloud.plan.first_control;
                 self.cloud = Some(cloud);
+                self.plan_start = Some(state);
                 control
             }
             Err(_) => MppiControl2D::new(0.0, 0.0),
         };
+        self.apply_control(control);
+    }
+
+    fn predicted_movers(&self) -> Vec<MppiMovingObstacle2D> {
+        if self.moving {
+            self.movers
+                .iter()
+                .map(|m| MppiMovingObstacle2D::new(m.x, m.y, m.vx, m.vy, m.radius))
+                .collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    fn apply_control(&mut self, control: MppiControl2D) {
         let mut next = self.state.step(control, DT);
         // The world's edge is a wall.
         for (position, velocity) in [(&mut next.x, &mut next.vx), (&mut next.y, &mut next.vy)] {
@@ -424,15 +454,18 @@ impl MppiDemo {
                 let p = to_world(rect, pos);
                 match grab {
                     Grab::Goal => {
-                        self.goal = p;
-                        self.arrived_at = None;
+                        if self.goal != p {
+                            self.goal = p;
+                            self.arrived_at = None;
+                            self.rebuild();
+                        }
                     }
                     Grab::Robot => {
                         self.start = p;
                         self.state = MppiState2D::new(p[0], p[1], 0.0, 0.0);
                         self.trail = vec![p];
                         self.arrived_at = None;
-                        self.cloud = None;
+                        self.rebuild();
                     }
                 }
             }
@@ -472,7 +505,15 @@ impl MppiDemo {
         }
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.inspector.active {
+            self.inspector_controls(ctx, ui);
+            return;
+        }
+        let r = ui.button("Inspect from start");
+        if self.inspector.button("inspect", &r) {
+            self.enter_inspector();
+        }
         crate::ui_kit::section(ui, "Run");
         ui.horizontal_wrapped(|ui| {
             let label = if self.playing { "Pause" } else { "Play" };
@@ -575,6 +616,10 @@ impl MppiDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.inspector.active {
+            self.inspector_scene(ui);
+            return;
+        }
         let rect = crate::ui_kit::fit_rect(ui, 1.0, 34.0);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         self.handle_pointer(rect, &response);
@@ -634,12 +679,10 @@ impl MppiDemo {
                     ));
                 }
             }
-            let mut state = self.state;
-            let mut plan = vec![to_screen(rect, [state.x, state.y])];
-            for control in cloud.plan.nominal_controls.iter().skip(1) {
-                state = state.step(*control, DT);
-                plan.push(to_screen(rect, [state.x, state.y]));
-            }
+            let plan = nominal_states(self.plan_start.expect("cloud origin"), cloud)
+                .iter()
+                .map(|s| to_screen(rect, [s.x, s.y]))
+                .collect();
             painter.add(Shape::line(plan, Stroke::new(3.0_f32, PLAN)));
         }
         if self.trail.len() >= 2 {
@@ -678,10 +721,27 @@ impl MppiDemo {
     fn step_preview(&mut self) {
         let state = self.state;
         let goal = (self.goal[0], self.goal[1]);
-        if let Ok(cloud) = self.controller().plan_with_samples(state, goal) {
+        let movers = self.predicted_movers();
+        let controller = self.controller();
+        controller
+            .set_moving_obstacles(movers)
+            .expect("finite movers");
+        if let Ok(cloud) = controller.plan_with_samples(state, goal) {
+            if self.inspector.active {
+                self.inspector.record(&cloud);
+            }
             self.cloud = Some(cloud);
+            self.plan_start = Some(state);
         }
     }
+}
+
+fn nominal_states(start: MppiState2D, cloud: &MppiSampledPlan2D) -> Vec<MppiState2D> {
+    let mut states = vec![start];
+    for control in &cloud.plan.nominal_controls {
+        states.push(states.last().expect("origin").step(*control, DT));
+    }
+    states
 }
 
 #[cfg(test)]

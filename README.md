@@ -158,6 +158,11 @@ compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.
 [Read the formation lab guide](docs/formation_lab.md).
 
+[Look inside an MPPI decision](https://rsasaki0109.github.io/rust_robotics/playground/?tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=40):
+select a sampled future, inspect its cost and weight, and compare it with the
+actual weighted control plan. Change temperature over identical candidates.
+[Read the MPPI decision lab guide](docs/mppi_decision_lab.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).

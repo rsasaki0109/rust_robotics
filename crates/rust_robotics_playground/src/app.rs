@@ -268,7 +268,7 @@ impl PlaygroundApp {
                 "Pause three path trackers. Inspect their applied turns and errors at the same time."
             }
             PlaygroundTab::Mppi => {
-                "See every sampled rollout as MPPI steers a robot through moving obstacles."
+                "Inspect candidate futures, their weights and the next MPPI command, or run live control."
             }
             PlaygroundTab::Pushing => "Explore sticking and sliding, or deliver a box with MPPI.",
             PlaygroundTab::Arm => "Explore arm poses, or compare joint and Cartesian tracking at the same time.",
@@ -516,5 +516,6 @@ impl eframe::App for PlaygroundApp {
         self.slam_demo.finish(ctx, self.tab == PlaygroundTab::Slam);
         self.admm_demo
             .finish(ctx, self.tab == PlaygroundTab::AdmmFormation);
+        self.mppi_demo.finish(ctx, self.tab == PlaygroundTab::Mppi);
     }
 }
