@@ -259,7 +259,7 @@ impl PlaygroundApp {
                 "Pause noisy observations. Step through range sensing with PF or position fixes with EKF."
             }
             PlaygroundTab::Slam => {
-                "Drive a robot with live LiDAR SLAM, or replay classic SLAM algorithms."
+                "Compare maps at loop closure, replay classic SLAM, or drive and map a world."
             }
             PlaygroundTab::AdmmFormation => {
                 "Four agents agree on a formation via ADMM while tracking a noisy goal."
@@ -447,6 +447,8 @@ impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.arm_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::Arm);
+        self.slam_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::Slam);
         let screen = ctx.screen_rect();
         let narrow = screen.width() < NARROW_WIDTH
             || (self.tab == PlaygroundTab::DroneRace && screen.height() < 520.0);
@@ -509,5 +511,6 @@ impl eframe::App for PlaygroundApp {
                 .show(ctx, |ui| self.scene_ui(ctx, ui));
         }
         self.arm_demo.finish(ctx, self.tab == PlaygroundTab::Arm);
+        self.slam_demo.finish(ctx, self.tab == PlaygroundTab::Slam);
     }
 }

@@ -691,10 +691,10 @@ const playTiles = [
   },
   {
     id: "slam", topic: "perception",
-    title: "Drive LiDAR SLAM",
-    text: "Map a world, close a loop, or relocate a kidnapped robot. Replay classical SLAM in the same tab.",
-    image: "assets/playground/drive.png",
-    link: "playground/?tab=slam&algorithm=drive"
+    title: "SLAM loop lab",
+    text: "Compare the same scans before and after graph correction. Inspect true and false loop matches, or drive and map a world yourself.",
+    image: "assets/playground/slam-loop.png",
+    link: "playground/?tab=slam&algorithm=loop&loop_view=compare&loop_event=first&playing=0&loop_vectors=1"
   },
   {
     id: "arena", topic: "control",
@@ -749,11 +749,11 @@ const experimentTopics = [
     alt: "An RRT* search tree, its current route, and highlighted old and new connections at one recorded iteration"
   },
   {
-    id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "localization",
+    id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "slam",
     title: "Find your place.",
-    description: "See noisy range measurements and position fixes become a robot's position estimate.",
-    task: "Try this: pause the observations, then take one sensor step. Switch filters to try a different sensor model.",
-    alt: "Cyan landmark range circles, a particle cloud, and the true robot in the localization experiment"
+    description: "Watch a revisited place correct a map. Explore noisy observations and position estimates, too.",
+    task: "Try this: select Before first, then +1 update. Watch one loop match move the map's older nodes.",
+    alt: "The same LiDAR scans at front-end and corrected graph poses, with node-shift arrows and position-error histories"
   },
   {
     id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "arena",
