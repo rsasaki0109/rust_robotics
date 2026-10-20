@@ -2,6 +2,7 @@
 
 mod admm_formation;
 mod app;
+mod arm;
 mod controller_arena;
 mod drone_race;
 mod engagement;

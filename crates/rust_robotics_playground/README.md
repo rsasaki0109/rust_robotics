@@ -31,7 +31,7 @@ Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
 ## Choose an experiment
 
-The [showcase](https://rsasaki0109.github.io/rust_robotics/) groups all ten
+The [showcase](https://rsasaki0109.github.io/rust_robotics/) groups all eleven
 interactive demos by what a visitor wants to try:
 
 | Topic | Experiments |
@@ -39,7 +39,7 @@ interactive demos by what a visitor wants to try:
 | Planning | Grid planners, sampling planners, parking |
 | Localization & SLAM | Localization, live LiDAR SLAM and classical SLAM replays |
 | Control | Controller arena, MPPI, ADMM formation |
-| Manipulation & flight | Box pushing, drone race |
+| Manipulation & flight | Arm lab, box pushing, drone race |
 
 Selecting a topic changes the real screenshot preview, suggested experiment,
 and demo list. Topic URLs such as `?topic=perception` reopen that selection;
@@ -175,6 +175,10 @@ configuration (see the list above).
 - **MPPI** — a point-mass robot drives to a goal you drag among static and
   moving obstacles, with every sampled rollout of every step drawn and shaded
   by its weight; samples, horizon, temperature λ, and noise σ are adjustable.
+- **Arm Lab** — drag a target for a two-link arm, compare both analytic IK
+  branches, or move the joints with FK sliders. Play, pause, step, and snap
+  reveal tip error, reachable workspace, and singular poses. Shared links keep
+  the exact pose and target, paused. [Arm guide](../../docs/arm_lab.md).
 - **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
   the goal pose, click obstacles in or out, change the pusher friction, and watch
   the contact stick (yellow) or slide (orange). Presets for translation, a pure

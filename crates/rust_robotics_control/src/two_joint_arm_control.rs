@@ -24,6 +24,13 @@ const DT: f64 = 0.01;
 const L1: f64 = 1.0;
 const L2: f64 = 1.0;
 
+/// The sign of the elbow angle in the two analytic IK solutions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElbowBranch {
+    Positive,
+    Negative,
+}
+
 pub struct TwoJointArm {
     pub theta1: f64,
     pub theta2: f64,
@@ -33,6 +40,9 @@ pub struct TwoJointArm {
 }
 
 impl TwoJointArm {
+    /// Link lengths in metres; this planar arm has unrestricted revolute joints.
+    pub const LINK_LENGTHS: [f64; 2] = [L1, L2];
+
     pub fn new() -> Self {
         TwoJointArm {
             theta1: 0.0,
@@ -54,10 +64,24 @@ impl TwoJointArm {
 
         self.trajectory.clear();
 
+        if !goal_threshold.is_finite()
+            || goal_threshold <= 0.0
+            || !self.theta1.is_finite()
+            || !self.theta2.is_finite()
+        {
+            return false;
+        }
+
         while iterations < MAX_ITERATIONS {
             let (end_x, end_y) = self.forward_kinematics();
             self.trajectory
                 .push((self.theta1, self.theta2, end_x, end_y));
+
+            // Validate reachability before applying the numerical goal tolerance.
+            let (theta1_goal, theta2_goal) = match self.calculate_target_angles() {
+                Some(angles) => angles,
+                None => return false,
+            };
 
             // Check if goal is reached
             let distance_to_goal =
@@ -65,12 +89,6 @@ impl TwoJointArm {
             if distance_to_goal < goal_threshold {
                 return true;
             }
-
-            // Calculate target joint angles using inverse kinematics
-            let (theta1_goal, theta2_goal) = match self.calculate_target_angles() {
-                Some(angles) => angles,
-                None => continue, // Target unreachable, skip this iteration
-            };
 
             // Update joint angles with proportional control
             self.theta1 += KP * self.angle_diff(theta1_goal, self.theta1) * DT;
@@ -82,35 +100,38 @@ impl TwoJointArm {
         false // Failed to reach target within max iterations
     }
 
-    fn calculate_target_angles(&self) -> Option<(f64, f64)> {
-        let x = self.target_x;
-        let y = self.target_y;
-
-        // Check if target is reachable
-        let distance = (x.powi(2) + y.powi(2)).sqrt();
-        if distance > (L1 + L2) {
-            return None; // Target too far
+    /// Solve one analytic IK branch without moving the arm.
+    ///
+    /// Returns `None` for nonfinite targets or targets outside the reachable
+    /// disk. At the origin both unit links fold; the shoulder angle is
+    /// underdetermined, so zero is returned as a deterministic representative.
+    pub fn inverse_kinematics(x: f64, y: f64, branch: ElbowBranch) -> Option<(f64, f64)> {
+        if !x.is_finite() || !y.is_finite() || x.hypot(y) > L1 + L2 {
+            return None;
         }
-
-        // Calculate theta2 using law of cosines
         let cos_theta2 = (x.powi(2) + y.powi(2) - L1.powi(2) - L2.powi(2)) / (2.0 * L1 * L2);
+        let sign = if branch == ElbowBranch::Positive {
+            1.0
+        } else {
+            -1.0
+        };
+        let theta2 = sign * cos_theta2.clamp(-1.0, 1.0).acos();
+        let theta1 = if x == 0.0 && y == 0.0 {
+            0.0
+        } else {
+            y.atan2(x) - (L2 * theta2.sin()).atan2(L1 + L2 * theta2.cos())
+        };
+        Some((theta1, theta2))
+    }
 
-        // Clamp to valid range to avoid numerical errors
-        let cos_theta2 = cos_theta2.clamp(-1.0, 1.0);
-        let mut theta2_goal = cos_theta2.acos();
-
-        // Calculate theta1
-        let tmp = (L2 * theta2_goal.sin()).atan2(L1 + L2 * theta2_goal.cos());
-        let mut theta1_goal = y.atan2(x) - tmp;
-
-        // Try the other solution if theta1 is negative
-        if theta1_goal < 0.0 {
-            theta2_goal = -theta2_goal;
-            let tmp = (L2 * theta2_goal.sin()).atan2(L1 + L2 * theta2_goal.cos());
-            theta1_goal = y.atan2(x) - tmp;
+    fn calculate_target_angles(&self) -> Option<(f64, f64)> {
+        let positive =
+            Self::inverse_kinematics(self.target_x, self.target_y, ElbowBranch::Positive)?;
+        if positive.0 < 0.0 {
+            Self::inverse_kinematics(self.target_x, self.target_y, ElbowBranch::Negative)
+        } else {
+            Some(positive)
         }
-
-        Some((theta1_goal, theta2_goal))
     }
 
     pub fn forward_kinematics(&self) -> (f64, f64) {
@@ -358,5 +379,63 @@ mod tests {
         let (end_x, end_y) = arm.forward_kinematics();
         let distance = ((end_x - 1.5).powi(2) + (end_y - 0.5).powi(2)).sqrt();
         assert!(distance < 0.01);
+    }
+
+    #[test]
+    fn both_analytic_branches_reach_targets_in_every_quadrant() {
+        for radius in [0.0, 0.001, 0.5, 1.3, 1.999, 2.0] {
+            for direction in 0..32 {
+                let angle = f64::from(direction) * 2.0 * PI / 32.0;
+                let (x, y) = (radius * angle.cos(), radius * angle.sin());
+                // Keep exact boundary targets within the disk despite roundoff.
+                let scale = if x.hypot(y) > 2.0 {
+                    2.0 / x.hypot(y)
+                } else {
+                    1.0
+                };
+                for branch in [ElbowBranch::Positive, ElbowBranch::Negative] {
+                    let (theta1, theta2) =
+                        TwoJointArm::inverse_kinematics(x * scale, y * scale, branch).unwrap();
+                    let mut arm = TwoJointArm::new();
+                    arm.theta1 = theta1;
+                    arm.theta2 = theta2;
+                    let (px, py) = arm.forward_kinematics();
+                    assert!((px - x * scale).hypot(py - y * scale) < 1e-9);
+                    assert_eq!(theta2.is_sign_positive(), branch == ElbowBranch::Positive);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn unreachable_or_invalid_targets_terminate_without_moving() {
+        for (x, y) in [
+            (2.01, 0.0),
+            (0.0, -3.0),
+            (f64::NAN, 1.0),
+            (f64::INFINITY, 0.0),
+        ] {
+            assert!(TwoJointArm::inverse_kinematics(x, y, ElbowBranch::Positive).is_none());
+            assert!(TwoJointArm::inverse_kinematics(x, y, ElbowBranch::Negative).is_none());
+            let mut arm = TwoJointArm::new();
+            arm.set_target(x, y);
+            assert!(!arm.solve_inverse_kinematics(0.01));
+            assert_eq!((arm.theta1, arm.theta2), (0.0, 0.0));
+            assert_eq!(arm.trajectory.len(), 1);
+        }
+        for threshold in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!(!TwoJointArm::new().solve_inverse_kinematics(threshold));
+        }
+        for (a, b) in [
+            (f64::INFINITY, 0.0),
+            (0.0, f64::NEG_INFINITY),
+            (f64::NAN, 1.0),
+        ] {
+            let mut arm = TwoJointArm::new();
+            arm.theta1 = a;
+            arm.theta2 = b;
+            assert!(!arm.solve_inverse_kinematics(0.01));
+            assert!(arm.trajectory.is_empty());
+        }
     }
 }
