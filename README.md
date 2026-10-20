@@ -173,7 +173,10 @@ Interactive playground (native egui; the same tabs as in the browser):
 cargo run -p rust_robotics_playground
 ```
 
-Open **Sampling Planners** to watch RRT, RRT*, Informed RRT*, and PRM grow
+Open **Grid Planners** to replay actual A\* and Dijkstra expansions, pause or
+single-step the search, edit walls, and share the same intermediate state.
+Both use the same grid and robot radius; JPS and Theta\* are also available for
+path comparison. Open **Sampling Planners** to watch RRT, RRT*, Informed RRT*, and PRM grow
 their trees around obstacles you place. Open **Parking** and drag out a goal pose:
 Hybrid A\* parks the car, reversing where it has to. Open the **Localization** tab for Particle Filter / EKF: hold the pointer on
 the map (or use the arrow keys) to drive. Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure

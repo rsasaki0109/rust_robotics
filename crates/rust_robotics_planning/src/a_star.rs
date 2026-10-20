@@ -182,6 +182,22 @@ impl AStarPlanner {
         self.plan_impl(start, goal)
     }
 
+    /// Plans a path while observing each expanded cell in search order.
+    ///
+    /// The callback receives world coordinates, once per expanded cell,
+    /// including the start and (when reached) the goal. It is also called
+    /// during unsuccessful searches; invalid queries emit no cells. The
+    /// ordinary planning methods do not allocate or retain this history.
+    pub fn plan_with_observer(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+        mut on_expand: impl FnMut(Point2D),
+    ) -> RoboticsResult<Path2D> {
+        self.search(start, goal, &mut on_expand)
+            .map(|(path, _stats)| path)
+    }
+
     /// Get reference to the grid map
     pub fn grid_map(&self) -> &GridMap {
         &self.grid_map
@@ -238,6 +254,15 @@ impl AStarPlanner {
         start: Point2D,
         goal: Point2D,
     ) -> RoboticsResult<(Path2D, AStarSearchStats)> {
+        self.search(start, goal, &mut |_| {})
+    }
+
+    fn search(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+        on_expand: &mut impl FnMut(Point2D),
+    ) -> RoboticsResult<(Path2D, AStarSearchStats)> {
         let start_x = self.grid_map.calc_x_index(start.x);
         let start_y = self.grid_map.calc_y_index(start.y);
         let goal_x = self.grid_map.calc_x_index(goal.x);
@@ -274,6 +299,10 @@ impl AStarPlanner {
             }
 
             stats.expanded_nodes += 1;
+            on_expand(Point2D::new(
+                self.grid_map.calc_x_position(current.x),
+                self.grid_map.calc_y_position(current.y),
+            ));
 
             // Check if we reached the goal
             if current.x == goal_x && current.y == goal_y {

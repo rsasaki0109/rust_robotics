@@ -21,6 +21,7 @@ import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
 import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mjs';
 import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_slow.mjs';
 import { checkShowcase } from './showcase.mjs';
+import { checkGridSearch } from './grid_search.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -79,6 +80,8 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'grid-search', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true },
+  { name: 'grid-search-phone', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'showcase-explore', showcase: true },
   { name: 'showcase-explore-phone', showcase: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'drone-slow-replay', query: slowReplay.query, drone: 'slow-replay', slowPaint: true, expected: slowReplay.finish },
@@ -156,6 +159,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.gridSearch) {
+    try { await checkGridSearch(page, base, shots, Boolean(test.touch)); }
+    catch (error) {
+      problems.push(`grid search check: ${error.stack ?? error.message}`);
+      const d = await page.locator('#rust_robotics_playground').evaluate((c) => ({ ...c.dataset }));
+      problems.push(`grid state: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => key.startsWith('grid') && !['gridExpanded', 'gridShare', 'gridActions'].includes(key))))}`);
+    }
+  }
   if (test.showcase) {
     try { await checkShowcase(page, showcase, shots, test.name); }
     catch (error) { problems.push(`showcase functional check: ${error.stack ?? error.message}`); }

@@ -363,7 +363,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 39-case
+To verify the actual GitHub Pages project path, build and run the 41-case
 browser suite from the repository root:
 
 ```sh
@@ -398,6 +398,9 @@ feedback, the exported photo, identical shared feedback, expiry, retry, finish,
 and portrait/landscape phone views at 2× pixel density.
 A slow-paint case schedules actual browser paints at 400 ms intervals, then
 replays the recorded manual finish and checks its exact final frame and pose.
+Two grid-search cases check actual expansion playback, pausing, single-step,
+shared prefixes in a fresh browser context, A*/Dijkstra gap consistency,
+no-route exploration, pointer/touch wall edits, and phone rotation.
 Two showcase cases enter the actual demos from all four experiment topics,
 check topic persistence across back navigation and reload, keyboard selection,
 gallery navigation, social image packaging, and a 320-pixel phone layout.
@@ -409,7 +412,7 @@ a browser window because headless versions differ in whether a tab switch
 changes focus. It disables Playwright's usual focus override, verifies that the
 original page really loses focus, and checks cancellation after returning.
 Linux CI runs this window under Xvfb, installed by Playwright's `--with-deps`;
-the other 38 cases remain headless. With a desktop display, omit `xvfb-run -a`.
+the other 40 cases remain headless. With a desktop display, omit `xvfb-run -a`.
 Chromium 141 keeps a focus-emulation capture handle per CDP session, so a new
 public CDP session cannot release the override installed by Playwright. The
 focus helper therefore uses Playwright's own session and depends on the pinned
