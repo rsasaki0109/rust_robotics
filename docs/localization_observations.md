@@ -51,5 +51,11 @@ browser context under `/rust_robotics/playground/`.
 
 The [observation receipt](assets/localization-observations.json) records real
 inputs and estimates from those browser interactions. Its graph values are
-checked against the true and estimated positions. Run the complete 43-case
+checked against the true and estimated positions. A further touch case limits
+painting to 2.5 Hz and checks every input was handled exactly once. Controls are
+acknowledged by the actual egui response, and scrolls wait for a new layout;
+neither depends on a fixed post-input delay. Its
+[input receipt](assets/localization-input-sync.json) records the twelve real
+button responses, their playback states, and measured paint intervals.
+Run the complete 44-case
 suite using [the verification command](drone_race_project.md).
