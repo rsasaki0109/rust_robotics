@@ -254,7 +254,7 @@ impl PlaygroundApp {
             PlaygroundTab::Sampling => {
                 "Replay RRT* iterations, or explore completed sampling-planner trees."
             }
-            PlaygroundTab::Parking => "Hybrid A* parks a car, reversing where it has to.",
+            PlaygroundTab::Parking => "Inspect real parking poses, gear changes and the car's full body, or run live driving.",
             PlaygroundTab::Localization => {
                 "Pause noisy observations. Step through range sensing with PF or position fixes with EKF."
             }
@@ -445,6 +445,8 @@ impl PlaygroundApp {
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.parking_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::Parking);
         self.arm_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::Arm);
         self.slam_demo
@@ -517,5 +519,7 @@ impl eframe::App for PlaygroundApp {
         self.admm_demo
             .finish(ctx, self.tab == PlaygroundTab::AdmmFormation);
         self.mppi_demo.finish(ctx, self.tab == PlaygroundTab::Mppi);
+        self.parking_demo
+            .finish(ctx, self.tab == PlaygroundTab::Parking);
     }
 }
