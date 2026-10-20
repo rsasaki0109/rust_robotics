@@ -71,6 +71,19 @@ impl DijkstraPlanner {
     pub fn plan(&self, start: Point2D, goal: Point2D) -> RoboticsResult<Path2D> {
         PathPlanner::plan(&self.inner, start, goal)
     }
+
+    /// Plans a path, observing expanded cells in world coordinates.
+    ///
+    /// Uses the same observer contract as [`AStarPlanner::plan_with_observer`],
+    /// including expansions made before an unsuccessful search returns.
+    pub fn plan_with_observer(
+        &self,
+        start: Point2D,
+        goal: Point2D,
+        on_expand: impl FnMut(Point2D),
+    ) -> RoboticsResult<Path2D> {
+        self.inner.plan_with_observer(start, goal, on_expand)
+    }
 }
 
 impl PathPlanner for DijkstraPlanner {

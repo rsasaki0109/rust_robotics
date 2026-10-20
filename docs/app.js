@@ -664,9 +664,9 @@ const playTiles = [
   {
     id: "grid", topic: "planning",
     title: "Grid planners",
-    text: "Draw walls. Move the goal. Compare A*, Dijkstra, JPS, and Theta* on your map.",
-    image: "assets/playground/grid.png",
-    link: "playground/?tab=grid"
+    text: "Replay A* and Dijkstra cell by cell. Draw walls and compare four planners on your map.",
+    image: "assets/playground/grid-search.png",
+    link: "playground/?tab=grid&search_step=0&search_playing=1&search_rate=10"
   },
   {
     id: "sampling", topic: "planning",
@@ -737,9 +737,9 @@ const experimentTopics = [
   {
     id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "grid",
     title: "Find a way through.",
-    description: "Draw walls and compare A*, Dijkstra, JPS, and Theta* on the same map.",
-    task: "Try this: close a gap, then compare the new routes.",
-    alt: "A grid planner routing a blue path around walls between start and goal"
+    description: "Replay A* and Dijkstra's search, then compare all four planners on your map.",
+    task: "Try this: replay A* and Dijkstra on the same map. Pause and advance one cell.",
+    alt: "Expanded search cells and a solved route through a grid planner's obstacle map"
   },
   {
     id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "slam",

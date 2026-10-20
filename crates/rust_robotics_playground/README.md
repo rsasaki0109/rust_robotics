@@ -68,7 +68,8 @@ the playground.
 
 All tabs encode their important configuration in share links:
 
-- Grid Planners: planner, endpoints, and obstacle map
+- Grid Planners: planner, endpoints, obstacle map, search visibility, expansion step,
+  playback state, and viewing rate
 - Sampling Planners: planner, start, goal, and circular obstacles
 - Parking: the car's start pose and the goal pose
 - Localization: filter and measurement-noise scale
@@ -130,6 +131,10 @@ configuration (see the list above).
   loads. A ground contact or time limit is displayed separately from finishing.
   [Design, model limits, and recording instructions](../../docs/drone_race_project.md).
 - **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.
+  Replay actual A\* and Dijkstra expansions, pause, single-step, or seek before
+  revealing the final route. Detour and No route provide editable examples;
+  sharing restores the same expanded cells and paused step. All four use the
+  same grid, robot radius, and diagonal collision rules. [Search replay](../../docs/grid_search_replay.md).
 - **Sampling Planners** — RRT, RRT\*, Informed RRT\* (with its sampling
   ellipse), and PRM growing around circular obstacles you place; drag the
   start and goal, compare all four.

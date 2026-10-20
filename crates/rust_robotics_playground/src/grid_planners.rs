@@ -1,12 +1,13 @@
 //! Interactive grid planner demo: A*, Dijkstra, JPS, and Theta*.
 
+mod search;
+
 use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Sense, Stroke, Vec2};
 use rust_robotics_core::{Obstacles, Point2D, RoboticsResult};
 use rust_robotics_planning::a_star::{AStarConfig, AStarPlanner};
-use rust_robotics_planning::dijkstra::{dijkstra_plan, has_collision};
-use rust_robotics_planning::grid_nalgebra;
+use rust_robotics_planning::dijkstra::{DijkstraConfig, DijkstraPlanner};
 use rust_robotics_planning::jps::{JPSConfig, JPSPlanner};
 use rust_robotics_planning::theta_star::{ThetaStarConfig, ThetaStarPlanner};
 
@@ -14,6 +15,7 @@ const GRID_W: usize = 32;
 const GRID_H: usize = 24;
 const RESOLUTION: f64 = 1.0;
 const ROBOT_RADIUS: f64 = 0.35;
+type Cell = (usize, usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PlannerKind {
@@ -52,6 +54,10 @@ impl PlannerKind {
             "theta" => Some(Self::ThetaStar),
             _ => None,
         }
+    }
+
+    fn observes_search(self) -> bool {
+        matches!(self, Self::AStar | Self::Dijkstra)
     }
 }
 
@@ -94,6 +100,7 @@ struct PlanSnapshot {
     waypoint_count: usize,
     elapsed_us: f64,
     success: bool,
+    expanded: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,6 +115,9 @@ pub struct GridPlannerDemo {
     drag: Option<DragTool>,
     /// Cell painted by the previous drag event.
     last_paint: Option<(usize, usize)>,
+    search: search::SearchReplay,
+    actions: std::collections::BTreeMap<&'static str, [f32; 2]>,
+    scene_rect: Option<Rect>,
 }
 
 impl Default for GridPlannerDemo {
@@ -122,6 +132,9 @@ impl Default for GridPlannerDemo {
             compare_results: Vec::new(),
             drag: None,
             last_paint: None,
+            search: search::SearchReplay::default(),
+            actions: Default::default(),
+            scene_rect: None,
         };
         demo.set_border_obstacles();
         demo.add_default_wall();
@@ -156,17 +169,22 @@ impl GridPlannerDemo {
         }
         self.compare_results.clear();
         self.replan();
+        self.search.apply_query(query);
     }
 
     pub(crate) fn share_query(&self) -> String {
         format!(
-            "tab=grid&planner={}&start={},{}&goal={},{}&map={}",
+            "tab=grid&planner={}&start={},{}&goal={},{}&map={}&search={}&search_step={}&search_playing={}&search_rate={}",
             self.planner.slug(),
             self.start.0,
             self.start.1,
             self.goal.0,
             self.goal.1,
-            self.encode_map()
+            self.encode_map(),
+            u8::from(self.search.visible),
+            self.search.cursor,
+            u8::from(self.search.playing),
+            self.search.rate,
         )
     }
 
@@ -256,152 +274,59 @@ impl GridPlannerDemo {
         obstacles
     }
 
-    fn dijkstra_map(&self) -> grid_nalgebra::Map {
-        let mut data = vec![0i32; GRID_W * GRID_H];
-        for x in 0..GRID_W {
-            for y in 0..GRID_H {
-                data[y * GRID_W + x] = if self.obstacles[x][y] { 1 } else { 0 };
-            }
-        }
-        let matrix = nalgebra::DMatrix::from_row_slice(GRID_H, GRID_W, &data);
-        grid_nalgebra::Map::new(matrix, 1).expect("valid dijkstra map")
-    }
-
-    fn plan_with(planner: PlannerKind, demo: &Self) -> PlanSnapshot {
-        let start = Instant::now();
-        let obstacles = demo.cell_obstacles();
-        let start_pt = Point2D::new(demo.start.0 as f64, demo.start.1 as f64);
-        let goal_pt = Point2D::new(demo.goal.0 as f64, demo.goal.1 as f64);
-
-        let (success, path_len, waypoint_count) = match planner {
-            PlannerKind::AStar => {
-                let result = AStarPlanner::from_obstacle_points(
-                    &obstacles,
-                    AStarConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt));
-                Self::snapshot_from_path(result)
-            }
-            PlannerKind::Jps => {
-                let result = JPSPlanner::from_obstacle_points(
-                    &obstacles,
-                    JPSConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt));
-                Self::snapshot_from_path(result)
-            }
-            PlannerKind::ThetaStar => {
-                let result = ThetaStarPlanner::from_obstacle_points(
-                    &obstacles,
-                    ThetaStarConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt));
-                Self::snapshot_from_path(result)
-            }
-            PlannerKind::Dijkstra => {
-                let map = demo.dijkstra_map();
-                let (sr, sc) = (demo.start.1, demo.start.0);
-                let (gr, gc) = (demo.goal.1, demo.goal.0);
-                if has_collision(&map, sr, sc) || has_collision(&map, gr, gc) {
-                    (false, 0.0, 0)
-                } else if let Some(path) = dijkstra_plan(&map, (sr, sc), (gr, gc)) {
-                    let len = Self::path_length_cells(&path);
-                    (true, len, path.len())
-                } else {
-                    (false, 0.0, 0)
-                }
-            }
-        };
-
-        let elapsed_us = start.elapsed().as_secs_f64() * 1_000_000.0;
-        PlanSnapshot {
-            planner,
-            path_len,
-            waypoint_count,
-            elapsed_us,
-            success,
-        }
-    }
-
-    fn snapshot_from_path(
-        result: RoboticsResult<rust_robotics_core::Path2D>,
-    ) -> (bool, f64, usize) {
-        match result {
-            Ok(path) => (true, path.total_length(), path.len()),
-            Err(_) => (false, 0.0, 0),
-        }
-    }
-
-    fn path_length_cells(path: &[(usize, usize)]) -> f64 {
-        path.windows(2)
-            .map(|w| {
-                let dx = w[1].0 as f64 - w[0].0 as f64;
-                let dy = w[1].1 as f64 - w[0].1 as f64;
-                (dx * dx + dy * dy).sqrt()
-            })
-            .sum()
-    }
-
-    fn path_for(&self, planner: PlannerKind) -> Vec<(usize, usize)> {
+    fn run_plan(&self, planner: PlannerKind) -> (PlanSnapshot, Vec<Cell>, Vec<Cell>) {
+        let timer = Instant::now();
         let obstacles = self.cell_obstacles();
-        let start_pt = Point2D::new(self.start.0 as f64, self.start.1 as f64);
-        let goal_pt = Point2D::new(self.goal.0 as f64, self.goal.1 as f64);
-
-        match planner {
-            PlannerKind::AStar => Self::path_from_result(
-                AStarPlanner::from_obstacle_points(
-                    &obstacles,
-                    AStarConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt)),
-            ),
-            PlannerKind::Jps => Self::path_from_result(
-                JPSPlanner::from_obstacle_points(
-                    &obstacles,
-                    JPSConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt)),
-            ),
-            PlannerKind::ThetaStar => Self::path_from_result(
-                ThetaStarPlanner::from_obstacle_points(
-                    &obstacles,
-                    ThetaStarConfig {
-                        resolution: RESOLUTION,
-                        robot_radius: ROBOT_RADIUS,
-                        heuristic_weight: 1.0,
-                    },
-                )
-                .and_then(|p| p.plan(start_pt, goal_pt)),
-            ),
-            PlannerKind::Dijkstra => {
-                let map = self.dijkstra_map();
-                let (sr, sc) = (self.start.1, self.start.0);
-                let (gr, gc) = (self.goal.1, self.goal.0);
-                dijkstra_plan(&map, (sr, sc), (gr, gc))
-                    .map(|path| path.into_iter().map(|(r, c)| (c, r)).collect())
-                    .unwrap_or_default()
-            }
-        }
+        let start = Point2D::new(self.start.0 as f64, self.start.1 as f64);
+        let goal = Point2D::new(self.goal.0 as f64, self.goal.1 as f64);
+        let mut expanded = Vec::new();
+        let mut observe = |p: Point2D| expanded.push((p.x.round() as usize, p.y.round() as usize));
+        let result = match planner {
+            PlannerKind::AStar => AStarPlanner::from_obstacle_points(
+                &obstacles,
+                AStarConfig {
+                    resolution: RESOLUTION,
+                    robot_radius: ROBOT_RADIUS,
+                    heuristic_weight: 1.0,
+                },
+            )
+            .and_then(|p| p.plan_with_observer(start, goal, &mut observe)),
+            PlannerKind::Dijkstra => DijkstraPlanner::from_obstacle_points(
+                &obstacles,
+                DijkstraConfig {
+                    resolution: RESOLUTION,
+                    robot_radius: ROBOT_RADIUS,
+                },
+            )
+            .and_then(|p| p.plan_with_observer(start, goal, &mut observe)),
+            PlannerKind::Jps => JPSPlanner::from_obstacle_points(
+                &obstacles,
+                JPSConfig {
+                    resolution: RESOLUTION,
+                    robot_radius: ROBOT_RADIUS,
+                    heuristic_weight: 1.0,
+                },
+            )
+            .and_then(|p| p.plan(start, goal)),
+            PlannerKind::ThetaStar => ThetaStarPlanner::from_obstacle_points(
+                &obstacles,
+                ThetaStarConfig {
+                    resolution: RESOLUTION,
+                    robot_radius: ROBOT_RADIUS,
+                    heuristic_weight: 1.0,
+                },
+            )
+            .and_then(|p| p.plan(start, goal)),
+        };
+        let snapshot = PlanSnapshot {
+            planner,
+            path_len: result.as_ref().map_or(0.0, |p| p.total_length()),
+            waypoint_count: result.as_ref().map_or(0, |p| p.len()),
+            elapsed_us: timer.elapsed().as_secs_f64() * 1_000_000.0,
+            success: result.is_ok(),
+            expanded: planner.observes_search().then_some(expanded.len()),
+        };
+        (snapshot, Self::path_from_result(result), expanded)
     }
 
     fn path_from_result(result: RoboticsResult<rust_robotics_core::Path2D>) -> Vec<(usize, usize)> {
@@ -417,25 +342,43 @@ impl GridPlannerDemo {
     }
 
     fn replan(&mut self) {
-        let snapshot = Self::plan_with(self.planner, self);
-        self.path = if snapshot.success {
-            self.path_for(self.planner)
-        } else {
-            Vec::new()
-        };
+        let (snapshot, path, expanded) = self.run_plan(self.planner);
+        self.path = path;
+        self.search.reset(expanded);
         self.last_plan = Some(snapshot);
+        self.compare_results.clear();
     }
 
     fn compare_all(&mut self) {
-        self.compare_results = PlannerKind::ALL
-            .iter()
-            .map(|&kind| Self::plan_with(kind, self))
+        let results = PlannerKind::ALL
+            .into_iter()
+            .map(|kind| self.run_plan(kind).0)
             .collect();
+        self.replan();
+        self.compare_results = results;
+    }
+
+    fn preset(&mut self, blocked: bool) {
+        self.obstacles = vec![vec![false; GRID_H]; GRID_W];
+        self.set_border_obstacles();
+        for y in 1..GRID_H - 1 {
+            self.obstacles[15][y] = blocked || y != 5;
+        }
+        self.start = (2, GRID_H / 2);
+        self.goal = (GRID_W - 3, GRID_H / 2);
         self.replan();
     }
 
+    fn action(&mut self, name: &'static str, response: &egui::Response) {
+        self.actions
+            .insert(name, [response.rect.center().x, response.rect.center().y]);
+        if response.clicked() {
+            response.ctx.request_repaint();
+        }
+    }
+
     fn grid_rect(ui: &egui::Ui) -> (Rect, f32) {
-        let rect = crate::ui_kit::fit_rect(ui, GRID_H as f32 / GRID_W as f32, 34.0);
+        let rect = crate::ui_kit::fit_rect(ui, GRID_H as f32 / GRID_W as f32, 122.0);
         (rect, rect.width() / GRID_W as f32)
     }
 
@@ -545,7 +488,33 @@ impl GridPlannerDemo {
             }
         }
 
-        if self.path.len() >= 2 {
+        if self.search.visible && self.planner.observes_search() {
+            for (i, &(x, y)) in self.search.cells[..self.search.cursor].iter().enumerate() {
+                let min = rect.min + Vec2::new(x as f32 * cell, y as f32 * cell);
+                let r = Rect::from_min_size(min, Vec2::splat(cell)).shrink(1.0);
+                let recent = self.search.cursor.saturating_sub(i) <= 5;
+                painter.rect_filled(
+                    r,
+                    2.0,
+                    if recent {
+                        Color32::from_rgb(42, 112, 143)
+                    } else {
+                        Color32::from_rgb(29, 64, 85)
+                    },
+                );
+            }
+            if let Some(&(x, y)) = self.search.cells[..self.search.cursor].last() {
+                let min = rect.min + Vec2::new(x as f32 * cell, y as f32 * cell);
+                painter.rect_stroke(
+                    Rect::from_min_size(min, Vec2::splat(cell)).shrink(1.0),
+                    2.0,
+                    Stroke::new(2.0_f32, Color32::from_rgb(255, 195, 92)),
+                    egui::StrokeKind::Inside,
+                );
+            }
+        }
+
+        if self.path.len() >= 2 && self.search.complete() {
             let points: Vec<Pos2> = self
                 .path
                 .iter()
@@ -575,20 +544,19 @@ impl GridPlannerDemo {
         crate::ui_kit::section(ui, "Planner");
         ui.horizontal_wrapped(|ui| {
             for kind in PlannerKind::ALL {
-                if ui
-                    .selectable_label(self.planner == kind, kind.label())
-                    .clicked()
-                {
+                let response = ui.selectable_label(self.planner == kind, kind.label());
+                self.action(kind.slug(), &response);
+                if response.clicked() {
                     self.planner = kind;
                     self.replan();
                 }
             }
         });
-        if ui
-            .button("Compare all four")
-            .on_hover_text("Run every planner on this map and list the results")
-            .clicked()
-        {
+        let compare = ui.button("Compare all four").on_hover_text(
+            "Same map, radius, and diagonal collision rules; replay A* and Dijkstra below",
+        );
+        self.action("compare", &compare);
+        if compare.clicked() {
             self.compare_all();
         }
 
@@ -596,11 +564,12 @@ impl GridPlannerDemo {
             crate::ui_kit::section(ui, "Comparison");
             egui::Grid::new("compare_grid")
                 .striped(true)
-                .num_columns(4)
+                .num_columns(5)
                 .show(ui, |ui| {
                     ui.label("");
                     ui.small("length");
                     ui.small("points");
+                    ui.small("cells");
                     ui.small("µs");
                     ui.end_row();
                     for row in &self.compare_results {
@@ -615,6 +584,10 @@ impl GridPlannerDemo {
                         } else {
                             "—".to_string()
                         });
+                        ui.label(
+                            row.expanded
+                                .map_or_else(|| "—".to_string(), |count| count.to_string()),
+                        );
                         ui.label(format!("{:.0}", row.elapsed_us));
                         ui.end_row();
                     }
@@ -623,10 +596,24 @@ impl GridPlannerDemo {
 
         crate::ui_kit::section(ui, "Map");
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Clear walls").clicked() {
+            let clear = ui.button("Clear walls");
+            self.action("clear", &clear);
+            if clear.clicked() {
                 self.clear_interior();
             }
-            if ui.button("Reset").clicked() {
+            let detour = ui.button("Detour");
+            self.action("detour", &detour);
+            if detour.clicked() {
+                self.preset(false);
+            }
+            let blocked = ui.button("No route");
+            self.action("blocked", &blocked);
+            if blocked.clicked() {
+                self.preset(true);
+            }
+            let reset = ui.button("Reset");
+            self.action("reset", &reset);
+            if reset.clicked() {
                 *self = Self::default();
             }
         });
@@ -634,16 +621,42 @@ impl GridPlannerDemo {
             ui,
             "Click or drag on the grid to draw walls. Drag the green start or the red goal to move them.",
         );
+        if self.planner.observes_search() {
+            crate::ui_kit::section(ui, "Replay speed");
+            ui.add(egui::Slider::new(&mut self.search.rate, 5..=200).text("cells/s"));
+            crate::ui_kit::hint(ui, "Viewing speed, not computation time. Both planners use the same grid and robot radius.");
+        }
+        // On phones controls follow the scene in a scroll area. Publish after
+        // both have been laid out, so their coordinates refer to this frame.
+        if let Some(rect) = self.scene_rect {
+            self.publish_state(rect);
+        }
     }
 
-    pub fn scene(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.search.advance(ctx.input(|i| i.time));
+        if self.search.playing {
+            ctx.request_repaint();
+        }
         let (rect, cell) = Self::grid_rect(ui);
+        self.scene_rect = Some(rect);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         self.handle_pointer(rect, cell, &response);
         self.draw_grid(ui, rect, cell);
+        self.search_controls(ui);
+        if self.search.playing {
+            ctx.request_repaint();
+        }
         if let Some(plan) = &self.last_plan {
             ui.horizontal_wrapped(|ui| {
-                if plan.success {
+                if !self.search.complete() {
+                    ui.label(format!(
+                        "{}: exploring · {} / {} expanded cells",
+                        self.planner.label(),
+                        self.search.cursor,
+                        self.search.cells.len()
+                    ));
+                } else if plan.success {
                     let time = if plan.elapsed_us >= 1.0 {
                         format!("  ·  {:.0} µs", plan.elapsed_us)
                     } else {
@@ -662,6 +675,158 @@ impl GridPlannerDemo {
                     );
                 }
             });
+        }
+        self.publish_state(rect);
+    }
+
+    fn search_controls(&mut self, ui: &mut egui::Ui) {
+        if !self.planner.observes_search() {
+            for key in ["replay", "pause", "next", "result", "visible"] {
+                self.actions.remove(key);
+            }
+            crate::ui_kit::hint(ui, "Select A* or Dijkstra to replay expanded cells.");
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            let replay = ui.add_enabled(
+                !self.search.cells.is_empty(),
+                egui::Button::new("Replay search"),
+            );
+            self.action("replay", &replay);
+            if replay.clicked() {
+                self.search.replay();
+            }
+            let pause = ui.add_enabled(
+                !self.search.complete(),
+                egui::Button::new(if self.search.playing { "Pause" } else { "Play" }),
+            );
+            self.action("pause", &pause);
+            if pause.clicked() {
+                self.search.playing = !self.search.playing;
+            }
+            let next = ui.add_enabled(!self.search.complete(), egui::Button::new("Next"));
+            self.action("next", &next);
+            if next.clicked() {
+                self.search.seek(self.search.cursor + 1);
+            }
+            let result = ui.add_enabled(!self.search.complete(), egui::Button::new("Result"));
+            self.action("result", &result);
+            if result.clicked() {
+                self.search.seek(self.search.cells.len());
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            let mut cursor = self.search.cursor;
+            let slider =
+                ui.add(egui::Slider::new(&mut cursor, 0..=self.search.cells.len()).text("step"));
+            if slider.changed() {
+                self.search.seek(cursor);
+            }
+            let visible = ui.checkbox(&mut self.search.visible, "Search cells");
+            self.action("visible", &visible);
+            if visible.changed() && !self.search.visible {
+                self.search.seek(self.search.cells.len());
+            }
+        });
+        crate::ui_kit::legend(
+            ui,
+            &[
+                (Color32::from_rgb(42, 112, 143), "Expanded"),
+                (Color32::from_rgb(255, 195, 92), "Current"),
+                (Color32::from_rgb(80, 180, 255), "Route"),
+            ],
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_state(&self, _rect: Rect) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn publish_state(&self, rect: Rect) {
+        let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        else {
+            return;
+        };
+        let encode = |cells: &[Cell]| {
+            cells
+                .iter()
+                .map(|(x, y)| format!("{x},{y}"))
+                .collect::<Vec<_>>()
+                .join(";")
+        };
+        let actions = self
+            .actions
+            .iter()
+            .map(|(key, p)| format!("\"{key}\":[{:.2},{:.2}]", p[0], p[1]))
+            .collect::<Vec<_>>()
+            .join(",");
+        let found = if !self.search.complete() {
+            "pending"
+        } else if self.path.is_empty() {
+            "0"
+        } else {
+            "1"
+        };
+        for (key, value) in [
+            ("data-grid-planner", self.planner.slug().to_owned()),
+            ("data-grid-search-step", self.search.cursor.to_string()),
+            (
+                "data-grid-search-total",
+                self.search.cells.len().to_string(),
+            ),
+            (
+                "data-grid-playing",
+                u8::from(self.search.playing).to_string(),
+            ),
+            ("data-grid-found", found.to_owned()),
+            (
+                "data-grid-path",
+                if self.search.complete() {
+                    encode(&self.path)
+                } else {
+                    String::new()
+                },
+            ),
+            (
+                "data-grid-expanded",
+                if self.search.visible {
+                    encode(&self.search.cells[..self.search.cursor])
+                } else {
+                    String::new()
+                },
+            ),
+            ("data-grid-share", self.share_query()),
+            (
+                "data-grid-rect",
+                format!(
+                    "[{:.2},{:.2},{:.2},{:.2}]",
+                    rect.left(),
+                    rect.top(),
+                    rect.width(),
+                    rect.height()
+                ),
+            ),
+            ("data-grid-actions", format!("{{{actions}}}")),
+            (
+                "aria-label",
+                format!(
+                    "Grid search, {}: {} of {} expanded cells, {}",
+                    self.planner.label(),
+                    self.search.cursor,
+                    self.search.cells.len(),
+                    if found == "pending" {
+                        "exploring"
+                    } else if found == "1" {
+                        "path found"
+                    } else {
+                        "no route"
+                    }
+                ),
+            ),
+        ] {
+            let _ = canvas.set_attribute(key, &value);
         }
     }
 }
@@ -753,5 +918,56 @@ mod tests {
         demo.apply_share_query("planner=unknown&start=99,99&map=xyz");
         assert_eq!(demo.planner, PlannerKind::AStar);
         assert_eq!(demo.obstacles, original_map);
+    }
+
+    #[test]
+    fn comparison_uses_the_same_gap_and_discards_results_after_edits() {
+        let mut demo = GridPlannerDemo::default();
+        demo.compare_all();
+        let a = &demo.compare_results[0];
+        let d = &demo.compare_results[1];
+        assert!(
+            a.success && d.success,
+            "the one-cell gap must be open to both planners"
+        );
+        assert!((a.path_len - d.path_len).abs() < 1e-10);
+        assert!(a.expanded.unwrap() < d.expanded.unwrap());
+        demo.planner = PlannerKind::Dijkstra;
+        demo.preset(true);
+        assert!(
+            demo.compare_results.is_empty(),
+            "stale comparison survived a map edit"
+        );
+        assert!(!demo.last_plan.as_ref().unwrap().success);
+        assert!(!demo.search.cells.is_empty());
+        assert!(demo.search.cells.iter().all(|&(x, _)| x < 15));
+        assert!(demo.search.complete() && !demo.search.playing);
+        demo.clear_interior();
+        assert!(demo.last_plan.as_ref().unwrap().success);
+    }
+
+    #[test]
+    fn sharing_restores_the_exact_paused_search_and_validates_playback_values() {
+        let mut original = GridPlannerDemo {
+            planner: PlannerKind::Dijkstra,
+            ..Default::default()
+        };
+        original.preset(false);
+        original.search.rate = 5;
+        original.search.seek(17);
+        let mut restored = GridPlannerDemo::default();
+        restored.apply_share_query(&original.share_query());
+        assert_eq!(restored.path, original.path);
+        assert_eq!(restored.search.cells, original.search.cells);
+        assert_eq!(restored.search.cursor, 17);
+        assert_eq!(restored.search.rate, 5);
+        assert!(!restored.search.playing);
+        restored.apply_share_query("tab=grid&search_step=999999999&search_rate=0&search_playing=1");
+        assert!(restored.search.complete());
+        assert!(!restored.search.playing);
+        assert_eq!(restored.search.rate, 5);
+        restored.apply_share_query("tab=grid&search=0&search_step=0&search_playing=1");
+        assert!(restored.search.complete());
+        assert!(!restored.search.visible && !restored.search.playing);
     }
 }
