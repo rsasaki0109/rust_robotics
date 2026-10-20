@@ -685,9 +685,9 @@ const playTiles = [
   {
     id: "localization", topic: "perception",
     title: "Localization",
-    text: "Drive with noisy sensors. Compare a particle filter and EKF against the true position.",
+    text: "Pause real sensor observations. Inspect range circles with PF or position fixes with EKF, one step at a time.",
     image: "assets/playground/localization.png",
-    link: "playground/?tab=localization"
+    link: "playground/?tab=localization&noise=3"
   },
   {
     id: "slam", topic: "perception",
@@ -742,11 +742,11 @@ const experimentTopics = [
     alt: "Expanded search cells and a solved route through a grid planner's obstacle map"
   },
   {
-    id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "slam",
+    id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "localization",
     title: "Find your place.",
-    description: "Drive with LiDAR, build a map, and see how estimates follow the real robot.",
-    task: "Try this: increase odometry error, then drive a loop.",
-    alt: "A robot navigating a LiDAR occupancy map with tracked position and moving people"
+    description: "See noisy range measurements and position fixes become a robot's position estimate.",
+    task: "Try this: pause the observations, then take one sensor step. Switch filters to try a different sensor model.",
+    alt: "Cyan landmark range circles, a particle cloud, and the true robot in the localization experiment"
   },
   {
     id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "mppi",

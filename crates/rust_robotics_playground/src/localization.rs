@@ -2,7 +2,7 @@
 //! arrow keys, by holding the pointer on the map, or let the robot tour the
 //! landmarks on its own.
 
-use std::f64::consts::PI;
+use std::{collections::BTreeMap, f64::consts::PI};
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use nalgebra::{Matrix2, Matrix4, Vector2};
@@ -17,6 +17,28 @@ const LINEAR_SPEED: f64 = 1.2;
 const TURN_RATE: f64 = 1.0;
 const WORLD_MIN: f64 = -1.0;
 const WORLD_MAX: f64 = 12.0;
+const SENSOR: Color32 = Color32::from_rgb(91, 215, 231);
+const TRUTH: Color32 = Color32::from_rgb(90, 220, 120);
+const HISTORY: usize = 120;
+
+/// A fixed sensor clock. Ignore background-tab gaps instead of catching up.
+#[derive(Default)]
+struct SensorClock {
+    remainder: f64,
+}
+
+impl SensorClock {
+    fn ticks(&mut self, elapsed: f64, playing: bool) -> usize {
+        if !playing || !elapsed.is_finite() || !(0.0..1.0).contains(&elapsed) {
+            self.remainder = 0.0;
+            return 0;
+        }
+        self.remainder += elapsed;
+        let ticks = ((self.remainder + 1e-9) / DT).floor() as usize;
+        self.remainder = (self.remainder - ticks as f64 * DT).max(0.0);
+        ticks
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FilterKind {
@@ -62,6 +84,17 @@ pub struct LocalizationDemo {
     auto_drive: bool,
     /// Next corner of the automatic tour.
     tour_index: usize,
+    playing: bool,
+    single_step: bool,
+    clock: SensorClock,
+    last_time: Option<f64>,
+    ranges: PFMeasurement,
+    position_fix: Option<Point2D>,
+    errors: Vec<f64>,
+    show_observations: bool,
+    anchor: usize,
+    actions: BTreeMap<&'static str, [f32; 2]>,
+    scene_rect: Option<Rect>,
 }
 
 /// Corners of the automatic tour around the landmarks.
@@ -108,26 +141,56 @@ impl Default for LocalizationDemo {
             trail_est: Vec::new(),
             auto_drive: true,
             tour_index: 0,
+            playing: true,
+            single_step: false,
+            clock: SensorClock::default(),
+            last_time: None,
+            ranges: Vec::new(),
+            position_fix: None,
+            errors: Vec::new(),
+            show_observations: true,
+            anchor: 0,
+            actions: BTreeMap::new(),
+            scene_rect: None,
         }
     }
 }
 
 impl LocalizationDemo {
     pub fn apply_share_query(&mut self, query: &str) {
+        if crate::share::value(query, "tab") != Some("localization") {
+            return;
+        }
         if let Some(filter) = crate::share::value(query, "filter").and_then(FilterKind::from_slug) {
             self.filter = filter;
         }
         if let Some(noise) = crate::share::bounded_f32(query, "noise", 0.2, 3.0) {
             self.noise_scale = noise;
-            self.apply_noise_scale();
         }
+        if let Some(playing) = crate::share::boolean(query, "loc_playing") {
+            self.playing = playing;
+        }
+        if let Some(tour) = crate::share::boolean(query, "loc_tour") {
+            self.auto_drive = tour;
+        }
+        if let Some(show) = crate::share::boolean(query, "loc_observations") {
+            self.show_observations = show;
+        }
+        if let Some(anchor) = crate::share::bounded_usize(query, "loc_anchor", 4) {
+            self.anchor = anchor;
+        }
+        self.reset();
     }
 
     pub fn share_query(&self) -> String {
         format!(
-            "tab=localization&filter={}&noise={:.2}",
+            "tab=localization&filter={}&noise={:.2}&loc_playing={}&loc_tour={}&loc_observations={}&loc_anchor={}",
             self.filter.slug(),
-            self.noise_scale
+            self.noise_scale,
+            u8::from(self.playing),
+            u8::from(self.auto_drive),
+            u8::from(self.show_observations),
+            self.anchor,
         )
     }
 
@@ -145,6 +208,13 @@ impl LocalizationDemo {
         self.trail_est.clear();
         self.filter = filter;
         self.noise_scale = noise;
+        self.ranges.clear();
+        self.position_fix = None;
+        self.errors.clear();
+        self.single_step = false;
+        self.clock.remainder = 0.0;
+        self.last_time = None;
+        self.apply_noise_scale();
     }
 
     fn read_control(&self, ctx: &egui::Context) -> ControlInput {
@@ -233,9 +303,8 @@ impl LocalizationDemo {
     }
 
     fn apply_noise_scale(&mut self) {
-        let sigma = 0.15 * f64::from(self.noise_scale);
-        let range = (0.08 + sigma).max(0.01);
-        let _ = self.pf.set_range_noise(range);
+        let sigma = self.sensor_sigma();
+        let _ = self.pf.set_range_noise(sigma);
 
         let r = sigma.powi(2).max(1e-4);
         let _ = self
@@ -244,24 +313,21 @@ impl LocalizationDemo {
     }
 
     fn step_simulation(&mut self, control: ControlInput) {
-        if control.v.abs() < 1e-6 && control.omega.abs() < 1e-6 {
-            return;
-        }
-
         self.apply_noise_scale();
-        let meas_sigma = 0.12 * f64::from(self.noise_scale);
+        let meas_sigma = self.sensor_sigma();
 
         Self::propagate_true(&mut self.true_state, control);
 
         let estimate = match self.filter {
             FilterKind::ParticleFilter => {
-                let obs = self.pf_measurements(meas_sigma);
+                self.ranges = self.pf_measurements(meas_sigma);
                 self.pf
-                    .try_step_state(control, &obs)
+                    .try_step_state(control, &self.ranges)
                     .unwrap_or_else(|_| self.pf.state_2d())
             }
             FilterKind::Ekf => {
                 let z = self.noisy_position(meas_sigma);
+                self.position_fix = Some(z);
                 self.ekf
                     .estimate_state(z, control, DT)
                     .unwrap_or_else(|_| self.ekf.state_2d())
@@ -271,8 +337,38 @@ impl LocalizationDemo {
         let true_point = Point2D::new(self.true_state.x, self.true_state.y);
         let est_point = Point2D::new(estimate.x, estimate.y);
         self.push_trail(true_point, est_point);
+        self.errors
+            .push((true_point.x - est_point.x).hypot(true_point.y - est_point.y));
+        if self.errors.len() > HISTORY {
+            self.errors.remove(0);
+        }
 
         self.step_count += 1;
+    }
+
+    fn sensor_sigma(&self) -> f64 {
+        0.12 * f64::from(self.noise_scale)
+    }
+
+    fn estimate(&self) -> State2D {
+        match self.filter {
+            FilterKind::ParticleFilter => self.pf.state_2d(),
+            FilterKind::Ekf => self.ekf.state_2d(),
+        }
+    }
+
+    fn estimate_color(&self) -> Color32 {
+        match self.filter {
+            FilterKind::ParticleFilter => Color32::from_rgb(80, 170, 255),
+            FilterKind::Ekf => Color32::from_rgb(255, 140, 70),
+        }
+    }
+
+    fn action(&mut self, name: &'static str, response: &egui::Response) {
+        self.actions.insert(name, response.rect.center().into());
+        if response.clicked() {
+            response.ctx.request_repaint();
+        }
     }
 
     fn push_trail(&mut self, truth: Point2D, est: Point2D) {
@@ -287,7 +383,7 @@ impl LocalizationDemo {
     }
 
     fn world_rect(ui: &egui::Ui) -> (Rect, f32) {
-        let rect = crate::ui_kit::fit_rect(ui, 1.0, 34.0);
+        let rect = crate::ui_kit::fit_rect(ui, 1.0, 120.0);
         (rect, rect.width())
     }
 
@@ -318,7 +414,8 @@ impl LocalizationDemo {
     ) {
         let pos_cov = Matrix2::new(cov[(0, 0)], cov[(0, 1)], cov[(1, 0)], cov[(1, 1)]);
         let eigen = pos_cov.symmetric_eigen();
-        let k = 2.0_f64.sqrt();
+        // 95% probability contour of the model's 2D Gaussian, chi²(2).
+        let k = 5.991_f64.sqrt();
 
         let mut points = Vec::with_capacity(33);
         for i in 0..=32 {
@@ -342,7 +439,37 @@ impl LocalizationDemo {
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, Color32::from_rgb(18, 22, 28));
 
-        for landmark in &self.landmarks.points {
+        for i in 0..=11 {
+            let a = self.world_to_screen(rect, side, Point2D::new(f64::from(i), WORLD_MIN));
+            let b = self.world_to_screen(rect, side, Point2D::new(f64::from(i), WORLD_MAX));
+            painter.line_segment([a, b], Stroke::new(0.5_f32, Color32::from_gray(35)));
+            let a = self.world_to_screen(rect, side, Point2D::new(WORLD_MIN, f64::from(i)));
+            let b = self.world_to_screen(rect, side, Point2D::new(WORLD_MAX, f64::from(i)));
+            painter.line_segment([a, b], Stroke::new(0.5_f32, Color32::from_gray(35)));
+        }
+
+        if self.show_observations {
+            for (i, &(range, x, y)) in self.ranges.iter().enumerate() {
+                let center = self.world_to_screen(rect, side, Point2D::new(x, y));
+                let radius = range as f32 * side / (WORLD_MAX - WORLD_MIN) as f32;
+                painter.circle_stroke(
+                    center,
+                    radius,
+                    Stroke::new(
+                        if i == self.anchor { 2.0_f32 } else { 0.75_f32 },
+                        SENSOR.gamma_multiply(if i == self.anchor { 0.85 } else { 0.2 }),
+                    ),
+                );
+            }
+            if let Some(fix) = self.position_fix {
+                let c = self.world_to_screen(rect, side, fix);
+                for dir in [Vec2::new(5.0, 5.0), Vec2::new(5.0, -5.0)] {
+                    painter.line_segment([c - dir, c + dir], Stroke::new(2.0_f32, SENSOR));
+                }
+            }
+        }
+
+        for (i, landmark) in self.landmarks.points.iter().enumerate() {
             let c = self.world_to_screen(rect, side, *landmark);
             painter.circle_stroke(
                 c,
@@ -350,6 +477,13 @@ impl LocalizationDemo {
                 Stroke::new(1.5_f32, Color32::from_rgb(200, 180, 80)),
             );
             painter.circle_filled(c, 2.5, Color32::from_rgb(220, 200, 90));
+            painter.text(
+                c + Vec2::new(10.0, -10.0),
+                egui::Align2::LEFT_BOTTOM,
+                (b'A' + i as u8) as char,
+                egui::FontId::proportional(12.0),
+                Color32::from_rgb(220, 200, 90),
+            );
         }
 
         if self.trail_true.len() >= 2 {
@@ -389,10 +523,7 @@ impl LocalizationDemo {
             }
         }
 
-        let est = match self.filter {
-            FilterKind::ParticleFilter => self.pf.state_2d(),
-            FilterKind::Ekf => self.ekf.state_2d(),
-        };
+        let est = self.estimate();
 
         if matches!(self.filter, FilterKind::Ekf) {
             self.draw_covariance_ellipse(
@@ -411,14 +542,12 @@ impl LocalizationDemo {
             Point2D::new(self.true_state.x, self.true_state.y),
         );
         let est_c = self.world_to_screen(rect, side, Point2D::new(est.x, est.y));
-
-        Self::draw_robot(
-            &painter,
-            true_c,
-            self.true_state.yaw,
-            Color32::from_rgb(90, 220, 120),
-            7.0,
+        painter.line_segment(
+            [true_c, est_c],
+            Stroke::new(2.0_f32, Color32::WHITE.gamma_multiply(0.7)),
         );
+
+        Self::draw_robot(&painter, true_c, self.true_state.yaw, TRUTH, 7.0);
         Self::draw_robot(
             &painter,
             est_c,
@@ -429,35 +558,158 @@ impl LocalizationDemo {
             },
             6.0,
         );
+        crate::ui_kit::overlay_text(
+            ui,
+            rect,
+            match self.filter {
+                FilterKind::ParticleFilter => "RANGE SENSOR / particle hypotheses",
+                FilterKind::Ekf => "POSITION SENSOR / 95% model ellipse",
+            },
+        );
+    }
+
+    fn error_plot(&self, ui: &mut egui::Ui) {
+        let (rect, _) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 64.0), egui::Sense::hover());
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 4.0, Color32::from_rgb(10, 14, 20));
+        let max = self.errors.iter().copied().fold(0.5, f64::max);
+        let points = self
+            .errors
+            .iter()
+            .enumerate()
+            .map(|(i, e)| {
+                egui::pos2(
+                    rect.left() + i as f32 / (HISTORY - 1) as f32 * rect.width(),
+                    rect.bottom() - 6.0 - (e / max) as f32 * (rect.height() - 22.0),
+                )
+            })
+            .collect::<Vec<_>>();
+        if points.len() > 1 {
+            painter.add(egui::Shape::line(
+                points.clone(),
+                Stroke::new(1.8_f32, self.estimate_color()),
+            ));
+        }
+        if let Some(last) = points.last() {
+            painter.circle_filled(*last, 2.5, self.estimate_color());
+        }
+        painter.text(
+            rect.left_top() + Vec2::splat(5.0),
+            egui::Align2::LEFT_TOP,
+            format!("{max:.2} m / last 12 s"),
+            egui::FontId::proportional(11.0),
+            Color32::GRAY,
+        );
+    }
+
+    fn observation_readout(&mut self, ui: &mut egui::Ui) {
+        crate::ui_kit::section(ui, "Sensor readout");
+        if self.step_count == 0 {
+            crate::ui_kit::hint(ui, "Play or step to take the first observation.");
+            return;
+        }
+        match self.filter {
+            FilterKind::ParticleFilter => {
+                ui.horizontal_wrapped(|ui| {
+                    for i in 0..5 {
+                        let response = ui.selectable_label(
+                            self.anchor == i,
+                            ((b'A' + i as u8) as char).to_string(),
+                        );
+                        self.action(
+                            ["anchor-a", "anchor-b", "anchor-c", "anchor-d", "anchor-e"][i],
+                            &response,
+                        );
+                        if response.clicked() {
+                            self.anchor = i;
+                        }
+                    }
+                });
+                if let Some(&(range, x, y)) = self.ranges.get(self.anchor) {
+                    let actual = (self.true_state.x - x).hypot(self.true_state.y - y);
+                    ui.label(format!(
+                        "Range {}: {range:.2} m",
+                        (b'A' + self.anchor as u8) as char
+                    ));
+                    ui.small(format!(
+                        "True {actual:.2} m / residual {:+.2} m",
+                        range - actual
+                    ));
+                }
+                crate::ui_kit::hint(ui, "Each cyan circle is a measured distance from a landmark. Particles must explain all five ranges.");
+            }
+            FilterKind::Ekf => {
+                if let Some(fix) = self.position_fix {
+                    ui.label(format!("Position fix: {:.2}, {:.2} m", fix.x, fix.y));
+                    ui.small(format!(
+                        "Raw fix error {:.2} m",
+                        (fix.x - self.true_state.x).hypot(fix.y - self.true_state.y)
+                    ));
+                }
+                crate::ui_kit::hint(ui, "The cyan cross is a noisy position fix. The ellipse is the EKF model's 95% position contour.");
+            }
+        }
     }
 
     pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
-        crate::ui_kit::section(ui, "Filter");
+        self.actions.clear();
+        crate::ui_kit::section(ui, "Observation clock / 10 Hz");
+        ui.horizontal_wrapped(|ui| {
+            let response = ui.button(if self.playing { "Pause" } else { "Play" });
+            self.action("play", &response);
+            if response.clicked() {
+                self.playing = !self.playing;
+                self.clock.remainder = 0.0;
+                self.last_time = None;
+            }
+            let response = ui.button("Step +0.1 s");
+            self.action("step", &response);
+            if response.clicked() {
+                self.playing = false;
+                self.single_step = true;
+            }
+            let response = ui.button("Reset");
+            self.action("reset", &response);
+            if response.clicked() {
+                self.reset();
+            }
+        });
+        crate::ui_kit::section(ui, "Filter + sensor");
         ui.horizontal_wrapped(|ui| {
             for kind in [FilterKind::ParticleFilter, FilterKind::Ekf] {
-                if ui
-                    .selectable_label(self.filter == kind, kind.label())
-                    .clicked()
-                {
+                let response = ui.selectable_label(self.filter == kind, kind.label());
+                self.action(kind.slug(), &response);
+                if response.clicked() && self.filter != kind {
                     self.filter = kind;
-                    self.trail_true.clear();
-                    self.trail_est.clear();
+                    self.reset();
                 }
             }
         });
         crate::ui_kit::section(ui, "Sensor noise");
         ui.add(egui::Slider::new(&mut self.noise_scale, 0.2..=3.0).logarithmic(true));
-
-        crate::ui_kit::section(ui, "Driving");
         ui.horizontal_wrapped(|ui| {
-            ui.checkbox(&mut self.auto_drive, "Auto tour");
-            if ui.button("Reset").clicked() {
-                self.reset();
+            for (name, label, noise) in [("quiet", "Quiet", 0.3), ("noisy", "Noisy", 3.0)] {
+                let response = ui.button(label);
+                self.action(name, &response);
+                if response.clicked() {
+                    self.noise_scale = noise;
+                }
             }
         });
+        ui.small(format!(
+            "Next observation: sigma {:.3} m",
+            self.sensor_sigma()
+        ));
+        let response = ui.checkbox(&mut self.show_observations, "Show observations");
+        self.action("observations", &response);
+
+        crate::ui_kit::section(ui, "Driving");
+        let response = ui.checkbox(&mut self.auto_drive, "Auto tour");
+        self.action("tour", &response);
         crate::ui_kit::hint(
             ui,
-            "Touch and hold (or click and hold) the map to drive there, or use the arrow keys.",
+            "Hold the map or use arrow keys to drive. Pause freezes motion and sensing; Step takes one observation, even while stationary.",
         );
         crate::ui_kit::legend(
             ui,
@@ -471,66 +723,185 @@ impl LocalizationDemo {
                     "estimate",
                 ),
                 (Color32::from_rgb(220, 200, 90), "landmark"),
+                (SENSOR, "observation"),
             ],
+        );
+        self.observation_readout(ui);
+        crate::ui_kit::hint(
+            ui,
+            "Sharing copies these settings into a fresh run. Observations are newly randomized.",
         );
         crate::ui_kit::how_it_works(
             ui,
             "localization_help",
-            "The robot measures noisy ranges to the five landmarks. The particle filter \
-             keeps a cloud of pose hypotheses and resamples them by how well they explain \
-             the ranges; the EKF keeps one Gaussian (the ellipse) and corrects it with a \
-             noisy position fix. Raise the noise to see which one copes better.",
+            "PF uses five landmark ranges; EKF uses a position fix. These are different \
+             sensor models, so this is not an accuracy ranking. Change noise within a \
+             filter and inspect the actual observations and estimate error. Switching \
+             filters starts a fresh run. The EKF ellipse describes model uncertainty, \
+             not a guarantee that the true robot stays inside it.",
         );
+        if let Some(rect) = self.scene_rect {
+            self.publish_state(rect);
+        }
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let (rect, side) = Self::world_rect(ui);
+        self.scene_rect = Some(rect);
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
 
-        let mut control = self.read_control(ctx);
-        let keys = control.v.abs() > 1e-6 || control.omega.abs() > 1e-6;
-        if !keys {
-            if let Some(pos) = response
-                .is_pointer_button_down_on()
-                .then(|| response.interact_pointer_pos())
-                .flatten()
-            {
-                control = self.steer_toward(Self::screen_to_world(rect, pos));
-            } else if self.auto_drive {
-                control = self.tour_control();
-            }
+        let keyboard = self.read_control(ctx);
+        let keys = keyboard.v.abs() > 1e-6 || keyboard.omega.abs() > 1e-6;
+        let target = response
+            .is_pointer_button_down_on()
+            .then(|| response.interact_pointer_pos())
+            .flatten()
+            .map(|pos| Self::screen_to_world(rect, pos));
+        if keys || target.is_some() {
+            self.auto_drive = false;
+        }
+        let now = ctx.input(|input| input.time);
+        let elapsed = self.last_time.replace(now).map_or(0.0, |last| now - last);
+        let ticks = if std::mem::take(&mut self.single_step) {
+            self.clock.remainder = 0.0;
+            1
         } else {
-            self.auto_drive = false;
+            self.clock.ticks(elapsed, self.playing)
+        };
+        for _ in 0..ticks {
+            let control = if keys {
+                keyboard
+            } else if let Some(target) = target {
+                self.steer_toward(target)
+            } else if self.auto_drive {
+                self.tour_control()
+            } else {
+                ControlInput::new(0.0, 0.0)
+            };
+            self.step_simulation(control);
         }
-        if response.is_pointer_button_down_on() {
-            self.auto_drive = false;
-        }
-        self.step_simulation(control);
         self.draw_scene(ui, rect, side);
 
-        let est = match self.filter {
-            FilterKind::ParticleFilter => self.pf.state_2d(),
-            FilterKind::Ekf => self.ekf.state_2d(),
-        };
+        let est = self.estimate();
         let error = (self.true_state.x - est.x).hypot(self.true_state.y - est.y);
         ui.label(format!(
-            "{}  ·  error {:.2} m  ·  {} steps",
+            "{} · {:.1} s · error {:.2} m · {}",
             self.filter.label(),
+            self.step_count as f64 * DT,
             error,
-            self.step_count,
+            if self.playing { "live" } else { "paused" },
         ));
+        ui.small("Position error / estimate to true robot");
+        self.error_plot(ui);
+        self.publish_state(rect);
+        if self.playing {
+            ctx.request_repaint_after(std::time::Duration::from_millis(16));
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_state(&self, _rect: Rect) {}
+
+    /// Derived read-only browser diagnostics; the controls above own all mutations.
+    #[cfg(target_arch = "wasm32")]
+    fn publish_state(&self, rect: Rect) {
+        let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        else {
+            return;
+        };
+        let actions = self
+            .actions
+            .iter()
+            .map(|(key, p)| format!("\"{key}\":[{:.2},{:.2}]", p[0], p[1]))
+            .collect::<Vec<_>>()
+            .join(",");
+        let est = self.estimate();
+        let ranges = self
+            .ranges
+            .iter()
+            .map(|(r, x, y)| format!("[{r:.8},{x:.8},{y:.8}]"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let errors = self
+            .errors
+            .iter()
+            .map(|e| format!("{e:.8}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let fix = self
+            .position_fix
+            .map_or_else(|| "null".to_owned(), |p| format!("[{:.8},{:.8}]", p.x, p.y));
+        for (key, value) in [
+            ("data-loc-filter", self.filter.slug().to_owned()),
+            ("data-loc-steps", self.step_count.to_string()),
+            ("data-loc-playing", u8::from(self.playing).to_string()),
+            ("data-loc-tour", u8::from(self.auto_drive).to_string()),
+            (
+                "data-loc-observations",
+                u8::from(self.show_observations).to_string(),
+            ),
+            ("data-loc-noise", self.noise_scale.to_string()),
+            (
+                "data-loc-truth",
+                format!(
+                    "[{:.8},{:.8},{:.8}]",
+                    self.true_state.x, self.true_state.y, self.true_state.yaw
+                ),
+            ),
+            (
+                "data-loc-estimate",
+                format!("[{:.8},{:.8},{:.8}]", est.x, est.y, est.yaw),
+            ),
+            ("data-loc-ranges", format!("[{ranges}]")),
+            ("data-loc-fix", fix),
+            ("data-loc-errors", format!("[{errors}]")),
+            ("data-loc-share", self.share_query()),
+            (
+                "data-loc-rect",
+                format!(
+                    "[{:.2},{:.2},{:.2},{:.2}]",
+                    rect.left(),
+                    rect.top(),
+                    rect.width(),
+                    rect.height()
+                ),
+            ),
+            ("data-loc-actions", format!("{{{actions}}}")),
+            (
+                "aria-label",
+                format!(
+                    "Localization, {} with {}, {} observations, {}",
+                    self.filter.label(),
+                    if self.filter == FilterKind::ParticleFilter {
+                        "landmark ranges"
+                    } else {
+                        "position fixes"
+                    },
+                    self.step_count,
+                    if self.playing { "playing" } else { "paused" }
+                ),
+            ),
+        ] {
+            let _ = canvas.set_attribute(key, &value);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{FilterKind, LocalizationDemo};
+    use super::{FilterKind, LocalizationDemo, SensorClock};
 
     #[test]
     fn share_query_round_trips_configuration() {
         let demo = LocalizationDemo {
             filter: FilterKind::Ekf,
             noise_scale: 2.4,
+            playing: false,
+            auto_drive: false,
+            show_observations: false,
+            anchor: 3,
             ..LocalizationDemo::default()
         };
         let query = demo.share_query();
@@ -538,6 +909,10 @@ mod tests {
         restored.apply_share_query(&query);
         assert_eq!(restored.filter, FilterKind::Ekf);
         assert!((restored.noise_scale - 2.4).abs() < f32::EPSILON);
+        assert!(!restored.playing);
+        assert!(!restored.auto_drive);
+        assert!(!restored.show_observations);
+        assert_eq!(restored.anchor, 3);
     }
 
     #[test]
@@ -563,8 +938,105 @@ mod tests {
     #[test]
     fn invalid_shared_configuration_is_ignored() {
         let mut demo = LocalizationDemo::default();
-        demo.apply_share_query("filter=bad&noise=99");
+        demo.apply_share_query("tab=localization&filter=bad&noise=99&loc_anchor=5&loc_playing=bad");
         assert_eq!(demo.filter, FilterKind::ParticleFilter);
         assert_eq!(demo.noise_scale, 1.0);
+        assert_eq!(demo.anchor, 0);
+        assert!(demo.playing);
+    }
+
+    #[test]
+    fn observation_clock_is_independent_of_paint_rate() {
+        for (paints, elapsed) in [(1000, 0.01), (250, 0.04), (25, 0.4)] {
+            let mut clock = SensorClock::default();
+            assert_eq!(
+                (0..paints)
+                    .map(|_| clock.ticks(elapsed, true))
+                    .sum::<usize>(),
+                100
+            );
+        }
+    }
+
+    #[test]
+    fn shared_settings_restart_an_existing_trial_only_for_localization() {
+        let mut demo = LocalizationDemo::default();
+        demo.step_simulation(rust_robotics_core::ControlInput::new(1.0, 0.0));
+        demo.apply_share_query("tab=grid&noise=3");
+        assert_eq!(demo.step_count, 1);
+        assert_eq!(demo.noise_scale, 1.0);
+        demo.apply_share_query("tab=localization&filter=ekf&noise=3&loc_playing=0");
+        assert_eq!(demo.step_count, 0);
+        assert_eq!(demo.filter, FilterKind::Ekf);
+        assert_eq!(demo.noise_scale, 3.0);
+        assert!(!demo.playing);
+        assert!(demo.ranges.is_empty() && demo.errors.is_empty());
+        assert_eq!((demo.true_state.x, demo.true_state.y), (5.0, 5.0));
+    }
+
+    #[test]
+    fn pause_and_background_gaps_do_not_accumulate_work() {
+        let mut clock = SensorClock::default();
+        assert_eq!(clock.ticks(0.09, true), 0);
+        assert_eq!(clock.ticks(0.09, false), 0);
+        assert_eq!(clock.ticks(0.02, true), 0);
+        for gap in [1.0, 30.0, f64::NAN, f64::INFINITY, -0.1] {
+            assert_eq!(clock.ticks(gap, true), 0);
+            assert_eq!(clock.ticks(0.1, true), 1);
+        }
+    }
+
+    #[test]
+    fn stationary_robot_still_observes_and_retains_bounded_error_history() {
+        for filter in [FilterKind::ParticleFilter, FilterKind::Ekf] {
+            let mut demo = LocalizationDemo {
+                filter,
+                ..LocalizationDemo::default()
+            };
+            for _ in 0..135 {
+                demo.step_simulation(rust_robotics_core::ControlInput::new(0.0, 0.0));
+                let est = demo.estimate();
+                let actual_error = (demo.true_state.x - est.x).hypot(demo.true_state.y - est.y);
+                assert_eq!(demo.errors.last().copied(), Some(actual_error));
+            }
+            assert_eq!(demo.step_count, 135);
+            assert_eq!(demo.errors.len(), super::HISTORY);
+            assert_eq!((demo.true_state.x, demo.true_state.y), (5.0, 5.0));
+            if filter == FilterKind::ParticleFilter {
+                assert_eq!(demo.ranges.len(), 5);
+                assert!(demo.position_fix.is_none());
+                for ((range, x, y), landmark) in demo.ranges.iter().zip(&demo.landmarks.points) {
+                    assert!(range.is_finite() && *range >= 0.0);
+                    assert_eq!((*x, *y), (landmark.x, landmark.y));
+                }
+            } else {
+                assert!(demo.ranges.is_empty());
+                assert!(demo.position_fix.is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn filter_switch_reset_clears_observations_without_losing_settings() {
+        let mut demo = LocalizationDemo {
+            noise_scale: 3.0,
+            playing: false,
+            auto_drive: false,
+            ..LocalizationDemo::default()
+        };
+        demo.step_simulation(rust_robotics_core::ControlInput::new(1.0, 0.1));
+        assert!(!demo.ranges.is_empty());
+        demo.filter = FilterKind::Ekf;
+        demo.reset();
+        assert_eq!(demo.filter, FilterKind::Ekf);
+        assert_eq!(demo.noise_scale, 3.0);
+        assert!(!demo.playing && !demo.auto_drive);
+        assert_eq!(demo.step_count, 0);
+        assert!(demo.ranges.is_empty() && demo.position_fix.is_none() && demo.errors.is_empty());
+        assert!(demo.trail_est.is_empty() && demo.trail_true.is_empty());
+        assert_eq!((demo.true_state.x, demo.true_state.y), (5.0, 5.0));
+        demo.step_simulation(rust_robotics_core::ControlInput::new(0.0, 0.0));
+        assert!(demo.position_fix.is_some());
+        assert!(demo.ranges.is_empty());
     }
 }

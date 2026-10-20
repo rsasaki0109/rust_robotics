@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const topics = [
   { id: 'planning', label: 'Planning', count: 3, tab: 'grid' },
-  { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
+  { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'localization' },
   { id: 'control', label: 'Control', count: 3, tab: 'mppi' },
   { id: 'interaction', label: 'Manipulation & flight', count: 2, tab: 'pushing' },
 ];

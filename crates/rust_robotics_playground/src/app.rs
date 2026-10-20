@@ -247,7 +247,7 @@ impl PlaygroundApp {
             }
             PlaygroundTab::Parking => "Hybrid A* parks a car, reversing where it has to.",
             PlaygroundTab::Localization => {
-                "Particle filter vs EKF: steer the robot and watch the estimate."
+                "Pause noisy observations. Step through range sensing with PF or position fixes with EKF."
             }
             PlaygroundTab::Slam => {
                 "Drive a robot with live LiDAR SLAM, or replay classic SLAM algorithms."
@@ -491,10 +491,6 @@ impl eframe::App for PlaygroundApp {
                         .inner_margin(16),
                 )
                 .show(ctx, |ui| self.scene_ui(ctx, ui));
-        }
-
-        if self.tab == PlaygroundTab::Localization {
-            ctx.request_repaint();
         }
     }
 }

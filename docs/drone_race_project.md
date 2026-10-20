@@ -363,7 +363,7 @@ layout, alongside every previous demo. The keyboard driver in
 gate as a test target; it does not write simulation states.
 It fails on page errors and Rust panics.
 
-To verify the actual GitHub Pages project path, build and run the 41-case
+To verify the actual GitHub Pages project path, build and run the 43-case
 browser suite from the repository root:
 
 ```sh

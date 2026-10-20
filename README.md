@@ -138,6 +138,10 @@ path-tracking controller comparison with no installation:
 planning, localization and SLAM, control, or manipulation and flight. Each
 topic offers a real playground preview and a small change to try.
 
+[Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
+pause noisy range measurements with PF or position fixes with EKF, take one
+sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).
+
 Add the latest published umbrella crate:
 
 ```bash
