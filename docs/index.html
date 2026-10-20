@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RustRobotics</title>
-  <meta name="description" content="Fly a drone through five gates, race its autonomous pilot, build a course, and share your flight. Play in your browser, then explore Rust robotics algorithms.">
+  <meta name="description" content="Explore Rust robotics in your browser. Plan routes, find your position, compare controllers, push a box, or fly a drone. Change an experiment and share it.">
   <meta name="theme-color" content="#10141a">
   <meta property="og:title" content="RustRobotics">
-  <meta property="og:description" content="Fly five gates, race the autopilot, build a course, and photograph your flight. Play in your browser.">
+  <meta property="og:description" content="Plan routes. Find your position. Control motion. Explore real Rust robotics algorithms through experiments you can change and share.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rsasaki0109.github.io/rust_robotics/">
-  <meta property="og:image" content="https://rsasaki0109.github.io/rust_robotics/assets/drone-photo-wide.png">
-  <meta property="og:image:alt" content="A quadrotor flying through illuminated gates in the browser playground">
+  <meta property="og:image" content="https://rsasaki0109.github.io/rust_robotics/assets/robotics-playground.png">
+  <meta property="og:image:alt" content="RustRobotics experiments in planning, localization, control, manipulation, and flight">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="RustRobotics">
-  <meta name="twitter:description" content="Fly five gates, race the autopilot, build a course, and photograph your flight. Play in your browser.">
-  <meta name="twitter:image" content="https://rsasaki0109.github.io/rust_robotics/assets/drone-photo-wide.png">
+  <meta name="twitter:description" content="Plan routes. Find your position. Control motion. Explore Rust robotics through experiments you can change and share.">
+  <meta name="twitter:image" content="https://rsasaki0109.github.io/rust_robotics/assets/robotics-playground.png">
   <link rel="canonical" href="https://rsasaki0109.github.io/rust_robotics/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
   <header class="topbar">
     <a class="brand" href="./">RustRobotics</a>
     <nav>
-      <a href="playground/">Playground</a>
+      <a href="#play">Experiments</a>
       <a href="#gallery">Gallery</a>
       <a href="api/rust_robotics/">API</a>
       <a href="https://github.com/rsasaki0109/rust_robotics" target="_blank" rel="noreferrer">GitHub</a>
@@ -37,40 +37,76 @@
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">FLIGHT LAB · PLAYABLE V1</p>
-        <h1>Fly a drone.<br>Race the autopilot.</h1>
+        <p class="eyebrow">RUST ROBOTICS / IN YOUR BROWSER</p>
+        <h1>See the idea.<br><span>Move the robot.</span></h1>
         <p>
-          Five gates, your controls, a real autonomous opponent.
-          Fly with keys or touch, build a circuit, and share your best moment.
-          Everything runs in your browser.
+          Draw a route. Find your position. Tune a controller.
+          Explore robotics through experiments you can change, replay, and share.
         </p>
-        <div class="actions">
-          <a class="button primary" id="play-drone" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1&amp;intro=1">Play drone race</a>
-          <a class="button" href="playground/?tab=drone&amp;course=climb&amp;cinema=1">Watch a lap</a>
-          <a class="button" href="playground/?tab=drone&amp;course=climb&amp;edit=1">Build a circuit</a>
-        </div>
-        <p class="play-note">No install or account. <a href="#how-to-play">How to play ↓</a></p>
+        <div class="experiment-filters" id="experiment-filters" role="group" aria-label="Choose an experiment topic" hidden></div>
       </div>
-      <a class="hero-shot" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1&amp;intro=1" aria-label="Play the drone race">
-        <img src="assets/drone-photo-wide.png" width="1564" height="879"
-             alt="A quadrotor leaning through illuminated 3D gates, photographed in the playground">
-      </a>
+      <div class="feature" id="featured-experiment" data-topic="planning">
+        <div class="feature-meta"><span id="feature-category">01 / PATH PLANNING</span><span>PLAYGROUND CAPTURE</span></div>
+        <a class="hero-shot" id="feature-preview" href="playground/?tab=grid" aria-label="Open grid path planning">
+          <img id="feature-image" src="assets/playground/grid.png" width="700" height="580"
+               alt="A grid planner routing a blue path around walls between start and goal">
+        </a>
+        <div class="feature-caption" aria-live="polite" aria-atomic="true">
+          <h2 id="feature-title">Find a way through.</h2>
+          <p id="feature-description">Draw walls and compare A*, Dijkstra, JPS, and Theta* on the same map.</p>
+          <a class="feature-launch" id="feature-launch" href="playground/?tab=grid">Explore path planning <span class="launch-arrow" aria-hidden="true"></span></a>
+          <p class="feature-task" id="feature-task">Try this: close a gap, then compare the new routes.</p>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <div class="actions">
+          <a class="button primary" href="#play">Choose an experiment <span class="launch-arrow" aria-hidden="true"></span></a>
+          <a class="button" href="https://github.com/rsasaki0109/rust_robotics">Explore the Rust</a>
+        </div>
+        <p class="play-note">No install. No account. Real algorithms, running here.</p>
+        <div class="hero-facts" aria-label="Playground features">
+          <span><strong>10</strong> interactive demos</span>
+          <span><strong>1</strong> Rust workspace</span>
+          <span>Reproducible links</span>
+        </div>
+      </div>
     </section>
 
-    <section class="quick-start" id="how-to-play" aria-labelledby="how-to-play-title">
-      <h2 id="how-to-play-title">Your first flight</h2>
-      <ol class="flight-steps">
-        <li><strong>Move forward and climb</strong><p>Hold <kbd>W</kbd> + <kbd>E</kbd>, or hold the forward and UP buttons with two fingers. Release to brake.</p></li>
-        <li><strong>Aim for the gold gate</strong><p>Pass through each numbered opening in order. <kbd>A</kbd> / <kbd>D</kbd> steer; <kbd>Q</kbd> descends. The purple drone is the autopilot.</p></li>
-        <li><strong>Replay, photograph, share</strong><p><kbd>Space</kbd> pauses. <kbd>R</kbd> retries. <kbd>P</kbd> opens Photo mode. Use Share to send the same flight to a friend.</p></li>
-      </ol>
-      <p class="play-note">The flight waits for your first input. Open <strong>How to play</strong> or press <kbd>H</kbd> whenever you need a reminder.</p>
-    </section>
-
-    <section class="play" id="play">
-      <h2>Play in your browser</h2>
-      <p class="section-note">Keep exploring: live LiDAR SLAM, localization, path planning, and control from the RustRobotics workspace.</p>
+    <section class="play" id="play" aria-labelledby="experiments-title">
+      <div class="experiments-head">
+        <div><p class="eyebrow">PICK A QUESTION. TRY A CHANGE.</p><h2 id="experiments-title">Choose an experiment</h2></div>
+        <p class="experiment-count" id="experiment-count" role="status">10 interactive demos</p>
+      </div>
+      <p class="section-note">Open a scene, change one thing, and watch what happens. Use Share in the playground to keep the configuration.</p>
       <div class="tiles" id="play-tiles"></div>
+      <noscript><p>Enable JavaScript to explore the interactive demos, or <a href="https://github.com/rsasaki0109/rust_robotics#quick-start">run the Rust examples locally</a>.</p></noscript>
+    </section>
+
+    <section class="experiment-guide" aria-labelledby="experiment-guide-title">
+      <h2 id="experiment-guide-title">From a moving picture to an experiment</h2>
+      <ol class="experiment-steps">
+        <li><span>01</span><strong>Change one thing</strong><p>Draw a wall, add sensor noise, or lower a controller's turn response.</p></li>
+        <li><span>02</span><strong>Watch the difference</strong><p>Follow the route, estimate, or motion. Compare the results in the scene.</p></li>
+        <li><span>03</span><strong>Keep exploring</strong><p>Share the configuration, try another method, or open the Rust implementation below.</p></li>
+      </ol>
+    </section>
+
+    <section class="flight-lab" aria-labelledby="flight-lab-title">
+      <div><p class="eyebrow">ALSO IN THE PLAYGROUND / FLIGHT</p><h2 id="flight-lab-title">Take the controls in 3D.</h2><p>Fly five gates, race an autonomous ghost, build a circuit, and photograph your flight.</p></div>
+      <div class="actions">
+        <a class="button" id="play-drone" href="playground/?tab=drone&amp;mode=manual&amp;course=climb&amp;cinema=1&amp;intro=1">Play drone race</a>
+        <a class="button" href="playground/?tab=drone&amp;course=climb&amp;edit=1">Build a circuit</a>
+        <a class="button" href="playground/?tab=drone&amp;course=climb&amp;frame=45&amp;photo=1&amp;distance=3.2">Photo mode</a>
+      </div>
+      <details class="quick-start" id="how-to-play">
+        <summary>Your first flight</summary>
+        <ol class="flight-steps">
+          <li><strong>Move forward and climb</strong><p>Hold <kbd>W</kbd> + <kbd>E</kbd>, or hold the forward and UP buttons with two fingers. Release to brake.</p></li>
+          <li><strong>Aim for the gold gate</strong><p>Pass through each numbered opening in order. <kbd>A</kbd> / <kbd>D</kbd> steer; <kbd>Q</kbd> descends. The purple drone is the autopilot.</p></li>
+          <li><strong>Replay, photograph, share</strong><p><kbd>Space</kbd> pauses. <kbd>R</kbd> retries. <kbd>P</kbd> opens Photo mode. Use Share to send the same flight to a friend.</p></li>
+        </ol>
+        <p class="play-note">The flight waits for your first input. Open <strong>How to play</strong> or press <kbd>H</kbd> whenever you need a reminder.</p>
+      </details>
     </section>
 
     <section class="gallery" id="gallery">

@@ -1,0 +1,108 @@
+// Start on the actual Pages project path, choose a topic, and enter its WASM demo.
+import assert from 'node:assert/strict';
+import { join } from 'node:path';
+
+const topics = [
+  { id: 'planning', label: 'Planning', count: 3, tab: 'grid' },
+  { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
+  { id: 'control', label: 'Control', count: 3, tab: 'mppi' },
+  { id: 'interaction', label: 'Manipulation & flight', count: 2, tab: 'pushing' },
+];
+const ids = ['grid', 'sampling', 'parking', 'localization', 'slam', 'arena', 'mppi', 'admm', 'pushing', 'drone'];
+
+async function fits(page) {
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'showcase overflows horizontally');
+  for (const button of await page.locator('[data-experiment-filter]').all()) {
+    const box = await button.boundingBox();
+    assert(box && box.height >= 44 && box.x >= 0 && box.x + box.width <= page.viewportSize().width,
+      'topic button is too small or falls outside the screen');
+  }
+}
+
+async function imageLoaded(page) {
+  await page.waitForFunction(() => {
+    const img = document.getElementById('feature-image');
+    return img?.complete && img.naturalWidth > 0;
+  });
+}
+
+export async function checkShowcase(page, home, shots, name) {
+  await page.locator('[data-experiment-filter="all"][aria-pressed="true"]').waitFor();
+  assert.deepEqual(await page.locator('.tile').evaluateAll((nodes) => nodes.map((node) => node.dataset.experiment)), ids);
+  await imageLoaded(page);
+  await fits(page);
+  if (shots) {
+    await page.screenshot({ path: join(shots, `${name}-hero.png`) });
+    await page.screenshot({ path: join(shots, `${name}-overview.png`), fullPage: true });
+  }
+
+  for (const topic of topics) {
+    const button = page.locator(`[data-experiment-filter="${topic.id}"]`);
+    // Native button keyboard activation must work as well as pointer/touch.
+    if (topic.id === 'control') { await button.focus(); await page.keyboard.press('Space'); }
+    else await button.click();
+    assert.equal(await button.getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('[data-experiment-filter][aria-pressed="true"]').count(), 1);
+    assert.equal(new URL(page.url()).searchParams.get('topic'), topic.id);
+    assert.equal(await page.locator('.tile').count(), topic.count);
+    assert(await page.locator('.tile').evaluateAll((nodes, id) => nodes.every((node) => node.dataset.topic === id), topic.id));
+    assert.equal(await page.locator('#featured-experiment').getAttribute('data-topic'), topic.id);
+    await imageLoaded(page);
+    await fits(page);
+
+    const launch = page.locator('#feature-launch');
+    const target = new URL(await launch.getAttribute('href'), home);
+    assert.equal(target.origin, new URL(home).origin);
+    assert.equal(target.pathname, '/rust_robotics/playground/');
+    assert.equal(target.searchParams.get('tab'), topic.tab);
+    if (shots) await page.locator('#featured-experiment').screenshot({ path: join(shots, `${name}-${topic.id}.png`) });
+    await launch.click();
+    await page.waitForURL(target.href);
+    await page.waitForFunction(() => {
+      const canvas = document.getElementById('rust_robotics_playground');
+      return canvas?.width > 0 && canvas.height > 0 && !document.getElementById('loading');
+    });
+    // A real frame is painted after the loading placeholder has gone.
+    await page.waitForTimeout(1000);
+    if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
+    await page.goBack({ waitUntil: 'load' });
+    await page.locator(`[data-experiment-filter="${topic.id}"][aria-pressed="true"]`).waitFor();
+    assert.equal(await page.locator('.tile').count(), topic.count, 'back navigation lost the topic');
+  }
+
+  await page.reload({ waitUntil: 'load' });
+  await page.locator('[data-experiment-filter="interaction"][aria-pressed="true"]').waitFor();
+  await page.locator('[data-experiment-filter="all"]').click();
+  assert.equal(await page.locator('.tile').count(), 10);
+  assert.equal(new URL(page.url()).searchParams.has('topic'), false);
+  for (const link of await page.locator('.tile').all()) {
+    const target = new URL(await link.getAttribute('href'), home);
+    assert.equal(target.pathname, '/rust_robotics/playground/');
+    assert(ids.includes(target.searchParams.get('tab')), 'tile points to an unknown experiment');
+  }
+
+  // Broad exploration still reaches the native implementations in the gallery.
+  await page.locator('#category-filters').getByRole('button', { name: 'Control', exact: true }).click();
+  const cards = page.locator('#gallery-grid .card');
+  assert(await cards.count() > 0);
+  assert(await cards.evaluateAll((nodes) => nodes.every((node) => node.querySelector('.card-category').textContent === 'Control')));
+  await page.locator('#category-filters').getByRole('button', { name: 'All', exact: true }).click();
+  await page.locator('#show-all').click();
+  assert(await page.locator('#gallery-grid .card').count() > 12);
+
+  // Both social previews reference a real artifact under the Pages prefix.
+  const social = new URL(await page.locator('meta[property="og:image"]').getAttribute('content'));
+  assert.equal(social.pathname, '/rust_robotics/assets/robotics-playground.png');
+  assert.equal(await page.locator('meta[name="twitter:image"]').getAttribute('content'), social.href);
+  const response = await page.request.get(new URL(social.pathname, home).href);
+  assert.equal(response.status(), 200);
+  assert.equal(response.headers()['content-type'], 'image/png');
+  assert.deepEqual([...(await response.body()).subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+
+  await page.goto(`${home}?topic=unknown`, { waitUntil: 'load' });
+  await page.locator('[data-experiment-filter="all"][aria-pressed="true"]').waitFor();
+  assert.equal(await page.locator('.tile').count(), 10);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto');
+  await fits(page);
+}

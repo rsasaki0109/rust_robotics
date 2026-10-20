@@ -20,6 +20,7 @@ import { checkBestGhost } from './drone_ghost.mjs';
 import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
 import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mjs';
 import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_slow.mjs';
+import { checkShowcase } from './showcase.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -78,6 +79,8 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'showcase-explore', showcase: true },
+  { name: 'showcase-explore-phone', showcase: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'drone-slow-replay', query: slowReplay.query, drone: 'slow-replay', slowPaint: true, expected: slowReplay.finish },
   { name: 'drone-gate-feedback', query: 'tab=drone&course=climb&mode=manual&cinema=1', drone: 'gate-feedback' },
   { name: 'drone-gate-feedback-phone', query: 'tab=drone&course=climb&cinema=1&frame=0&playing=0&slow=1', drone: 'gate-feedback-phone', viewport: { width: 390, height: 844 }, touch: true, scale: 2 },
@@ -147,9 +150,16 @@ for (const test of cases) {
       problems.push(`console ${message.type()}: ${text.split('\n')[0]}`);
     }
   });
-  if (test.home) await openFromShowcase(page, showcase, shots, test.name);
+  if (test.showcase) {
+    await page.route('https://fonts.googleapis.com/**', (route) => route.fulfill({ contentType: 'text/css', body: '' }));
+    await page.goto(showcase, { waitUntil: 'load' });
+  } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.showcase) {
+    try { await checkShowcase(page, showcase, shots, test.name); }
+    catch (error) { problems.push(`showcase functional check: ${error.stack ?? error.message}`); }
+  }
   if (test.drone) {
     try {
       const canvas = '#rust_robotics_playground';
