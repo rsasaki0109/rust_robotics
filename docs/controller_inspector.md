@@ -72,5 +72,5 @@ post-click delay. The [desktop receipt](assets/controller-inspector.json) and
 and input acknowledgements. A further touch case limits painting to 2.5 Hz,
 repeatedly scrolling between controller cards and a graph; its
 [scroll receipt](assets/controller-inspector-scroll.json) records all six inputs
-and actual paint intervals. Run the complete 47-case suite with the
+and actual paint intervals. Run the complete 48-case suite with the
 [browser verification command](drone_race_project.md).

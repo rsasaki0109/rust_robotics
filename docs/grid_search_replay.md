@@ -60,3 +60,11 @@ blocked wall by mouse or touch. Run the complete browser suite with the public
 URL build and Xvfb command in [the verification instructions](drone_race_project.md).
 It writes `grid-search-map.png` and `grid-search-replay.json` into its screenshot
 directory as evidence of the real run.
+
+Input checks wait for the actual egui response rather than a fixed post-tap
+delay. After scrolling, they verify the new target position, processed pointer
+events, and the widget's hit test before sending a single tap. A separate touch
+case limits painting to 2.5 Hz and alternates between the map and the **No route**,
+**Detour**, and **Reset** controls. Its [input receipt](assets/grid-input-sync.json)
+records all five responses, their path results, and measured paint intervals.
+All 48 browser cases retain their path, replay, sharing, and interaction assertions.
