@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
 const topics = [
-  { id: 'planning', label: 'Planning', count: 3, tab: 'grid' },
+  { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
   { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'localization' },
   { id: 'control', label: 'Control', count: 3, tab: 'arena' },
   { id: 'interaction', label: 'Manipulation & flight', count: 2, tab: 'pushing' },
@@ -64,6 +64,15 @@ export async function checkShowcase(page, home, shots, name) {
     });
     // A real frame is painted after the loading placeholder has gone.
     await page.waitForTimeout(1000);
+    if (topic.tab === 'sampling') {
+      await page.waitForFunction(() => {
+        const d=document.querySelector('canvas')?.dataset;
+        return d?.rrtKind==='rrtstar' && d.rrtFrame==='249' && d.rrtPlaying==='0' && d.rrtSeed==='7';
+      });
+      const replay=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      assert.equal(JSON.parse(replay.rrtCosts).length,250);
+      assert(JSON.parse(replay.rrtRewires).length>0,'the featured iteration did not show a real rewire');
+    }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });
     await page.locator(`[data-experiment-filter="${topic.id}"][aria-pressed="true"]`).waitFor();

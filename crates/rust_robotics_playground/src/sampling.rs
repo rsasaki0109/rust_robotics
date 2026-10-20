@@ -5,9 +5,12 @@
 use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke};
+use rust_robotics_planning::rrt_star::RrtStarSearchTrace;
 use rust_robotics_planning::{
     AreaBounds, CircleObstacle, InformedRRTStar, PRMPlanner, RRTConfig, RRTPlanner, RRTStar,
 };
+mod replay;
+use replay::SearchReplay;
 
 /// The world is the square `[0, WORLD]²` \[m\].
 const WORLD: f64 = 20.0;
@@ -95,6 +98,7 @@ struct SearchResult {
     path: Vec<[f64; 2]>,
     nodes: usize,
     elapsed_ms: f64,
+    trace: Option<RrtStarSearchTrace>,
 }
 
 impl SearchResult {
@@ -116,6 +120,8 @@ enum Grab {
 }
 
 pub struct SamplingDemo {
+    seed: u32,
+    replay: SearchReplay,
     kind: SamplingKind,
     /// Circles `(x, y, radius)`.
     obstacles: Vec<(f64, f64, f64)>,
@@ -148,6 +154,8 @@ impl Default for SamplingDemo {
     fn default() -> Self {
         // Planned on the first frame the tab is shown (see `scene`).
         Self {
+            seed: 7,
+            replay: SearchReplay::default(),
             kind: SamplingKind::RrtStar,
             obstacles: default_obstacles(),
             start: [1.5, 1.5],
@@ -168,6 +176,7 @@ fn plan(
     obstacles: &[(f64, f64, f64)],
     start: [f64; 2],
     goal: [f64; 2],
+    seed: u32,
 ) -> SearchResult {
     let timer = Instant::now();
     let tree_edges = |nodes: Vec<([f64; 2], Option<[f64; 2]>)>| -> Vec<_> {
@@ -176,6 +185,7 @@ fn plan(
             .filter_map(|(node, parent)| parent.map(|parent| (parent, node)))
             .collect()
     };
+    let mut trace = None;
     let (edges, path, nodes) = match kind {
         SamplingKind::Rrt => {
             let mut planner = RRTPlanner::new(
@@ -218,7 +228,9 @@ fn plan(
                 true,
                 ROBOT_RADIUS,
             );
-            let path = planner.planning().unwrap_or_default();
+            let recorded = planner.planning_with_trace(u64::from(seed));
+            let path = recorded.path.clone().unwrap_or_default();
+            trace = Some(recorded);
             let tree = planner.get_tree();
             let nodes = tree
                 .iter()
@@ -282,6 +294,7 @@ fn plan(
         path,
         nodes,
         elapsed_ms: timer.elapsed().as_secs_f64() * 1000.0,
+        trace,
     }
 }
 
@@ -378,39 +391,76 @@ impl SamplingDemo {
         }
         self.compare.clear();
         self.result = None;
+        if let Some(seed) = crate::share::bounded_usize(query, "seed", 1_000_000) {
+            self.seed = seed as u32;
+        }
+        if self.kind == SamplingKind::RrtStar {
+            self.replan();
+            let frame =
+                crate::share::bounded_usize(query, "rrt_frame", STAR_ITERATIONS).unwrap_or(0);
+            self.seek_search(frame);
+            self.replay.playing = crate::share::boolean(query, "rrt_playing").unwrap_or(true)
+                && self.replay.frame < STAR_ITERATIONS;
+            if let Some(rate) = crate::share::value(query, "rrt_rate")
+                .and_then(|v| v.parse::<f64>().ok())
+                .filter(|v| v.is_finite() && (1.0..=500.0).contains(v))
+            {
+                self.replay.rate = rate;
+            }
+        }
     }
 
     pub fn share_query(&self) -> String {
         let obstacles: Vec<String> = self
             .obstacles
             .iter()
-            .map(|(x, y, r)| format!("{x:.1},{y:.1},{r:.1}"))
+            .map(|(x, y, r)| format!("{x},{y},{r}"))
             .collect();
-        format!(
-            "tab=sampling&planner={}&start={:.1},{:.1}&goal={:.1},{:.1}&obstacles={}",
+        let mut query = format!(
+            "tab=sampling&planner={}&start={},{}&goal={},{}&obstacles={}",
             self.kind.slug(),
             self.start[0],
             self.start[1],
             self.goal[0],
             self.goal[1],
             obstacles.join(";")
-        )
+        );
+        if self.kind == SamplingKind::RrtStar {
+            query.push_str(&format!(
+                "&seed={}&rrt_frame={}&rrt_playing={}&rrt_rate={}",
+                self.seed,
+                self.replay.frame,
+                u8::from(self.replay.playing),
+                self.replay.rate
+            ));
+        }
+        query
     }
 
     fn replan(&mut self) {
-        self.result = Some(plan(self.kind, &self.obstacles, self.start, self.goal));
+        let playing = self.replay.playing;
+        self.result = Some(plan(
+            self.kind,
+            &self.obstacles,
+            self.start,
+            self.goal,
+            self.seed,
+        ));
+        self.seek_search(0);
+        self.replay.playing = playing;
         self.grow_from = None;
     }
 
     fn compare_all(&mut self) {
         self.compare = SamplingKind::ALL
             .into_iter()
-            .map(|kind| plan(kind, &self.obstacles, self.start, self.goal))
+            .map(|kind| plan(kind, &self.obstacles, self.start, self.goal, self.seed))
             .collect();
         if let Some(current) = self.compare.iter().find(|r| r.kind == self.kind) {
             self.result = Some(current.clone());
             self.grow_from = None;
         }
+        self.seek_search(STAR_ITERATIONS);
     }
 
     /// Whether `p` is free for the start or goal.
@@ -436,6 +486,11 @@ impl SamplingDemo {
                     None
                 }
             });
+            if self.kind == SamplingKind::RrtStar && self.grab.is_some() {
+                self.compare.clear();
+                self.result = None;
+                self.seek_search(0);
+            }
         }
         if response.dragged() {
             if let (Some(grab), Some(pos)) = (self.grab, response.interact_pointer_pos()) {
@@ -451,6 +506,10 @@ impl SamplingDemo {
         if response.drag_stopped() && self.grab.take().is_some() {
             self.compare.clear();
             self.replan();
+            if self.kind == SamplingKind::RrtStar {
+                self.ack_search("drag");
+                response.ctx.request_repaint();
+            }
         }
         if response.clicked() {
             let Some(p) = response
@@ -485,20 +544,22 @@ impl SamplingDemo {
         }
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.result.is_none() && self.grab.is_none() {
+            self.replan();
+        }
         crate::ui_kit::section(ui, "Planner");
         ui.horizontal_wrapped(|ui| {
             for kind in SamplingKind::ALL {
-                if ui
-                    .selectable_label(self.kind == kind, kind.label())
-                    .clicked()
-                    && self.kind != kind
-                {
+                let r = ui.selectable_label(self.kind == kind, kind.label());
+                self.search_action(kind.slug(), &r);
+                if r.clicked() && self.kind != kind {
                     self.kind = kind;
                     match self.compare.iter().find(|r| r.kind == kind) {
                         Some(done) => {
                             self.result = Some(done.clone());
                             self.grow_from = None;
+                            self.seek_search(STAR_ITERATIONS);
                         }
                         None => self.replan(),
                     }
@@ -506,36 +567,48 @@ impl SamplingDemo {
             }
         });
         ui.horizontal_wrapped(|ui| {
-            if ui
-                .button("New random run")
-                .on_hover_text("Plan again with new random samples")
-                .clicked()
-            {
+            let r = ui
+                .button(if self.kind == SamplingKind::RrtStar {
+                    "Next seed"
+                } else {
+                    "New random run"
+                })
+                .on_hover_text("Plan again with new random samples");
+            self.search_action("new-seed", &r);
+            if r.clicked() {
+                self.seed = (self.seed + 1) % 1_000_001;
                 self.compare.clear();
                 self.replan();
             }
-            if ui.button("Compare all four").clicked() {
+            let r = ui.button("Compare all four");
+            self.search_action("compare", &r);
+            if r.clicked() {
                 self.compare_all();
             }
         });
-        ui.checkbox(&mut self.animate, "Animate the search");
+        if self.kind == SamplingKind::RrtStar {
+            self.search_controls(ui);
+        } else {
+            ui.checkbox(&mut self.animate, "Reveal completed tree");
+            crate::ui_kit::hint(ui,"This view reveals a completed tree or roadmap. RRT* has an actual iteration replay.");
+        }
 
-        if !self.compare.is_empty() {
+        if !self.compare.is_empty()
+            && (self.kind != SamplingKind::RrtStar || self.replay.frame == STAR_ITERATIONS)
+        {
             crate::ui_kit::section(ui, "Comparison (one random run each)");
             egui::Grid::new("sampling_compare")
                 .striped(true)
-                .num_columns(4)
+                .num_columns(3)
                 .show(ui, |ui| {
                     ui.label("");
                     ui.small("length");
                     ui.small("nodes");
-                    ui.small("ms");
                     ui.end_row();
                     for run in &self.compare {
                         ui.strong(run.kind.label());
                         ui.label(run.length().map_or("—".to_string(), |l| format!("{l:.1}")));
                         ui.label(run.nodes.to_string());
-                        ui.label(format!("{:.0}", run.elapsed_ms));
                         ui.end_row();
                     }
                 });
@@ -548,13 +621,37 @@ impl SamplingDemo {
                 .text("new radius"),
         );
         ui.horizontal_wrapped(|ui| {
-            if ui.button("Clear").clicked() {
+            let r = ui.button("Clear");
+            self.search_action("clear", &r);
+            if r.clicked() {
                 self.obstacles.clear();
                 self.compare.clear();
                 self.replan();
             }
-            if ui.button("Reset").clicked() {
-                *self = Self::default();
+            let r = ui.button("Reset");
+            self.search_action("reset", &r);
+            if r.clicked() {
+                self.kind = SamplingKind::RrtStar;
+                self.seed = 7;
+                self.replay.rate = 100.0;
+                self.animate = true;
+                self.start = [1.5, 1.5];
+                self.goal = [18.5, 18.5];
+                self.obstacles = default_obstacles();
+                self.new_radius = 1.4;
+                self.compare.clear();
+                self.replan();
+                self.seek_search(0);
+            }
+            if self.kind == SamplingKind::RrtStar {
+                let r = ui.button("Wall");
+                self.search_action("wall", &r);
+                if r.clicked() {
+                    self.obstacles = (0..=10).map(|i| (10.0, 2.0 * f64::from(i), 1.2)).collect();
+                    self.compare.clear();
+                    self.replan();
+                    self.seek_search(0);
+                }
             }
         });
         crate::ui_kit::hint(
@@ -572,15 +669,23 @@ impl SamplingDemo {
             ],
         );
         crate::ui_kit::how_it_works(ui, "sampling_help", self.kind.note());
+        self.finish_search(ctx);
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        if self.result.is_none() {
+        if self.result.is_none() && self.grab.is_none() {
             self.replan();
         }
         let rect = crate::ui_kit::fit_rect(ui, 1.0, 34.0);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
+        self.search_action("field", &response);
         self.handle_pointer(rect, &response);
+
+        if self.kind == SamplingKind::RrtStar {
+            self.search_scene(ctx, ui, rect);
+            self.finish_search(ctx);
+            return;
+        }
 
         let now = ctx.input(|i| i.time);
         let start_time = *self.grow_from.get_or_insert(now);
@@ -644,6 +749,7 @@ impl SamplingDemo {
             None => String::new(),
         };
         ui.label(status);
+        self.finish_search(ctx);
     }
 }
 
@@ -708,8 +814,8 @@ mod tests {
         for kind in SamplingKind::ALL {
             // Sampling planners are random: allow one unlucky run of three.
             let found = (0..3)
-                .filter(|_| {
-                    let result = plan(kind, &demo.obstacles, demo.start, demo.goal);
+                .filter(|seed| {
+                    let result = plan(kind, &demo.obstacles, demo.start, demo.goal, 7 + seed);
                     result.length().is_some() && clear_of_obstacles(&result, &demo.obstacles)
                 })
                 .count();

@@ -671,9 +671,9 @@ const playTiles = [
   {
     id: "sampling", topic: "planning",
     title: "Sampling planners",
-    text: "Place obstacles and watch RRT, RRT*, Informed RRT*, and PRM grow a way through.",
+    text: "Replay real RRT* iterations: find a path, rewire branches, and see the route improve. Explore three other planners, too.",
     image: "assets/playground/sampling.png",
-    link: "playground/?tab=sampling"
+    link: "playground/?tab=sampling&planner=rrtstar&seed=7&rrt_frame=249&rrt_playing=0"
   },
   {
     id: "parking", topic: "planning",
@@ -735,11 +735,11 @@ const playTiles = [
 
 const experimentTopics = [
   {
-    id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "grid",
+    id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "sampling",
     title: "Find a way through.",
-    description: "Replay A* and Dijkstra's search, then compare all four planners on your map.",
-    task: "Try this: replay A* and Dijkstra on the same map. Pause and advance one cell.",
-    alt: "Expanded search cells and a solved route through a grid planner's obstacle map"
+    description: "Watch RRT* find and shorten a route. Replay grid search or plan a parking maneuver, too.",
+    task: "Try this: select First path, Next shorter, then Next rewire. Follow the real changes to the tree.",
+    alt: "An RRT* search tree, its current route, and highlighted old and new connections at one recorded iteration"
   },
   {
     id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "localization",

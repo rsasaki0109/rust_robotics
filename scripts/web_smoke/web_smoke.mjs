@@ -12,6 +12,7 @@ import { extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkContactLab } from './contact_lab.mjs';
+import { checkRrtReplay } from './rrt_replay.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -83,6 +84,9 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'rrt-replay', query: 'tab=sampling&planner=rrtstar&seed=7&rrt_frame=0&rrt_playing=0', rrtReplay: true },
+  { name: 'rrt-replay-phone', query: 'tab=sampling&planner=rrtstar&seed=7&rrt_frame=0&rrt_playing=0', rrtReplay: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'rrt-replay-slow', query: 'tab=sampling&planner=rrtstar&seed=7&rrt_frame=0&rrt_playing=0', rrtReplay: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'contact-lab', query: 'tab=pushing&push_mode=contact', contactLab: true },
   { name: 'contact-lab-phone', query: 'tab=pushing&push_mode=contact', contactLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'contact-lab-slow', query: 'tab=pushing&push_mode=contact', contactLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -172,6 +176,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.rrtReplay) {
+    try { await checkRrtReplay(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('#rust_robotics_playground').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`RRT input: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('rrt') && !['rrtNodes','rrtCosts'].includes(key))))}`);
+    }
+  }
   if (test.contactLab) {
     try { await checkContactLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

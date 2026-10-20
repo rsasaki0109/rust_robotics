@@ -4,7 +4,7 @@
 //!
 //! An optimized version of RRT that rewires the tree to find shorter paths.
 
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use rust_robotics_core::{Path2D, PathPlanner, Point2D, RoboticsError, RoboticsResult};
 
@@ -29,6 +29,69 @@ impl Node {
             cost: 0.0,
             parent: None,
         }
+    }
+}
+
+/// Lightweight node state for an actual RRT* search history.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RrtStarTraceNode {
+    pub point: [f64; 2],
+    pub parent: Option<usize>,
+    pub cost: f64,
+}
+
+impl From<&Node> for RrtStarTraceNode {
+    fn from(node: &Node) -> Self {
+        Self {
+            point: [node.x, node.y],
+            parent: node.parent,
+            cost: node.cost,
+        }
+    }
+}
+
+/// A node insertion, reparenting, or propagated cost update in one iteration.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RrtStarNodeUpdate {
+    pub index: usize,
+    pub before: Option<RrtStarTraceNode>,
+    pub after: RrtStarTraceNode,
+}
+
+/// State observed after one real planner iteration, including rejected samples.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RrtStarSearchStep {
+    pub sample: [f64; 2],
+    pub nearest: usize,
+    pub candidate: Option<[f64; 2]>,
+    pub accepted: bool,
+    pub updates: Vec<RrtStarNodeUpdate>,
+    /// Current cheapest collision-free goal connection, in goal-to-start order.
+    pub path: Vec<[f64; 2]>,
+}
+
+/// A deterministic run recorded as node changes, rather than final-tree reveals.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RrtStarSearchTrace {
+    pub root: RrtStarTraceNode,
+    pub steps: Vec<RrtStarSearchStep>,
+    pub path: Option<Vec<[f64; 2]>>,
+}
+
+impl RrtStarSearchTrace {
+    /// Reconstruct the tree after this many completed iterations. Zero is the root.
+    pub fn tree_at(&self, completed_iterations: usize) -> Vec<RrtStarTraceNode> {
+        let mut nodes = vec![self.root.clone()];
+        for step in self.steps.iter().take(completed_iterations) {
+            for update in &step.updates {
+                if update.index == nodes.len() {
+                    nodes.push(update.after.clone());
+                } else {
+                    nodes[update.index] = update.after.clone();
+                }
+            }
+        }
+        nodes
     }
 }
 
@@ -84,6 +147,53 @@ impl RRTStar {
         self.planning_with_sampler(|planner| planner.get_random_node())
     }
 
+    /// Run the same search with a seeded sampler and record each iteration.
+    /// Recording does not alter parent selection, rewiring, or the stop condition.
+    /// Memory stores only changed lightweight nodes and the current solution path.
+    pub fn planning_with_trace(&mut self, seed: u64) -> RrtStarSearchTrace {
+        let root = RrtStarTraceNode::from(&self.start);
+        let mut previous = vec![root.clone()];
+        let mut steps = Vec::new();
+        let mut rng = StdRng::seed_from_u64(seed);
+        let path = self.planning_with_observer(
+            |planner| planner.get_random_node_with_rng(&mut rng),
+            |planner, sample, nearest, candidate| {
+                let nodes: Vec<_> = planner
+                    .node_list
+                    .iter()
+                    .map(RrtStarTraceNode::from)
+                    .collect();
+                let accepted = nodes.len() > previous.len();
+                let updates = nodes
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, node)| {
+                        let before = previous.get(index);
+                        (before != Some(node)).then(|| RrtStarNodeUpdate {
+                            index,
+                            before: before.cloned(),
+                            after: node.clone(),
+                        })
+                    })
+                    .collect();
+                let path = planner
+                    .search_best_goal_node()
+                    .map(|i| planner.generate_final_course(i))
+                    .unwrap_or_default();
+                steps.push(RrtStarSearchStep {
+                    sample,
+                    nearest,
+                    candidate,
+                    accepted,
+                    updates,
+                    path,
+                });
+                previous = nodes;
+            },
+        );
+        RrtStarSearchTrace { root, steps, path }
+    }
+
     fn reset_search(&mut self) {
         self.node_list = vec![self.start.clone()];
     }
@@ -92,12 +202,25 @@ impl RRTStar {
     where
         F: FnMut(&RRTStar) -> Node,
     {
+        self.planning_with_observer(&mut sample_node, |_, _, _, _| {})
+    }
+
+    fn planning_with_observer<F, O>(
+        &mut self,
+        mut sample_node: F,
+        mut observe: O,
+    ) -> Option<Vec<[f64; 2]>>
+    where
+        F: FnMut(&RRTStar) -> Node,
+        O: FnMut(&RRTStar, [f64; 2], usize, Option<[f64; 2]>),
+    {
         self.reset_search();
 
         for _i in 0..self.max_iter {
             let rnd_node = sample_node(self);
             let nearest_ind = self.get_nearest_node_index(&rnd_node);
             let mut new_node = self.steer(nearest_ind, &rnd_node);
+            let candidate = new_node.as_ref().map(|n| [n.x, n.y]);
 
             if let Some(ref mut node) = new_node {
                 let near_node = &self.node_list[nearest_ind];
@@ -117,6 +240,7 @@ impl RRTStar {
                 }
             }
 
+            observe(self, [rnd_node.x, rnd_node.y], nearest_ind, candidate);
             if !self.search_until_max_iter && new_node.is_some() {
                 if let Some(last_index) = self.search_best_goal_node() {
                     return Some(self.generate_final_course(last_index));
@@ -133,7 +257,10 @@ impl RRTStar {
 
     fn get_random_node(&self) -> Node {
         let mut rng = rand::rng();
+        self.get_random_node_with_rng(&mut rng)
+    }
 
+    fn get_random_node_with_rng(&self, rng: &mut impl Rng) -> Node {
         if rng.random_range(0..=100) > self.goal_sample_rate {
             Node::new(
                 rng.random_range(self.min_rand..=self.max_rand),
@@ -682,5 +809,138 @@ mod tests {
             assert_close(node.cost, cost);
             assert_eq!(node.parent, parent);
         }
+    }
+
+    fn trace_fixture() -> RRTStar {
+        RRTStar::new(
+            (1.5, 1.5),
+            (18.5, 18.5),
+            vec![(10.0, 10.0, 2.5)],
+            (0.0, 20.0),
+            1.5,
+            0.25,
+            10,
+            500,
+            15.0,
+            true,
+            0.3,
+        )
+    }
+
+    #[test]
+    fn recorded_search_matches_the_same_unobserved_seeded_run() {
+        let mut recorded = trace_fixture();
+        let trace = recorded.planning_with_trace(7);
+        let mut plain = trace_fixture();
+        let mut rng = StdRng::seed_from_u64(7);
+        let path = plain.planning_with_sampler(|p| p.get_random_node_with_rng(&mut rng));
+        assert_eq!(trace.path, path);
+        assert!(path.is_some());
+        assert_eq!(
+            trace.tree_at(trace.steps.len()),
+            plain
+                .node_list
+                .iter()
+                .map(RrtStarTraceNode::from)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            recorded.planning_with_trace(7),
+            trace,
+            "a repeated run must reset all recorded state"
+        );
+    }
+
+    #[test]
+    fn every_recorded_prefix_has_real_parents_costs_and_feasible_improving_paths() {
+        let mut planner = trace_fixture();
+        let trace = planner.planning_with_trace(7);
+        let mut tree = vec![trace.root.clone()];
+        let mut best = f64::INFINITY;
+        let mut rewires = 0;
+        let mut improvements = 0;
+        for step in &trace.steps {
+            assert!(step.nearest < tree.len());
+            let before_count = tree.len();
+            for update in &step.updates {
+                assert_eq!(update.before.as_ref(), tree.get(update.index));
+                if let Some(before) = &update.before {
+                    if before.parent != update.after.parent {
+                        rewires += 1;
+                    }
+                }
+                if update.index == tree.len() {
+                    tree.push(update.after.clone());
+                } else {
+                    tree[update.index] = update.after.clone();
+                }
+            }
+            assert_eq!(tree.len() - before_count, usize::from(step.accepted));
+            for (i, node) in tree.iter().enumerate().skip(1) {
+                let parent = node.parent.expect("non-root node has a parent");
+                assert!(parent < tree.len() && parent != i);
+                let p = &tree[parent];
+                assert!(
+                    (node.cost
+                        - p.cost
+                        - (node.point[0] - p.point[0]).hypot(node.point[1] - p.point[1]))
+                    .abs()
+                        < 1e-7
+                );
+                assert!(!crate::rrt::polyline_within(
+                    &[p.point[0], node.point[0]],
+                    &[p.point[1], node.point[1]],
+                    [10.0, 10.0],
+                    2.8
+                ));
+                let mut cursor = i;
+                for depth in 0..=tree.len() {
+                    match tree[cursor].parent {
+                        Some(p) => cursor = p,
+                        None => break,
+                    }
+                    assert!(depth < tree.len(), "recorded tree has a parent cycle");
+                }
+            }
+            if !step.path.is_empty() {
+                assert_eq!(step.path.first(), Some(&[18.5, 18.5]));
+                assert_eq!(step.path.last(), Some(&[1.5, 1.5]));
+                let length: f64 = step
+                    .path
+                    .windows(2)
+                    .map(|p| (p[1][0] - p[0][0]).hypot(p[1][1] - p[0][1]))
+                    .sum();
+                assert!(length <= best + 1e-7);
+                if length < best - 1e-7 {
+                    improvements += 1;
+                }
+                best = length;
+            } else {
+                assert!(!best.is_finite(), "a discovered path disappeared");
+            }
+        }
+        assert!(rewires > 0 && improvements > 1);
+        assert_eq!(trace.tree_at(0), vec![trace.root.clone()]);
+        assert_eq!(trace.steps.last().unwrap().path, trace.path.unwrap());
+    }
+
+    #[test]
+    fn trace_preserves_rejections_and_the_early_stop_condition() {
+        let mut blocked = trace_fixture();
+        blocked.obstacle_list = vec![(10.0, 10.0, 100.0)];
+        let trace = blocked.planning_with_trace(7);
+        assert_eq!(trace.steps.len(), 500);
+        assert!(trace.path.is_none());
+        assert!(trace
+            .steps
+            .iter()
+            .all(|s| !s.accepted && s.updates.is_empty() && s.path.is_empty()));
+        let mut early = trace_fixture();
+        early.search_until_max_iter = false;
+        let trace = early.planning_with_trace(7);
+        assert!(trace.path.is_some() && trace.steps.len() < 500);
+        assert!(trace.steps[..trace.steps.len() - 1]
+            .iter()
+            .all(|s| s.path.is_empty()));
     }
 }

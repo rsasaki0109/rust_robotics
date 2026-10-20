@@ -243,7 +243,7 @@ impl PlaygroundApp {
         match tab {
             PlaygroundTab::GridPlanners => "Draw walls, drag start and goal, race four planners.",
             PlaygroundTab::Sampling => {
-                "Watch RRT, RRT*, Informed RRT*, and PRM explore around obstacles."
+                "Replay RRT* iterations, or explore completed sampling-planner trees."
             }
             PlaygroundTab::Parking => "Hybrid A* parks a car, reversing where it has to.",
             PlaygroundTab::Localization => {

@@ -70,7 +70,8 @@ All tabs encode their important configuration in share links:
 
 - Grid Planners: planner, endpoints, obstacle map, search visibility, expansion step,
   playback state, and viewing rate
-- Sampling Planners: planner, start, goal, and circular obstacles
+- Sampling Planners: planner, start, goal, and circular obstacles; RRT* also
+  shares seed, iteration, pause/play state, and replay rate with full map precision
 - Parking: the car's start pose and the goal pose
 - Localization: filter and measurement-noise scale
 - SLAM: algorithm, timeline frame, and playback state (LiDAR loop closure:
@@ -138,9 +139,12 @@ configuration (see the list above).
   revealing the final route. Detour and No route provide editable examples;
   sharing restores the same expanded cells and paused step. All four use the
   same grid, robot radius, and diagonal collision rules. [Search replay](../../docs/grid_search_replay.md).
-- **Sampling Planners** — RRT, RRT\*, Informed RRT\* (with its sampling
-  ellipse), and PRM growing around circular obstacles you place; drag the
-  start and goal, compare all four.
+- **Sampling Planners** — replay real RRT\* samples, insertions, rejections,
+  and rewires. Jump to the first path, next shorter route, or next rewire; inspect
+  the prefix-only path-length graph and share the exact seed, map, and iteration.
+  RRT, Informed RRT\*, and PRM also reveal their completed trees or roadmaps.
+  Drag the start/goal, edit circular obstacles, or compare completed runs.
+  [Replay guide](../../docs/rrt_star_replay.md).
 - **Parking** — Hybrid A\* with a rectangular car footprint and Reeds-Shepp
   shots: drag out a goal pose and the car drives the plan, reversing where it
   has to.
