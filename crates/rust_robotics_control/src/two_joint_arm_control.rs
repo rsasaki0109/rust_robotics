@@ -144,6 +144,46 @@ impl TwoJointArm {
         (end_x, end_y)
     }
 
+    /// Cartesian tip velocity is `J * [shoulder_rate, elbow_rate]`.
+    /// Rows are x/y and columns are shoulder/elbow; link lengths are metres.
+    pub fn jacobian(&self) -> [[f64; 2]; 2] {
+        let angle = self.theta1 + self.theta2;
+        [
+            [
+                -L1 * self.theta1.sin() - L2 * angle.sin(),
+                -L2 * angle.sin(),
+            ],
+            [L1 * self.theta1.cos() + L2 * angle.cos(), L2 * angle.cos()],
+        ]
+    }
+
+    /// Damped least-squares differential IK: `dq = J^T (J J^T + λ² I)^-1 v`.
+    ///
+    /// Rates are rad/s for a requested velocity in m/s. No speed limit is
+    /// applied. Returns `None` for nonfinite inputs, nonpositive damping, or
+    /// an unrepresentable solve. Damping regularizes the matrix but cannot
+    /// create motion in a Cartesian direction absent from the Jacobian.
+    pub fn damped_joint_velocity(&self, velocity: [f64; 2], damping: f64) -> Option<[f64; 2]> {
+        if !damping.is_finite() || damping <= 0.0 || velocity.iter().any(|v| !v.is_finite()) {
+            return None;
+        }
+        let j = self.jacobian();
+        if j.iter().flatten().any(|v| !v.is_finite()) {
+            return None;
+        }
+        let a = j[0][0] * j[0][0] + j[0][1] * j[0][1] + damping * damping;
+        let b = j[0][0] * j[1][0] + j[0][1] * j[1][1];
+        let c = j[1][0] * j[1][0] + j[1][1] * j[1][1] + damping * damping;
+        let det = a * c - b * b;
+        if !det.is_finite() || det <= 0.0 {
+            return None;
+        }
+        let x = (c * velocity[0] - b * velocity[1]) / det;
+        let y = (a * velocity[1] - b * velocity[0]) / det;
+        let rates = [j[0][0] * x + j[1][0] * y, j[0][1] * x + j[1][1] * y];
+        rates.iter().all(|v| v.is_finite()).then_some(rates)
+    }
+
     fn angle_diff(&self, theta1: f64, theta2: f64) -> f64 {
         let mut diff = theta1 - theta2;
         while diff > PI {
@@ -437,5 +477,66 @@ mod tests {
             assert!(!arm.solve_inverse_kinematics(0.01));
             assert!(arm.trajectory.is_empty());
         }
+    }
+
+    #[test]
+    fn jacobian_matches_central_differences_and_dls_normal_equations() {
+        for i in -8..=8 {
+            for k in -8..=8 {
+                let mut arm = TwoJointArm::new();
+                arm.theta1 = f64::from(i) * PI / 8.0;
+                arm.theta2 = f64::from(k) * PI / 8.0;
+                let j = arm.jacobian();
+                let eps = 1e-6;
+                for (column, (&jx, &jy)) in j[0].iter().zip(&j[1]).enumerate() {
+                    if column == 0 {
+                        arm.theta1 += eps;
+                    } else {
+                        arm.theta2 += eps;
+                    }
+                    let plus = arm.forward_kinematics();
+                    if column == 0 {
+                        arm.theta1 -= 2.0 * eps;
+                    } else {
+                        arm.theta2 -= 2.0 * eps;
+                    }
+                    let minus = arm.forward_kinematics();
+                    if column == 0 {
+                        arm.theta1 += eps;
+                    } else {
+                        arm.theta2 += eps;
+                    }
+                    assert!(((plus.0 - minus.0) / (2.0 * eps) - jx).abs() < 2e-9);
+                    assert!(((plus.1 - minus.1) / (2.0 * eps) - jy).abs() < 2e-9);
+                }
+                for damping in [0.02, 0.2, 0.6, 1.0] {
+                    let v = [0.6, -0.4];
+                    let q = arm.damped_joint_velocity(v, damping).unwrap();
+                    let actual = [
+                        j[0][0] * q[0] + j[0][1] * q[1],
+                        j[1][0] * q[0] + j[1][1] * q[1],
+                    ];
+                    for (column, rate) in q.iter().enumerate() {
+                        let residual = j[0][column] * (actual[0] - v[0])
+                            + j[1][column] * (actual[1] - v[1])
+                            + damping * damping * rate;
+                        assert!(residual.abs() < 1e-10);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn damping_keeps_singular_velocity_finite_but_does_not_invent_radial_motion() {
+        let arm = TwoJointArm::new();
+        assert_eq!(arm.damped_joint_velocity([1.0, 0.0], 0.2), Some([0.0, 0.0]));
+        let rates = arm.damped_joint_velocity([0.0, 1.0], 0.2).unwrap();
+        assert!((rates[0] - 2.0 / 5.04).abs() < 1e-12);
+        assert!((rates[1] - 1.0 / 5.04).abs() < 1e-12);
+        for damping in [0.0, -0.2, f64::NAN, f64::INFINITY] {
+            assert!(arm.damped_joint_velocity([0.0, 1.0], damping).is_none());
+        }
+        assert!(arm.damped_joint_velocity([f64::NAN, 0.0], 0.2).is_none());
     }
 }

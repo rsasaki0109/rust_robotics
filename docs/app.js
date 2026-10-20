@@ -720,9 +720,9 @@ const playTiles = [
   {
     id: "arm", topic: "interaction",
     title: "Arm lab",
-    text: "Drag a target, compare two ways to bend, and explore the reachable workspace. Move the joints yourself, too.",
-    image: "assets/playground/arm.png",
-    link: "playground/?tab=arm"
+    text: "Compare joint and Cartesian tracking at the same instant. Inspect their paths, errors and commands, or move the arm yourself.",
+    image: "assets/playground/arm-tracking.png",
+    link: "playground/?tab=arm&arm_view=compare&arm_cmp_case=straight&arm_cmp_frame=120"
   },
   {
     id: "pushing", topic: "interaction",
@@ -766,8 +766,8 @@ const experimentTopics = [
     id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "arm",
     title: "Put physics in your hands.",
     description: "Guide a robot arm, explore how contact moves a box, or pilot a quadrotor through your own circuit.",
-    task: "Try this: Snap to a target, switch Bend + / -, then Snap again. Two joint poses reach the same point.",
-    alt: "A two-link robot arm, two inverse-kinematics solutions, and its circular reachable workspace"
+    task: "Try this: choose Straight, then Play. Watch joint tracking fold the arm while the local Cartesian controller stays straight.",
+    alt: "Two arm controllers at the same time: a folding joint tracker, a stalled Cartesian tracker, and both recorded error curves"
   }
 ];
 const requestedTopic = new URLSearchParams(location.search).get("topic");
