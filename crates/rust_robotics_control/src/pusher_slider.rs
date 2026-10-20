@@ -154,7 +154,7 @@ impl PusherSliderParams {
 
     /// Body-frame contact point `p`, inward normal `d`, and tangent `t` for a
     /// face index (`0..4`) and offset along the face.
-    fn contact_frame(self, face: usize, contact: f64) -> ([f64; 2], [f64; 2], [f64; 2]) {
+    pub fn contact_frame(self, face: usize, contact: f64) -> ([f64; 2], [f64; 2], [f64; 2]) {
         let b = self.half_extent;
         let s = contact.clamp(-b, b);
         match face % 4 {
@@ -170,7 +170,7 @@ impl PusherSliderParams {
     /// The limit-surface solve is identical for every face; only the contact
     /// frame `(p, d, t)` rotates, so the friction cone is evaluated along the
     /// face's own normal/tangent rather than the body axes.
-    fn twist(self, command: PusherCommand) -> ([f64; 3], ContactMode) {
+    pub fn twist(self, command: PusherCommand) -> ([f64; 3], ContactMode) {
         let c2 = self.char_len * self.char_len;
         let (p, d, t) = self.contact_frame(command.face, command.contact);
         let [px, py] = p;

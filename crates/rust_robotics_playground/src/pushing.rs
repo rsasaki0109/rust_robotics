@@ -8,6 +8,8 @@ use rust_robotics_control::pusher_slider::{
     SliderState,
 };
 use rust_robotics_core::normalize_angle;
+mod contact_lab;
+use contact_lab::ContactLab;
 
 /// Visible table area \[m\].
 const TABLE_X: (f64, f64) = (-0.12, 0.48);
@@ -41,6 +43,8 @@ enum DragTool {
 }
 
 pub struct PushingDemo {
+    contact_lab: ContactLab,
+    contact_mode: bool,
     params: PusherSliderParams,
     controller: PusherSliderMppiController,
     slider: SliderState,
@@ -64,6 +68,8 @@ impl Default for PushingDemo {
     fn default() -> Self {
         let params = PusherSliderParams::default();
         let mut demo = Self {
+            contact_lab: ContactLab::default(),
+            contact_mode: false,
             params,
             controller: Self::controller(params, &[]),
             slider: SliderState::new(0.0, 0.0, 0.0),
@@ -173,6 +179,11 @@ impl PushingDemo {
     }
 
     pub fn apply_share_query(&mut self, query: &str) {
+        self.contact_mode = crate::share::value(query, "push_mode") == Some("contact");
+        if self.contact_mode {
+            self.contact_lab.apply_query(query);
+            return;
+        }
         let number =
             |key: &str, min: f32, max: f32| crate::share::bounded_f32(query, key, min, max);
         if let (Some(x), Some(y)) = (
@@ -204,6 +215,9 @@ impl PushingDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.contact_mode {
+            return self.contact_lab.share_query();
+        }
         let mut query = format!(
             "tab=pushing&goal_x={:.3}&goal_y={:.3}&goal_deg={:.0}&mu={:.2}&running={}",
             self.goal.x(),
@@ -353,7 +367,24 @@ impl PushingDemo {
         }
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            for (key, label, mode) in [
+                ("contact", "Contact lab", true),
+                ("delivery", "MPPI delivery", false),
+            ] {
+                let r = ui.selectable_label(self.contact_mode == mode, label);
+                self.contact_lab.action(key, &r);
+                if r.clicked() {
+                    self.contact_mode = mode;
+                }
+            }
+        });
+        if self.contact_mode {
+            self.contact_lab.controls(ui);
+            self.contact_lab.finish(ctx, true);
+            return;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.checkbox(&mut self.running, "Run");
             if ui.button("Reset box").clicked() {
@@ -430,9 +461,15 @@ impl PushingDemo {
              or slides along the face when the push leaves the friction cone. MPPI plans \
              on all four faces and switches faces to turn the box in place.",
         );
+        self.contact_lab.finish(ctx, false);
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.contact_mode {
+            self.contact_lab.scene(ui);
+            self.contact_lab.finish(ctx, true);
+            return;
+        }
         if self.running
             && !self.goal_reached()
             && crate::ui_kit::every(ctx, &mut self.last_step, FRAME_MS as f64 / 1000.0)
@@ -465,6 +502,7 @@ impl PushingDemo {
             position * 1000.0,
             heading.to_degrees(),
         ));
+        self.contact_lab.finish(ctx, false);
     }
 }
 

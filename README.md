@@ -200,6 +200,11 @@ every control step, shaded by weight, as a robot dodges static and moving
 obstacles; tune samples, horizon, temperature λ, and noise σ. **Pushing** lets you drag the goal pose of a box that a
 face-switching MPPI controller pushes under quasi-static stick/slide contact —
 including turning it in place and routing around obstacles you click in.
+Its **Contact lab** also lets you aim individual pushes: change the face,
+contact offset, velocity, or friction to discover when the box turns, sticks,
+or slides. A velocity fan and contact arrows show the model's response; the
+white outline previews the next 0.1 s push. Share the current pose and settings.
+[Try the contact lab](docs/pushing_contact_lab.md).
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
 identical path, initial state, clock, and actuation model. Pause, select a
 controller, or tap an error graph to inspect its actual applied turn and path

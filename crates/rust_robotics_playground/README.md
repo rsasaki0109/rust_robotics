@@ -80,7 +80,8 @@ All tabs encode their important configuration in share links:
   turn response, exact replay frame, playback state, replay rate, and selected controller
 - MPPI: sample count, horizon, temperature λ, noise σ, moving obstacles,
   start, goal, and obstacles
-- Pushing: goal pose, pusher friction, run state, and obstacles
+- Pushing: goal pose, pusher friction, run state, and obstacles; Contact lab:
+  current pose, face, contact offset, commanded velocity, and friction
 - Drone Race: pilot mode, course, camera, replay frame, playback state, slow motion,
   flight trail, prediction, cinema view, ghost visibility, manual input recording,
   custom gate layout, and editor state
@@ -174,7 +175,10 @@ configuration (see the list above).
   the goal pose, click obstacles in or out, change the pusher friction, and watch
   the contact stick (yellow) or slide (orange). Presets for translation, a pure
   90° turn, and sideways motion; goal, friction, and obstacles round-trip
-  through share links.
+  through share links. **Contact lab** adds single pushes with a draggable
+  velocity arrow, four contact faces, adjustable offset and friction, a sampled
+  velocity-mode fan, and the next-step pose preview. Share preserves the pose
+  and settings and starts a new trail. [Contact guide](../../docs/pushing_contact_lab.md).
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
   LQR Steer traces under identical paths and dynamics. Inspect their applied
   turns, speed, and path error at the same time. Tap either graph to seek;

@@ -261,7 +261,7 @@ impl PlaygroundApp {
             PlaygroundTab::Mppi => {
                 "See every sampled rollout as MPPI steers a robot through moving obstacles."
             }
-            PlaygroundTab::Pushing => "Push a box to a goal pose with face-switching MPPI.",
+            PlaygroundTab::Pushing => "Explore sticking and sliding, or deliver a box with MPPI.",
             PlaygroundTab::DroneRace => {
                 "Fly a 3D quadrotor race: five gates, three cameras, one autonomous pilot."
             }

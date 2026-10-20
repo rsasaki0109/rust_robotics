@@ -720,9 +720,9 @@ const playTiles = [
   {
     id: "pushing", topic: "interaction",
     title: "Box pushing",
-    text: "Drag a target pose. Watch a contact-aware controller choose how to push and turn the box.",
+    text: "Aim a push, change friction, and discover when a box turns or slides. Try MPPI delivery, too.",
     image: "assets/playground/pushing.png",
-    link: "playground/?tab=pushing"
+    link: "playground/?tab=pushing&push_mode=contact&lab_preset=glance&lab_mu=0.1"
   },
   {
     id: "drone", topic: "interaction",
@@ -758,9 +758,9 @@ const experimentTopics = [
   {
     id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "pushing",
     title: "Put physics in your hands.",
-    description: "Move a box with contact-aware control, or pilot a quadrotor through a circuit you build.",
-    task: "Try this: rotate the box's goal and watch the pusher change faces.",
-    alt: "A box and pusher following a physical trajectory toward a rotated target pose"
+    description: "Explore how contact moves a box, or pilot a quadrotor through a circuit you build.",
+    task: "Try this: choose Glancing, then switch Low / High friction. Watch the velocity arrows separate and meet.",
+    alt: "A contact experiment with a box, a colored velocity fan, and different pusher and box contact velocities"
   }
 ];
 const requestedTopic = new URLSearchParams(location.search).get("topic");
