@@ -28,6 +28,11 @@ angles, selected branch, mode, and alternate-pose visibility. Shared links open
 paused at that exact pose with a new trail, including manual poses away from
 the target.
 
+**Compare tracking** captures the live pose and goal for two recorded runs:
+joint-angle tracking and Cartesian damped-least-squares tracking. A shared time
+cursor reveals their different paths, errors, and next commands.
+[Compare tracking guide](arm_tracking.md).
+
 ## Model
 
 The arm has two 1 m links and unrestricted revolute joints. Its reachable

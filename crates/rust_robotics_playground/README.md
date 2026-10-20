@@ -179,6 +179,12 @@ configuration (see the list above).
   branches, or move the joints with FK sliders. Play, pause, step, and snap
   reveal tip error, reachable workspace, and singular poses. Shared links keep
   the exact pose and target, paused. [Arm guide](../../docs/arm_lab.md).
+  **Compare tracking** records joint-target and Cartesian DLS controllers from
+  identical initial conditions with the same joint-rate budget. Inspect both
+  paths and error curves with one time cursor, change damping or analytic
+  branch independently, and share the exact paused step. Straight and near
+  straight presets expose local singularity behavior.
+  [Tracking guide](../../docs/arm_tracking.md).
 - **Pushing** — quasi-static pusher-slider with face-switching MPPI: drag or turn
   the goal pose, click obstacles in or out, change the pusher friction, and watch
   the contact stick (yellow) or slide (orange). Presets for translation, a pure

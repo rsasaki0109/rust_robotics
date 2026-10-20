@@ -1,5 +1,6 @@
 //! Interactive geometry and joint tracking for the library's two-link arm.
 
+mod tracking;
 mod view;
 
 use rust_robotics_control::two_joint_arm_control::{ElbowBranch, TwoJointArm};
@@ -22,6 +23,8 @@ pub struct ArmDemo {
     action_count: usize,
     last_action: &'static str,
     revision: usize,
+    comparison_mode: bool,
+    comparison: tracking::TrackingComparison,
 }
 
 impl Default for ArmDemo {
@@ -42,6 +45,8 @@ impl Default for ArmDemo {
             action_count: 0,
             last_action: "none",
             revision: 0,
+            comparison_mode: false,
+            comparison: tracking::TrackingComparison::default(),
         };
         demo.preset("reach");
         demo
@@ -168,8 +173,16 @@ impl ArmDemo {
     }
 
     pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
-        self.tick(ctx.input(|i| i.time), active);
-        if active && self.playing {
+        let now = ctx.input(|i| i.time);
+        self.tick(now, active && !self.comparison_mode);
+        self.comparison.tick(now, active && self.comparison_mode);
+        if active
+            && (if self.comparison_mode {
+                self.comparison.playing()
+            } else {
+                self.playing
+            })
+        {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
     }
@@ -206,9 +219,13 @@ impl ArmDemo {
         self.playing = !self.joints_mode
             && self.solution(self.branch).is_some()
             && crate::share::boolean(query, "arm_playing").unwrap_or(false);
+        self.comparison_mode = self.comparison.apply_share_query(query);
     }
 
     pub fn share_query(&self) -> String {
+        if self.comparison_mode {
+            return self.comparison.share_query();
+        }
         // Open at the exact current pose; a running controller would move it.
         format!("tab=arm&arm_x={}&arm_y={}&arm_a={}&arm_b={}&arm_branch={}&arm_mode={}&arm_other={}&arm_playing=0",
             self.arm.target_x, self.arm.target_y, self.arm.theta1, self.arm.theta2,
@@ -310,5 +327,29 @@ mod tests {
         assert_eq!(d.share_query(), before);
         d.apply_share_query("tab=arm&arm_x=2.5&arm_y=2.5&arm_playing=1");
         assert!(!d.playing && d.solution(d.branch).is_none());
+    }
+
+    #[test]
+    fn comparison_links_delegate_and_rendering_preserves_precise_settings() {
+        let mut d = ArmDemo::default();
+        d.apply_share_query("tab=arm&arm_view=compare&arm_cmp_case=near&arm_cmp_damping=0.345678901234&arm_cmp_frame=217");
+        assert!(d.comparison_mode);
+        let before = d.share_query();
+        let ctx = egui::Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| d.controls(ctx, ui));
+        });
+        assert_eq!(
+            d.share_query(),
+            before,
+            "display rounding must not edit comparison parameters"
+        );
+        let mut restored = ArmDemo::default();
+        restored.apply_share_query(&before);
+        assert_eq!(restored.share_query(), before);
+        d.apply_share_query("tab=arm&arm_a=1.234567890123&arm_b=-2.345678901234&arm_mode=fk");
+        assert!(!d.comparison_mode && d.joints_mode);
+        assert_eq!(d.arm.theta1, 1.234567890123);
+        assert!(!d.share_query().contains("arm_view=compare"));
     }
 }

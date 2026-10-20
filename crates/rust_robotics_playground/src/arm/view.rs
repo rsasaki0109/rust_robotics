@@ -29,6 +29,29 @@ impl ArmDemo {
     }
 
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            let r = ui.selectable_label(!self.comparison_mode, "Live arm");
+            self.comparison.mode_button("live", &r);
+            if self.button("live", &r) {
+                self.comparison_mode = false;
+            }
+            let r = ui.selectable_label(self.comparison_mode, "Compare tracking");
+            self.comparison.mode_button("compare", &r);
+            if self.button("compare", &r) && !self.comparison_mode {
+                self.comparison.capture_pose(
+                    [self.arm.theta1, self.arm.theta2],
+                    self.target(),
+                    self.branch,
+                );
+                self.comparison_mode = true;
+                self.playing = false;
+                self.last_time = None;
+            }
+        });
+        if self.comparison_mode {
+            self.comparison.controls(ctx, ui);
+            return;
+        }
         crate::ui_kit::section(ui, "Try a target");
         ui.horizontal_wrapped(|ui| {
             for (key, title) in [
@@ -177,7 +200,7 @@ impl ArmDemo {
         crate::ui_kit::how_it_works(ui, "arm_help", "Two unit-length links, with unrestricted joints. The shaded disk is the reachable workspace (radius 2 m). Bend + and - are the analytic IK branches. At full stretch the branches meet; at the origin the shoulder angle is undetermined. |det J| measures local Cartesian dexterity and vanishes in both singular poses. Play tracks the selected angles with a proportional joint controller, without inertia or collision checking. Joint errors wrap to the shortest rotation. Snap and manual joint edits start a new tip trail. Share preserves the pose and target, opens paused, and starts a new trail there.");
     }
 
-    fn screen(rect: Rect, point: [f64; 2]) -> Pos2 {
+    pub(super) fn screen(rect: Rect, point: [f64; 2]) -> Pos2 {
         let scale = rect.width() / 5.2;
         egui::pos2(
             rect.center().x + point[0] as f32 * scale,
@@ -203,7 +226,7 @@ impl ArmDemo {
         ]
     }
 
-    fn draw_pose(
+    pub(super) fn draw_pose(
         painter: &egui::Painter,
         rect: Rect,
         angles: [f64; 2],
@@ -239,7 +262,11 @@ impl ArmDemo {
         }
     }
 
-    pub fn scene(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.comparison_mode {
+            self.comparison.scene(ctx, ui);
+            return;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new("Arm lab").strong().size(20.0));
             let reachable = self.solution(self.branch).is_some();
@@ -375,7 +402,8 @@ impl ArmDemo {
 
     pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
         self.revision += 1;
-        self.publish(ctx, active);
+        self.publish(ctx, active && !self.comparison_mode);
+        self.comparison.finish(ctx, active && self.comparison_mode);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

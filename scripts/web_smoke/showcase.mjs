@@ -74,11 +74,13 @@ export async function checkShowcase(page, home, shots, name) {
       assert(JSON.parse(replay.rrtRewires).length>0,'the featured iteration did not show a real rewire');
     }
     if (topic.tab === 'arm') {
-      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.armActive === '1');
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.armCmpActive === '1');
       const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
-      assert.equal(d.armReachable,'1');
-      assert.equal(d.armPlaying,'0');
-      assert.notDeepEqual(JSON.parse(d.armSolution),JSON.parse(d.armAlternate),'the featured arm must show two distinct IK solutions');
+      assert.equal(d.armCmpPlaying,'0');assert.equal(d.armCmpFrame,'120');
+      const s=JSON.parse(d.armCmpSamples);
+      assert(s[0].error<0.1,'the featured joint tracker must be approaching the goal');
+      assert.deepEqual(s[1].angles,[0,0],'the featured Cartesian run must show the actual radial stall');
+      assert.equal(JSON.parse(d.armCmpErrors)[0].length,601);
     }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });

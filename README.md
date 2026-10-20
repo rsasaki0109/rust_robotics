@@ -143,6 +143,11 @@ drag a target, compare both inverse-kinematics solutions, or move the joints
 yourself. Explore full stretch, folding, and goals outside its reach.
 [Read the arm lab guide](docs/arm_lab.md).
 
+[Compare how the arm moves](https://rsasaki0109.github.io/rust_robotics/playground/?tab=arm&arm_view=compare&arm_cmp_case=straight&arm_cmp_frame=120):
+inspect joint-target and Cartesian tracking at the same time, including a
+reachable target where a straight arm's local controller stalls.
+[Read the tracking guide](docs/arm_tracking.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).

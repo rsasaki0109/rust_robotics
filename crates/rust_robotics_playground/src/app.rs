@@ -271,7 +271,7 @@ impl PlaygroundApp {
                 "See every sampled rollout as MPPI steers a robot through moving obstacles."
             }
             PlaygroundTab::Pushing => "Explore sticking and sliding, or deliver a box with MPPI.",
-            PlaygroundTab::Arm => "Drag a target, explore two IK solutions, or move the joints yourself.",
+            PlaygroundTab::Arm => "Explore arm poses, or compare joint and Cartesian tracking at the same time.",
             PlaygroundTab::DroneRace => {
                 "Fly a 3D quadrotor race: five gates, three cameras, one autonomous pilot."
             }

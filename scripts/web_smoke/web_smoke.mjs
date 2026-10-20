@@ -14,6 +14,7 @@ import { chromium } from 'playwright';
 import { checkContactLab } from './contact_lab.mjs';
 import { checkRrtReplay } from './rrt_replay.mjs';
 import { checkArm } from './arm.mjs';
+import { checkArmTracking } from './arm_tracking.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -85,6 +86,9 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'arm-tracking', query: 'tab=arm&arm_view=compare', armTracking: true },
+  { name: 'arm-tracking-phone', query: 'tab=arm&arm_view=compare', armTracking: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'arm-tracking-slow', query: 'tab=arm&arm_view=compare', armTracking: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'arm', query: 'tab=arm', arm: true },
   { name: 'arm-phone', query: 'tab=arm', arm: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'arm-slow', query: 'tab=arm', arm: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -180,6 +184,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.armTracking) {
+    try { await checkArmTracking(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`arm tracking: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('armCmp') && key!=='armCmpErrors')))}`);
+    }
+  }
   if (test.arm) {
     try { await checkArm(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {
