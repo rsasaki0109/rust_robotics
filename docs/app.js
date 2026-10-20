@@ -705,10 +705,10 @@ const playTiles = [
   },
   {
     id: "mppi", topic: "control",
-    title: "MPPI",
-    text: "See sampled futures fan out. Tune MPPI as the robot dodges static and moving obstacles.",
-    image: "assets/playground/mppi.png",
-    link: "playground/?tab=mppi"
+    title: "MPPI decision lab",
+    text: "Choose a candidate future. Inspect its cost, weight and predicted motion beside MPPI's weighted control plan.",
+    image: "assets/playground/mppi-inspector.png",
+    link: "playground/?tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=40"
   },
   {
     id: "admm", topic: "control",
@@ -756,11 +756,11 @@ const experimentTopics = [
     alt: "The same LiDAR scans at front-end and corrected graph poses, with node-shift arrows and position-error histories"
   },
   {
-    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "admm",
+    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "mppi",
     title: "Turn a plan into motion.",
-    description: "Watch four robots agree on a shared plan. Compare path trackers or look inside MPPI, too.",
-    task: "Try this: select Before turn, then +1. The gold rings become the next applied robot positions.",
-    alt: "Two robot formations with identical observations, their next position commands, and actual ADMM residual histories"
+    description: "Inspect the simulated futures behind a control decision. Compare path trackers or coordinate four robots, too.",
+    task: "Try this: select temperature 100, then 1. Watch the same candidates receive different weights.",
+    alt: "MPPI's sampled futures and weighted control plan, with selectable candidate weights and forecast times"
   },
   {
     id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "arm",

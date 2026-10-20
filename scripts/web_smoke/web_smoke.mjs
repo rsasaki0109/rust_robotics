@@ -17,6 +17,7 @@ import { checkArm } from './arm.mjs';
 import { checkArmTracking } from './arm_tracking.mjs';
 import { checkSlamLoop } from './slam_loop.mjs';
 import { checkFormationLab } from './formation_lab.mjs';
+import { checkMppiInspector } from './mppi_inspector.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -88,6 +89,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'mppi-inspector', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true },
+  { name: 'mppi-inspector-phone', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'mppi-inspector-compact', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true, viewport: { width: 900, height: 700 } },
+  { name: 'mppi-inspector-slow', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'formation-lab', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true },
   { name: 'formation-lab-phone', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'formation-lab-compact', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 900, height: 700 } },
@@ -193,6 +198,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.mppiInspector) {
+    try { await checkMppiInspector(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`MPPI: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('mppi') && !['mppiCloud','mppiSelected','mppiNominal','mppiWitnesses'].includes(key))))}`);
+    }
+  }
   if (test.formationLab) {
     try { await checkFormationLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

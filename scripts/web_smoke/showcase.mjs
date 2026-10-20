@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const topics = [
   { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
   { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
-  { id: 'control', label: 'Control', count: 3, tab: 'admm' },
+  { id: 'control', label: 'Control', count: 3, tab: 'mppi' },
   { id: 'interaction', label: 'Manipulation & flight', count: 3, tab: 'arm' },
 ];
 const ids = ['grid', 'sampling', 'parking', 'localization', 'slam', 'arena', 'mppi', 'admm', 'arm', 'pushing', 'drone'];
@@ -102,6 +102,16 @@ export async function checkShowcase(page, home, shots, name) {
       assert.deepEqual(runs[0].plan.references,runs[1].plan.references);
       assert.equal(runs[0].history.length,18);
       assert.equal(JSON.parse(d.formationMaps).length,2);
+    }
+    if (topic.tab === 'mppi') {
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.mppiActive === '1');
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      assert.equal(d.mppiCursor,'40');assert.equal(d.mppiHorizon,'40');
+      const cloud=JSON.parse(d.mppiCloud);
+      assert.equal(Number(d.mppiSample),cloud.order[0]);
+      assert(Math.abs(cloud.weights.reduce((a,b)=>a+b,0)-1)<1e-9);
+      assert.deepEqual(JSON.parse(d.mppiOrigin),JSON.parse(d.mppiRobot));
+      assert.deepEqual(JSON.parse(d.mppiPainted),[Number(d.mppiGeneration),Number(d.mppiSample),40,true]);
     }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });
