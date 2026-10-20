@@ -1,5 +1,11 @@
 # Controller Arena Project
 
+The current interactive version adds synchronized time inspection, applied-turn
+and error graphs, prefix-only metrics, and exact-moment sharing. See the
+[controller inspector guide](controller_inspector.md) for the public experiment,
+model definitions, and current verification. The original design below records
+the engine and first replay implementation.
+
 Status: implemented and verified on `feature/controller-arena`
 
 Decision date: 2026-07-28

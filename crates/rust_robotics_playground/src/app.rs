@@ -256,7 +256,7 @@ impl PlaygroundApp {
                 "Four agents agree on a formation via ADMM while tracking a noisy goal."
             }
             PlaygroundTab::ControllerArena => {
-                "Pure Pursuit, Stanley, and LQR on the same course, preset or drawn by you."
+                "Pause three path trackers. Inspect their applied turns and errors at the same time."
             }
             PlaygroundTab::Mppi => {
                 "See every sampled rollout as MPPI steers a robot through moving obstacles."

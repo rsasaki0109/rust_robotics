@@ -1,8 +1,11 @@
 //! Interactive replay front end for the deterministic Controller Arena engine.
 
+use std::collections::BTreeMap;
+
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
 use rust_robotics_control::{
-    run_controller_arena, ArenaControllerKind, ArenaPreset, ArenaRun, ArenaScenario,
+    metrics_from_samples, run_controller_arena, ArenaControllerKind, ArenaMetrics, ArenaPreset,
+    ArenaRun, ArenaSample, ArenaScenario,
 };
 use rust_robotics_core::{Path2D, Point2D, State2D};
 
@@ -21,6 +24,7 @@ const COURSE_SPACING: f64 = 0.5;
 const LINK_SPACING: f64 = 1.5;
 /// Shorter strokes are ignored \[m\].
 const MIN_COURSE_LENGTH: f64 = 8.0;
+const MAX_COURSE_LENGTH: f64 = 500.0;
 
 pub struct ControllerArenaDemo {
     preset: ArenaPreset,
@@ -32,8 +36,20 @@ pub struct ControllerArenaDemo {
     playing: bool,
     dirty: bool,
     error: Option<String>,
-    /// Input time of the last replay step \[s\].
-    last_advance: f64,
+    last_advance: Option<f64>,
+    replay_phase: f64,
+    replay_rate: f64,
+    focus: ArenaControllerKind,
+    actions: BTreeMap<&'static str, [f32; 2]>,
+    action_hits: BTreeMap<&'static str, bool>,
+    scene_rect: Option<Rect>,
+    plot_rects: [Option<Rect>; 2],
+    #[cfg(target_arch = "wasm32")]
+    action_count: u64,
+    #[cfg(target_arch = "wasm32")]
+    last_action: &'static str,
+    #[cfg(target_arch = "wasm32")]
+    ui_revision: u64,
     /// Key points of the course the user drew, every `LINK_SPACING` m and
     /// rounded to 0.1 m: exactly what a share link stores (kept while a
     /// preset is shown).
@@ -72,7 +88,20 @@ impl ControllerArenaDemo {
             playing: true,
             dirty: false,
             error,
-            last_advance: 0.0,
+            last_advance: None,
+            replay_phase: 0.0,
+            replay_rate: 1.0,
+            focus: ArenaControllerKind::PurePursuit,
+            actions: BTreeMap::new(),
+            action_hits: BTreeMap::new(),
+            scene_rect: None,
+            plot_rects: [None; 2],
+            #[cfg(target_arch = "wasm32")]
+            action_count: 0,
+            #[cfg(target_arch = "wasm32")]
+            last_action: "",
+            #[cfg(target_arch = "wasm32")]
+            ui_revision: 0,
             drawn: None,
             use_drawn: false,
             drawing: false,
@@ -109,36 +138,43 @@ impl ControllerArenaDemo {
     }
 
     pub fn apply_share_query(&mut self, query: &str) {
+        if crate::share::value(query, "tab") != Some("arena") {
+            return;
+        }
+        self.use_drawn = false;
         if let Some(course) = crate::share::value(query, "course").and_then(decode_course) {
             self.drawn = Some(course);
             self.use_drawn = true;
             self.dirty = true;
         }
-        let preset = crate::share::value(query, "preset")
+        self.preset = crate::share::value(query, "preset")
             .and_then(ArenaPreset::from_slug)
             .unwrap_or(self.preset);
-        let target_speed =
+        self.target_speed =
             bounded_query_f64(query, "speed", MIN_SPEED, MAX_SPEED).unwrap_or(self.target_speed);
-        let response = bounded_query_f64(query, "response", MIN_RESPONSE, MAX_RESPONSE)
-            .unwrap_or(self.turn_rate_response_gain);
-        if preset != self.preset
-            || target_speed != self.target_speed
-            || response != self.turn_rate_response_gain
-        {
-            let (drawn, use_drawn) = (self.drawn.take(), self.use_drawn);
-            *self = Self::new(preset, target_speed, response);
-            self.drawn = drawn;
-            self.use_drawn = use_drawn;
-            self.dirty |= use_drawn;
-        }
+        self.turn_rate_response_gain =
+            bounded_query_f64(query, "response", MIN_RESPONSE, MAX_RESPONSE)
+                .unwrap_or(self.turn_rate_response_gain);
+        self.rebuild();
+        self.seek(crate::share::bounded_usize(query, "arena_frame", 20_000).unwrap_or(0));
+        self.playing = crate::share::boolean(query, "arena_playing").unwrap_or(true)
+            && self.frame_idx < self.max_frame();
+        self.replay_rate = bounded_query_f64(query, "arena_rate", 0.25, 2.0).unwrap_or(1.0);
+        self.focus = crate::share::value(query, "arena_focus")
+            .and_then(controller_from_slug)
+            .unwrap_or(ArenaControllerKind::PurePursuit);
     }
 
     pub fn share_query(&self) -> String {
         let mut query = format!(
-            "tab=arena&preset={}&speed={:.2}&response={:.2}",
+            "tab=arena&preset={}&speed={}&response={}&arena_frame={}&arena_playing={}&arena_rate={}&arena_focus={}",
             self.preset.slug(),
             self.target_speed,
-            self.turn_rate_response_gain
+            self.turn_rate_response_gain,
+            self.frame_idx,
+            u8::from(self.playing),
+            self.replay_rate,
+            controller_slug(self.focus),
         );
         if let (true, Some(course)) = (self.use_drawn, &self.drawn) {
             query.push_str("&course=");
@@ -152,6 +188,10 @@ impl ControllerArenaDemo {
         let stroke = std::mem::take(&mut self.stroke);
         if course_length(&stroke) < MIN_COURSE_LENGTH {
             self.stroke_note = Some("Too short: draw a longer course.");
+            return;
+        }
+        if course_length(&stroke) > MAX_COURSE_LENGTH {
+            self.stroke_note = Some("Too long: keep the course under 500 m.");
             return;
         }
         let smooth = smooth(&resample(&stroke, COURSE_SPACING), 4);
@@ -170,6 +210,7 @@ impl ControllerArenaDemo {
     /// The drawing canvas: drag to draw, release to race.
     fn draw_canvas(&mut self, ui: &mut egui::Ui) {
         let rect = crate::ui_kit::fit_rect(ui, (DRAW_H / DRAW_W) as f32, 72.0);
+        self.scene_rect = Some(rect);
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
         let to_world = |pos: Pos2| {
             [
@@ -249,9 +290,58 @@ impl ControllerArenaDemo {
                 self.error = Some(error.to_string());
             }
         }
-        self.frame_idx = 0;
-        self.playing = false;
+        self.seek(0);
         self.dirty = false;
+    }
+
+    fn seek(&mut self, frame: usize) {
+        self.frame_idx = frame.min(self.max_frame());
+        self.playing = false;
+        self.last_advance = None;
+        self.replay_phase = 0.0;
+    }
+
+    fn advance(&mut self, now: f64) {
+        let elapsed = self
+            .last_advance
+            .replace(now)
+            .map_or(0.0, |last| now - last);
+        if !self.playing || !elapsed.is_finite() || !(0.0..1.0).contains(&elapsed) {
+            self.replay_phase = 0.0;
+            return;
+        }
+        self.replay_phase += elapsed * self.replay_rate / self.scenario.dt;
+        let steps = (self.replay_phase + 1e-9).floor() as usize;
+        self.replay_phase = (self.replay_phase - steps as f64).max(0.0);
+        self.frame_idx = (self.frame_idx + steps).min(self.max_frame());
+        if self.frame_idx == self.max_frame() {
+            self.playing = false;
+        }
+    }
+
+    fn prefix<'a>(&self, run: &'a ArenaRun) -> &'a [ArenaSample] {
+        &run.samples[..=self.frame_idx.min(run.samples.len().saturating_sub(1))]
+    }
+
+    fn prefix_metrics(&self, run: &ArenaRun) -> ArenaMetrics {
+        metrics_from_samples(
+            self.prefix(run),
+            *self.scenario.path.points.last().expect("valid path"),
+        )
+        .expect("validated arena samples")
+    }
+
+    fn action(&mut self, name: &'static str, response: &egui::Response) {
+        self.actions.insert(name, response.rect.center().into());
+        self.action_hits.insert(name, response.hovered());
+        if response.clicked() {
+            #[cfg(target_arch = "wasm32")]
+            {
+                self.action_count += 1;
+                self.last_action = name;
+            }
+            response.ctx.request_repaint();
+        }
     }
 
     fn max_frame(&self) -> usize {
@@ -262,55 +352,54 @@ impl ControllerArenaDemo {
             .unwrap_or(0)
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         crate::ui_kit::section(ui, "Course");
-        let selected = if self.use_drawn && self.drawn.is_some() {
-            "Your course"
-        } else {
-            self.preset.label()
-        };
-        egui::ComboBox::from_id_salt("arena_preset")
-            .selected_text(selected)
-            .width(ui.available_width().min(240.0))
-            .show_ui(ui, |ui| {
-                for preset in ArenaPreset::ALL {
-                    if ui
-                        .selectable_label(!self.use_drawn && self.preset == preset, preset.label())
-                        .clicked()
-                    {
-                        self.preset = preset;
-                        self.use_drawn = false;
-                        self.dirty = true;
-                    }
+        ui.horizontal_wrapped(|ui| {
+            for (preset, label) in ArenaPreset::ALL
+                .into_iter()
+                .zip(["Straight", "Slalom", "Hairpin"])
+            {
+                let response = ui.selectable_label(!self.use_drawn && self.preset == preset, label);
+                self.action(preset.slug(), &response);
+                if response.clicked() {
+                    self.preset = preset;
+                    self.use_drawn = false;
+                    self.dirty = true;
                 }
-                if self.drawn.is_some()
-                    && ui.selectable_label(self.use_drawn, "Your course").clicked()
-                {
+            }
+            if self.drawn.is_some() {
+                let response = ui.selectable_label(self.use_drawn, "Your course");
+                self.action("custom", &response);
+                if response.clicked() {
                     self.use_drawn = true;
                     self.dirty = true;
                 }
-            });
+            }
+        });
         ui.horizontal_wrapped(|ui| {
-            if self.drawing {
-                if ui.button("Cancel drawing").clicked() {
+            let response = ui.button(if self.drawing {
+                "Cancel drawing"
+            } else {
+                "Draw a course"
+            });
+            self.action("draw", &response);
+            if response.clicked() {
+                if self.drawing {
                     self.drawing = false;
                     self.stroke.clear();
+                } else {
+                    self.drawing = true;
+                    self.stroke.clear();
+                    self.stroke_note = None;
+                    self.seek(self.frame_idx);
                 }
-            } else if ui
-                .button("Draw a course")
-                .on_hover_text("Draw your own path and race the controllers on it")
-                .clicked()
-            {
-                self.drawing = true;
-                self.stroke.clear();
-                self.stroke_note = None;
-                self.playing = false;
             }
         });
         crate::ui_kit::section(ui, "Target speed");
         if ui
             .add(
                 egui::Slider::new(&mut self.target_speed, MIN_SPEED..=MAX_SPEED)
+                    .clamping(egui::SliderClamping::Edits)
                     .suffix(" m/s")
                     .step_by(0.25),
             )
@@ -325,35 +414,71 @@ impl ControllerArenaDemo {
                     &mut self.turn_rate_response_gain,
                     MIN_RESPONSE..=MAX_RESPONSE,
                 )
+                .clamping(egui::SliderClamping::Edits)
                 .step_by(0.05),
             )
             .changed()
         {
             self.dirty = true;
         }
-        if ui.button("Reset").clicked() {
-            let drawn = self.drawn.take();
-            *self = Self::default();
-            // Keep the drawing available in the course list.
-            self.drawn = drawn;
+        ui.horizontal_wrapped(|ui| {
+            for (key, label, gain) in [("ideal", "Ideal", 1.0), ("weak", "Weaker", 0.5)] {
+                let response = ui.selectable_label(self.turn_rate_response_gain == gain, label);
+                self.action(key, &response);
+                if response.clicked() {
+                    self.turn_rate_response_gain = gain;
+                    self.dirty = true;
+                }
+            }
+            let response = ui.button("Reset");
+            self.action("reset", &response);
+            if response.clicked() {
+                self.preset = ArenaPreset::SlalomRecovery;
+                self.target_speed = DEFAULT_SPEED;
+                self.turn_rate_response_gain = DEFAULT_RESPONSE;
+                self.use_drawn = false;
+                self.drawing = false;
+                self.focus = ArenaControllerKind::PurePursuit;
+                self.replay_rate = 1.0;
+                self.dirty = true;
+            }
+        });
+        if self.dirty {
+            self.rebuild();
+            self.playing = true;
         }
 
-        crate::ui_kit::section(ui, "Result");
+        crate::ui_kit::section(ui, "Inspect a controller");
         self.draw_metrics(ui);
         crate::ui_kit::how_it_works(
             ui,
             "arena_help",
-            "All three controllers follow the same path with the same vehicle model. \
-             RMSE summarizes path error, final is the distance left to the goal, max is \
-             the worst excursion, and Δω is the RMS change of the turn command (lower is \
-             smoother). These compare traces under one model; they are not a universal \
-             ranking.",
+            "All three trackers share a path, initial state, speed response, turn limits, \
+             and 0.1 s simulation clock. Turn rate is the applied command after the shared \
+             response, not a steering-wheel angle. Positive turns left. Error uses the \
+             nearest sampled path point. Graphs and metrics include only samples up to \
+             the selected time. Shorter traces stop at their last sample; their final \
+             command is labelled as such. These traces describe one model, not a universal ranking.",
         );
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.ui_revision += 1;
+        }
+        if let Some(rect) = self.scene_rect {
+            self.publish_state(ctx, rect);
+        }
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         if self.drawing {
             self.draw_canvas(ui);
+            #[cfg(target_arch = "wasm32")]
+            {
+                self.ui_revision += 1;
+            }
+            if let Some(rect) = self.scene_rect {
+                self.publish_state(ctx, rect);
+            }
             return;
         }
         if self.dirty {
@@ -364,31 +489,90 @@ impl ControllerArenaDemo {
         if let Some(error) = &self.error {
             ui.colored_label(Color32::LIGHT_RED, format!("Arena error: {error}"));
         }
+        self.playback(ui);
+        self.advance(ctx.input(|i| i.time));
         let aspect = self
             .world_bounds()
             .map(|b| ((b.max_y - b.min_y) / (b.max_x - b.min_x)) as f32)
             .unwrap_or(0.6)
             .clamp(0.35, 1.2);
-        let rect = crate::ui_kit::fit_rect(ui, aspect, 72.0);
+        let rect = crate::ui_kit::fit_rect(ui, aspect, 240.0);
+        self.scene_rect = Some(rect);
         let _ = ui.allocate_rect(rect, egui::Sense::hover());
         self.draw_scene(ui, rect);
 
-        let max_frame = self.max_frame();
-        crate::ui_kit::playback(ui, &mut self.playing, &mut self.frame_idx, max_frame);
         let legend: Vec<_> = self
             .runs
             .iter()
             .map(|run| (controller_color(run.controller), run.controller.label()))
             .collect();
         crate::ui_kit::legend(ui, &legend);
-
-        if self.playing && self.frame_idx < max_frame {
-            if crate::ui_kit::every(ctx, &mut self.last_advance, 0.05) {
-                self.frame_idx += 1;
-            }
-        } else if self.frame_idx >= max_frame {
-            self.playing = false;
+        self.draw_plot(ui, false);
+        self.draw_plot(ui, true);
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.ui_revision += 1;
         }
+        self.publish_state(ctx, rect);
+        if self.playing {
+            ctx.request_repaint_after(std::time::Duration::from_millis(16));
+        }
+    }
+
+    fn playback(&mut self, ui: &mut egui::Ui) {
+        let last = self.max_frame();
+        ui.horizontal_wrapped(|ui| {
+            for (key, label) in [
+                ("play", if self.playing { "Pause" } else { "Play" }),
+                ("start", "Start"),
+                ("back", "Back"),
+                ("next", "Step"),
+                ("end", "End"),
+            ] {
+                let response = ui.button(label);
+                self.action(key, &response);
+                if response.clicked() {
+                    match key {
+                        "play" => {
+                            let playing = !self.playing;
+                            self.seek(if playing && self.frame_idx == last {
+                                0
+                            } else {
+                                self.frame_idx
+                            });
+                            self.playing = playing;
+                        }
+                        "start" => self.seek(0),
+                        "back" => self.seek(self.frame_idx.saturating_sub(1)),
+                        "next" => self.seek(self.frame_idx.saturating_add(1)),
+                        "end" => self.seek(last),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+        });
+        ui.horizontal_wrapped(|ui| {
+            let mut frame = self.frame_idx;
+            let response = ui.add(egui::Slider::new(&mut frame, 0..=last.max(1)).show_value(false));
+            self.action("timeline", &response);
+            if response.changed() {
+                self.seek(frame);
+            }
+            ui.monospace(format!(
+                "{:.1} / {:.1} s",
+                self.frame_idx as f64 * self.scenario.dt,
+                last as f64 * self.scenario.dt
+            ));
+            for (key, rate) in [("slow", 0.25), ("normal", 1.0), ("fast", 2.0)] {
+                let response = ui.selectable_label(self.replay_rate == rate, format!("{rate}x"));
+                self.action(key, &response);
+                if response.clicked() {
+                    self.replay_rate = rate;
+                    self.last_advance = None;
+                    self.replay_phase = 0.0;
+                }
+            }
+        });
     }
 
     fn draw_scene(&self, ui: &egui::Ui, rect: Rect) {
@@ -410,8 +594,30 @@ impl ControllerArenaDemo {
             Stroke::new(3.0_f32, Color32::from_rgb(175, 180, 190)),
         ));
 
+        for (point, label) in [
+            (self.scenario.path.points.first(), "START"),
+            (self.scenario.path.points.last(), "GOAL"),
+        ] {
+            if let Some(point) = point {
+                let p = world_to_screen(rect, bounds, point.x, point.y);
+                painter.circle_stroke(p, 7.0, Stroke::new(1.5_f32, Color32::LIGHT_GRAY));
+                painter.text(
+                    p + Vec2::new(0.0, -12.0),
+                    egui::Align2::CENTER_BOTTOM,
+                    label,
+                    egui::FontId::proportional(10.0),
+                    Color32::LIGHT_GRAY,
+                );
+            }
+        }
+
         for run in &self.runs {
-            let color = controller_color(run.controller);
+            let color =
+                controller_color(run.controller).gamma_multiply(if run.controller == self.focus {
+                    1.0
+                } else {
+                    0.55
+                });
             let upto = self.frame_idx.min(run.samples.len().saturating_sub(1));
             let trail: Vec<Pos2> = run.samples[..=upto]
                 .iter()
@@ -427,6 +633,19 @@ impl ControllerArenaDemo {
                 ));
             }
             if let Some(sample) = run.samples.get(upto) {
+                if run.controller == self.focus {
+                    let p = world_to_screen(rect, bounds, sample.state.x, sample.state.y);
+                    painter.circle_stroke(p, 11.0, Stroke::new(2.0_f32, color));
+                    if let Some(target) = self.scenario.path.points.iter().min_by(|a, b| {
+                        a.distance(&sample.state.position())
+                            .total_cmp(&b.distance(&sample.state.position()))
+                    }) {
+                        painter.line_segment(
+                            [p, world_to_screen(rect, bounds, target.x, target.y)],
+                            Stroke::new(1.5_f32, Color32::WHITE.gamma_multiply(0.65)),
+                        );
+                    }
+                }
                 draw_robot(
                     &painter,
                     world_to_screen(rect, bounds, sample.state.x, sample.state.y),
@@ -437,26 +656,321 @@ impl ControllerArenaDemo {
         }
     }
 
-    fn draw_metrics(&self, ui: &mut egui::Ui) {
-        egui::Grid::new("controller_arena_metrics")
-            .striped(true)
-            .spacing([10.0, 3.0])
-            .show(ui, |ui| {
-                ui.label("");
-                ui.small("RMSE");
-                ui.small("final");
-                ui.small("max");
-                ui.small("Δω");
-                ui.end_row();
-                for run in &self.runs {
-                    ui.colored_label(controller_color(run.controller), run.controller.label());
-                    ui.monospace(format!("{:.2}", run.metrics.cross_track_rmse));
-                    ui.monospace(format!("{:.2}", run.metrics.final_goal_distance));
-                    ui.monospace(format!("{:.2}", run.metrics.max_cross_track_error));
-                    ui.monospace(format!("{:.2}", run.metrics.angular_command_smoothness));
-                    ui.end_row();
-                }
-            });
+    fn draw_metrics(&mut self, ui: &mut egui::Ui) {
+        for index in 0..self.runs.len() {
+            let run = &self.runs[index];
+            let kind = run.controller;
+            let sample = *self.prefix(run).last().expect("initial sample");
+            let ended = self.frame_idx >= run.samples.len() - 1;
+            let color = controller_color(kind);
+            egui::Frame::new()
+                .fill(Color32::from_rgb(22, 28, 36))
+                .inner_margin(8)
+                .show(ui, |ui| {
+                    let response = ui.selectable_label(
+                        self.focus == kind,
+                        egui::RichText::new(kind.label()).color(if self.focus == kind {
+                            Color32::from_rgb(10, 15, 22)
+                        } else {
+                            color
+                        }),
+                    );
+                    self.action(controller_slug(kind), &response);
+                    if response.clicked() {
+                        self.focus = kind;
+                    }
+                    ui.small(format!(
+                        "Error {:.2} m / speed {:.2} m/s",
+                        sample.cross_track_error.abs(),
+                        sample.state.v
+                    ));
+                    ui.small(format!(
+                        "{}turn {:+.3} rad/s",
+                        if ended { "Last " } else { "Applied " },
+                        sample.command.omega
+                    ));
+                    let (rect, _) = ui.allocate_exact_size(
+                        Vec2::new(ui.available_width(), 8.0),
+                        egui::Sense::hover(),
+                    );
+                    ui.painter()
+                        .rect_filled(rect, 2.0, Color32::from_rgb(9, 14, 20));
+                    let center = rect.center().x;
+                    let end = center
+                        + (sample.command.omega / self.scenario.max_angular_speed) as f32
+                            * rect.width()
+                            * 0.5;
+                    ui.painter().rect_filled(
+                        Rect::from_min_max(
+                            egui::pos2(center.min(end), rect.top()),
+                            egui::pos2(center.max(end), rect.bottom()),
+                        ),
+                        1.0,
+                        color,
+                    );
+                    ui.painter().line_segment(
+                        [
+                            egui::pos2(center, rect.top()),
+                            egui::pos2(center, rect.bottom()),
+                        ],
+                        Stroke::new(1.0_f32, Color32::WHITE),
+                    );
+                    if ended {
+                        ui.small(format!("Trace ended at {:.1} s", sample.time));
+                    }
+                });
+        }
+        if let Some(run) = self.runs.iter().find(|run| run.controller == self.focus) {
+            let metrics = self.prefix_metrics(run);
+            crate::ui_kit::section(ui, "Selected trace / observed so far");
+            ui.small(format!(
+                "RMSE {:.3} m / max {:.3} m",
+                metrics.cross_track_rmse, metrics.max_cross_track_error
+            ));
+            ui.small(format!(
+                "Goal now {:.2} m / turn change {:.3} rad/s",
+                metrics.final_goal_distance, metrics.angular_command_smoothness
+            ));
+        }
+    }
+
+    fn draw_plot(&mut self, ui: &mut egui::Ui, angular: bool) {
+        ui.small(if angular {
+            "Applied turn rate [rad/s], + left"
+        } else {
+            "Path error [m] / sampled path points"
+        });
+        let (rect, response) = ui.allocate_exact_size(
+            Vec2::new(ui.available_width(), 72.0),
+            egui::Sense::click_and_drag(),
+        );
+        self.plot_rects[usize::from(angular)] = Some(rect);
+        self.action(if angular { "turn-plot" } else { "error-plot" }, &response);
+        if (response.clicked() || response.dragged()) && response.interact_pointer_pos().is_some() {
+            let x = response.interact_pointer_pos().expect("checked pointer").x;
+            self.seek(
+                (((x - rect.left()) / rect.width()).clamp(0.0, 1.0) * self.max_frame() as f32)
+                    .round() as usize,
+            );
+        }
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 4.0, Color32::from_rgb(10, 14, 20));
+        let peak = if angular {
+            self.scenario.max_angular_speed
+        } else {
+            self.runs
+                .iter()
+                .flat_map(|run| self.prefix(run))
+                .map(|s| s.cross_track_error.abs())
+                .fold(0.5_f64, f64::max)
+        };
+        let y = |value: f64| {
+            if angular {
+                rect.center().y - (value / peak) as f32 * (rect.height() * 0.38)
+            } else {
+                rect.bottom() - 4.0 - (value / peak) as f32 * (rect.height() - 22.0)
+            }
+        };
+        painter.line_segment(
+            [
+                egui::pos2(rect.left(), y(0.0)),
+                egui::pos2(rect.right(), y(0.0)),
+            ],
+            Stroke::new(0.75_f32, Color32::from_gray(65)),
+        );
+        for run in &self.runs {
+            let color =
+                controller_color(run.controller).gamma_multiply(if run.controller == self.focus {
+                    1.0
+                } else {
+                    0.5
+                });
+            let points: Vec<_> = self
+                .prefix(run)
+                .iter()
+                .map(|s| {
+                    egui::pos2(
+                        rect.left()
+                            + s.time as f32
+                                / (self.max_frame().max(1) as f32 * self.scenario.dt as f32)
+                                * rect.width(),
+                        y(if angular {
+                            s.command.omega
+                        } else {
+                            s.cross_track_error.abs()
+                        }),
+                    )
+                })
+                .collect();
+            let end = points.last().copied();
+            if points.len() > 1 {
+                painter.add(egui::Shape::line(points, Stroke::new(1.8_f32, color)));
+            }
+            if let Some(p) = end {
+                painter.circle_filled(p, 2.5, color);
+            }
+        }
+        let x = rect.left() + self.frame_idx as f32 / self.max_frame().max(1) as f32 * rect.width();
+        painter.line_segment(
+            [egui::pos2(x, rect.top()), egui::pos2(x, rect.bottom())],
+            Stroke::new(1.0_f32, Color32::WHITE.gamma_multiply(0.5)),
+        );
+        painter.text(
+            rect.left_top() + Vec2::splat(4.0),
+            egui::Align2::LEFT_TOP,
+            format!("{peak:.2} / click to inspect"),
+            egui::FontId::proportional(10.0),
+            Color32::GRAY,
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn publish_state(&self, _ctx: &egui::Context, _rect: Rect) {}
+
+    #[cfg(target_arch = "wasm32")]
+    fn publish_state(&self, ctx: &egui::Context, rect: Rect) {
+        let Some(canvas) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
+        else {
+            return;
+        };
+        let encode_point = |p: &Point2D| format!("[{:.8},{:.8}]", p.x, p.y);
+        let current = self
+            .runs
+            .iter()
+            .map(|run| {
+                let prefix = self.prefix(run);
+                let sample = prefix.last().expect("initial sample");
+                let metrics = self.prefix_metrics(run);
+                format!(
+                    concat!(
+                        "{{\"id\":\"{id}\",\"frame\":{frame},\"time\":{time:.8},",
+                        "\"x\":{x:.8},\"y\":{y:.8},\"yaw\":{yaw:.8},\"v\":{v:.8},",
+                        "\"omega\":{omega:.8},\"error\":{error:.8},\"rmse\":{rmse:.8},",
+                        "\"max\":{max:.8},\"goal\":{goal:.8},\"smooth\":{smooth:.8},\"ended\":{ended}}}"
+                    ),
+                    id = controller_slug(run.controller),
+                    frame = prefix.len() - 1,
+                    time = sample.time,
+                    x = sample.state.x,
+                    y = sample.state.y,
+                    yaw = sample.state.yaw,
+                    v = sample.state.v,
+                    omega = sample.command.omega,
+                    error = sample.cross_track_error,
+                    rmse = metrics.cross_track_rmse,
+                    max = metrics.max_cross_track_error,
+                    goal = metrics.final_goal_distance,
+                    smooth = metrics.angular_command_smoothness,
+                    ended = self.frame_idx >= run.samples.len() - 1,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        let series = if self.playing {
+            String::new()
+        } else {
+            self.runs
+                .iter()
+                .map(|run| {
+                    format!(
+                        "[{}]",
+                        self.prefix(run)
+                            .iter()
+                            .map(|s| format!(
+                                "[{:.8},{:.8},{:.8}]",
+                                s.time, s.command.omega, s.cross_track_error
+                            ))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+        let actions = self
+            .actions
+            .iter()
+            .map(|(key, p)| format!("\"{key}\":[{:.2},{:.2}]", p[0], p[1]))
+            .collect::<Vec<_>>()
+            .join(",");
+        let plots = self.plot_rects.map(|rect| {
+            rect.map_or_else(
+                || "null".to_owned(),
+                |rect| {
+                    format!(
+                        "[{:.2},{:.2},{:.2},{:.2}]",
+                        rect.left(),
+                        rect.top(),
+                        rect.width(),
+                        rect.height()
+                    )
+                },
+            )
+        });
+        let hits = self
+            .action_hits
+            .iter()
+            .map(|(key, hit)| format!("\"{key}\":{hit}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let pointer = ctx
+            .input(|i| i.pointer.hover_pos())
+            .map_or_else(|| "null".to_owned(), |p| format!("[{:.2},{:.2}]", p.x, p.y));
+        for (key, value) in [
+            ("data-arena-frame", self.frame_idx.to_string()),
+            ("data-arena-total", self.max_frame().to_string()),
+            ("data-arena-playing", u8::from(self.playing).to_string()),
+            ("data-arena-focus", controller_slug(self.focus).to_owned()),
+            ("data-arena-preset", self.preset.slug().to_owned()),
+            (
+                "data-arena-response",
+                self.turn_rate_response_gain.to_string(),
+            ),
+            ("data-arena-custom", u8::from(self.use_drawn).to_string()),
+            ("data-arena-drawing", u8::from(self.drawing).to_string()),
+            ("data-arena-ready", u8::from(!self.dirty).to_string()),
+            ("data-arena-current", format!("[{current}]")),
+            ("data-arena-series", format!("[{series}]")),
+            (
+                "data-arena-goal",
+                self.scenario
+                    .path
+                    .points
+                    .last()
+                    .map_or_else(|| "null".to_owned(), encode_point),
+            ),
+            ("data-arena-actions", format!("{{{actions}}}")),
+            ("data-arena-hits", format!("{{{hits}}}")),
+            ("data-arena-pointer", pointer),
+            ("data-arena-plots", format!("[{},{}]", plots[0], plots[1])),
+            ("data-arena-action-count", self.action_count.to_string()),
+            ("data-arena-last-action", self.last_action.to_owned()),
+            ("data-arena-ui-revision", self.ui_revision.to_string()),
+            ("data-arena-share", self.share_query()),
+            (
+                "data-arena-rect",
+                format!(
+                    "[{:.2},{:.2},{:.2},{:.2}]",
+                    rect.left(),
+                    rect.top(),
+                    rect.width(),
+                    rect.height()
+                ),
+            ),
+            (
+                "aria-label",
+                format!(
+                    "Controller comparison at {:.1} seconds, {}, {} selected",
+                    self.frame_idx as f64 * self.scenario.dt,
+                    if self.playing { "playing" } else { "paused" },
+                    self.focus.label()
+                ),
+            ),
+        ] {
+            let _ = canvas.set_attribute(key, &value);
+        }
     }
 
     fn world_bounds(&self) -> Option<WorldBounds> {
@@ -570,10 +1084,10 @@ fn smooth(points: &[[f64; 2]], half: usize) -> Vec<[f64; 2]> {
         .collect()
 }
 
-/// Course key points as `x,y;x,y;...` (they are already rounded to 0.1 m).
+/// Preserve all input precision, including courses supplied in an incoming URL.
 fn encode_course(keys: &[[f64; 2]]) -> String {
     keys.iter()
-        .map(|p| format!("{:.1},{:.1}", p[0], p[1]))
+        .map(|p| format!("{},{}", p[0], p[1]))
         .collect::<Vec<_>>()
         .join(";")
 }
@@ -591,7 +1105,8 @@ fn decode_course(value: &str) -> Option<Vec<[f64; 2]>> {
                 .then_some(p)
         })
         .collect::<Option<_>>()?;
-    (points.len() >= 2 && course_length(&points) >= MIN_COURSE_LENGTH).then_some(points)
+    (points.len() >= 2 && (MIN_COURSE_LENGTH..=MAX_COURSE_LENGTH).contains(&course_length(&points)))
+        .then_some(points)
 }
 
 fn draw_robot(painter: &egui::Painter, center: Pos2, yaw: f64, color: Color32) {
@@ -609,6 +1124,20 @@ fn controller_color(kind: ArenaControllerKind) -> Color32 {
         ArenaControllerKind::Stanley => Color32::from_rgb(255, 155, 70),
         ArenaControllerKind::LqrSteer => Color32::from_rgb(100, 220, 130),
     }
+}
+
+fn controller_slug(kind: ArenaControllerKind) -> &'static str {
+    match kind {
+        ArenaControllerKind::PurePursuit => "pp",
+        ArenaControllerKind::Stanley => "stanley",
+        ArenaControllerKind::LqrSteer => "lqr",
+    }
+}
+
+fn controller_from_slug(value: &str) -> Option<ArenaControllerKind> {
+    ArenaControllerKind::ALL
+        .into_iter()
+        .find(|kind| controller_slug(*kind) == value)
 }
 
 fn bounded_query_f64(query: &str, key: &str, min: f64, max: f64) -> Option<f64> {
@@ -713,5 +1242,188 @@ mod tests {
         assert_eq!(demo.preset, ArenaPreset::SlalomRecovery);
         assert_eq!(demo.target_speed, DEFAULT_SPEED);
         assert_eq!(demo.turn_rate_response_gain, DEFAULT_RESPONSE);
+    }
+
+    #[test]
+    fn sharing_a_paused_moment_restores_the_exact_controller_samples() {
+        let mut source = ControllerArenaDemo {
+            stroke: wavy_stroke(),
+            ..ControllerArenaDemo::new(ArenaPreset::HairpinRecovery, 4.255, 0.654321)
+        };
+        source.finish_stroke();
+        // Incoming links can contain more precision than the drawing UI emits.
+        source.drawn.as_mut().unwrap()[1][0] += 0.0123456789;
+        source.rebuild();
+        source.seek(70);
+        source.focus = ArenaControllerKind::Stanley;
+        source.replay_rate = 0.25;
+        let mut restored = ControllerArenaDemo::default();
+        restored.apply_share_query(&source.share_query());
+        assert_eq!(restored.share_query(), source.share_query());
+        assert!(!restored.playing && restored.use_drawn);
+        assert_eq!(restored.frame_idx, 70);
+        assert_eq!(restored.runs, source.runs);
+        for (actual, expected) in restored.runs.iter().zip(&source.runs) {
+            assert_eq!(restored.prefix(actual), source.prefix(expected));
+            assert_eq!(
+                restored.prefix_metrics(actual),
+                source.prefix_metrics(expected)
+            );
+        }
+    }
+
+    #[test]
+    fn rendering_shared_settings_does_not_round_or_restart_a_paused_trace() {
+        for (speed, response) in [(3.0, 0.85), (3.133, 0.666666), (4.25, 0.65)] {
+            let mut demo = ControllerArenaDemo::default();
+            demo.apply_share_query(&format!(
+                "tab=arena&preset=hairpin&speed={speed}&response={response}&arena_frame=100&arena_playing=0"
+            ));
+            let shared = demo.share_query();
+            let context = egui::Context::default();
+            for _ in 0..3 {
+                let _ = context.run(egui::RawInput::default(), |ctx| {
+                    egui::CentralPanel::default().show(ctx, |ui| demo.controls(ctx, ui));
+                });
+                assert_eq!(
+                    demo.share_query(),
+                    shared,
+                    "displaying sliders edited the scenario"
+                );
+                assert_eq!(demo.frame_idx, 100);
+                assert!(!demo.playing && !demo.dirty);
+            }
+        }
+    }
+
+    #[test]
+    fn inspection_metrics_stop_at_the_selected_time_and_the_end_of_each_trace() {
+        let mut demo = ControllerArenaDemo::default();
+        demo.seek(0);
+        for run in &demo.runs {
+            let initial = run.samples[0];
+            let metrics = demo.prefix_metrics(run);
+            assert_eq!(demo.prefix(run).len(), 1);
+            assert_eq!(metrics.cross_track_rmse, initial.cross_track_error.abs());
+            assert_eq!(
+                metrics.max_cross_track_error,
+                initial.cross_track_error.abs()
+            );
+            assert_eq!(metrics.angular_command_smoothness, 0.0);
+            assert_ne!(
+                metrics, run.metrics,
+                "future samples leaked into initial metrics"
+            );
+        }
+        demo.seek(50);
+        for run in &demo.runs {
+            assert_eq!(demo.prefix(run).len(), 51);
+            let goal = *demo.scenario.path.points.last().unwrap();
+            let current = demo.prefix(run).last().unwrap();
+            assert_eq!(current.time, 5.0);
+            assert_eq!(
+                demo.prefix_metrics(run).final_goal_distance,
+                current.state.position().distance(&goal)
+            );
+        }
+        demo.seek(usize::MAX);
+        assert_eq!(demo.frame_idx, demo.max_frame());
+        assert!(!demo.playing);
+        assert!(demo
+            .runs
+            .iter()
+            .any(|run| run.samples.len() - 1 < demo.frame_idx));
+        for run in &demo.runs {
+            assert_eq!(demo.prefix(run), run.samples);
+            assert_eq!(demo.prefix_metrics(run), run.metrics);
+        }
+    }
+
+    #[test]
+    fn playback_uses_elapsed_time_across_fast_and_slow_paints() {
+        let mut demo = ControllerArenaDemo::default();
+        for (paints, period) in [(100, 0.01), (25, 0.04), (5, 0.2)] {
+            for rate in [0.25, 1.0, 2.0] {
+                demo.seek(0);
+                demo.playing = true;
+                demo.replay_rate = rate;
+                demo.advance(0.0);
+                for i in 1..=paints {
+                    demo.advance(i as f64 * period);
+                }
+                assert_eq!(demo.frame_idx, (10.0_f64 * rate).floor() as usize);
+            }
+        }
+        demo.seek(0);
+        demo.playing = true;
+        demo.replay_rate = 1.0;
+        demo.advance(0.0);
+        for i in 1..=5 {
+            demo.advance(i as f64 * 0.4);
+        }
+        assert_eq!(demo.frame_idx, 20, "slow paints lost simulation ticks");
+    }
+
+    #[test]
+    fn pause_seeking_and_background_gaps_do_not_accumulate_replay_time() {
+        let mut demo = ControllerArenaDemo::default();
+        demo.advance(0.0);
+        demo.advance(0.15);
+        assert_eq!(demo.frame_idx, 1);
+        demo.seek(40);
+        demo.advance(0.2);
+        demo.advance(20.0);
+        assert_eq!(demo.frame_idx, 40);
+        demo.playing = true;
+        demo.advance(20.05);
+        assert_eq!(demo.frame_idx, 40, "old fractional tick survived seeking");
+        demo.advance(30.0);
+        assert_eq!(
+            demo.frame_idx, 40,
+            "a background gap fast-forwarded the replay"
+        );
+        demo.advance(30.1);
+        assert_eq!(demo.frame_idx, 41);
+        demo.seek(demo.max_frame() - 1);
+        demo.playing = true;
+        demo.advance(31.0);
+        demo.advance(31.4);
+        assert_eq!(demo.frame_idx, demo.max_frame());
+        assert!(!demo.playing);
+    }
+
+    #[test]
+    fn inspection_shares_validate_fields_and_ignore_other_tabs() {
+        let mut demo = ControllerArenaDemo::default();
+        let before = demo.share_query();
+        demo.apply_share_query("tab=drone&preset=hairpin&speed=6&arena_frame=100&arena_playing=0");
+        assert_eq!(demo.share_query(), before);
+        demo.apply_share_query(
+            "tab=arena&arena_frame=20000&arena_playing=1&arena_rate=NaN&arena_focus=unknown",
+        );
+        assert_eq!(demo.frame_idx, demo.max_frame());
+        assert!(!demo.playing);
+        assert_eq!(demo.replay_rate, 1.0);
+        assert_eq!(demo.focus, ArenaControllerKind::PurePursuit);
+        demo.apply_share_query("tab=arena&arena_frame=-2&arena_playing=0&arena_rate=99");
+        assert_eq!(demo.frame_idx, 0);
+        assert!(!demo.playing);
+        assert_eq!(demo.replay_rate, 1.0);
+    }
+
+    #[test]
+    fn oversized_courses_are_rejected_before_building_a_long_replay() {
+        assert!(decode_course("0,0;501,0").is_none());
+        let mut demo = ControllerArenaDemo {
+            drawing: true,
+            stroke: vec![[0.0, 0.0], [501.0, 0.0]],
+            ..ControllerArenaDemo::default()
+        };
+        demo.finish_stroke();
+        assert!(demo.drawing && demo.drawn.is_none());
+        assert_eq!(
+            demo.stroke_note,
+            Some("Too long: keep the course under 500 m.")
+        );
     }
 }
