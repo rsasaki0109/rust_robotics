@@ -180,8 +180,12 @@ cargo run -p rust_robotics_playground
 Open **Grid Planners** to replay actual A\* and Dijkstra expansions, pause or
 single-step the search, edit walls, and share the same intermediate state.
 Both use the same grid and robot radius; JPS and Theta\* are also available for
-path comparison. Open **Sampling Planners** to watch RRT, RRT*, Informed RRT*, and PRM grow
-their trees around obstacles you place. Open **Parking** and drag out a goal pose:
+path comparison. Open **Sampling Planners** to replay real RRT* iterations around
+obstacles you place: pause at the first path, jump to the next shorter route or
+rewire, and share the same seeded search and iteration. Its path-length graph
+includes only the selected prefix. RRT, Informed RRT*, and PRM also offer completed
+tree or roadmap views. [RRT* replay guide](docs/rrt_star_replay.md).
+Open **Parking** and drag out a goal pose:
 Hybrid A\* parks the car, reversing where it has to. Open the **Localization** tab for Particle Filter / EKF: hold the pointer on
 the map (or use the arrow keys) to drive. Open **SLAM** to scrub EKF-SLAM / FastSLAM / ICP / LiDAR loop-closure
 timelines, or pick **Drive LiDAR SLAM** to drive a robot around a corridor loop
