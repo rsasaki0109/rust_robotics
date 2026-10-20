@@ -164,6 +164,9 @@ async function graphSeek(page,fraction,touch) {
     if (g[1]>=64 && g[1]+g[3]<=height-24) {
       if (!await hover(page,'graph',p,false)) continue;
       const before=await state(page);
+      // Smooth scrolling may move the plot during the processed hover frames.
+      // Recompute the target before any click, as sceneVisible does for drags.
+      if (!JSON.parse(before.armCmpGraph).every((v,k)=>v===g[k])) continue;
       if (touch) await page.touchscreen.tap(...p);else await page.mouse.click(...p);
       const after=await acknowledged(page,'graph',before,p);
       assert(Math.abs(Number(after.armCmpFrame)-fraction*600)<=2,'graph selected a different time');
