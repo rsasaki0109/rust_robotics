@@ -29,6 +29,24 @@ RUSTFLAGS='--cfg getrandom_backend="wasm_js"' trunk build --release --public-url
 
 Live demo: https://rsasaki0109.github.io/rust_robotics/playground/
 
+## Choose an experiment
+
+The [showcase](https://rsasaki0109.github.io/rust_robotics/) groups all ten
+interactive demos by what a visitor wants to try:
+
+| Topic | Experiments |
+| --- | --- |
+| Planning | Grid planners, sampling planners, parking |
+| Localization & SLAM | Localization, live LiDAR SLAM and classical SLAM replays |
+| Control | Controller arena, MPPI, ADMM formation |
+| Manipulation & flight | Box pushing, drone race |
+
+Selecting a topic changes the real screenshot preview, suggested experiment,
+and demo list. Topic URLs such as `?topic=perception` reopen that selection;
+All experiments restores the complete list. Demo links use the same Pages
+project prefix as the deployed application. The gallery below links to the
+corresponding native Rust implementations.
+
 ## Layout
 
 Each demo splits into `controls()` (widgets in the left side panel, or below

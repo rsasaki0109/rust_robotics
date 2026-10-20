@@ -134,7 +134,9 @@ Try the interactive grid and sampling planners, Hybrid A\* parking,
 localization, SLAM, multi-agent formation, MPPI, box pushing, and
 path-tracking controller comparison with no installation:
 
-<https://rsasaki0109.github.io/rust_robotics/playground/>
+[Choose an experiment](https://rsasaki0109.github.io/rust_robotics/): explore
+planning, localization and SLAM, control, or manipulation and flight. Each
+topic offers a real playground preview and a small change to try.
 
 Add the latest published umbrella crate:
 

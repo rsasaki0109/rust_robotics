@@ -662,78 +662,109 @@ const galleryItems = [
 
 const playTiles = [
   {
-    title: "You vs autopilot",
-    text: "Fly five 3D gates with keys or touch. Race an autonomous ghost, replay your attempt, and share its inputs.",
-    image: "assets/playground/drone-v1.png",
-    link: "playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1"
-  },
-  {
-    title: "Build a drone circuit",
-    text: "Drag five gates in Top and Side views. Preview in 3D, fly your layout, and share it.",
-    image: "assets/playground/drone-editor.png",
-    link: "playground/?tab=drone&course=climb&edit=1"
-  },
-  {
-    title: "Photograph your flight",
-    text: "Freeze a flight moment, orbit the camera, and save a landscape, square, or portrait PNG. Share the same shot.",
-    image: "assets/drone-photo-wide.png",
-    link: "playground/?tab=drone&course=climb&frame=45&photo=1&distance=3.2"
-  },
-  {
-    title: "Drive LiDAR SLAM",
-    text: "Map a world live, close loops, navigate, explore, get kidnapped.",
-    image: "assets/playground/drive.png",
-    link: "playground/?tab=slam&algorithm=drive"
-  },
-  {
+    id: "grid", topic: "planning",
     title: "Grid planners",
-    text: "Draw walls and race A*, Dijkstra, JPS, and Theta*.",
+    text: "Draw walls. Move the goal. Compare A*, Dijkstra, JPS, and Theta* on your map.",
     image: "assets/playground/grid.png",
     link: "playground/?tab=grid"
   },
   {
+    id: "sampling", topic: "planning",
     title: "Sampling planners",
-    text: "Watch RRT, RRT*, Informed RRT*, and PRM explore.",
+    text: "Place obstacles and watch RRT, RRT*, Informed RRT*, and PRM grow a way through.",
     image: "assets/playground/sampling.png",
     link: "playground/?tab=sampling"
   },
   {
+    id: "parking", topic: "planning",
     title: "Parking",
-    text: "Hybrid A* parks a car, reversing where it has to.",
+    text: "Drag out a goal pose. Watch Hybrid A* park a car, reversing where it has to.",
     image: "assets/playground/parking.png",
     link: "playground/?tab=parking"
   },
   {
+    id: "localization", topic: "perception",
     title: "Localization",
-    text: "Particle filter vs EKF under adjustable sensor noise.",
+    text: "Drive with noisy sensors. Compare a particle filter and EKF against the true position.",
     image: "assets/playground/localization.png",
     link: "playground/?tab=localization"
   },
   {
+    id: "slam", topic: "perception",
+    title: "Drive LiDAR SLAM",
+    text: "Map a world, close a loop, or relocate a kidnapped robot. Replay classical SLAM in the same tab.",
+    image: "assets/playground/drive.png",
+    link: "playground/?tab=slam&algorithm=drive"
+  },
+  {
+    id: "arena", topic: "control",
     title: "Controller arena",
-    text: "Draw a course and race Pure Pursuit, Stanley, and LQR on it.",
+    text: "Draw a course and compare Pure Pursuit, Stanley, and LQR under the same conditions.",
     image: "assets/playground/arena.png",
     link: "playground/?tab=arena"
   },
   {
+    id: "mppi", topic: "control",
     title: "MPPI",
-    text: "See every sampled rollout as MPPI dodges moving obstacles.",
+    text: "See sampled futures fan out. Tune MPPI as the robot dodges static and moving obstacles.",
     image: "assets/playground/mppi.png",
     link: "playground/?tab=mppi"
   },
   {
-    title: "Pushing",
-    text: "Face-switching MPPI pushes a box to the goal you drag.",
+    id: "admm", topic: "control",
+    title: "ADMM formation",
+    text: "Add noise and watch four agents agree on a formation while tracking a moving goal.",
+    image: "assets/playground/admm.png",
+    link: "playground/?tab=admm"
+  },
+  {
+    id: "pushing", topic: "interaction",
+    title: "Box pushing",
+    text: "Drag a target pose. Watch a contact-aware controller choose how to push and turn the box.",
     image: "assets/playground/pushing.png",
     link: "playground/?tab=pushing"
   },
   {
-    title: "ADMM formation",
-    text: "Four agents agree on a formation while tracking a noisy goal.",
-    image: "assets/playground/admm.png",
-    link: "playground/?tab=admm"
+    id: "drone", topic: "interaction",
+    title: "Drone race",
+    text: "Fly with keys or touch, build a 3D circuit, and share your flight or photograph.",
+    image: "assets/playground/drone-v1.png",
+    link: "playground/?tab=drone&mode=manual&course=climb&cinema=1&intro=1"
   }
 ];
+
+const experimentTopics = [
+  {
+    id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "grid",
+    title: "Find a way through.",
+    description: "Draw walls and compare A*, Dijkstra, JPS, and Theta* on the same map.",
+    task: "Try this: close a gap, then compare the new routes.",
+    alt: "A grid planner routing a blue path around walls between start and goal"
+  },
+  {
+    id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "slam",
+    title: "Find your place.",
+    description: "Drive with LiDAR, build a map, and see how estimates follow the real robot.",
+    task: "Try this: increase odometry error, then drive a loop.",
+    alt: "A robot navigating a LiDAR occupancy map with tracked position and moving people"
+  },
+  {
+    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "mppi",
+    title: "Turn a plan into motion.",
+    description: "Look inside MPPI's sampled futures, compare path trackers, or coordinate a formation.",
+    task: "Try this: move the goal and watch the sampled futures turn.",
+    alt: "MPPI's colored sampled trajectories fanning around obstacles toward a goal"
+  },
+  {
+    id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "pushing",
+    title: "Put physics in your hands.",
+    description: "Move a box with contact-aware control, or pilot a quadrotor through a circuit you build.",
+    task: "Try this: rotate the box's goal and watch the pusher change faces.",
+    alt: "A box and pusher following a physical trajectory toward a rotated target pose"
+  }
+];
+const requestedTopic = new URLSearchParams(location.search).get("topic");
+let experimentTopic = experimentTopics.some((topic) => topic.id === requestedTopic) ? requestedTopic : "all";
 
 const sourceByCategory = {
   Localization: "crates/rust_robotics_localization/src",
@@ -773,18 +804,75 @@ function image(src, alt) {
   return img;
 }
 
+function launchArrow() {
+  const arrow = element("span", "launch-arrow");
+  arrow.setAttribute("aria-hidden", "true");
+  return arrow;
+}
+
 function renderTiles() {
   const root = document.getElementById("play-tiles");
+  const tiles = playTiles.filter((tile) => experimentTopic === "all" || tile.topic === experimentTopic);
   root.replaceChildren(
-    ...playTiles.map((tile) => {
+    ...tiles.map((tile) => {
       const link = element("a", "tile");
       link.href = tile.link;
+      link.dataset.experiment = tile.id;
+      link.dataset.topic = tile.topic;
       const body = element("div", "tile-body");
-      body.append(element("h3", "", tile.title), element("p", "", tile.text));
+      const open = element("span", "tile-open", "Open experiment");
+      open.append(launchArrow());
+      body.append(element("span", "tile-category", experimentTopics.find((topic) => topic.id === tile.topic).label),
+        element("h3", "", tile.title), element("p", "", tile.text), open);
       link.append(image(tile.image, `${tile.title} in the playground`), body);
       return link;
     })
   );
+  document.getElementById("experiment-count").textContent = experimentTopic === "all"
+    ? `${tiles.length} interactive demos` : `${tiles.length} of ${playTiles.length} demos`;
+}
+
+function renderExperiments() {
+  const topic = experimentTopics.find((topic) => topic.id === experimentTopic) ?? experimentTopics[0];
+  const tile = playTiles.find((tile) => tile.id === topic.featured);
+  document.getElementById("featured-experiment").dataset.topic = topic.id;
+  document.getElementById("feature-category").textContent = topic.caption;
+  document.getElementById("feature-title").textContent = topic.title;
+  document.getElementById("feature-description").textContent = topic.description;
+  document.getElementById("feature-task").textContent = topic.task;
+  const preview = document.getElementById("feature-preview");
+  preview.href = tile.link;
+  preview.setAttribute("aria-label", `Open ${tile.title}`);
+  const img = document.getElementById("feature-image");
+  img.src = tile.image;
+  img.alt = topic.alt;
+  const launch = document.getElementById("feature-launch");
+  launch.href = tile.link;
+  launch.replaceChildren(document.createTextNode(`Explore ${tile.title}`), launchArrow());
+  document.querySelectorAll("[data-experiment-filter]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.experimentFilter === experimentTopic));
+  });
+  renderTiles();
+}
+
+function setupExperiments() {
+  const root = document.getElementById("experiment-filters");
+  root.replaceChildren(...[{ id: "all", label: "All experiments" }, ...experimentTopics].map((topic) => {
+    const button = element("button", "experiment-filter", topic.label);
+    button.type = "button";
+    button.dataset.experimentFilter = topic.id;
+    button.addEventListener("click", () => {
+      experimentTopic = topic.id;
+      const url = new URL(location.href);
+      if (topic.id === "all") url.searchParams.delete("topic");
+      else url.searchParams.set("topic", topic.id);
+      history.replaceState(null, "", url);
+      renderExperiments();
+    });
+    return button;
+  }));
+  root.hidden = false;
+  renderExperiments();
 }
 
 function card(item) {
@@ -835,6 +923,6 @@ showAll.addEventListener("click", () => {
   renderGallery();
 });
 
-renderTiles();
+setupExperiments();
 renderFilters();
 renderGallery();
