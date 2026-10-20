@@ -21,7 +21,7 @@ import { checkRaceStart, checkStartCancellation } from './drone_start.mjs';
 import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mjs';
 import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_slow.mjs';
 import { checkShowcase } from './showcase.mjs';
-import { checkGridSearch } from './grid_search.mjs';
+import { checkGridSearch, checkGridScroll } from './grid_search.mjs';
 import { checkLocalization } from './localization.mjs';
 import { checkControllerInspector, checkControllerScroll } from './controller_inspector.mjs';
 
@@ -82,6 +82,7 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'grid-slow-input', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'controller-inspector-slow-scroll', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'controller-inspector', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true },
   { name: 'controller-inspector-phone', query: 'tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley', controllerInspector: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -187,11 +188,14 @@ for (const test of cases) {
     }
   }
   if (test.gridSearch) {
-    try { await checkGridSearch(page, base, shots, Boolean(test.touch)); }
+    try {
+      if (test.slowPaint) await checkGridScroll(page, shots);
+      else await checkGridSearch(page, base, shots, Boolean(test.touch));
+    }
     catch (error) {
       problems.push(`grid search check: ${error.stack ?? error.message}`);
       const d = await page.locator('#rust_robotics_playground').evaluate((c) => ({ ...c.dataset }));
-      problems.push(`grid state: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => key.startsWith('grid') && !['gridExpanded', 'gridShare', 'gridActions'].includes(key))))}`);
+      problems.push(`grid state: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key]) => key.startsWith('grid') && !['gridExpanded', 'gridShare'].includes(key))))}`);
     }
   }
   if (test.showcase) {

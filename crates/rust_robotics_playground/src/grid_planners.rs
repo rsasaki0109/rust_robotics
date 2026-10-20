@@ -117,7 +117,14 @@ pub struct GridPlannerDemo {
     last_paint: Option<(usize, usize)>,
     search: search::SearchReplay,
     actions: std::collections::BTreeMap<&'static str, [f32; 2]>,
+    action_hits: std::collections::BTreeMap<&'static str, bool>,
     scene_rect: Option<Rect>,
+    #[cfg(target_arch = "wasm32")]
+    action_count: u64,
+    #[cfg(target_arch = "wasm32")]
+    last_action: &'static str,
+    #[cfg(target_arch = "wasm32")]
+    ui_revision: u64,
 }
 
 impl Default for GridPlannerDemo {
@@ -134,7 +141,14 @@ impl Default for GridPlannerDemo {
             last_paint: None,
             search: search::SearchReplay::default(),
             actions: Default::default(),
+            action_hits: Default::default(),
             scene_rect: None,
+            #[cfg(target_arch = "wasm32")]
+            action_count: 0,
+            #[cfg(target_arch = "wasm32")]
+            last_action: "",
+            #[cfg(target_arch = "wasm32")]
+            ui_revision: 0,
         };
         demo.set_border_obstacles();
         demo.add_default_wall();
@@ -372,7 +386,13 @@ impl GridPlannerDemo {
     fn action(&mut self, name: &'static str, response: &egui::Response) {
         self.actions
             .insert(name, [response.rect.center().x, response.rect.center().y]);
+        self.action_hits.insert(name, response.hovered());
         if response.clicked() {
+            #[cfg(target_arch = "wasm32")]
+            {
+                self.action_count += 1;
+                self.last_action = name;
+            }
             response.ctx.request_repaint();
         }
     }
@@ -540,7 +560,7 @@ impl GridPlannerDemo {
         draw_marker(&painter, self.goal, Color32::from_rgb(240, 90, 90));
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         crate::ui_kit::section(ui, "Planner");
         ui.horizontal_wrapped(|ui| {
             for kind in PlannerKind::ALL {
@@ -614,7 +634,18 @@ impl GridPlannerDemo {
             let reset = ui.button("Reset");
             self.action("reset", &reset);
             if reset.clicked() {
-                *self = Self::default();
+                *self = Self {
+                    actions: std::mem::take(&mut self.actions),
+                    action_hits: std::mem::take(&mut self.action_hits),
+                    scene_rect: self.scene_rect,
+                    #[cfg(target_arch = "wasm32")]
+                    action_count: self.action_count,
+                    #[cfg(target_arch = "wasm32")]
+                    last_action: self.last_action,
+                    #[cfg(target_arch = "wasm32")]
+                    ui_revision: self.ui_revision,
+                    ..Self::default()
+                };
             }
         });
         crate::ui_kit::hint(
@@ -628,8 +659,12 @@ impl GridPlannerDemo {
         }
         // On phones controls follow the scene in a scroll area. Publish after
         // both have been laid out, so their coordinates refer to this frame.
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.ui_revision += 1;
+        }
         if let Some(rect) = self.scene_rect {
-            self.publish_state(rect);
+            self.publish_state(ctx, rect);
         }
     }
 
@@ -641,6 +676,7 @@ impl GridPlannerDemo {
         let (rect, cell) = Self::grid_rect(ui);
         self.scene_rect = Some(rect);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
+        self.action("map", &response);
         self.handle_pointer(rect, cell, &response);
         self.draw_grid(ui, rect, cell);
         self.search_controls(ui);
@@ -676,7 +712,11 @@ impl GridPlannerDemo {
                 }
             });
         }
-        self.publish_state(rect);
+        #[cfg(target_arch = "wasm32")]
+        {
+            self.ui_revision += 1;
+        }
+        self.publish_state(ctx, rect);
     }
 
     fn search_controls(&mut self, ui: &mut egui::Ui) {
@@ -739,10 +779,10 @@ impl GridPlannerDemo {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn publish_state(&self, _rect: Rect) {}
+    fn publish_state(&self, _ctx: &egui::Context, _rect: Rect) {}
 
     #[cfg(target_arch = "wasm32")]
-    fn publish_state(&self, rect: Rect) {
+    fn publish_state(&self, ctx: &egui::Context, rect: Rect) {
         let Some(canvas) = web_sys::window()
             .and_then(|w| w.document())
             .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
@@ -762,6 +802,15 @@ impl GridPlannerDemo {
             .map(|(key, p)| format!("\"{key}\":[{:.2},{:.2}]", p[0], p[1]))
             .collect::<Vec<_>>()
             .join(",");
+        let hits = self
+            .action_hits
+            .iter()
+            .map(|(key, hit)| format!("\"{key}\":{hit}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let pointer = ctx
+            .input(|i| i.pointer.hover_pos())
+            .map_or_else(|| "null".to_owned(), |p| format!("[{:.2},{:.2}]", p.x, p.y));
         let found = if !self.search.complete() {
             "pending"
         } else if self.path.is_empty() {
@@ -809,6 +858,11 @@ impl GridPlannerDemo {
                 ),
             ),
             ("data-grid-actions", format!("{{{actions}}}")),
+            ("data-grid-hits", format!("{{{hits}}}")),
+            ("data-grid-pointer", pointer),
+            ("data-grid-ui-revision", self.ui_revision.to_string()),
+            ("data-grid-action-count", self.action_count.to_string()),
+            ("data-grid-last-action", self.last_action.to_owned()),
             (
                 "aria-label",
                 format!(
