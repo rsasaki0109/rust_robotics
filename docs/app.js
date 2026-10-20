@@ -699,9 +699,9 @@ const playTiles = [
   {
     id: "arena", topic: "control",
     title: "Controller arena",
-    text: "Draw a course and compare Pure Pursuit, Stanley, and LQR under the same conditions.",
+    text: "Pause Pure Pursuit, Stanley, and LQR on the same course. Inspect their actual turns and path errors, then share that moment.",
     image: "assets/playground/arena.png",
-    link: "playground/?tab=arena"
+    link: "playground/?tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley"
   },
   {
     id: "mppi", topic: "control",
@@ -749,11 +749,11 @@ const experimentTopics = [
     alt: "Cyan landmark range circles, a particle cloud, and the true robot in the localization experiment"
   },
   {
-    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "mppi",
+    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "arena",
     title: "Turn a plan into motion.",
-    description: "Look inside MPPI's sampled futures, compare path trackers, or coordinate a formation.",
-    task: "Try this: move the goal and watch the sampled futures turn.",
-    alt: "MPPI's colored sampled trajectories fanning around obstacles toward a goal"
+    description: "Compare three path trackers at the same instant. Look inside MPPI or coordinate a formation, too.",
+    task: "Try this: tap an error graph to inspect that moment. Select a controller and compare its applied turn.",
+    alt: "Three controller trajectories with applied turn rates and errors at the selected simulation time"
   },
   {
     id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "pushing",

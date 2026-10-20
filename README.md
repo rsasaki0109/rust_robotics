@@ -201,10 +201,12 @@ obstacles; tune samples, horizon, temperature λ, and noise σ. **Pushing** lets
 face-switching MPPI controller pushes under quasi-static stick/slide contact —
 including turning it in place and routing around obstacles you click in.
 **Controller Arena** replays Pure Pursuit, Stanley, and LQR Steer under an
-identical path, initial state, clock, and actuation model, with shareable speed
-and turn-response settings — on a preset course or one you draw yourself.
+identical path, initial state, clock, and actuation model. Pause, select a
+controller, or tap an error graph to inspect its actual applied turn and path
+error at that moment. Share the exact time and comparison settings on a preset
+course or one you draw yourself. [Try the controller inspector](docs/controller_inspector.md).
 
-<img src="./docs/assets/controller-arena.png" width="900" alt="Controller Arena comparing Pure Pursuit, Stanley, and LQR Steer">
+<img src="./docs/assets/playground/arena.png" width="900" alt="Controller Arena inspecting Pure Pursuit, Stanley, and LQR Steer at the same simulation time">
 
 Build and test the complete workspace:
 

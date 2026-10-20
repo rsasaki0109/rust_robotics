@@ -77,7 +77,7 @@ All tabs encode their important configuration in share links:
   map view and scenario; Drive: world, drawn walls, error sliders, people)
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
 - Controller Arena: path preset (or the course you drew), target speed, and
-  turn response
+  turn response, exact replay frame, playback state, replay rate, and selected controller
 - MPPI: sample count, horizon, temperature λ, noise σ, moving obstacles,
   start, goal, and obstacles
 - Pushing: goal pose, pusher friction, run state, and obstacles
@@ -99,9 +99,11 @@ from the robotics code.
 Use **Share** in the header to copy a URL for the active demo. Grid
 planner links preserve the selected planner, start and goal cells, and the full
 obstacle map. Controller Arena links preserve the path preset, target speed,
-and turn-response disturbance. For example,
-`?tab=arena&preset=hairpin&speed=4.25&response=0.65` reopens an identical
-three-controller comparison. Every other tab's link also preserves its
+turn-response disturbance, replay frame, playback state, replay rate, and selected
+controller. For example,
+`?tab=arena&preset=hairpin&arena_frame=100&arena_playing=0&arena_focus=stanley`
+opens the identical comparison paused at 10.0 seconds with Stanley selected.
+Every other tab's link also preserves its
 configuration (see the list above).
 
 ## Tabs
@@ -174,15 +176,17 @@ configuration (see the list above).
   90° turn, and sideways motion; goal, friction, and obstacles round-trip
   through share links.
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
-  LQR Steer traces under identical paths and dynamics. Compare cross-track
-  RMSE, final and maximum error, and angular-command smoothness; replay, pause,
-  single-step, or share the scenario.
+  LQR Steer traces under identical paths and dynamics. Inspect their applied
+  turns, speed, and path error at the same time. Tap either graph to seek;
+  pause, step back or forward, change replay rate, and share the exact moment.
+  RMSE, maximum error, distance to the goal, and turn-change metrics use only
+  samples up to the selected time. [Inspector guide](../../docs/controller_inspector.md).
 
 Controller Arena does not declare a universal winner. Its three presets and
 bounded speed/turn-response controls make differences visible while keeping
 the state, clock, propagation model, and limits identical for every controller.
 
-![Controller Arena comparison](../../docs/assets/controller-arena.png)
+![Controller Arena inspector](../../docs/assets/playground/arena.png)
 
 Regenerate the gallery comparison from the same headless engine:
 

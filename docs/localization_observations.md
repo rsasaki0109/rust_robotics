@@ -57,5 +57,5 @@ acknowledged by the actual egui response, and scrolls wait for a new layout;
 neither depends on a fixed post-input delay. Its
 [input receipt](assets/localization-input-sync.json) records the twelve real
 button responses, their playback states, and measured paint intervals.
-Run the complete 44-case
+Run the complete 46-case
 suite using [the verification command](drone_race_project.md).
