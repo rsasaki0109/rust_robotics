@@ -262,7 +262,7 @@ impl PlaygroundApp {
                 "Compare maps at loop closure, replay classic SLAM, or drive and map a world."
             }
             PlaygroundTab::AdmmFormation => {
-                "Four agents agree on a formation via ADMM while tracking a noisy goal."
+                "Compare four robots' plans and next commands under the same noisy observations."
             }
             PlaygroundTab::ControllerArena => {
                 "Pause three path trackers. Inspect their applied turns and errors at the same time."
@@ -449,6 +449,8 @@ impl eframe::App for PlaygroundApp {
             .begin_frame(ctx, self.tab == PlaygroundTab::Arm);
         self.slam_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::Slam);
+        self.admm_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::AdmmFormation);
         let screen = ctx.screen_rect();
         let narrow = screen.width() < NARROW_WIDTH
             || (self.tab == PlaygroundTab::DroneRace && screen.height() < 520.0);
@@ -512,5 +514,7 @@ impl eframe::App for PlaygroundApp {
         }
         self.arm_demo.finish(ctx, self.tab == PlaygroundTab::Arm);
         self.slam_demo.finish(ctx, self.tab == PlaygroundTab::Slam);
+        self.admm_demo
+            .finish(ctx, self.tab == PlaygroundTab::AdmmFormation);
     }
 }

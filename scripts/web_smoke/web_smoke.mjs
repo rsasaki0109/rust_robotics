@@ -16,6 +16,7 @@ import { checkRrtReplay } from './rrt_replay.mjs';
 import { checkArm } from './arm.mjs';
 import { checkArmTracking } from './arm_tracking.mjs';
 import { checkSlamLoop } from './slam_loop.mjs';
+import { checkFormationLab } from './formation_lab.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -87,6 +88,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'formation-lab', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true },
+  { name: 'formation-lab-phone', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'formation-lab-compact', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, viewport: { width: 900, height: 700 } },
+  { name: 'formation-lab-slow', query: 'tab=admm&formation_view=inspect&frame=0&playing=0', formationLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'slam-loop', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true },
   { name: 'slam-loop-phone', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'slam-loop-slow', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -188,6 +193,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.formationLab) {
+    try { await checkFormationLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`formation: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('formation') && !['formationRuns','formationWitnesses'].includes(key))))}`);
+    }
+  }
   if (test.slamLoop) {
     try { await checkSlamLoop(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

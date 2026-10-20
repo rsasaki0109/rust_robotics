@@ -1,7 +1,11 @@
 //! Interactive ADMM horizon-consensus formation demo.
 
+mod inspector;
+
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
-use rust_robotics_control::{solve_horizon_consensus, AdmmConfig, AgentTrajectory};
+use rust_robotics_control::{
+    solve_horizon_consensus, AdmmConfig, AgentTrajectory, HorizonConsensusReport,
+};
 
 const CYCLES: usize = 34;
 const HORIZON: usize = 10;
@@ -14,6 +18,13 @@ const WORLD_MAX: f64 = 4.8;
 struct AdmmFrame {
     center: [f64; 2],
     agents: Vec<[f64; 2]>,
+    plan: Option<AdmmPlan>,
+}
+
+#[derive(Clone)]
+struct AdmmPlan {
+    references: Vec<Vec<[f64; 2]>>,
+    report: HorizonConsensusReport,
 }
 
 struct AdmmRun {
@@ -34,6 +45,7 @@ pub struct AdmmFormationDemo {
     dirty: bool,
     /// Input time of the last replay step \[s\].
     last_advance: f64,
+    inspector: inspector::Inspector,
 }
 
 fn offsets() -> Vec<[f64; 2]> {
@@ -73,6 +85,7 @@ fn run_mpc(smooth_weight: f64, noise_amp: f64) -> AdmmRun {
 
     frames.push(AdmmFrame {
         center,
+        plan: None,
         agents: offs
             .iter()
             .map(|o| [center[0] + o[0], center[1] + o[1]])
@@ -106,9 +119,15 @@ fn run_mpc(smooth_weight: f64, noise_amp: f64) -> AdmmRun {
             .map(|tr| tr[1.min(tr.len() - 1)])
             .collect();
 
+        frames.last_mut().expect("current frame").plan = Some(AdmmPlan {
+            references: agents.into_iter().map(|a| a.reference).collect(),
+            report,
+        });
+
         frames.push(AdmmFrame {
             center,
             agents: agent_positions,
+            plan: None,
         });
     }
 
@@ -164,12 +183,18 @@ impl Default for AdmmFormationDemo {
             smooth_run,
             dirty: false,
             last_advance: 0.0,
+            inspector: inspector::Inspector::default(),
         }
     }
 }
 
 impl AdmmFormationDemo {
     pub fn apply_share_query(&mut self, query: &str) {
+        self.inspector.active = crate::share::value(query, "formation_view") == Some("inspect");
+        self.inspector.horizon = crate::share::boolean(query, "formation_horizon").unwrap_or(true);
+        self.inspector.observations =
+            crate::share::boolean(query, "formation_observations").unwrap_or(true);
+        self.inspector.reset_clock();
         if let Some(noise) = crate::share::bounded_f32(query, "noise", 0.0, 0.5) {
             self.noise_amp = noise;
             self.dirty = true;
@@ -190,6 +215,9 @@ impl AdmmFormationDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.inspector.active {
+            return format!("tab=admm&formation_view=inspect&noise={}&frame={}&playing=0&formation_horizon={}&formation_observations={}", self.noise_amp, self.frame_idx, u8::from(self.inspector.horizon), u8::from(self.inspector.observations));
+        }
         format!(
             "tab=admm&noise={:.2}&stiff={}&smooth={}&frame={}&playing={}",
             self.noise_amp,
@@ -321,7 +349,16 @@ impl AdmmFormationDemo {
         painter.circle_filled(gc, 6.0, Color32::from_rgb(220, 220, 230));
     }
 
-    pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.inspector.active {
+            self.inspector_controls(ctx, ui);
+            return;
+        }
+        let r = ui.button("Open formation lab");
+        if self.inspector.button("inspect", &r) {
+            self.inspector.active = true;
+            self.seek(CORNER - 1);
+        }
         crate::ui_kit::section(ui, "Goal noise per agent");
         if ui
             .add(egui::Slider::new(&mut self.noise_amp, 0.0..=0.5).suffix(" m"))
@@ -347,7 +384,7 @@ impl AdmmFormationDemo {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("");
-                ui.small("RMS accel");
+                ui.small("RMS 2nd diff");
                 ui.small("tracking");
                 ui.end_row();
                 for (name, run) in [("Stiff", &self.stiff_run), ("Smoothed", &self.smooth_run)] {
@@ -371,6 +408,10 @@ impl AdmmFormationDemo {
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         self.rebuild_if_needed();
+        if self.inspector.active {
+            self.inspector_scene(ui);
+            return;
+        }
         let (rect, side) = Self::world_rect(ui);
         let _ = ui.allocate_rect(rect, egui::Sense::hover());
         self.draw_scene(ui, rect, side);

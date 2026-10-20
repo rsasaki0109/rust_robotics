@@ -153,6 +153,11 @@ compare the same scans at front-end and pose-graph poses, step through actual
 loop events, and explore false matches in repeated corridors.
 [Read the SLAM loop lab guide](docs/slam_loop_lab.md).
 
+[Coordinate four robots](https://rsasaki0109.github.io/rust_robotics/playground/?tab=admm&formation_view=inspect&noise=0.25&frame=17&playing=0):
+compare the same noisy observations with two smoothing costs. Inspect the
+next position commands, planned horizons and actual ADMM convergence.
+[Read the formation lab guide](docs/formation_lab.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).

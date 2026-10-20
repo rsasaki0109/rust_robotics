@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const topics = [
   { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
   { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
-  { id: 'control', label: 'Control', count: 3, tab: 'arena' },
+  { id: 'control', label: 'Control', count: 3, tab: 'admm' },
   { id: 'interaction', label: 'Manipulation & flight', count: 3, tab: 'arm' },
 ];
 const ids = ['grid', 'sampling', 'parking', 'localization', 'slam', 'arena', 'mppi', 'admm', 'arm', 'pushing', 'drone'];
@@ -92,6 +92,16 @@ export async function checkShowcase(page, home, shots, name) {
       const errors=JSON.parse(d.loopErrors),frame=Number(d.loopFrame);
       assert(errors[1][frame]<errors[0][frame]*0.5,'the featured loop must correct actual recorded error');
       assert.equal(JSON.parse(d.loopMaps).length,2);
+    }
+    if (topic.tab === 'admm') {
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.formationActive === '1');
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      assert.equal(d.formationFrame,'17');assert.equal(d.formationPlaying,'0');
+      assert.deepEqual(JSON.parse(d.formationPainted),[17,0.25,true,true]);
+      const runs=JSON.parse(d.formationRuns);
+      assert.deepEqual(runs[0].plan.references,runs[1].plan.references);
+      assert.equal(runs[0].history.length,18);
+      assert.equal(JSON.parse(d.formationMaps).length,2);
     }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });
