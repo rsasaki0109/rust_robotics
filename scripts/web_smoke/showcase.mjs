@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { join } from 'node:path';
 
 const topics = [
-  { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
+  { id: 'planning', label: 'Planning', count: 3, tab: 'parking' },
   { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
   { id: 'control', label: 'Control', count: 3, tab: 'mppi' },
   { id: 'interaction', label: 'Manipulation & flight', count: 3, tab: 'arm' },
@@ -102,6 +102,16 @@ export async function checkShowcase(page, home, shots, name) {
       assert.deepEqual(runs[0].plan.references,runs[1].plan.references);
       assert.equal(runs[0].history.length,18);
       assert.equal(JSON.parse(d.formationMaps).length,2);
+    }
+    if (topic.tab === 'parking') {
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.parkingActive === '1');
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset})),p=JSON.parse(d.parkingPlan);
+      const boundary=p.changes.find((i)=>p.distance[i]>1e-9)??p.changes[0];
+      assert.equal(Number(d.parkingCursor),boundary-1);
+      assert.equal(d.parkingPlaying,'0');
+      assert.deepEqual(JSON.parse(d.parkingPose),p.poses[boundary-1]);
+      assert.deepEqual(JSON.parse(d.parkingPainted),[Number(d.parkingGeneration),boundary-1,true,false]);
+      assert.equal(JSON.parse(d.parkingWitnesses).filter((w)=>w.kind==='body').length,4);
     }
     if (topic.tab === 'mppi') {
       await page.waitForFunction(() => document.querySelector('canvas')?.dataset.mppiActive === '1');

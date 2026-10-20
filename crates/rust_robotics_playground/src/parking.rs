@@ -2,6 +2,8 @@
 //! car-like robot plan a path with forward and reverse segments (Reeds-Shepp
 //! shortcuts included) and drive it.
 
+mod inspector;
+
 use web_time::Instant;
 
 use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke};
@@ -141,6 +143,7 @@ impl Plan {
 }
 
 pub struct ParkingDemo {
+    inspector: inspector::Inspector,
     cars: Vec<[f64; 4]>,
     /// Where the car is (the start of the next plan).
     car: Pose,
@@ -169,6 +172,7 @@ const PARALLEL_GOAL: Pose = [9.9 + (7.5 - PARKED_LONG) / 2.0 + CAR.rear, 1.35, 0
 impl Default for ParkingDemo {
     fn default() -> Self {
         Self {
+            inspector: inspector::Inspector::default(),
             cars: parked_cars(),
             car: PARALLEL_START,
             goal: PARALLEL_GOAL,
@@ -235,6 +239,11 @@ impl ParkingDemo {
         if crate::share::value(query, "tab") != Some("parking") {
             return;
         }
+        if crate::share::value(query, "parking_view") == Some("inspect") {
+            self.apply_inspector_query(query);
+            return;
+        }
+        self.inspector.active = false;
         let car = crate::share::value(query, "car").and_then(parse_pose);
         let goal = crate::share::value(query, "goal").and_then(parse_pose);
         if let Some(car) = car {
@@ -252,6 +261,9 @@ impl ParkingDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.inspector.active {
+            return self.inspector_query();
+        }
         format!(
             "tab=parking&car={:.1},{:.1},{:.0}&goal={:.1},{:.1},{:.0}",
             self.car[0],
@@ -341,6 +353,9 @@ impl ParkingDemo {
             }
         }
         self.last_time = None;
+        if self.inspector.active {
+            self.inspector.record(self.plan.as_ref());
+        }
     }
 
     fn preset_parallel(&mut self) {
@@ -375,6 +390,9 @@ impl ParkingDemo {
 
     /// The pose the car is drawn at.
     fn current_pose(&self) -> Pose {
+        if self.inspector.active {
+            return self.inspected_pose();
+        }
         self.plan
             .as_ref()
             .map_or(self.car, |plan| plan.pose_at(self.driven))
@@ -413,6 +431,14 @@ impl ParkingDemo {
     }
 
     pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.inspector.active {
+            self.inspector_controls(ui);
+            return;
+        }
+        let r = ui.button("Inspect this maneuver");
+        if self.inspector.button("inspect", &r) {
+            self.enter_inspector();
+        }
         crate::ui_kit::section(ui, "Try");
         ui.horizontal_wrapped(|ui| {
             if ui.button("Parallel park").clicked() {
@@ -476,6 +502,10 @@ impl ParkingDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.inspector.active {
+            self.inspector_scene(ui);
+            return;
+        }
         self.ensure_planned();
         let rect = crate::ui_kit::fit_rect(ui, (LOT_H / LOT_W) as f32, 34.0);
         let response = ui.allocate_rect(rect, Sense::click_and_drag());

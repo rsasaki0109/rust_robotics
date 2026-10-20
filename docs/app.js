@@ -677,10 +677,10 @@ const playTiles = [
   },
   {
     id: "parking", topic: "planning",
-    title: "Parking",
-    text: "Drag out a goal pose. Watch Hybrid A* park a car, reversing where it has to.",
-    image: "assets/playground/parking.png",
-    link: "playground/?tab=parking"
+    title: "Parking maneuver lab",
+    text: "Inspect the full car body at each planned pose. Follow forward and reverse arcs, jump to gear changes, and try a new goal.",
+    image: "assets/playground/parking-lab.png",
+    link: "playground/?tab=parking&parking_view=inspect&parking_event=before"
   },
   {
     id: "localization", topic: "perception",
@@ -742,11 +742,11 @@ const playTiles = [
 
 const experimentTopics = [
   {
-    id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "sampling",
+    id: "planning", label: "Planning", caption: "01 / PATH PLANNING", featured: "parking",
     title: "Find a way through.",
-    description: "Watch RRT* find and shorten a route. Replay grid search or plan a parking maneuver, too.",
-    task: "Try this: select First path, Next shorter, then Next rewire. Follow the real changes to the tree.",
-    alt: "An RRT* search tree, its current route, and highlighted old and new connections at one recorded iteration"
+    description: "Follow a car through a tight parking maneuver. Replay grid search or watch RRT* improve a route, too.",
+    task: "Try this: select Before switch, then +1. Inspect the gear change and the car's full body.",
+    alt: "A Hybrid A* parking maneuver with forward and reverse arcs, gear boundaries and sampled vehicle footprints"
   },
   {
     id: "perception", label: "Localization & SLAM", caption: "02 / LOCALIZATION + SLAM", featured: "slam",

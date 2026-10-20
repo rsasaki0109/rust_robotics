@@ -163,6 +163,11 @@ select a sampled future, inspect its cost and weight, and compare it with the
 actual weighted control plan. Change temperature over identical candidates.
 [Read the MPPI decision lab guide](docs/mppi_decision_lab.md).
 
+[Inspect a parking maneuver](https://rsasaki0109.github.io/rust_robotics/playground/?tab=parking&parking_view=inspect&parking_event=before):
+step through actual Hybrid A* poses and gear changes, inspect the full car
+body and collision-check circles, and share the same paused maneuver.
+[Read the parking maneuver lab guide](docs/parking_maneuver_lab.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).

@@ -18,6 +18,7 @@ import { checkArmTracking } from './arm_tracking.mjs';
 import { checkSlamLoop } from './slam_loop.mjs';
 import { checkFormationLab } from './formation_lab.mjs';
 import { checkMppiInspector } from './mppi_inspector.mjs';
+import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -89,6 +90,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'parking-lab', query: 'tab=parking&parking_view=inspect&parking_at=0', parkingInspector: true },
+  { name: 'parking-lab-phone', query: 'tab=parking&parking_view=inspect&parking_at=0', parkingInspector: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'parking-lab-compact', query: 'tab=parking&parking_view=inspect&parking_at=0', parkingInspector: true, viewport: { width: 900, height: 700 } },
+  { name: 'parking-lab-slow', query: 'tab=parking&parking_view=inspect&parking_at=0', parkingInspector: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'mppi-inspector', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true },
   { name: 'mppi-inspector-phone', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'mppi-inspector-compact', query: 'tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=0', mppiInspector: true, viewport: { width: 900, height: 700 } },
@@ -198,6 +203,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.parkingInspector) {
+    try { await checkParkingInspector(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`parking: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('parking') && !['parkingPlan','parkingWitnesses'].includes(key))))}`);
+    }
+  }
   if (test.mppiInspector) {
     try { await checkMppiInspector(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {
