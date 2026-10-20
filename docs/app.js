@@ -712,10 +712,10 @@ const playTiles = [
   },
   {
     id: "admm", topic: "control",
-    title: "ADMM formation",
-    text: "Add noise and watch four agents agree on a formation while tracking a moving goal.",
-    image: "assets/playground/admm.png",
-    link: "playground/?tab=admm"
+    title: "Formation lab",
+    text: "Give four robots the same noisy observations. Compare their plans, next commands, and ADMM convergence with two smoothing costs.",
+    image: "assets/playground/formation-lab.png",
+    link: "playground/?tab=admm&formation_view=inspect&noise=0.25&frame=17&playing=0"
   },
   {
     id: "arm", topic: "interaction",
@@ -756,11 +756,11 @@ const experimentTopics = [
     alt: "The same LiDAR scans at front-end and corrected graph poses, with node-shift arrows and position-error histories"
   },
   {
-    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "arena",
+    id: "control", label: "Control", caption: "03 / CONTROL + COORDINATION", featured: "admm",
     title: "Turn a plan into motion.",
-    description: "Compare three path trackers at the same instant. Look inside MPPI or coordinate a formation, too.",
-    task: "Try this: tap an error graph to inspect that moment. Select a controller and compare its applied turn.",
-    alt: "Three controller trajectories with applied turn rates and errors at the selected simulation time"
+    description: "Watch four robots agree on a shared plan. Compare path trackers or look inside MPPI, too.",
+    task: "Try this: select Before turn, then +1. The gold rings become the next applied robot positions.",
+    alt: "Two robot formations with identical observations, their next position commands, and actual ADMM residual histories"
   },
   {
     id: "interaction", label: "Manipulation & flight", caption: "04 / MANIPULATION + FLIGHT", featured: "arm",
