@@ -15,6 +15,7 @@ import { checkContactLab } from './contact_lab.mjs';
 import { checkRrtReplay } from './rrt_replay.mjs';
 import { checkArm } from './arm.mjs';
 import { checkArmTracking } from './arm_tracking.mjs';
+import { checkSlamLoop } from './slam_loop.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -86,6 +87,9 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'slam-loop', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true },
+  { name: 'slam-loop-phone', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'slam-loop-slow', query: 'tab=slam&algorithm=loop&loop_view=compare&frame=0&playing=0', slamLoop: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'arm-tracking', query: 'tab=arm&arm_view=compare', armTracking: true },
   { name: 'arm-tracking-phone', query: 'tab=arm&arm_view=compare', armTracking: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'arm-tracking-slow', query: 'tab=arm&arm_view=compare', armTracking: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
@@ -184,6 +188,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.slamLoop) {
+    try { await checkSlamLoop(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`SLAM loop: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('loop') && !['loopErrors','loopEvents','loopNodes','loopFrontNodes','loopNodeTruth','loopShifts'].includes(key))))}`);
+    }
+  }
   if (test.armTracking) {
     try { await checkArmTracking(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

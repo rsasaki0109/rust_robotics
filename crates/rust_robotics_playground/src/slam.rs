@@ -1,6 +1,8 @@
 //! Interactive SLAM demos: EKF-SLAM, FastSLAM, ICP scan matching, a LiDAR
 //! graph SLAM loop-closure replay, and live LiDAR SLAM driving.
 
+mod loop_inspector;
+
 use std::f64::consts::PI;
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
@@ -172,6 +174,7 @@ pub struct SlamDemo {
     drive: SlamDriveDemo,
     /// Input time of the last replay step \[s\].
     last_advance: f64,
+    loop_inspector: loop_inspector::Inspector,
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
@@ -399,6 +402,7 @@ impl Default for SlamDemo {
             show_front_end_map: false,
             drive: SlamDriveDemo::default(),
             last_advance: 0.0,
+            loop_inspector: loop_inspector::Inspector::default(),
         }
     }
 }
@@ -431,6 +435,7 @@ impl SlamDemo {
         if self.kind == SlamKind::Drive {
             self.drive.apply_share_query(query);
         }
+        self.apply_loop_inspector_query(query);
     }
 
     pub fn share_query(&self) -> String {
@@ -444,7 +449,10 @@ impl SlamDemo {
             "tab=slam&algorithm={}&frame={}&playing={}",
             self.kind.slug(),
             self.frame_idx,
-            u8::from(self.playing)
+            u8::from(
+                self.playing
+                    && !(self.kind == SlamKind::LoopClosure && self.loop_inspector.compare)
+            )
         );
         if self.kind == SlamKind::LoopClosure {
             query.push_str(&format!(
@@ -452,6 +460,12 @@ impl SlamDemo {
                 u8::from(self.show_front_end_map),
                 self.loop_scenario.slug()
             ));
+            if self.loop_inspector.compare {
+                query.push_str(&format!(
+                    "&loop_view=compare&loop_vectors={}",
+                    u8::from(self.loop_inspector.vectors)
+                ));
+            }
         }
         query
     }
@@ -699,6 +713,15 @@ impl SlamDemo {
         }
 
         if self.kind == SlamKind::LoopClosure {
+            if self.loop_inspector.compare {
+                self.loop_controls(ctx, ui);
+                return;
+            }
+            let r = ui.button("Compare maps");
+            if self.loop_inspector.button("compare", &r) {
+                self.loop_inspector.compare = true;
+                self.playing = false;
+            }
             crate::ui_kit::section(ui, "Scenario");
             for scenario in LoopScenario::ALL {
                 if ui
@@ -768,6 +791,10 @@ impl SlamDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.kind == SlamKind::LoopClosure && self.loop_inspector.compare {
+            self.loop_scene(ctx, ui);
+            return;
+        }
         if self.kind == SlamKind::Drive {
             self.drive.scene(ctx, ui);
             return;

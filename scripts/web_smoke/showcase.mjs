@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const topics = [
   { id: 'planning', label: 'Planning', count: 3, tab: 'sampling' },
-  { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'localization' },
+  { id: 'perception', label: 'Localization & SLAM', count: 2, tab: 'slam' },
   { id: 'control', label: 'Control', count: 3, tab: 'arena' },
   { id: 'interaction', label: 'Manipulation & flight', count: 3, tab: 'arm' },
 ];
@@ -81,6 +81,17 @@ export async function checkShowcase(page, home, shots, name) {
       assert(s[0].error<0.1,'the featured joint tracker must be approaching the goal');
       assert.deepEqual(s[1].angles,[0,0],'the featured Cartesian run must show the actual radial stall');
       assert.equal(JSON.parse(d.armCmpErrors)[0].length,601);
+    }
+    if (topic.tab === 'slam') {
+      await page.waitForFunction(() => document.querySelector('canvas')?.dataset.loopActive === '1');
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      assert.equal(d.loopPlaying,'0');assert.equal(d.loopVectors,'1');
+      assert.equal(Number(d.loopFrame),JSON.parse(d.loopEvents)[0].frame);
+      assert.equal(d.loopAccepted,'1');assert.equal(d.loopWrong,'0');assert.equal(d.loopOptimized,'1');
+      assert.equal(d.loopPaintedFrame,d.loopFrame);
+      const errors=JSON.parse(d.loopErrors),frame=Number(d.loopFrame);
+      assert(errors[1][frame]<errors[0][frame]*0.5,'the featured loop must correct actual recorded error');
+      assert.equal(JSON.parse(d.loopMaps).length,2);
     }
     if (shots) await page.screenshot({ path: join(shots, `${name}-${topic.id}-demo.png`) });
     await page.goBack({ waitUntil: 'load' });

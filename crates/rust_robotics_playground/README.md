@@ -150,6 +150,11 @@ configuration (see the list above).
   has to.
 - **Localization** — PF / EKF with arrow-key driving and noise slider.
 - **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop, and
+  a **loop closure lab** with paired front-end/pose-graph maps at one recorded
+  update. Step across accepted or false loops, inspect cumulative node shifts
+  and position errors, compare ambiguity checking on identical observations,
+  and share the exact paused state. [Loop lab guide](../../docs/slam_loop_lab.md).
+  Also includes
   **LiDAR loop closure** (scan-to-map + pose graph on a corridor loop; toggle the
   map between front-end and loop-closed poses) with a timeline scrubber, plus
   **Drive LiDAR SLAM**: arrow-key (or auto) driving with live scan-to-map and

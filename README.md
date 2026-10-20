@@ -148,6 +148,11 @@ inspect joint-target and Cartesian tracking at the same time, including a
 reachable target where a straight arm's local controller stalls.
 [Read the tracking guide](docs/arm_tracking.md).
 
+[Watch a loop match correct a SLAM map](https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&algorithm=loop&loop_view=compare&loop_event=first&playing=0&loop_vectors=1):
+compare the same scans at front-end and pose-graph poses, step through actual
+loop events, and explore false matches in repeated corridors.
+[Read the SLAM loop lab guide](docs/slam_loop_lab.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).
