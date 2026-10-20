@@ -22,6 +22,7 @@ import { checkGateFeedback, checkGateFeedbackPhone } from './drone_checkpoint.mj
 import { prepareSlowPaints, slowReplayFixture, checkSlowReplay } from './drone_slow.mjs';
 import { checkShowcase } from './showcase.mjs';
 import { checkGridSearch } from './grid_search.mjs';
+import { checkLocalization } from './localization.mjs';
 
 const [distArg, shots, docsArg] = process.argv.slice(2);
 if (!distArg) {
@@ -80,6 +81,8 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'localization-observations', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true },
+  { name: 'localization-observations-phone', query: 'tab=localization&loc_playing=0&loc_tour=0', localization: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'grid-search', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true },
   { name: 'grid-search-phone', query: 'tab=grid&planner=astar&search_rate=5', gridSearch: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'showcase-explore', showcase: true },
@@ -159,6 +162,10 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.localization) {
+    try { await checkLocalization(page, base, shots, Boolean(test.touch)); }
+    catch (error) { problems.push(`localization check: ${error.stack ?? error.message}`); }
+  }
   if (test.gridSearch) {
     try { await checkGridSearch(page, base, shots, Boolean(test.touch)); }
     catch (error) {

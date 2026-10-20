@@ -1,0 +1,72 @@
+{
+  "stationary": {
+    "locFilter": "pf",
+    "locSteps": "1",
+    "locPlaying": "0",
+    "locTour": "0",
+    "locObservations": "1",
+    "locNoise": "1",
+    "locTruth": "[5.00000000,5.00000000,0.00000000]",
+    "locEstimate": "[4.92647669,4.93615022,-0.07642185]",
+    "locRanges": "[[4.08459426,2.00000000,2.00000000],[5.82494002,10.00000000,2.00000000],[4.12572138,2.00000000,8.00000000],[5.78029588,10.00000000,8.00000000],[1.05875682,6.00000000,5.00000000]]",
+    "locFix": "null",
+    "locErrors": "[0.09737799]",
+    "locShare": "tab=localization&filter=pf&noise=1.00&loc_playing=0&loc_tour=0&loc_observations=1&loc_anchor=0"
+  },
+  "pf": {
+    "locFilter": "pf",
+    "locSteps": "23",
+    "locPlaying": "0",
+    "locTour": "1",
+    "locObservations": "1",
+    "locNoise": "3",
+    "locTruth": "[7.44748709,4.07888143,-0.49023429]",
+    "locEstimate": "[7.42775494,4.11401358,-0.51480964]",
+    "locRanges": "[[5.96348471,2.00000000,2.00000000],[2.58639624,10.00000000,2.00000000],[6.62037952,2.00000000,8.00000000],[4.66978603,10.00000000,8.00000000],[0.91168786,6.00000000,5.00000000]]",
+    "locFix": "null",
+    "locErrors": "[0.09737799,0.12922519,0.14874739,0.16252362,0.14813010,0.10597516,0.03977257,0.11498486,0.04758485,0.22685995,0.13437308,0.07351438,0.16917692,0.09828864,0.12633560,0.11660443,0.09940132,0.07204035,0.12900196,0.12397561,0.05656362,0.07888880,0.04029424]",
+    "locShare": "tab=localization&filter=pf&noise=3.00&loc_playing=0&loc_tour=1&loc_observations=1&loc_anchor=3"
+  },
+  "shared": {
+    "locFilter": "pf",
+    "locSteps": "0",
+    "locPlaying": "0",
+    "locTour": "1",
+    "locObservations": "1",
+    "locNoise": "3",
+    "locTruth": "[5.00000000,5.00000000,0.00000000]",
+    "locEstimate": "[5.00725234,4.99387898,0.00982828]",
+    "locRanges": "[]",
+    "locFix": "null",
+    "locErrors": "[]",
+    "locShare": "tab=localization&filter=pf&noise=3.00&loc_playing=0&loc_tour=1&loc_observations=1&loc_anchor=3"
+  },
+  "ekf": {
+    "locFilter": "ekf",
+    "locSteps": "1",
+    "locPlaying": "0",
+    "locTour": "1",
+    "locObservations": "1",
+    "locNoise": "3",
+    "locTruth": "[5.12000000,5.00000000,-0.08097836]",
+    "locEstimate": "[5.45346645,4.63809321,-0.12337275]",
+    "locRanges": "[]",
+    "locFix": "[5.49625581,4.59230727]",
+    "locErrors": "[0.49211421]",
+    "locShare": "tab=localization&filter=ekf&noise=3.00&loc_playing=0&loc_tour=1&loc_observations=1&loc_anchor=3"
+  },
+  "cleared": {
+    "locFilter": "ekf",
+    "locSteps": "0",
+    "locPlaying": "0",
+    "locTour": "1",
+    "locObservations": "1",
+    "locNoise": "3",
+    "locTruth": "[5.00000000,5.00000000,0.00000000]",
+    "locEstimate": "[5.00000000,5.00000000,0.00000000]",
+    "locRanges": "[]",
+    "locFix": "null",
+    "locErrors": "[]",
+    "locShare": "tab=localization&filter=ekf&noise=3.00&loc_playing=0&loc_tour=1&loc_observations=1&loc_anchor=3"
+  }
+}

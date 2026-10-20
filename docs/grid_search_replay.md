@@ -56,7 +56,7 @@ invalidation, and exact shared state.
 
 The browser suite includes desktop and 320-pixel touch cases that use the real
 canvas controls, share into a new browser context, rotate the phone, and open a
-blocked wall by mouse or touch. Run the complete 41-case suite with the public
+blocked wall by mouse or touch. Run the complete browser suite with the public
 URL build and Xvfb command in [the verification instructions](drone_race_project.md).
 It writes `grid-search-map.png` and `grid-search-replay.json` into its screenshot
 directory as evidence of the real run.
