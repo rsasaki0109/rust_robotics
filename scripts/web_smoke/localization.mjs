@@ -9,8 +9,22 @@ const state = (page) => page.locator(canvas).evaluate((c) => Object.fromEntries(
 const settle = (page) => page.waitForTimeout(100);
 const inputReceipts = new WeakMap();
 
-async function layoutAfter(page, revision) {
-  await page.waitForFunction((previous) => Number(document.querySelector('canvas')?.dataset.locUiRevision) > previous, Number(revision));
+async function aim(page, name, target) {
+  // A hover paint can precede a queued wheel. Require two processed pointer
+  // moves and the widget's actual hit test before sending one real tap.
+  for (const dx of [-2, 0]) {
+    const before = await state(page);
+    const position = [Math.floor(target[0] + dx), Math.floor(target[1])];
+    await page.mouse.move(...position);
+    await page.waitForFunction(({ revision, position }) => {
+      const d = document.querySelector('canvas')?.dataset;
+      const pointer = JSON.parse(d?.locPointer ?? 'null');
+      return Number(d?.locUiRevision) > revision && d.locScrolling === '0' && pointer && Math.hypot(pointer[0] - position[0], pointer[1] - position[1]) < 0.75;
+    }, { revision: Number(before.locUiRevision), position });
+    const current = JSON.parse((await state(page)).locActions)[name];
+    if (Math.hypot(current[0] - target[0], current[1] - target[1]) > 1) return false;
+  }
+  return JSON.parse((await state(page)).locHits)[name] === true;
 }
 
 async function action(page, name, touch) {
@@ -19,10 +33,11 @@ async function action(page, name, touch) {
     assert(point, `missing localization action: ${name}`);
     const { width, height } = page.viewportSize();
     if (point[1] >= 64 && point[1] <= height - 24) {
-      await settle(page);
+      if (!await aim(page, name, point)) continue;
       const before = await state(page);
       const current = JSON.parse(before.locActions)[name];
       if (Math.abs(current[0] - point[0]) > 1 || Math.abs(current[1] - point[1]) > 1) continue;
+      if (!JSON.parse(before.locHits)[name]) continue;
       if (touch) await page.touchscreen.tap(...current);
       else await page.mouse.click(...current);
       // Touch release can be queued until the next egui frame. Wait for the
@@ -31,14 +46,20 @@ async function action(page, name, touch) {
       const after = await state(page);
       assert.equal(after.locLastAction, name, `input hit a different control than ${name}`);
       assert.equal(Number(after.locActionCount), Number(before.locActionCount) + 1, `${name} was handled more than once`);
-      inputReceipts.get(page)?.push({ name, count: Number(after.locActionCount), layout: Number(after.locUiRevision), playing: after.locPlaying, steps: Number(after.locSteps) });
+      inputReceipts.get(page)?.push({ name, count: Number(after.locActionCount), layout: Number(after.locUiRevision), playing: after.locPlaying, steps: Number(after.locSteps), position: current, pointer: JSON.parse(before.locPointer), hit: JSON.parse(before.locHits)[name], scrolling: before.locScrolling === '1', scrollRevision: Number(before.locScrollRevision) });
       return;
     }
     await page.mouse.move(Math.min(width - 20, Math.max(20, point[0])), height - 60);
-    const revision = (await state(page)).locUiRevision;
-    await page.mouse.wheel(0, point[1] < 64 ? -280 : 280);
-    await layoutAfter(page, revision);
-    await settle(page);
+    const before = await state(page), previous = JSON.parse(before.locActions)[name][1];
+    if (previous >= 64 && previous <= height - 24) continue;
+    const delta = previous < 64 ? -280 : 280;
+    await page.mouse.wheel(0, delta);
+    await page.waitForFunction(({ revision, scrollRevision, name, previous, delta }) => {
+      const d = document.querySelector('canvas')?.dataset;
+      if (!d || Number(d.locUiRevision) <= revision || Number(d.locScrollRevision) <= scrollRevision || d.locScrolling !== '0') return false;
+      const y = JSON.parse(d.locActions)[name][1];
+      return delta < 0 ? y > previous + 1 : y < previous - 1;
+    }, { revision: Number(before.locUiRevision), scrollRevision: Number(before.locScrollRevision), name, previous, delta });
   }
   throw Error(`localization action is unreachable: ${name}`);
 }
@@ -48,10 +69,12 @@ async function mapVisible(page) {
     const rect = JSON.parse((await state(page)).locRect);
     if (rect[1] >= 48 && rect[1] + rect[3] <= page.viewportSize().height) return rect;
     await page.mouse.move(page.viewportSize().width / 2, 120);
-    const revision = (await state(page)).locUiRevision;
+    const before = await state(page), previous = JSON.parse(before.locRect)[1];
     await page.mouse.wheel(0, -300);
-    await layoutAfter(page, revision);
-    await settle(page);
+    await page.waitForFunction(({ revision, scrollRevision, previous }) => {
+      const d = document.querySelector('canvas')?.dataset;
+      return d && Number(d.locUiRevision) > revision && Number(d.locScrollRevision) > scrollRevision && d.locScrolling === '0' && JSON.parse(d.locRect)[1] > previous + 1;
+    }, { revision: Number(before.locUiRevision), scrollRevision: Number(before.locScrollRevision), previous });
   }
   throw Error('localization map is unreachable');
 }
@@ -163,6 +186,14 @@ export async function checkLocalization(page, base, shots, touch, slowPaint = fa
   assert.equal(cleared.locFix, 'null');
   assert.equal(cleared.locErrors, '[]');
   assert.equal(cleared.locPlaying, '0');
+  const receipts = inputReceipts.get(page);
+  assert.equal(receipts.length, 12);
+  assert.deepEqual(receipts.map((r) => r.count), Array.from({ length: 12 }, (_, i) => i + 1));
+  assert(receipts.every((r) => r.hit), 'localization tapped a control without a processed hit test');
+  assert(receipts.every((r) => !r.scrolling), 'localization tapped while smooth scrolling was active');
+  if (shots && !slowPaint) await writeFile(join(shots, `localization-input-sync${touch ? '-phone' : '-desktop'}.json`), JSON.stringify({
+    inputs: receipts, paused: sample(pf), cleared: sample(cleared),
+  }, null, 2));
   if (slowPaint) {
     const times = await page.evaluate(() => window.__slowPaintTimes);
     assert(times.length >= 3 && times.slice(1).every((time, i) => time - times[i] >= 350),

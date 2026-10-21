@@ -97,6 +97,13 @@ pub struct LocalizationDemo {
     show_observations: bool,
     anchor: usize,
     actions: BTreeMap<&'static str, [f32; 2]>,
+    action_hits: BTreeMap<&'static str, bool>,
+    #[cfg(target_arch = "wasm32")]
+    action_pointer: Option<egui::Pos2>,
+    #[cfg(target_arch = "wasm32")]
+    scroll_revision: u64,
+    #[cfg(target_arch = "wasm32")]
+    scrolling: bool,
     scene_rect: Option<Rect>,
     #[cfg(target_arch = "wasm32")]
     action_count: u64,
@@ -161,6 +168,13 @@ impl Default for LocalizationDemo {
             show_observations: true,
             anchor: 0,
             actions: BTreeMap::new(),
+            action_hits: BTreeMap::new(),
+            #[cfg(target_arch = "wasm32")]
+            action_pointer: None,
+            #[cfg(target_arch = "wasm32")]
+            scroll_revision: 0,
+            #[cfg(target_arch = "wasm32")]
+            scrolling: false,
             scene_rect: None,
             #[cfg(target_arch = "wasm32")]
             action_count: 0,
@@ -386,6 +400,7 @@ impl LocalizationDemo {
 
     fn action(&mut self, name: &'static str, response: &egui::Response) {
         self.actions.insert(name, response.rect.center().into());
+        self.action_hits.insert(name, response.hovered());
         if response.clicked() {
             #[cfg(target_arch = "wasm32")]
             {
@@ -683,6 +698,7 @@ impl LocalizationDemo {
             return;
         }
         self.actions.clear();
+        self.action_hits.clear();
         let response = ui.button("Open belief update lab");
         self.belief.widget("inspect", &response);
         if self.belief.button("inspect", &response) {
@@ -778,6 +794,7 @@ impl LocalizationDemo {
         #[cfg(target_arch = "wasm32")]
         {
             self.ui_revision += 1;
+            self.action_pointer = ui.ctx().input(|i| i.pointer.hover_pos());
         }
         if let Some(rect) = self.scene_rect {
             self.publish_state(rect);
@@ -844,6 +861,19 @@ impl LocalizationDemo {
 
     pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
         self.belief.begin_frame(ctx, active);
+        #[cfg(target_arch = "wasm32")]
+        if active && !self.belief.active {
+            // Read before a ScrollArea consumes smooth_scroll_delta. These
+            // diagnostics acknowledge input without changing scrolling.
+            let (received, scrolling) = ctx.input(|i| {
+                (
+                    i.raw_scroll_delta != Vec2::ZERO,
+                    i.raw_scroll_delta != Vec2::ZERO || i.smooth_scroll_delta != Vec2::ZERO,
+                )
+            });
+            self.scroll_revision += u64::from(received);
+            self.scrolling = scrolling;
+        }
     }
 
     pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
@@ -868,6 +898,15 @@ impl LocalizationDemo {
             .map(|(key, p)| format!("\"{key}\":[{:.2},{:.2}]", p[0], p[1]))
             .collect::<Vec<_>>()
             .join(",");
+        let hits = self
+            .action_hits
+            .iter()
+            .map(|(key, hit)| format!("\"{key}\":{hit}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let pointer = self
+            .action_pointer
+            .map_or_else(|| "null".to_owned(), |p| format!("[{:.2},{:.2}]", p.x, p.y));
         let est = self.estimate();
         let ranges = self
             .ranges
@@ -920,6 +959,10 @@ impl LocalizationDemo {
                 ),
             ),
             ("data-loc-actions", format!("{{{actions}}}")),
+            ("data-loc-hits", format!("{{{hits}}}")),
+            ("data-loc-pointer", pointer),
+            ("data-loc-scroll-revision", self.scroll_revision.to_string()),
+            ("data-loc-scrolling", u8::from(self.scrolling).to_string()),
             ("data-loc-action-count", self.action_count.to_string()),
             ("data-loc-last-action", self.last_action.to_owned()),
             ("data-loc-ui-revision", self.ui_revision.to_string()),
