@@ -445,6 +445,8 @@ impl PlaygroundApp {
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.localization_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::Localization);
         self.parking_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::Parking);
         self.arm_demo
@@ -521,5 +523,7 @@ impl eframe::App for PlaygroundApp {
         self.mppi_demo.finish(ctx, self.tab == PlaygroundTab::Mppi);
         self.parking_demo
             .finish(ctx, self.tab == PlaygroundTab::Parking);
+        self.localization_demo
+            .finish(ctx, self.tab == PlaygroundTab::Localization);
     }
 }

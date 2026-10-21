@@ -2,6 +2,8 @@
 //! arrow keys, by holding the pointer on the map, or let the robot tour the
 //! landmarks on its own.
 
+mod belief;
+
 use std::{collections::BTreeMap, f64::consts::PI};
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
@@ -71,6 +73,7 @@ impl FilterKind {
 }
 
 pub struct LocalizationDemo {
+    belief: belief::BeliefLab,
     filter: FilterKind,
     true_state: State2D,
     pf: ParticleFilterLocalizer,
@@ -136,6 +139,7 @@ impl Default for LocalizationDemo {
         .expect("valid EKF config");
 
         Self {
+            belief: belief::BeliefLab::default(),
             filter: FilterKind::ParticleFilter,
             true_state: State2D::new(5.0, 5.0, 0.0, 0.0),
             pf,
@@ -173,6 +177,7 @@ impl LocalizationDemo {
         if crate::share::value(query, "tab") != Some("localization") {
             return;
         }
+        self.belief.apply_query(query);
         if let Some(filter) = crate::share::value(query, "filter").and_then(FilterKind::from_slug) {
             self.filter = filter;
         }
@@ -195,6 +200,9 @@ impl LocalizationDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.belief.active {
+            return self.belief.share_query();
+        }
         format!(
             "tab=localization&filter={}&noise={:.2}&loc_playing={}&loc_tour={}&loc_observations={}&loc_anchor={}",
             self.filter.slug(),
@@ -670,7 +678,17 @@ impl LocalizationDemo {
     }
 
     pub fn controls(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.belief.active {
+            self.belief.controls(ui);
+            return;
+        }
         self.actions.clear();
+        let response = ui.button("Open belief update lab");
+        self.belief.widget("inspect", &response);
+        if self.belief.button("inspect", &response) {
+            self.belief.enter();
+            return;
+        }
         crate::ui_kit::section(ui, "Observation clock / 10 Hz");
         ui.horizontal_wrapped(|ui| {
             let response = ui.button(if self.playing { "Pause" } else { "Play" });
@@ -767,6 +785,10 @@ impl LocalizationDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.belief.active {
+            self.belief.scene(ui);
+            return;
+        }
         let (rect, side) = Self::world_rect(ui);
         self.scene_rect = Some(rect);
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
@@ -818,6 +840,14 @@ impl LocalizationDemo {
         if self.playing {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
+    }
+
+    pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
+        self.belief.begin_frame(ctx, active);
+    }
+
+    pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
+        self.belief.finish(ctx, active);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

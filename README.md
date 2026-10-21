@@ -168,6 +168,11 @@ step through actual Hybrid A* poses and gear changes, inspect the full car
 body and collision-check circles, and share the same paused maneuver.
 [Read the parking maneuver lab guide](docs/parking_maneuver_lab.md).
 
+[Inspect a particle-filter update](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&loc_view=belief&belief_event=resample):
+freeze prediction, range weighting and resampling; change the landmark
+evidence and inspect which actual hypotheses are copied.
+[Read the belief update lab guide](docs/localization_belief_lab.md).
+
 [Look inside a position estimate](https://rsasaki0109.github.io/rust_robotics/playground/?tab=localization&noise=3):
 pause noisy range measurements with PF or position fixes with EKF, take one
 sensor step, and follow the estimate's error. [Read the observation guide](docs/localization_observations.md).
