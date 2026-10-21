@@ -163,6 +163,11 @@ compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.
 [Read the formation lab guide](docs/formation_lab.md).
 
+[Inspect a safety filter](https://rsasaki0109.github.io/rust_robotics/playground/?tab=arena&arena_view=safety&safety_event=first):
+compare unfiltered and CBF motion, inspect the actual velocity constraints and
+correction, and explore reactive deadlock or an infeasible starting state.
+[Read the safety filter lab guide](docs/safety_filter_lab.md).
+
 [Look inside an MPPI decision](https://rsasaki0109.github.io/rust_robotics/playground/?tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=40):
 select a sampled future, inspect its cost and weight, and compare it with the
 actual weighted control plan. Change temperature over identical candidates.

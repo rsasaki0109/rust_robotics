@@ -34,6 +34,8 @@ export async function checkShowcase(page, home, shots, name) {
   assert.equal(beliefLink.searchParams.get('belief_event'),'resample');
   const scanLink=new URL(await page.locator('#play-scan-matching').getAttribute('href'),home);
   assert.equal(scanLink.pathname,'/rust_robotics/playground/');assert.equal(scanLink.searchParams.get('tab'),'slam');assert.equal(scanLink.searchParams.get('algorithm'),'icp');assert.equal(scanLink.searchParams.get('icp_view'),'inspect');
+  const safetyLink=new URL(await page.locator('#play-safety-filter').getAttribute('href'),home);
+  assert.equal(safetyLink.pathname,'/rust_robotics/playground/');assert.equal(safetyLink.searchParams.get('tab'),'arena');assert.equal(safetyLink.searchParams.get('arena_view'),'safety');assert.equal(safetyLink.searchParams.get('safety_event'),'first');
   await imageLoaded(page);
   await fits(page);
   if (shots) {

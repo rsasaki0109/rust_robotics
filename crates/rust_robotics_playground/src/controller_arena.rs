@@ -1,5 +1,7 @@
 //! Interactive replay front end for the deterministic Controller Arena engine.
 
+mod safety;
+
 use std::collections::BTreeMap;
 
 use egui::{Color32, Pos2, Rect, Stroke, Vec2};
@@ -27,6 +29,7 @@ const MIN_COURSE_LENGTH: f64 = 8.0;
 const MAX_COURSE_LENGTH: f64 = 500.0;
 
 pub struct ControllerArenaDemo {
+    safety: safety::SafetyLab,
     preset: ArenaPreset,
     target_speed: f64,
     turn_rate_response_gain: f64,
@@ -79,6 +82,7 @@ impl ControllerArenaDemo {
             Err(error) => (Vec::new(), Some(error.to_string())),
         };
         Self {
+            safety: safety::SafetyLab::default(),
             preset,
             target_speed,
             turn_rate_response_gain,
@@ -138,6 +142,10 @@ impl ControllerArenaDemo {
     }
 
     pub fn apply_share_query(&mut self, query: &str) {
+        self.safety.apply_query(query);
+        if self.safety.active {
+            return;
+        }
         if crate::share::value(query, "tab") != Some("arena") {
             return;
         }
@@ -166,6 +174,9 @@ impl ControllerArenaDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.safety.active {
+            return self.safety.share_query();
+        }
         let mut query = format!(
             "tab=arena&preset={}&speed={}&response={}&arena_frame={}&arena_playing={}&arena_rate={}&arena_focus={}",
             self.preset.slug(),
@@ -352,7 +363,22 @@ impl ControllerArenaDemo {
             .unwrap_or(0)
     }
 
+    pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
+        self.safety.begin_frame(ctx, active);
+    }
+    pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
+        self.safety.finish(ctx, active);
+    }
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.safety.active {
+            self.safety.controls(ui);
+            return;
+        }
+        let r = ui.button("Open safety filter lab");
+        if self.safety.button("inspect", &r) {
+            self.safety.enter();
+            return;
+        }
         crate::ui_kit::section(ui, "Course");
         ui.horizontal_wrapped(|ui| {
             for (preset, label) in ArenaPreset::ALL
@@ -470,6 +496,10 @@ impl ControllerArenaDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.safety.active {
+            self.safety.scene(ui);
+            return;
+        }
         if self.drawing {
             self.draw_canvas(ui);
             #[cfg(target_arch = "wasm32")]

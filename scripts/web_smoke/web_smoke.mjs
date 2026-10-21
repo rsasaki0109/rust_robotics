@@ -21,6 +21,7 @@ import { checkMppiInspector } from './mppi_inspector.mjs';
 import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkBeliefLab } from './belief_lab.mjs';
 import { checkScanMatching } from './scan_matching.mjs';
+import { checkSafetyLab } from './safety_lab.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -92,6 +93,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'safety-lab', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true },
+  { name: 'safety-lab-phone', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'safety-lab-compact', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true, viewport: { width: 900, height: 700 } },
+  { name: 'safety-lab-slow', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'scan-matching', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true },
   { name: 'scan-matching-phone', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'scan-matching-compact', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true, viewport: { width: 900, height: 700 } },
@@ -213,6 +218,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.safetyLab) {
+    try { await checkSafetyLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`Safety: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('safety') && !['safetyRuns','safetyWitnesses','safetyCurves'].includes(key))))}`);
+    }
+  }
   if (test.scanMatching) {
     try { await checkScanMatching(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

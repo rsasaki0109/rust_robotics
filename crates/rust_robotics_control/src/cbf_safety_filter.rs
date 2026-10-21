@@ -184,7 +184,8 @@ pub struct CbfSafetyFilter {
 /// Result of filtering a single nominal control.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CbfFilterResult {
-    /// The safe control after filtering.
+    /// Returned velocity. When no feasible candidate is found, the fallback
+    /// may violate a barrier; this value is not a feasibility certificate.
     pub control: [f64; 2],
     /// Smallest effective barrier `h - robot_radius` over all obstacles.
     pub min_barrier: f64,
@@ -235,7 +236,11 @@ impl CbfSafetyFilter {
             .fold(f64::INFINITY, f64::min)
     }
 
-    /// Minimally correct `nominal` so the single-integrator robot stays safe.
+    /// Compute a minimum-correction candidate for the assembled CBF constraints.
+    ///
+    /// Infeasible inputs use a projection onto the most-violated constraint.
+    /// Such a fallback need not satisfy other barriers. Callers inspecting
+    /// feasibility should evaluate every obstacle inequality at the result.
     pub fn filter(&self, position: [f64; 2], nominal: [f64; 2]) -> CbfFilterResult {
         // Assemble the active CBF constraints g . u >= b.
         let mut constraints: Vec<([f64; 2], f64)> = Vec::new();
@@ -396,6 +401,35 @@ pub struct CbfNavReport {
     pub path: Vec<[f64; 2]>,
 }
 
+/// One control actually applied by the navigation rollout. `next` is the
+/// result of Euler integration at the configured time step; terminal goal
+/// states have no fabricated extra command.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CbfNavStep {
+    pub position: [f64; 2],
+    pub nominal: [f64; 2],
+    pub control: [f64; 2],
+    pub next: [f64; 2],
+    pub intervened: bool,
+}
+
+/// Run the same navigation simulation, returning its actual applied decisions.
+/// The trace has `report.steps` elements; its transitions describe `report.path`.
+pub fn simulate_cbf_navigation_with_trace(
+    filter: &CbfSafetyFilter,
+    start: [f64; 2],
+    goal: [f64; 2],
+    config: &CbfNavConfig,
+    apply_filter: bool,
+) -> RoboticsResult<(CbfNavReport, Vec<CbfNavStep>)> {
+    let mut trace = Vec::new();
+    let report =
+        simulate_cbf_navigation_observed(filter, start, goal, config, apply_filter, |step| {
+            trace.push(step)
+        })?;
+    Ok((report, trace))
+}
+
 /// Drive a proportional go-to-goal controller through the obstacle field,
 /// optionally applying the CBF safety filter, and report clearance/collision.
 pub fn simulate_cbf_navigation(
@@ -404,6 +438,17 @@ pub fn simulate_cbf_navigation(
     goal: [f64; 2],
     config: &CbfNavConfig,
     apply_filter: bool,
+) -> RoboticsResult<CbfNavReport> {
+    simulate_cbf_navigation_observed(filter, start, goal, config, apply_filter, |_| {})
+}
+
+fn simulate_cbf_navigation_observed(
+    filter: &CbfSafetyFilter,
+    start: [f64; 2],
+    goal: [f64; 2],
+    config: &CbfNavConfig,
+    apply_filter: bool,
+    mut observe: impl FnMut(CbfNavStep),
 ) -> RoboticsResult<CbfNavReport> {
     if !config.dt.is_finite() || config.dt <= 0.0 {
         return Err(RoboticsError::InvalidParameter(
@@ -441,8 +486,10 @@ pub fn simulate_cbf_navigation(
             nominal = [nominal[0] * scale, nominal[1] * scale];
         }
 
+        let mut intervened = false;
         let control = if apply_filter {
             let result = filter.filter(position, nominal);
+            intervened = result.intervened;
             if result.intervened {
                 interventions += 1;
                 correction_sum += dist(result.control, nominal);
@@ -456,6 +503,13 @@ pub fn simulate_cbf_navigation(
             position[0] + control[0] * config.dt,
             position[1] + control[1] * config.dt,
         ];
+        observe(CbfNavStep {
+            position,
+            nominal,
+            control,
+            next,
+            intervened,
+        });
         path_length += dist(next, position);
         position = next;
         path.push(position);
@@ -526,6 +580,115 @@ mod tests {
 
     fn square(cx: f64, cy: f64, half: f64) -> CbfConvexObstacle2D {
         CbfConvexObstacle2D::aabb(cx - half, cx + half, cy - half, cy + half).unwrap()
+    }
+
+    #[test]
+    fn recorded_decisions_preserve_the_legacy_rollout_and_metrics() {
+        let filter = CbfSafetyFilter::new(vec![square(0.0, 0.85, 0.8)], 2.0, 0.2)
+            .unwrap()
+            .with_margin(0.1)
+            .unwrap();
+        for enabled in [false, true] {
+            for (start, goal) in [
+                ([-4.0, 0.0], [4.0, 0.0]),
+                ([-4.0, 0.0], [4.0, 1.0]),
+                ([4.0, 0.0], [4.0, 0.0]),
+            ] {
+                let config = CbfNavConfig::default();
+                let expected =
+                    simulate_cbf_navigation(&filter, start, goal, &config, enabled).unwrap();
+                let (actual, trace) =
+                    simulate_cbf_navigation_with_trace(&filter, start, goal, &config, enabled)
+                        .unwrap();
+                assert_eq!(actual, expected);
+                assert_eq!(trace.len(), actual.steps);
+                assert_eq!(actual.path.len(), trace.len() + 1);
+                assert_eq!(
+                    trace.iter().filter(|s| s.intervened).count(),
+                    actual.interventions
+                );
+                for (i, step) in trace.iter().enumerate() {
+                    assert_eq!(step.position, actual.path[i]);
+                    assert_eq!(step.next, actual.path[i + 1]);
+                    for k in 0..2 {
+                        assert!(
+                            (step.next[k] - step.position[k] - config.dt * step.control[k]).abs()
+                                < 1e-12
+                        );
+                    }
+                    let mut desired = [
+                        config.goal_gain * (goal[0] - step.position[0]),
+                        config.goal_gain * (goal[1] - step.position[1]),
+                    ];
+                    let speed = desired[0].hypot(desired[1]);
+                    if speed > config.max_speed {
+                        for v in &mut desired {
+                            *v *= config.max_speed / speed;
+                        }
+                    }
+                    for (actual, expected) in step.nominal.into_iter().zip(desired) {
+                        assert!((actual - expected).abs() < 1e-12);
+                    }
+                    let applied = if enabled {
+                        filter.filter(step.position, step.nominal).control
+                    } else {
+                        step.nominal
+                    };
+                    assert_eq!(step.control, applied);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_rollouts_fail_before_recording_a_step() {
+        let filter = CbfSafetyFilter::new(vec![square(0.0, 0.0, 0.8)], 2.0, 0.2).unwrap();
+        for config in [
+            CbfNavConfig {
+                dt: 0.0,
+                ..Default::default()
+            },
+            CbfNavConfig {
+                max_speed: f64::NAN,
+                ..Default::default()
+            },
+        ] {
+            assert!(simulate_cbf_navigation_with_trace(
+                &filter,
+                [-4.0, 0.0],
+                [4.0, 0.0],
+                &config,
+                true
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn opposing_inflated_obstacles_expose_the_infeasible_fallback() {
+        let obstacles = vec![
+            CbfConvexObstacle2D::aabb(-1.0, 1.0, 0.1, 2.0).unwrap(),
+            CbfConvexObstacle2D::aabb(-1.0, 1.0, -2.0, -0.1).unwrap(),
+        ];
+        let filter = CbfSafetyFilter::new(obstacles, 2.0, 0.2)
+            .unwrap()
+            .with_margin(0.1)
+            .unwrap();
+        let result = filter.filter([0.0, 0.0], [1.4, 0.0]);
+        assert!(result.min_barrier < 0.0);
+        let slacks: Vec<_> = filter
+            .obstacles
+            .iter()
+            .map(|o| {
+                let (d, g) = o.barrier([0.0, 0.0]);
+                dot(g, result.control) + filter.alpha * (d - filter.robot_radius - filter.margin)
+            })
+            .collect();
+        assert!(
+            slacks.iter().any(|&v| v < -0.1),
+            "an infeasible fallback must not be reported as satisfying all barriers"
+        );
+        assert!(result.intervened);
     }
 
     #[test]
