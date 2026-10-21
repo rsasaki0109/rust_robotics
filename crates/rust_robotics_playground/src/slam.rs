@@ -2,6 +2,7 @@
 //! graph SLAM loop-closure replay, and live LiDAR SLAM driving.
 
 mod loop_inspector;
+mod mapping;
 mod scan_matching;
 
 use std::f64::consts::PI;
@@ -177,6 +178,7 @@ pub struct SlamDemo {
     last_advance: f64,
     loop_inspector: loop_inspector::Inspector,
     scan_lab: scan_matching::ScanLab,
+    mapping_lab: mapping::MappingLab,
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
@@ -406,6 +408,7 @@ impl Default for SlamDemo {
             last_advance: 0.0,
             loop_inspector: loop_inspector::Inspector::default(),
             scan_lab: scan_matching::ScanLab::default(),
+            mapping_lab: mapping::MappingLab::default(),
         }
     }
 }
@@ -440,9 +443,13 @@ impl SlamDemo {
         }
         self.apply_loop_inspector_query(query);
         self.scan_lab.apply_query(query);
+        self.mapping_lab.apply_query(query);
     }
 
     pub fn share_query(&self) -> String {
+        if self.mapping_lab.active {
+            return self.mapping_lab.share_query();
+        }
         if self.kind == SlamKind::Icp && self.scan_lab.active {
             return self.scan_lab.share_query();
         }
@@ -686,6 +693,15 @@ impl SlamDemo {
     }
 
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.mapping_lab.active {
+            self.mapping_lab.controls(ui);
+            return;
+        }
+        let r = ui.button("Open occupancy evidence lab");
+        if self.mapping_lab.button("inspect_lab", &r) {
+            self.mapping_lab.enter();
+            return;
+        }
         crate::ui_kit::section(ui, "Mode");
         ui.horizontal_wrapped(|ui| {
             if ui
@@ -810,6 +826,10 @@ impl SlamDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.mapping_lab.active {
+            self.mapping_lab.scene(ui);
+            return;
+        }
         if self.kind == SlamKind::Icp && self.scan_lab.active {
             self.scan_lab.scene(ui);
             return;

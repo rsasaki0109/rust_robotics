@@ -158,6 +158,11 @@ inspect actual nearest-neighbor pairs and accepted ICP iterations. Drag the
 initial pose and compare local failures, missing walls and repeated places.
 [Read the scan matching lab guide](docs/scan_matching_lab.md).
 
+[What makes a wall disappear?](https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&slam_view=mapping&mapping_event=change):
+replay actual LiDAR occupancy updates, compare farther returns with missing
+observations, move the sensor, and inspect how repeated evidence changes a cell.
+[Read the occupancy evidence lab guide](docs/occupancy_evidence_lab.md).
+
 [Coordinate four robots](https://rsasaki0109.github.io/rust_robotics/playground/?tab=admm&formation_view=inspect&noise=0.25&frame=17&playing=0):
 compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.

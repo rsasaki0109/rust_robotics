@@ -78,6 +78,23 @@ pub enum CellState {
     Occupied,
 }
 
+/// Evidence applied to a cell after resolving all beams in one scan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OccupancyEvidence {
+    Hit,
+    Miss,
+}
+
+/// One actual log-odds update. Each cell appears at most once per scan.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct OccupancyCellUpdate {
+    pub x: usize,
+    pub y: usize,
+    pub evidence: OccupancyEvidence,
+    pub before: f32,
+    pub after: f32,
+}
+
 /// A fixed-size log-odds occupancy grid over an axis-aligned world rectangle.
 #[derive(Debug, Clone)]
 pub struct OccupancyGrid {
@@ -209,6 +226,28 @@ impl OccupancyGrid {
     /// at most once per scan, and a hit wins over a miss, so a wall cell is
     /// not erased by neighboring beams that graze it.
     pub fn insert_scan(&mut self, pose: Pose2D, scan_body: &[Vector2<f64>]) {
+        self.insert_scan_observed(pose, scan_body, |_| {});
+    }
+
+    /// Integrates a sparse return scan and records the updates actually
+    /// applied, including clamping. Missing observations produce no updates;
+    /// use [`Self::insert_ranges`] for a full range scan with no-return beams.
+    pub fn insert_scan_with_trace(
+        &mut self,
+        pose: Pose2D,
+        scan_body: &[Vector2<f64>],
+    ) -> Vec<OccupancyCellUpdate> {
+        let mut trace = Vec::new();
+        self.insert_scan_observed(pose, scan_body, |update| trace.push(update));
+        trace
+    }
+
+    fn insert_scan_observed(
+        &mut self,
+        pose: Pose2D,
+        scan_body: &[Vector2<f64>],
+        observe: impl FnMut(OccupancyCellUpdate),
+    ) {
         let Some(start) = self.cell_of(Vector2::new(pose.x, pose.y)) else {
             return;
         };
@@ -220,7 +259,7 @@ impl OccupancyGrid {
             self.walk(&mut update, start, end);
             update.mark(end, HIT);
         }
-        self.apply(update);
+        self.apply_observed(update, observe);
     }
 
     /// Integrates a full 360° range scan taken at `pose` (beam order of
@@ -301,6 +340,10 @@ impl OccupancyGrid {
 
     /// Applies one scan's marks: +hit on hit cells, +miss on the others.
     fn apply(&mut self, update: ScanUpdate) {
+        self.apply_observed(update, |_| {});
+    }
+
+    fn apply_observed(&mut self, update: ScanUpdate, mut observe: impl FnMut(OccupancyCellUpdate)) {
         let clamp = self.config.clamp;
         for index in update.touched {
             let delta = if update.marks[index] == HIT {
@@ -309,7 +352,19 @@ impl OccupancyGrid {
                 self.config.miss
             };
             let cell = &mut self.log_odds[index];
+            let before = *cell;
             *cell = (*cell + delta).clamp(-clamp, clamp);
+            observe(OccupancyCellUpdate {
+                x: index % self.width,
+                y: index / self.width,
+                evidence: if update.marks[index] == HIT {
+                    OccupancyEvidence::Hit
+                } else {
+                    OccupancyEvidence::Miss
+                },
+                before,
+                after: *cell,
+            });
         }
     }
 
@@ -415,6 +470,85 @@ mod tests {
         let pose = Pose2D::new(0.0, 0.0, 0.3);
         let scan = ranges_to_points(&ray_cast_ranges(pose, &room(), 360, 10.0));
         OccupancyGrid::from_scans([(pose, scan.as_slice())], 0.5, OccupancyConfig::default())
+    }
+
+    #[test]
+    fn sparse_trace_matches_legacy_cells_transforms_and_clamps() {
+        let mut traced = OccupancyGrid::new(
+            Vector2::zeros(),
+            Vector2::new(8.0, 8.0),
+            OccupancyConfig {
+                resolution: 0.5,
+                ..OccupancyConfig::default()
+            },
+        );
+        let mut legacy = traced.clone();
+        let pose = Pose2D::new(2.25, 2.25, std::f64::consts::FRAC_PI_2);
+        let scan = [
+            Vector2::new(3.0, 0.0),
+            Vector2::new(2.0, -1.0),
+            Vector2::new(99.0, 0.0),
+        ];
+        for _ in 0..20 {
+            let before = traced.log_odds.clone();
+            let updates = traced.insert_scan_with_trace(pose, &scan);
+            legacy.insert_scan(pose, &scan);
+            assert_eq!(traced.log_odds, legacy.log_odds);
+            let mut seen = std::collections::BTreeSet::new();
+            for u in updates {
+                let index = u.y * 16 + u.x;
+                assert!(seen.insert(index));
+                assert_eq!(u.before, before[index]);
+                assert_eq!(u.after, traced.log_odds[index]);
+                let delta = if u.evidence == OccupancyEvidence::Hit {
+                    0.9
+                } else {
+                    -0.4
+                };
+                assert_eq!(u.after, (u.before + delta).clamp(-5.0, 5.0));
+            }
+            for (index, value) in before.iter().enumerate() {
+                if !seen.contains(&index) {
+                    assert_eq!(*value, traced.log_odds[index]);
+                }
+            }
+        }
+        assert_eq!(traced.log_odds(4, 10), 5.0);
+        let before = traced.log_odds.clone();
+        assert!(traced.insert_scan_with_trace(pose, &[]).is_empty());
+        assert!(traced
+            .insert_scan_with_trace(Pose2D::new(-1.0, 0.0, 0.0), &scan)
+            .is_empty());
+        assert_eq!(before, traced.log_odds);
+    }
+
+    #[test]
+    fn sparse_trace_resolves_hits_once_even_with_duplicates_and_grazing_beams() {
+        let mut grid = OccupancyGrid::new(
+            Vector2::zeros(),
+            Vector2::new(12.0, 8.0),
+            OccupancyConfig {
+                resolution: 0.5,
+                ..OccupancyConfig::default()
+            },
+        );
+        let pose = Pose2D::new(2.25, 4.25, 0.0);
+        let scan = [Vector2::new(4.0, 0.0), Vector2::new(7.0, 0.2)];
+        let mut duplicated = grid.clone();
+        for step in 1..=10 {
+            let trace = grid.insert_scan_with_trace(pose, &scan);
+            let other =
+                duplicated.insert_scan_with_trace(pose, &[scan[0], scan[1], scan[0], scan[1]]);
+            assert_eq!(trace, other);
+            assert_eq!(grid.log_odds, duplicated.log_odds);
+            let hits: Vec<_> = trace.iter().filter(|u| (u.x, u.y) == (12, 8)).collect();
+            assert_eq!(hits.len(), 1);
+            assert_eq!(hits[0].evidence, OccupancyEvidence::Hit);
+            assert!(hits[0].after >= hits[0].before);
+            if step >= 6 {
+                assert_eq!(hits[0].after, 5.0);
+            }
+        }
     }
 
     #[test]
