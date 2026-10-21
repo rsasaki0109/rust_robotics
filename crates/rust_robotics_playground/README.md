@@ -213,6 +213,12 @@ configuration (see the list above).
   velocity arrow, four contact faces, adjustable offset and friction, a sampled
   velocity-mode fan, and the next-step pose preview. Share preserves the pose
   and settings and starts a new trail. [Contact guide](../../docs/pushing_contact_lab.md).
+- **DWA velocity lab**, inside Controller Arena — inspect actual speed/turn
+  samples, predicted arcs, collision rejections and weighted costs. Compare
+  look-ahead, robot radius and preferences around point obstacles, including a
+  crossing point observed at each decision. Replay actual applied motion, edit
+  the goal or gold point, and share the exact paused experiment.
+  [Velocity lab guide](../../docs/dwa_velocity_lab.md).
 - **Controller Arena** — precomputed, deterministic Pure Pursuit / Stanley /
   LQR Steer traces under identical paths and dynamics. Inspect their applied
   turns, speed, and path error at the same time. Tap either graph to seek;

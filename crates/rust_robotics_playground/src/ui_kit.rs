@@ -239,6 +239,8 @@ mod tests {
             include_str!("admm_formation.rs"),
             include_str!("app.rs"),
             include_str!("controller_arena.rs"),
+            include_str!("controller_arena/dwa.rs"),
+            include_str!("controller_arena/dwa/view.rs"),
             include_str!("grid_planners.rs"),
             include_str!("localization.rs"),
             include_str!("parking.rs"),

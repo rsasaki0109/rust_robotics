@@ -22,6 +22,7 @@ import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkBeliefLab } from './belief_lab.mjs';
 import { checkScanMatching } from './scan_matching.mjs';
 import { checkSafetyLab } from './safety_lab.mjs';
+import { checkDwaLab } from './dwa_lab.mjs';
 import { checkExplorationLab } from './exploration_lab.mjs';
 import { checkMappingLab } from './mapping_lab.mjs';
 import { checkTimeLab } from './time_lab.mjs';
@@ -96,6 +97,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'dwa-lab', query: 'tab=arena&arena_view=dwa&dwa_at=0', dwaLab: true },
+  { name: 'dwa-lab-phone', query: 'tab=arena&arena_view=dwa&dwa_at=0', dwaLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'dwa-lab-compact', query: 'tab=arena&arena_view=dwa&dwa_at=0', dwaLab: true, viewport: { width: 900, height: 700 } },
+  { name: 'dwa-lab-slow', query: 'tab=arena&arena_view=dwa&dwa_at=0', dwaLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'exploration-lab', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true },
   { name: 'exploration-lab-phone', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'exploration-lab-compact', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true, viewport: { width: 900, height: 700 } },
@@ -233,6 +238,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.dwaLab) {
+    try { await checkDwaLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`DWA: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('dwa') && !['dwaCandidates','dwaPath','dwaControls','dwaWitnesses','dwaObstacles'].includes(key))))}`);
+    }
+  }
   if (test.explorationLab) {
     try { await checkExplorationLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

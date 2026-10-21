@@ -173,6 +173,12 @@ compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.
 [Read the formation lab guide](docs/formation_lab.md).
 
+[Which way should the robot turn?](https://rsasaki0109.github.io/rust_robotics/playground/?tab=arena&arena_view=dwa&dwa_at=8):
+inspect real DWA speed/turn samples and rejected arcs, change robot radius,
+look-ahead and cost weights, and replay local decisions around a wall or a
+crossing point obstacle. Share the exact paused experiment.
+[Read the velocity lab guide](docs/dwa_velocity_lab.md).
+
 [Inspect a safety filter](https://rsasaki0109.github.io/rust_robotics/playground/?tab=arena&arena_view=safety&safety_event=first):
 compare unfiltered and CBF motion, inspect the actual velocity constraints and
 correction, and explore reactive deadlock or an infeasible starting state.
