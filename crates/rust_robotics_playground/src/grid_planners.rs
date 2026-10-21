@@ -1,6 +1,7 @@
 //! Interactive grid planner demo: A*, Dijkstra, JPS, and Theta*.
 
 mod search;
+mod time;
 
 use web_time::Instant;
 
@@ -105,6 +106,7 @@ struct PlanSnapshot {
 
 #[derive(Debug, Clone)]
 pub struct GridPlannerDemo {
+    time: time::TimeLab,
     obstacles: Vec<Vec<bool>>,
     start: (usize, usize),
     goal: (usize, usize),
@@ -130,6 +132,7 @@ pub struct GridPlannerDemo {
 impl Default for GridPlannerDemo {
     fn default() -> Self {
         let mut demo = Self {
+            time: time::TimeLab::default(),
             obstacles: vec![vec![false; GRID_H]; GRID_W],
             start: (2, GRID_H / 2),
             goal: (GRID_W - 3, GRID_H / 2),
@@ -158,11 +161,27 @@ impl Default for GridPlannerDemo {
 }
 
 impl GridPlannerDemo {
+    pub(crate) fn time_active(&self) -> bool {
+        self.time.active
+    }
+
+    pub(crate) fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
+        self.time.begin_frame(ctx, active);
+    }
+
+    pub(crate) fn finish(&mut self, ctx: &egui::Context, active: bool) {
+        self.time.finish(ctx, active);
+    }
+
     pub(crate) fn run_guided_comparison(&mut self) {
         self.compare_all();
     }
 
     pub(crate) fn apply_share_query(&mut self, query: &str) {
+        self.time.apply_query(query);
+        if self.time.active {
+            return;
+        }
         if let Some(planner) =
             crate::share::value(query, "planner").and_then(PlannerKind::from_slug)
         {
@@ -187,6 +206,9 @@ impl GridPlannerDemo {
     }
 
     pub(crate) fn share_query(&self) -> String {
+        if self.time.active {
+            return self.time.share_query();
+        }
         format!(
             "tab=grid&planner={}&start={},{}&goal={},{}&map={}&search={}&search_step={}&search_playing={}&search_rate={}",
             self.planner.slug(),
@@ -561,6 +583,14 @@ impl GridPlannerDemo {
     }
 
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.time.active {
+            self.time.controls(ui);
+            return;
+        }
+        let inspect = ui.button("Time-aware routes: wait or detour?");
+        if self.time.button("inspect", &inspect) {
+            self.time.activate();
+        }
         crate::ui_kit::section(ui, "Planner");
         ui.horizontal_wrapped(|ui| {
             for kind in PlannerKind::ALL {
@@ -669,6 +699,10 @@ impl GridPlannerDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.time.active {
+            self.time.scene(ui);
+            return;
+        }
         self.search.advance(ctx.input(|i| i.time));
         if self.search.playing {
             ctx.request_repaint();

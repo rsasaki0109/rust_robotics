@@ -69,7 +69,8 @@ the playground.
 All tabs encode their important configuration in share links:
 
 - Grid Planners: planner, endpoints, obstacle map, search visibility, expansion step,
-  playback state, and viewing rate
+  playback state, and viewing rate; the [time-aware route lab](../../docs/time_aware_route_lab.md)
+  also shares gate timing, edited walls, selected cell, replay tick and future visibility
 - Sampling Planners: planner, start, goal, and circular obstacles; RRT* also
   shares seed, iteration, pause/play state, and replay rate with full map precision
 - Parking: the car's start pose and the goal pose
@@ -135,6 +136,9 @@ configuration (see the list above).
   loads. A ground contact or time limit is displayed separately from finishing.
   [Design, model limits, and recording instructions](../../docs/drone_race_project.md).
 - **Grid Planners** — A\*, Dijkstra, JPS, Theta\* with click-to-edit obstacles.
+  **Time-aware routes** compares actual SIPP paths with and without a known
+  gate reservation: wait, detour, or report no route within the horizon. Edit
+  timing and walls, inspect a cell's safe intervals, and share the exact tick.
   Replay actual A\* and Dijkstra expansions, pause, single-step, or seek before
   revealing the final route. Detour and No route provide editable examples;
   sharing restores the same expanded cells and paused step. All four use the

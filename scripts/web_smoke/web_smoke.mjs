@@ -22,6 +22,7 @@ import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkBeliefLab } from './belief_lab.mjs';
 import { checkScanMatching } from './scan_matching.mjs';
 import { checkSafetyLab } from './safety_lab.mjs';
+import { checkTimeLab } from './time_lab.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -93,6 +94,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'time-lab', query: 'tab=grid&grid_view=time&time_at=0', timeLab: true },
+  { name: 'time-lab-phone', query: 'tab=grid&grid_view=time&time_at=0', timeLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'time-lab-compact', query: 'tab=grid&grid_view=time&time_at=0', timeLab: true, viewport: { width: 900, height: 700 } },
+  { name: 'time-lab-slow', query: 'tab=grid&grid_view=time&time_at=0', timeLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'safety-lab', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true },
   { name: 'safety-lab-phone', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'safety-lab-compact', query: 'tab=arena&arena_view=safety&safety_at=0', safetyLab: true, viewport: { width: 900, height: 700 } },
@@ -218,6 +223,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.timeLab) {
+    try { await checkTimeLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`Time: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('time') && !['timeRuns','timeWitnesses','timeIntervals'].includes(key))))}`);
+    }
+  }
   if (test.safetyLab) {
     try { await checkSafetyLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

@@ -168,6 +168,11 @@ compare unfiltered and CBF motion, inspect the actual velocity constraints and
 correction, and explore reactive deadlock or an infeasible starting state.
 [Read the safety filter lab guide](docs/safety_filter_lab.md).
 
+[Wait or take the detour?](https://rsasaki0109.github.io/rust_robotics/playground/?tab=grid&grid_view=time&time_event=first):
+change a gate's closing time, draw walls, and compare time-unaware and SIPP
+routes on one clock. Inspect actual safe intervals, waits and deadline failures.
+[Read the time-aware route lab guide](docs/time_aware_route_lab.md).
+
 [Look inside an MPPI decision](https://rsasaki0109.github.io/rust_robotics/playground/?tab=mppi&mppi_inspect=1&mppi_case=circle&mppi_at=40):
 select a sampled future, inspect its cost and weight, and compare it with the
 actual weighted control plan. Change temperature over identical candidates.
