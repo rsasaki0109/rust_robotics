@@ -215,6 +215,8 @@ impl SlamDemo {
     }
 
     pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
+        self.scan_lab
+            .begin_frame(ctx, active && self.kind == SlamKind::Icp);
         let compare = self.kind == SlamKind::LoopClosure && self.loop_inspector.compare;
         if let Some(run) = &self.loop_runs[self.loop_scenario.index()] {
             self.loop_inspector.tick(

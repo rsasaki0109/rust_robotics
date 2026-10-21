@@ -29,7 +29,7 @@ pub mod visual_frontend;
 
 // Re-exports
 pub use ekf_slam::EKFSLAMState;
-pub use icp_matching::ICPResult;
+pub use icp_matching::{ICPResult, ICPTraceFrame};
 pub use lidar_graph_slam::{LidarGraphSlam, LidarGraphSlamConfig, LoopClosure};
 pub use robust_icp::{RobustICPResult, RobustIcp2D, Transform2D};
 pub use scan_to_map::{MatchStatus, ScanToMapConfig, ScanToMapMatcher, ScanToMapUpdate};

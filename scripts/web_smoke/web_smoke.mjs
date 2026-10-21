@@ -20,6 +20,7 @@ import { checkFormationLab } from './formation_lab.mjs';
 import { checkMppiInspector } from './mppi_inspector.mjs';
 import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkBeliefLab } from './belief_lab.mjs';
+import { checkScanMatching } from './scan_matching.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
 import { checkEditorDesktop, checkEditorPhone } from './drone_editor.mjs';
 import { checkPhotoDesktop, checkPhotoPhone, checkPhotoQuery } from './drone_photo.mjs';
@@ -91,6 +92,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'scan-matching', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true },
+  { name: 'scan-matching-phone', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'scan-matching-compact', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true, viewport: { width: 900, height: 700 } },
+  { name: 'scan-matching-slow', query: 'tab=slam&algorithm=icp&icp_view=inspect', scanMatching: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'belief-lab', query: 'tab=localization&loc_view=belief&belief_at=0', beliefLab: true },
   { name: 'belief-lab-phone', query: 'tab=localization&loc_view=belief&belief_at=0', beliefLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'belief-lab-compact', query: 'tab=localization&loc_view=belief&belief_at=0', beliefLab: true, viewport: { width: 900, height: 700 } },
@@ -208,6 +213,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.scanMatching) {
+    try { await checkScanMatching(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`ICP: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('icp') && !['icpSource','icpTarget','icpPoints','icpWitnesses','icpBars'].includes(key))))}`);
+    }
+  }
   if (test.beliefLab) {
     try { await checkBeliefLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

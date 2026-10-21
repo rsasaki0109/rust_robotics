@@ -77,6 +77,14 @@ fn divide<T: Float, const D: usize>(
     while k > 0 && data[indices[k]][dim] == data[indices[k - 1]][dim] {
         k -= 1;
     }
+    // A tied minimum can consume the entire left partition. In particular,
+    // a three-point corner can do this on every alternating axis, leaving
+    // the same points on the stack forever and growing heap-indexed storage.
+    // Split that tie by rank instead. Both children may touch the boundary;
+    // search already checks the other side when its distance bound is zero.
+    if k == 0 {
+        k = indices.len() / 2;
+    }
     let indices_r = indices.split_off(k);
     let indices_l = indices.clone();
     (data[indices_r[0]][dim], indices_l, indices_r)
@@ -398,6 +406,75 @@ mod tests {
         data.iter()
             .map(|&s| s.into())
             .collect::<Vec<SVector<f64, 2>>>()
+    }
+
+    #[test]
+    fn tied_corner_splits_terminate_and_search_both_sides_of_the_boundary() {
+        let data = to_vecs(&[[0., 0.], [0., 1.], [1., 0.]]);
+        for leaf_size in [1, 2] {
+            let tree = KdTree::new(&data, leaf_size);
+            assert!(
+                *tree.leaves.keys().max().unwrap() <= 7,
+                "three points must not build an unbounded tree"
+            );
+            for x in -4..=8 {
+                for y in -4..=8 {
+                    let q = SVector::<f64, 2>::new(x as f64 * 0.25, y as f64 * 0.25);
+                    let (index, distance) = tree.search(&q);
+                    let expected = data
+                        .iter()
+                        .map(|p| squared_euclidean(&q, p))
+                        .fold(f64::INFINITY, f64::min);
+                    assert_eq!(distance, expected);
+                    assert_eq!(squared_euclidean(&q, &data[index.unwrap()]), expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn axis_aligned_wall_clouds_match_brute_force_in_two_and_three_dimensions() {
+        let mut data = Vec::new();
+        for i in -8..=8 {
+            data.push(SVector::<f64, 2>::new(i as f64 * 0.5, 0.));
+            data.push(SVector::<f64, 2>::new(0., i as f64 * 0.5));
+        }
+        for leaf_size in [1, 2, 4, 8] {
+            let tree = KdTree::new(&data, leaf_size);
+            for x in -7..=7 {
+                for y in -7..=7 {
+                    let q = SVector::<f64, 2>::new(x as f64 * 0.5, y as f64 * 0.5);
+                    let (index, distance) = tree.search(&q);
+                    let expected = data
+                        .iter()
+                        .map(|p| squared_euclidean(&q, p))
+                        .fold(f64::INFINITY, f64::min);
+                    assert_eq!(distance, expected);
+                    assert_eq!(squared_euclidean(&q, &data[index.unwrap()]), expected);
+                }
+            }
+        }
+        let data = [
+            SVector::<f64, 3>::new(0., 0., 0.),
+            SVector::<f64, 3>::new(1., 0., 0.),
+            SVector::<f64, 3>::new(0., 1., 0.),
+            SVector::<f64, 3>::new(0., 0., 1.),
+        ];
+        let tree = KdTree::new(&data, 1);
+        for x in -2..=2 {
+            for y in -2..=2 {
+                for z in -2..=2 {
+                    let q = SVector::<f64, 3>::new(x as f64 * 0.5, y as f64 * 0.5, z as f64 * 0.5);
+                    let (index, distance) = tree.search(&q);
+                    let expected = data
+                        .iter()
+                        .map(|p| squared_euclidean(&q, p))
+                        .fold(f64::INFINITY, f64::min);
+                    assert_eq!(distance, expected);
+                    assert_eq!(squared_euclidean(&q, &data[index.unwrap()]), expected);
+                }
+            }
+        }
     }
 
     #[test]

@@ -32,6 +32,8 @@ export async function checkShowcase(page, home, shots, name) {
   const beliefLink=new URL(await page.locator('.tile[data-experiment="localization"]').getAttribute('href'),home);
   assert.equal(beliefLink.searchParams.get('loc_view'),'belief');
   assert.equal(beliefLink.searchParams.get('belief_event'),'resample');
+  const scanLink=new URL(await page.locator('#play-scan-matching').getAttribute('href'),home);
+  assert.equal(scanLink.pathname,'/rust_robotics/playground/');assert.equal(scanLink.searchParams.get('tab'),'slam');assert.equal(scanLink.searchParams.get('algorithm'),'icp');assert.equal(scanLink.searchParams.get('icp_view'),'inspect');
   await imageLoaded(page);
   await fits(page);
   if (shots) {

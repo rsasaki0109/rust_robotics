@@ -48,6 +48,46 @@ pub struct ICPResult {
     pub converged: bool,
 }
 
+/// One accepted ICP alignment, including the initial alignment. The points,
+/// nearest-neighbor indices and error all describe this same state, before
+/// the next rigid fit. Rejected divergent updates are not included.
+#[derive(Debug, Clone)]
+pub struct ICPTraceFrame {
+    pub points: DMatrix<f64>,
+    /// Homogeneous transform from the original current points to `points`.
+    pub transform: DMatrix<f64>,
+    /// Destination index for each current point (many-to-one is allowed).
+    pub correspondences: Vec<usize>,
+    pub mean_error: f64,
+}
+
+/// Run the same solver as [`icp_matching`], recording its accepted states.
+/// Inputs have the same requirements: nonempty finite 2xN point matrices.
+/// Frame zero is the input cloud with identity transform;
+/// the last frame describes the returned result. The legacy `iterations`
+/// count also includes an attempted assessment that rejects a divergent fit.
+pub fn icp_matching_with_trace(
+    previous_points: &DMatrix<f64>,
+    current_points: &DMatrix<f64>,
+) -> (ICPResult, Vec<ICPTraceFrame>) {
+    let mut frames = Vec::new();
+    let result = icp_matching_observed(
+        previous_points,
+        current_points,
+        |points, h, pairs, error| {
+            frames.push(ICPTraceFrame {
+                points: points.clone(),
+                transform: h
+                    .cloned()
+                    .unwrap_or_else(|| DMatrix::identity(points.nrows() + 1, points.nrows() + 1)),
+                correspondences: pairs.to_vec(),
+                mean_error: error / points.ncols().max(1) as f64,
+            });
+        },
+    );
+    (result, frames)
+}
+
 /// Main ICP matching function
 ///
 /// # Arguments
@@ -57,6 +97,14 @@ pub struct ICPResult {
 /// # Returns
 /// * `ICPResult` containing rotation matrix, translation vector, and convergence info
 pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64>) -> ICPResult {
+    icp_matching_observed(previous_points, current_points, |_, _, _, _| {})
+}
+
+fn icp_matching_observed(
+    previous_points: &DMatrix<f64>,
+    current_points: &DMatrix<f64>,
+    mut observe: impl FnMut(&DMatrix<f64>, Option<&DMatrix<f64>>, &[usize], f64),
+) -> ICPResult {
     let mut h_matrix: Option<DMatrix<f64>> = None;
     let mut pre_error = f64::INFINITY;
     let mut initial_error = f64::NAN;
@@ -83,6 +131,7 @@ pub fn icp_matching(previous_points: &DMatrix<f64>, current_points: &DMatrix<f64
             }
             break;
         }
+        observe(&current_pts, h_matrix.as_ref(), &indexes, error);
         let d_error = pre_error - error;
         pre_error = error;
         if d_error.abs() <= EPS {
@@ -404,6 +453,77 @@ mod tests {
     use super::*;
     use nalgebra::Vector2;
     use rand::{rngs::StdRng, Rng, SeedableRng};
+
+    #[test]
+    fn tracing_preserves_the_legacy_solver_result_and_input_clouds() {
+        let target = generate_seeded_2d_points(36, 8.0, 81);
+        let source = apply_2d_transformation(&target, &Vector2::new(0.3, -0.2), 0.15);
+        let saved = source.clone();
+        let expected = icp_matching(&target, &source);
+        let (actual, frames) = icp_matching_with_trace(&target, &source);
+        assert_eq!(source, saved);
+        assert_eq!(actual.rotation, expected.rotation);
+        assert_eq!(actual.translation, expected.translation);
+        assert_eq!(actual.iterations, expected.iterations);
+        assert_eq!(actual.final_error, expected.final_error);
+        assert_eq!(actual.converged, expected.converged);
+        assert_eq!(frames[0].points, source);
+        assert_eq!(frames[0].transform, DMatrix::identity(3, 3));
+        let last = frames.last().unwrap();
+        assert!((last.mean_error - actual.final_error_mean).abs() < 1e-12);
+        assert_eq!(last.transform.view((0, 0), (2, 2)), actual.rotation);
+        assert_eq!(last.transform.view((0, 2), (2, 1)), actual.translation);
+    }
+
+    #[test]
+    fn every_traced_state_pairs_the_actual_transformed_points_with_nearest_targets() {
+        let target = generate_seeded_2d_points(48, 9.0, 7);
+        let source = apply_2d_transformation(&target, &Vector2::new(0.6, -0.4), 0.22);
+        let (_, frames) = icp_matching_with_trace(&target, &source);
+        assert!(frames.len() > 2);
+        for f in &frames {
+            assert_eq!(f.correspondences.len(), source.ncols());
+            let mut total = 0.0;
+            for (j, &i) in f.correspondences.iter().enumerate() {
+                let point =
+                    &f.transform * DVector::from_vec(vec![source[(0, j)], source[(1, j)], 1.0]);
+                assert!((point[0] - f.points[(0, j)]).abs() < 1e-10);
+                assert!((point[1] - f.points[(1, j)]).abs() < 1e-10);
+                let d = (f.points.column(j) - target.column(i)).norm();
+                let min = (0..target.ncols())
+                    .map(|k| (f.points.column(j) - target.column(k)).norm())
+                    .fold(f64::INFINITY, f64::min);
+                assert!((d - min).abs() < 1e-12);
+                total += d;
+            }
+            assert!((total / source.ncols() as f64 - f.mean_error).abs() < 1e-12);
+            assert!((f.transform.view((0, 0), (2, 2)).determinant() - 1.0).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn rejected_divergent_fits_do_not_appear_in_the_trace_or_final_transform() {
+        let mut rejected = 0;
+        for seed in 0..64 {
+            let target = generate_seeded_2d_points(24, 10.0, seed);
+            let source = apply_2d_transformation(&target, &Vector2::new(1.1, -0.7), 0.4);
+            let (result, frames) = icp_matching_with_trace(&target, &source);
+            assert!(frames.len() == result.iterations || frames.len() + 1 == result.iterations);
+            if frames.len() < result.iterations {
+                rejected += 1;
+            }
+            for pair in frames.windows(2) {
+                assert!(pair[1].mean_error <= pair[0].mean_error + EPS / source.ncols() as f64);
+            }
+            let last = frames.last().unwrap();
+            assert!((last.mean_error - result.final_error_mean).abs() < 1e-12);
+            for j in 0..source.ncols() {
+                let p = &result.rotation * source.column(j) + &result.translation;
+                assert!((p - last.points.column(j)).norm() < 1e-10);
+            }
+        }
+        assert!(rejected > 0, "fixtures must exercise rollback");
+    }
 
     #[test]
     fn motion_estimation_returns_a_rotation_not_a_reflection() {
