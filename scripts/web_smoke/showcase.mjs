@@ -29,6 +29,9 @@ async function imageLoaded(page) {
 export async function checkShowcase(page, home, shots, name) {
   await page.locator('[data-experiment-filter="all"][aria-pressed="true"]').waitFor();
   assert.deepEqual(await page.locator('.tile').evaluateAll((nodes) => nodes.map((node) => node.dataset.experiment)), ids);
+  const beliefLink=new URL(await page.locator('.tile[data-experiment="localization"]').getAttribute('href'),home);
+  assert.equal(beliefLink.searchParams.get('loc_view'),'belief');
+  assert.equal(beliefLink.searchParams.get('belief_event'),'resample');
   await imageLoaded(page);
   await fits(page);
   if (shots) {

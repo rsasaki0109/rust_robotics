@@ -171,10 +171,19 @@ impl ParticleFilterLocalizer {
         initial_state: PFState,
         config: ParticleFilterConfig,
     ) -> RoboticsResult<Self> {
+        Self::try_with_initial_state_and_rng(initial_state, config, &mut rand::rng())
+    }
+
+    /// Initialize the same particle distribution with a caller-owned RNG.
+    /// Reusing its seed also makes predictions and resampling reproducible.
+    pub fn try_with_initial_state_and_rng<R: Rng + ?Sized>(
+        initial_state: PFState,
+        config: ParticleFilterConfig,
+        rng: &mut R,
+    ) -> RoboticsResult<Self> {
         config.validate()?;
         Self::validate_state(&initial_state)?;
 
-        let mut rng = rand::rng();
         let n = config.n_particles;
         let mut particles = Vec::with_capacity(n);
 
@@ -253,9 +262,18 @@ impl ParticleFilterLocalizer {
 
     /// Prediction step with validation
     pub fn try_predict_with_control(&mut self, control: &PFControl) -> RoboticsResult<()> {
+        self.try_predict_with_control_and_rng(control, &mut rand::rng())
+    }
+
+    /// Predict using a caller-owned RNG; the motion and noise models are
+    /// identical to [`Self::try_predict_with_control`].
+    pub fn try_predict_with_control_and_rng<R: Rng + ?Sized>(
+        &mut self,
+        control: &PFControl,
+        rng: &mut R,
+    ) -> RoboticsResult<()> {
         Self::validate_control(control)?;
 
-        let mut rng = rand::rng();
         let normal_v = if self.config.velocity_noise > 0.0 {
             Some(Normal::new(0.0, self.config.velocity_noise).map_err(|_| {
                 RoboticsError::InvalidParameter(
@@ -279,11 +297,11 @@ impl ParticleFilterLocalizer {
         for particle in &mut self.particles {
             let v_noise = normal_v
                 .as_ref()
-                .map(|normal| normal.sample(&mut rng))
+                .map(|normal| normal.sample(&mut *rng))
                 .unwrap_or(0.0);
             let yaw_noise = normal_yaw
                 .as_ref()
-                .map(|normal| normal.sample(&mut rng))
+                .map(|normal| normal.sample(&mut *rng))
                 .unwrap_or(0.0);
 
             let v_noisy = control[0] + v_noise;
@@ -338,12 +356,23 @@ impl ParticleFilterLocalizer {
 
     /// Resample particles if effective particle count is low
     pub fn resample(&mut self) {
+        self.resample_with_rng(&mut rand::rng());
+    }
+
+    /// Conditionally perform systematic resampling with a caller-owned RNG.
+    /// Returns each output particle's index in the input population, or `None`
+    /// if the effective count meets the configured threshold. The returned
+    /// ancestry describes the actual copies, before weights become uniform.
+    pub fn resample_with_rng<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Option<Vec<usize>> {
         let n_eff = self.calc_n_eff();
         let threshold = self.config.n_particles as f64 * self.config.resample_threshold;
 
         if n_eff < threshold {
-            self.resample_particles();
+            let ancestors = self.resample_particles_with_rng(rng);
             self.refresh_cache();
+            Some(ancestors)
+        } else {
+            None
         }
     }
 
@@ -443,11 +472,15 @@ impl ParticleFilterLocalizer {
 
     /// Systematic resampling: one random offset, `n` evenly spaced
     /// pointers into the cumulative weights, walked in a single pass.
+    #[cfg(test)]
     fn resample_particles(&mut self) {
-        let mut rng = rand::rng();
+        self.resample_particles_with_rng(&mut rand::rng());
+    }
+
+    fn resample_particles_with_rng<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Vec<usize> {
         let n = self.config.n_particles;
         if self.particles.is_empty() || n == 0 {
-            return;
+            return Vec::new();
         }
         let total: f64 = self.particles.iter().map(|p| p.w).sum();
         let step = if total > 0.0 { total / n as f64 } else { 0.0 };
@@ -455,6 +488,7 @@ impl ParticleFilterLocalizer {
         let mut index = 0;
         let mut cumulative = self.particles[0].w;
         let mut new_particles = Vec::with_capacity(n);
+        let mut ancestors = Vec::with_capacity(n);
         for _ in 0..n {
             // Rounding can leave the last pointer just past the total:
             // stay on the last particle then.
@@ -465,10 +499,12 @@ impl ParticleFilterLocalizer {
             let mut new_particle = self.particles[index].clone();
             new_particle.w = 1.0 / n as f64;
             new_particles.push(new_particle);
+            ancestors.push(index);
             pointer += step;
         }
 
         self.particles = new_particles;
+        ancestors
     }
 
     /// Gaussian likelihood function
@@ -574,6 +610,85 @@ impl StateEstimator for ParticleFilterLocalizer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn seeded_initialization_prediction_and_resampling_reproduce_exactly() {
+        use rand::{rngs::StdRng, SeedableRng};
+        let run = || {
+            let mut rng = StdRng::seed_from_u64(17);
+            let mut pf = ParticleFilterLocalizer::try_with_initial_state_and_rng(
+                PFState::new(1.0, 2.0, 0.3, 0.0),
+                ParticleFilterConfig::default(),
+                &mut rng,
+            )
+            .unwrap();
+            let mut history = Vec::new();
+            for _ in 0..12 {
+                pf.try_predict_with_control_and_rng(&PFControl::new(0.8, 0.2), &mut rng)
+                    .unwrap();
+                pf.try_update_with_observations(&vec![(2.2, 0.0, 0.0), (2.5, 3.0, 3.0)])
+                    .unwrap();
+                let parents = pf.resample_with_rng(&mut rng);
+                history.push((
+                    pf.particles
+                        .iter()
+                        .map(|p| [p.x, p.y, p.yaw, p.v, p.w])
+                        .collect::<Vec<_>>(),
+                    parents,
+                ));
+            }
+            history
+        };
+        assert_eq!(run(), run());
+    }
+
+    #[test]
+    fn reported_resampling_parents_are_the_actual_copies() {
+        use rand::{rngs::StdRng, SeedableRng};
+        let mut pf = two_particle_filter();
+        pf.config.resample_threshold = 1.0;
+        pf.particles[0].w = 0.0;
+        pf.particles[1].w = 1.0;
+        let source = pf.particles.clone();
+        let parents = pf.resample_with_rng(&mut StdRng::seed_from_u64(7)).unwrap();
+        assert_eq!(parents, vec![1, 1]);
+        for (p, &a) in pf.particles.iter().zip(&parents) {
+            assert_eq!(p.to_state(), source[a].to_state());
+            assert_eq!(p.w, 0.5);
+        }
+        assert_eq!(pf.estimate(), source[1].to_state());
+        assert_eq!(pf.calc_covariance(), Matrix4::zeros());
+    }
+
+    #[test]
+    fn skipped_resampling_keeps_particles_and_rng_unchanged() {
+        use rand::{rngs::StdRng, SeedableRng};
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut control = rng.clone();
+        let mut pf = two_particle_filter();
+        pf.config.resample_threshold = 1.0;
+        assert_eq!(pf.resample_with_rng(&mut rng), None);
+        assert_eq!(rng.random::<u64>(), control.random::<u64>());
+        assert_eq!(pf.particles[0].x, 1.0);
+        assert_eq!(pf.particles[1].x, 2.0);
+        assert!(pf.particles.iter().all(|p| p.w == 0.5));
+    }
+
+    #[test]
+    fn invalid_seeded_prediction_consumes_no_randomness_or_state() {
+        use rand::{rngs::StdRng, SeedableRng};
+        let mut rng = StdRng::seed_from_u64(9);
+        let mut control = rng.clone();
+        let mut pf = two_particle_filter();
+        let estimate = pf.estimate();
+        assert!(pf
+            .try_predict_with_control_and_rng(&PFControl::new(f64::NAN, 0.0), &mut rng)
+            .is_err());
+        assert_eq!(pf.estimate(), estimate);
+        assert_eq!(pf.particles[0].x, 1.0);
+        assert_eq!(pf.particles[1].x, 2.0);
+        assert_eq!(rng.random::<u64>(), control.random::<u64>());
+    }
 
     /// Two particles on a line with one landmark at the origin.
     fn two_particle_filter() -> ParticleFilterLocalizer {

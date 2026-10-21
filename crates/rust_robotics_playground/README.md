@@ -37,7 +37,7 @@ interactive demos by what a visitor wants to try:
 | Topic | Experiments |
 | --- | --- |
 | Planning | Grid planners, sampling planners, parking |
-| Localization & SLAM | Localization, live LiDAR SLAM and classical SLAM replays |
+| Localization & SLAM | Belief update lab, live PF/EKF, LiDAR SLAM and classical SLAM replays |
 | Control | Controller arena, MPPI, ADMM formation |
 | Manipulation & flight | Arm lab, box pushing, drone race |
 
@@ -73,7 +73,7 @@ All tabs encode their important configuration in share links:
 - Sampling Planners: planner, start, goal, and circular obstacles; RRT* also
   shares seed, iteration, pause/play state, and replay rate with full map precision
 - Parking: the car's start pose and the goal pose
-- Localization: filter and measurement-noise scale
+- Localization: live filter and measurement-noise scale; the [belief update lab](../../docs/localization_belief_lab.md) also restores seeded hypotheses, landmark evidence, phase and selected particle
 - SLAM: algorithm, timeline frame, and playback state (LiDAR loop closure:
   map view and scenario; Drive: world, drawn walls, error sliders, people)
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
@@ -148,7 +148,7 @@ configuration (see the list above).
 - **Parking** — Hybrid A\* with a rectangular car footprint and Reeds-Shepp
   shots: drag out a goal pose and the car drives the plan, reversing where it
   has to.
-- **Localization** — PF / EKF with arrow-key driving and noise slider.
+- **Localization** — Seeded belief update lab with inspectable prediction, weights and resampling parents, plus live PF / EKF driving.
 - **SLAM** — EKF-SLAM, FastSLAM 1.0, ICP scan matching on a canned loop, and
   a **loop closure lab** with paired front-end/pose-graph maps at one recorded
   update. Step across accepted or false loops, inspect cumulative node shifts

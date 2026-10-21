@@ -684,10 +684,10 @@ const playTiles = [
   },
   {
     id: "localization", topic: "perception",
-    title: "Localization",
-    text: "Pause real sensor observations. Inspect range circles with PF or position fixes with EKF, one step at a time.",
-    image: "assets/playground/localization.png",
-    link: "playground/?tab=localization&noise=3"
+    title: "Belief update lab",
+    text: "Step through prediction, range weighting and resampling. Change landmark evidence and inspect which hypotheses survive.",
+    image: "assets/playground/belief-lab.png",
+    link: "playground/?tab=localization&loc_view=belief&belief_event=resample"
   },
   {
     id: "slam", topic: "perception",
