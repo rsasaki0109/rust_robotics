@@ -175,7 +175,7 @@ impl PlaygroundApp {
         let Some(step) = self.onboarding_step else {
             return;
         };
-        if self.tab != PlaygroundTab::GridPlanners {
+        if self.tab != PlaygroundTab::GridPlanners || self.grid_demo.time_active() {
             return;
         }
         egui::Frame::new()
@@ -445,6 +445,8 @@ impl PlaygroundApp {
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.grid_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::GridPlanners);
         self.controller_arena_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::ControllerArena);
         self.localization_demo
@@ -520,6 +522,8 @@ impl eframe::App for PlaygroundApp {
         }
         self.controller_arena_demo
             .finish(ctx, self.tab == PlaygroundTab::ControllerArena);
+        self.grid_demo
+            .finish(ctx, self.tab == PlaygroundTab::GridPlanners);
         self.arm_demo.finish(ctx, self.tab == PlaygroundTab::Arm);
         self.slam_demo.finish(ctx, self.tab == PlaygroundTab::Slam);
         self.admm_demo
