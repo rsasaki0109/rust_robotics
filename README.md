@@ -153,6 +153,11 @@ compare the same scans at front-end and pose-graph poses, step through actual
 loop events, and explore false matches in repeated corridors.
 [Read the SLAM loop lab guide](docs/slam_loop_lab.md).
 
+[Match a LiDAR scan point by point](https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&algorithm=icp&icp_view=inspect):
+inspect actual nearest-neighbor pairs and accepted ICP iterations. Drag the
+initial pose and compare local failures, missing walls and repeated places.
+[Read the scan matching lab guide](docs/scan_matching_lab.md).
+
 [Coordinate four robots](https://rsasaki0109.github.io/rust_robotics/playground/?tab=admm&formation_view=inspect&noise=0.25&frame=17&playing=0):
 compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.

@@ -2,6 +2,7 @@
 //! graph SLAM loop-closure replay, and live LiDAR SLAM driving.
 
 mod loop_inspector;
+mod scan_matching;
 
 use std::f64::consts::PI;
 
@@ -175,6 +176,7 @@ pub struct SlamDemo {
     /// Input time of the last replay step \[s\].
     last_advance: f64,
     loop_inspector: loop_inspector::Inspector,
+    scan_lab: scan_matching::ScanLab,
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
@@ -403,6 +405,7 @@ impl Default for SlamDemo {
             drive: SlamDriveDemo::default(),
             last_advance: 0.0,
             loop_inspector: loop_inspector::Inspector::default(),
+            scan_lab: scan_matching::ScanLab::default(),
         }
     }
 }
@@ -436,9 +439,13 @@ impl SlamDemo {
             self.drive.apply_share_query(query);
         }
         self.apply_loop_inspector_query(query);
+        self.scan_lab.apply_query(query);
     }
 
     pub fn share_query(&self) -> String {
+        if self.kind == SlamKind::Icp && self.scan_lab.active {
+            return self.scan_lab.share_query();
+        }
         if self.kind == SlamKind::Drive {
             return format!(
                 "tab=slam&algorithm=drive&{}",
@@ -712,6 +719,18 @@ impl SlamDemo {
             return;
         }
 
+        if self.kind == SlamKind::Icp {
+            if self.scan_lab.active {
+                self.scan_lab.controls(ui);
+                return;
+            }
+            let r = ui.button("Open scan matching lab");
+            if self.scan_lab.button("inspect", &r) {
+                self.scan_lab.enter();
+                return;
+            }
+        }
+
         if self.kind == SlamKind::LoopClosure {
             if self.loop_inspector.compare {
                 self.loop_controls(ctx, ui);
@@ -791,6 +810,10 @@ impl SlamDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.kind == SlamKind::Icp && self.scan_lab.active {
+            self.scan_lab.scene(ui);
+            return;
+        }
         if self.kind == SlamKind::LoopClosure && self.loop_inspector.compare {
             self.loop_scene(ctx, ui);
             return;
