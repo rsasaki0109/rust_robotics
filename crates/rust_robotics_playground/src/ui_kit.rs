@@ -245,6 +245,8 @@ mod tests {
             include_str!("pushing.rs"),
             include_str!("sampling.rs"),
             include_str!("slam.rs"),
+            include_str!("slam/mapping.rs"),
+            include_str!("slam/mapping/view.rs"),
             include_str!("slam_drive.rs"),
             include_str!("ui_kit.rs"),
         ] {

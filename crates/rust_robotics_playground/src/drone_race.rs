@@ -1515,7 +1515,7 @@ impl DroneRaceDemo {
             self.toggle_playing();
         }
         if self.flight.is_manual() {
-            self.publish_pad(rect);
+            self.publish_pad(ctx, rect);
         }
         self.publish_status();
         let preparing_result = self.flight.last_index() > 0
@@ -1819,13 +1819,20 @@ impl DroneRaceDemo {
     fn publish_editor_entry(&self, _rect: Rect) {}
 
     #[cfg(target_arch = "wasm32")]
-    fn publish_pad(&self, rect: Rect) {
+    fn publish_pad(&self, ctx: &egui::Context, rect: Rect) {
         let Some(canvas) = web_sys::window()
             .and_then(|w| w.document())
             .and_then(|d| d.get_element_by_id("rust_robotics_playground"))
         else {
             return;
         };
+        // The logical viewport used for this frame's control layout. A
+        // browser resize can precede the next egui paint by several frames.
+        let screen = ctx.screen_rect();
+        let _ = canvas.set_attribute(
+            "data-drone-pad-viewport",
+            &format!("[{},{}]", screen.width(), screen.height()),
+        );
         let names = ["forward", "back", "left", "right", "up", "down"];
         let fields = pad::buttons(rect)
             .into_iter()
@@ -1856,7 +1863,7 @@ impl DroneRaceDemo {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn publish_pad(&self, _rect: Rect) {}
+    fn publish_pad(&self, _ctx: &egui::Context, _rect: Rect) {}
 
     #[cfg(target_arch = "wasm32")]
     fn publish_status(&self) {

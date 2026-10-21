@@ -77,6 +77,8 @@ All tabs encode their important configuration in share links:
 - Localization: live filter and measurement-noise scale; the [belief update lab](../../docs/localization_belief_lab.md) also restores seeded hypotheses, landmark evidence, phase and selected particle
 - SLAM: algorithm, timeline frame, and playback state (LiDAR loop closure:
   map view and scenario; Drive: world, drawn walls, error sliders, people)
+  The [occupancy evidence lab](../../docs/occupancy_evidence_lab.md) also shares
+  exact sensor/return positions, evidence increments, cell selection and batch.
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
 - Controller Arena: path preset (or the course you drew), target speed, and
   turn response, exact replay frame, playback state, replay rate, and selected controller
@@ -158,6 +160,9 @@ configuration (see the list above).
   update. Step across accepted or false loops, inspect cumulative node shifts
   and position errors, compare ambiguity checking on identical observations,
   and share the exact paused state. [Loop lab guide](../../docs/slam_loop_lab.md).
+  **Occupancy evidence lab** replays actual sparse-return map updates.
+  Compare farther returns with absent observations, inspect a cell's log-odds
+  history, and move known sensor/return positions. [Mapping guide](../../docs/occupancy_evidence_lab.md).
   Also includes
   **LiDAR loop closure** (scan-to-map + pose graph on a corridor loop; toggle the
   map between front-end and loop-closed poses) with a timeline scrubber, plus

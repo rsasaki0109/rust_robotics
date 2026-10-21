@@ -171,7 +171,12 @@ export async function checkPhoneV1(page, shots, name) {
   await waitDrone(page, () => document.querySelector('canvas')?.dataset.dronePlaying === '0');
   assert(Number((await droneState(page)).droneFrame) > Number(frozen.droneFrame));
   await page.setViewportSize(page.viewportSize().width < 500 ? { width: 667, height: 375 } : { width: 390, height: 844 });
-  await page.waitForTimeout(400);
+  // ResizeObserver updates the canvas before egui has repainted its layout.
+  // A fixed delay can inspect portrait controls in a landscape viewport.
+  await page.waitForFunction(({width,height}) => {
+    const viewport=JSON.parse(document.querySelector('canvas')?.dataset.dronePadViewport ?? 'null');
+    return viewport && Math.abs(viewport[0]-width)<1 && Math.abs(viewport[1]-height)<1;
+  },page.viewportSize());
   d = await droneState(page);
   controlsFit(d, page.viewportSize());
   assert.equal(d.dronePlaying, '0');
