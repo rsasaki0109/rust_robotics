@@ -163,6 +163,11 @@ replay actual LiDAR occupancy updates, compare farther returns with missing
 observations, move the sensor, and inspect how repeated evidence changes a cell.
 [Read the occupancy evidence lab guide](docs/occupancy_evidence_lab.md).
 
+[What should the robot discover next?](https://rsasaki0109.github.io/rust_robotics/playground/?tab=slam&slam_view=explore&explore_event=wall):
+uncover hidden rooms, inspect actual frontier scores, change sensor range,
+and edit the world while the robot plans from its own limited knowledge.
+[Read the frontier exploration lab guide](docs/frontier_exploration_lab.md).
+
 [Coordinate four robots](https://rsasaki0109.github.io/rust_robotics/playground/?tab=admm&formation_view=inspect&noise=0.25&frame=17&playing=0):
 compare the same noisy observations with two smoothing costs. Inspect the
 next position commands, planned horizons and actual ADMM convergence.

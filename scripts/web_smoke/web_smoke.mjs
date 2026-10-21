@@ -22,6 +22,7 @@ import { checkParkingInspector } from './parking_inspector.mjs';
 import { checkBeliefLab } from './belief_lab.mjs';
 import { checkScanMatching } from './scan_matching.mjs';
 import { checkSafetyLab } from './safety_lab.mjs';
+import { checkExplorationLab } from './exploration_lab.mjs';
 import { checkMappingLab } from './mapping_lab.mjs';
 import { checkTimeLab } from './time_lab.mjs';
 import { checkManualDesktop, checkManualPhone } from './drone_manual.mjs';
@@ -95,6 +96,10 @@ const browser = await launch();
 // Each case: a share-link query, a viewport, and what to do once loaded.
 const slowReplay = await slowReplayFixture(docs);
 const cases = [
+  { name: 'exploration-lab', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true },
+  { name: 'exploration-lab-phone', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
+  { name: 'exploration-lab-compact', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true, viewport: { width: 900, height: 700 } },
+  { name: 'exploration-lab-slow', query: 'tab=slam&slam_view=explore&explore_at=0', explorationLab: true, slowPaint: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'mapping-lab', query: 'tab=slam&slam_view=mapping&mapping_at=0', mappingLab: true },
   { name: 'mapping-lab-phone', query: 'tab=slam&slam_view=mapping&mapping_at=0', mappingLab: true, viewport: { width: 320, height: 740 }, touch: true, scale: 2 },
   { name: 'mapping-lab-compact', query: 'tab=slam&slam_view=mapping&mapping_at=0', mappingLab: true, viewport: { width: 900, height: 700 } },
@@ -228,6 +233,14 @@ for (const test of cases) {
   } else if (test.home) await openFromShowcase(page, showcase, shots, test.name);
   else await page.goto(`${base}?${test.query}`, { waitUntil: 'load' });
   await page.waitForTimeout(4000);
+  if (test.explorationLab) {
+    try { await checkExplorationLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
+    catch (error) {
+      const d=await page.locator('canvas').evaluate((c)=>({...c.dataset}));
+      problems.push(`${test.name}: ${error.stack ?? error.message}`);
+      problems.push(`Exploration: ${JSON.stringify(Object.fromEntries(Object.entries(d).filter(([key])=>key.startsWith('explore') && !['exploreSteps','explorePath','exploreWitnesses','exploreKnown','exploreCoverage','exploreLengths'].includes(key))))}`);
+    }
+  }
   if (test.mappingLab) {
     try { await checkMappingLab(page, base, shots, Boolean(test.touch), Boolean(test.slowPaint)); }
     catch (error) {

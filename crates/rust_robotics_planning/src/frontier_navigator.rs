@@ -142,12 +142,100 @@ pub struct FrontierNavReport {
     pub known: Vec<Vec<Knowledge>>,
 }
 
+/// One frontier cluster and the terms actually used to score it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrontierCandidate {
+    pub representative: (i32, i32),
+    pub members: Vec<(i32, i32)>,
+    /// Sum of unknown four-neighbors, including repeated neighbors.
+    pub openness: usize,
+    pub normalized_openness: f64,
+    pub goal_gain: f64,
+    pub travel_cost: Option<f64>,
+    pub line_of_sight: bool,
+    /// None when the representative is unreachable over known-free cells.
+    pub score: Option<f64>,
+}
+
+/// A recorded decision, or the reason the actual rollout stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrontierNavPhase {
+    Frontier,
+    Goal,
+    Arrived,
+    NoFrontiers,
+    NoReachableFrontier,
+    NoProgress,
+    IterationLimit,
+}
+
+/// Actual knowledge and alternatives at one planning boundary.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FrontierNavStep {
+    pub robot: (i32, i32),
+    /// Index into the returned report's path; knowledge stays unchanged until
+    /// a later step records another sensing operation.
+    pub path_index: usize,
+    pub known: Vec<Vec<Knowledge>>,
+    pub candidates: Vec<FrontierCandidate>,
+    pub selected: Option<usize>,
+    pub phase: FrontierNavPhase,
+}
+
+struct Trace {
+    enabled: bool,
+    steps: Vec<FrontierNavStep>,
+}
+impl Trace {
+    fn capture(
+        &mut self,
+        phase: FrontierNavPhase,
+        at: ((i32, i32), usize),
+        known: &[Vec<Knowledge>],
+        candidates: &[FrontierCandidate],
+        selected: Option<usize>,
+    ) {
+        if self.enabled {
+            self.steps.push(FrontierNavStep {
+                robot: at.0,
+                path_index: at.1,
+                known: known.to_vec(),
+                candidates: candidates.to_vec(),
+                selected,
+                phase,
+            });
+        }
+    }
+}
+
 /// Drive the affordance-scored frontier navigator across the world.
 pub fn simulate_frontier_navigation(
     world: &FrontierNavWorld,
     config: &FrontierNavConfig,
 ) -> RoboticsResult<FrontierNavReport> {
+    simulate_observed(world, config, false).map(|(report, _)| report)
+}
+
+/// Runs the same navigator and records its actual decisions, candidate scores,
+/// known maps, path boundaries, and final stopping reason.
+pub fn simulate_frontier_navigation_with_trace(
+    world: &FrontierNavWorld,
+    config: &FrontierNavConfig,
+) -> RoboticsResult<(FrontierNavReport, Vec<FrontierNavStep>)> {
+    simulate_observed(world, config, true)
+}
+
+fn simulate_observed(
+    world: &FrontierNavWorld,
+    config: &FrontierNavConfig,
+    record: bool,
+) -> RoboticsResult<(FrontierNavReport, Vec<FrontierNavStep>)> {
     validate(world, config)?;
+    let mut trace = Trace {
+        enabled: record,
+        steps: Vec::new(),
+    };
+    let mut outcome = FrontierNavPhase::IterationLimit;
 
     let (w, h) = (world.width, world.height);
     let mut known = vec![vec![Knowledge::Unknown; h as usize]; w as usize];
@@ -167,6 +255,13 @@ pub fn simulate_frontier_navigation(
         if known[world.goal.0 as usize][world.goal.1 as usize] == Knowledge::Free {
             if let Some(dist) = dijkstra_from(&known, world.goal) {
                 if dist[robot.0 as usize][robot.1 as usize].is_finite() {
+                    trace.capture(
+                        FrontierNavPhase::Goal,
+                        (robot, path.len() - 1),
+                        &known,
+                        &[],
+                        None,
+                    );
                     follow_gradient(
                         &known,
                         &dist,
@@ -178,6 +273,7 @@ pub fn simulate_frontier_navigation(
                     );
                     if robot == world.goal {
                         reached_goal = true;
+                        outcome = FrontierNavPhase::Arrived;
                         break;
                     }
                 }
@@ -186,13 +282,17 @@ pub fn simulate_frontier_navigation(
 
         let frontiers = compute_frontiers(&known);
         if frontiers.is_empty() {
+            outcome = FrontierNavPhase::NoFrontiers;
             break;
         }
 
         // Travel-cost field from the robot over known-free cells.
         let reach = match dijkstra_from(&known, robot) {
             Some(field) => field,
-            None => break,
+            None => {
+                outcome = FrontierNavPhase::NoReachableFrontier;
+                break;
+            }
         };
 
         let goal_distance = euclid(robot, world.goal);
@@ -203,30 +303,55 @@ pub fn simulate_frontier_navigation(
             .unwrap_or(1)
             .max(1) as f64;
 
-        let mut best: Option<(f64, &FrontierCluster)> = None;
-        for frontier in &frontiers {
+        let mut best: Option<(f64, usize)> = None;
+        let mut candidates = Vec::new();
+        for (index, frontier) in frontiers.iter().enumerate() {
             let reach_cost = reach[frontier.rep.0 as usize][frontier.rep.1 as usize];
-            if !reach_cost.is_finite() {
-                continue;
-            }
             let los = line_of_sight(&known, robot, frontier.rep);
             let goal_gain = goal_distance - euclid(frontier.rep, world.goal);
             let openness = frontier.openness as f64 / max_openness;
             let score = config.goal_weight * goal_gain - config.cost_weight * reach_cost
                 + config.line_of_sight_weight * if los { 1.0 } else { 0.0 }
                 + config.openness_weight * openness;
+            if record {
+                candidates.push(FrontierCandidate {
+                    representative: frontier.rep,
+                    members: frontier.members.clone(),
+                    openness: frontier.openness,
+                    normalized_openness: openness,
+                    goal_gain,
+                    travel_cost: reach_cost.is_finite().then_some(reach_cost),
+                    line_of_sight: los,
+                    score: reach_cost.is_finite().then_some(score),
+                });
+            }
+            if !reach_cost.is_finite() {
+                continue;
+            }
             let better = match best {
                 None => true,
-                Some((best_score, best_cluster)) => {
-                    score > best_score || (score == best_score && frontier.rep < best_cluster.rep)
+                Some((best_score, best_index)) => {
+                    score > best_score
+                        || (score == best_score && frontier.rep < frontiers[best_index].rep)
                 }
             };
             if better {
-                best = Some((score, frontier));
+                best = Some((score, index));
             }
         }
 
-        let Some((score, frontier)) = best else { break };
+        let Some((score, index)) = best else {
+            outcome = FrontierNavPhase::NoReachableFrontier;
+            break;
+        };
+        let frontier = &frontiers[index];
+        trace.capture(
+            FrontierNavPhase::Frontier,
+            (robot, path.len() - 1),
+            &known,
+            &candidates,
+            Some(index),
+        );
         let target = frontier.rep;
         selected_frontiers.push(FrontierChoice {
             robot,
@@ -238,7 +363,10 @@ pub fn simulate_frontier_navigation(
         // Local-planner handoff: move toward the frontier over known-free cells.
         let field = match dijkstra_from(&known, target) {
             Some(field) => field,
-            None => break,
+            None => {
+                outcome = FrontierNavPhase::NoReachableFrontier;
+                break;
+            }
         };
         let before = robot;
         follow_gradient(
@@ -251,6 +379,7 @@ pub fn simulate_frontier_navigation(
             &mut path_length,
         );
         if robot == before {
+            outcome = FrontierNavPhase::NoProgress;
             break; // wedged: no progress possible.
         }
         sense(world, &mut known, robot, config.sensor_range);
@@ -262,16 +391,20 @@ pub fn simulate_frontier_navigation(
         .filter(|c| **c == Knowledge::Free)
         .count();
 
-    Ok(FrontierNavReport {
-        path,
-        reached_goal,
-        path_length,
-        frontier_selections: selected_frontiers.len(),
-        iterations,
-        known_free_cells,
-        selected_frontiers,
-        known,
-    })
+    trace.capture(outcome, (robot, path.len() - 1), &known, &[], None);
+    Ok((
+        FrontierNavReport {
+            path,
+            reached_goal,
+            path_length,
+            frontier_selections: selected_frontiers.len(),
+            iterations,
+            known_free_cells,
+            selected_frontiers,
+            known,
+        },
+        trace.steps,
+    ))
 }
 
 fn validate(world: &FrontierNavWorld, config: &FrontierNavConfig) -> RoboticsResult<()> {
@@ -306,6 +439,7 @@ fn validate(world: &FrontierNavWorld, config: &FrontierNavConfig) -> RoboticsRes
 struct FrontierCluster {
     rep: (i32, i32),
     openness: usize,
+    members: Vec<(i32, i32)>,
 }
 
 /// Reveal cells within `range` of `from` along a clear line of sight.
@@ -446,7 +580,11 @@ fn compute_frontiers(known: &[Vec<Knowledge>]) -> Vec<FrontierCluster> {
                         .then_with(|| a.cmp(b))
                 })
                 .unwrap();
-            clusters.push(FrontierCluster { rep, openness });
+            clusters.push(FrontierCluster {
+                rep,
+                openness,
+                members,
+            });
         }
     }
     clusters
@@ -589,6 +727,7 @@ fn euclid(a: (i32, i32), b: (i32, i32)) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     /// A world with a wall between start and goal, leaving a gap at the top.
     fn walled_world() -> FrontierNavWorld {
@@ -596,6 +735,146 @@ mod tests {
         // Vertical wall at x = 12 from y = 0 up to y = 12 (gap above y = 12).
         world.fill_rect(12, 13, 0, 12);
         world
+    }
+
+    #[test]
+    fn trace_preserves_rollout_and_records_only_actual_sensing_boundaries() {
+        let world = walled_world();
+        for range in [3.0, 5.0, 7.0] {
+            let config = FrontierNavConfig {
+                sensor_range: range,
+                ..FrontierNavConfig::default()
+            };
+            let legacy = simulate_frontier_navigation(&world, &config).unwrap();
+            let (report, steps) = simulate_frontier_navigation_with_trace(&world, &config).unwrap();
+            assert_eq!(legacy, report);
+            assert!(!steps.is_empty());
+            assert_eq!(steps[0].path_index, 0);
+            assert_eq!(steps.last().unwrap().robot, *report.path.last().unwrap());
+            assert_eq!(steps.last().unwrap().known, report.known);
+            let mut observed = vec![vec![Knowledge::Unknown; 16]; 24];
+            sense(&world, &mut observed, world.start, range);
+            assert_eq!(steps[0].known, observed);
+            let mut length = 0.;
+            for pair in steps.windows(2) {
+                let (a, b) = (&pair[0], &pair[1]);
+                assert!(a.path_index <= b.path_index);
+                assert_eq!(report.path[a.path_index], a.robot);
+                for segment in report.path[a.path_index..=b.path_index].windows(2) {
+                    let (p, q) = (segment[0], segment[1]);
+                    assert_eq!(a.known[q.0 as usize][q.1 as usize], Knowledge::Free);
+                    assert!((p.0 - q.0).abs() <= 1 && (p.1 - q.1).abs() <= 1 && p != q);
+                    length += euclid(p, q);
+                }
+                if a.phase == FrontierNavPhase::Frontier && a.path_index != b.path_index {
+                    sense(&world, &mut observed, b.robot, range);
+                }
+                assert_eq!(b.known, observed);
+            }
+            assert_eq!(length, report.path_length);
+            assert_eq!(
+                steps
+                    .iter()
+                    .filter(|s| s.phase == FrontierNavPhase::Frontier)
+                    .count(),
+                report.frontier_selections
+            );
+        }
+    }
+
+    #[test]
+    fn trace_exposes_candidate_partition_scores_ties_and_terminal_reasons() {
+        let world = walled_world();
+        let config = FrontierNavConfig::default();
+        let (_, steps) = simulate_frontier_navigation_with_trace(&world, &config).unwrap();
+        for s in steps
+            .iter()
+            .filter(|s| s.phase == FrontierNavPhase::Frontier)
+        {
+            let mut actual = HashSet::new();
+            let mut expected = HashSet::new();
+            for x in 0..world.width {
+                for y in 0..world.height {
+                    if s.known[x as usize][y as usize] == Knowledge::Free
+                        && [(1, 0), (-1, 0), (0, 1), (0, -1)].iter().any(|(dx, dy)| {
+                            let (a, b) = (x + dx, y + dy);
+                            world.in_bounds(a, b)
+                                && s.known[a as usize][b as usize] == Knowledge::Unknown
+                        })
+                    {
+                        expected.insert((x, y));
+                    }
+                }
+            }
+            let maximum = s
+                .candidates
+                .iter()
+                .map(|c| c.openness)
+                .max()
+                .unwrap()
+                .max(1) as f64;
+            for c in &s.candidates {
+                assert!(c.members.contains(&c.representative));
+                let mut openness = 0;
+                for &(x, y) in &c.members {
+                    assert!(actual.insert((x, y)));
+                    for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                        let (a, b) = (x + dx, y + dy);
+                        if world.in_bounds(a, b)
+                            && s.known[a as usize][b as usize] == Knowledge::Unknown
+                        {
+                            openness += 1;
+                        }
+                    }
+                }
+                assert_eq!(openness, c.openness);
+                assert_eq!(c.normalized_openness, openness as f64 / maximum);
+                assert_eq!(
+                    c.goal_gain,
+                    euclid(s.robot, world.goal) - euclid(c.representative, world.goal)
+                );
+                assert_eq!(
+                    c.score,
+                    c.travel_cost.map(|cost| config.goal_weight * c.goal_gain
+                        - config.cost_weight * cost
+                        + config.line_of_sight_weight * if c.line_of_sight { 1. } else { 0. }
+                        + config.openness_weight * c.normalized_openness)
+                );
+            }
+            assert_eq!(actual, expected);
+            let chosen = &s.candidates[s.selected.unwrap()];
+            for c in &s.candidates {
+                if let Some(score) = c.score {
+                    assert!(chosen.score.unwrap() >= score);
+                    if chosen.score == c.score {
+                        assert!(chosen.representative <= c.representative);
+                    }
+                }
+            }
+        }
+        let limit = FrontierNavConfig {
+            max_iterations: 1,
+            ..config.clone()
+        };
+        let (_, trace) = simulate_frontier_navigation_with_trace(&world, &limit).unwrap();
+        assert_eq!(
+            trace.last().unwrap().phase,
+            FrontierNavPhase::IterationLimit
+        );
+        // A one-cell-high corridor makes the complete blocking wall visible
+        // immediately, so there is no unseen wall edge left to investigate.
+        let mut sealed = FrontierNavWorld::new(8, 1, (1, 0), (6, 0)).unwrap();
+        sealed.fill_rect(3, 3, 0, 0);
+        let (_, trace) = simulate_frontier_navigation_with_trace(
+            &sealed,
+            &FrontierNavConfig {
+                sensor_range: 100.,
+                ..config
+            },
+        )
+        .unwrap();
+        assert_eq!(trace.last().unwrap().phase, FrontierNavPhase::NoFrontiers);
+        assert_eq!(trace.last().unwrap().path_index, 0);
     }
 
     #[test]

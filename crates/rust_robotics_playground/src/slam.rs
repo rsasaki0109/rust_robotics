@@ -1,6 +1,7 @@
 //! Interactive SLAM demos: EKF-SLAM, FastSLAM, ICP scan matching, a LiDAR
 //! graph SLAM loop-closure replay, and live LiDAR SLAM driving.
 
+mod exploration;
 mod loop_inspector;
 mod mapping;
 mod scan_matching;
@@ -179,6 +180,7 @@ pub struct SlamDemo {
     loop_inspector: loop_inspector::Inspector,
     scan_lab: scan_matching::ScanLab,
     mapping_lab: mapping::MappingLab,
+    explore_lab: exploration::ExploreLab,
 }
 
 fn motion_model(x: Vector3<f64>, u: Vector2<f64>) -> Vector3<f64> {
@@ -409,6 +411,7 @@ impl Default for SlamDemo {
             loop_inspector: loop_inspector::Inspector::default(),
             scan_lab: scan_matching::ScanLab::default(),
             mapping_lab: mapping::MappingLab::default(),
+            explore_lab: exploration::ExploreLab::default(),
         }
     }
 }
@@ -444,9 +447,13 @@ impl SlamDemo {
         self.apply_loop_inspector_query(query);
         self.scan_lab.apply_query(query);
         self.mapping_lab.apply_query(query);
+        self.explore_lab.apply_query(query);
     }
 
     pub fn share_query(&self) -> String {
+        if self.explore_lab.active {
+            return self.explore_lab.share_query();
+        }
         if self.mapping_lab.active {
             return self.mapping_lab.share_query();
         }
@@ -693,8 +700,17 @@ impl SlamDemo {
     }
 
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.explore_lab.active {
+            self.explore_lab.controls(ui);
+            return;
+        }
         if self.mapping_lab.active {
             self.mapping_lab.controls(ui);
+            return;
+        }
+        let r = ui.button("Open frontier exploration lab");
+        if self.explore_lab.button("explore_lab", &r) {
+            self.explore_lab.enter();
             return;
         }
         let r = ui.button("Open occupancy evidence lab");
@@ -826,6 +842,10 @@ impl SlamDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.explore_lab.active {
+            self.explore_lab.scene(ui);
+            return;
+        }
         if self.mapping_lab.active {
             self.mapping_lab.scene(ui);
             return;
