@@ -445,6 +445,8 @@ impl PlaygroundApp {
 
 impl eframe::App for PlaygroundApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.controller_arena_demo
+            .begin_frame(ctx, self.tab == PlaygroundTab::ControllerArena);
         self.localization_demo
             .begin_frame(ctx, self.tab == PlaygroundTab::Localization);
         self.parking_demo
@@ -516,6 +518,8 @@ impl eframe::App for PlaygroundApp {
                 )
                 .show(ctx, |ui| self.scene_ui(ctx, ui));
         }
+        self.controller_arena_demo
+            .finish(ctx, self.tab == PlaygroundTab::ControllerArena);
         self.arm_demo.finish(ctx, self.tab == PlaygroundTab::Arm);
         self.slam_demo.finish(ctx, self.tab == PlaygroundTab::Slam);
         self.admm_demo
