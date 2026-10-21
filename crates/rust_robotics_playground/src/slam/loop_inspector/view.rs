@@ -443,8 +443,10 @@ impl SlamDemo {
     }
 
     pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
-        self.mapping_lab.finish(ctx, active);
-        let active = active && !self.mapping_lab.active;
+        self.explore_lab.finish(ctx, active);
+        self.mapping_lab
+            .finish(ctx, active && !self.explore_lab.active);
+        let active = active && !self.mapping_lab.active && !self.explore_lab.active;
         self.scan_lab
             .finish(ctx, active && self.kind == SlamKind::Icp);
         self.loop_inspector.revision += 1;

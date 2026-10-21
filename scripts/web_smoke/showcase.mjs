@@ -40,6 +40,8 @@ export async function checkShowcase(page, home, shots, name) {
   assert.equal(timeLink.pathname,'/rust_robotics/playground/');assert.equal(timeLink.searchParams.get('tab'),'grid');assert.equal(timeLink.searchParams.get('grid_view'),'time');assert.equal(timeLink.searchParams.get('time_event'),'first');
   const mappingLink=new URL(await page.locator('#play-occupancy').getAttribute('href'),home);
   assert.equal(mappingLink.pathname,'/rust_robotics/playground/');assert.equal(mappingLink.searchParams.get('tab'),'slam');assert.equal(mappingLink.searchParams.get('slam_view'),'mapping');assert.equal(mappingLink.searchParams.get('mapping_event'),'change');
+  const explorationLink=new URL(await page.locator('#play-exploration').getAttribute('href'),home);
+  assert.equal(explorationLink.pathname,'/rust_robotics/playground/');assert.equal(explorationLink.searchParams.get('tab'),'slam');assert.equal(explorationLink.searchParams.get('slam_view'),'explore');assert.equal(explorationLink.searchParams.get('explore_event'),'wall');
   await imageLoaded(page);
   await fits(page);
   if (shots) {

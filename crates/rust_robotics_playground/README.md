@@ -79,6 +79,8 @@ All tabs encode their important configuration in share links:
   map view and scenario; Drive: world, drawn walls, error sliders, people)
   The [occupancy evidence lab](../../docs/occupancy_evidence_lab.md) also shares
   exact sensor/return positions, evidence increments, cell selection and batch.
+  The [frontier exploration lab](../../docs/frontier_exploration_lab.md) shares
+  the exact world, endpoints, sensor range, decision weights and replay cursor.
 - ADMM Formation: noise, visible runs, timeline frame, and playback state
 - Controller Arena: path preset (or the course you drew), target speed, and
   turn response, exact replay frame, playback state, replay rate, and selected controller
@@ -163,6 +165,10 @@ configuration (see the list above).
   **Occupancy evidence lab** replays actual sparse-return map updates.
   Compare farther returns with absent observations, inspect a cell's log-odds
   history, and move known sensor/return positions. [Mapping guide](../../docs/occupancy_evidence_lab.md).
+  **Frontier exploration lab** uncovers hidden rooms while showing actual
+  candidate scores, known-free local plans and sensing boundaries. Change
+  sensor range, discovery preference, walls and endpoints.
+  [Exploration guide](../../docs/frontier_exploration_lab.md).
   Also includes
   **LiDAR loop closure** (scan-to-map + pose graph on a corridor loop; toggle the
   map between front-end and loop-closed poses) with a timeline scrubber, plus

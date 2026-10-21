@@ -215,8 +215,10 @@ impl SlamDemo {
     }
 
     pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
-        self.mapping_lab.begin_frame(ctx, active);
-        let active = active && !self.mapping_lab.active;
+        self.explore_lab.begin_frame(ctx, active);
+        self.mapping_lab
+            .begin_frame(ctx, active && !self.explore_lab.active);
+        let active = active && !self.mapping_lab.active && !self.explore_lab.active;
         self.scan_lab
             .begin_frame(ctx, active && self.kind == SlamKind::Icp);
         let compare = self.kind == SlamKind::LoopClosure && self.loop_inspector.compare;

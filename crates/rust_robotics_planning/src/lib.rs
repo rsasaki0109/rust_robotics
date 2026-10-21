@@ -136,7 +136,8 @@ pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThet
 pub use flow_field::{FlowFieldConfig, FlowFieldPlanner};
 pub use fringe_search::{FringeSearchConfig, FringeSearchPlanner};
 pub use frontier_navigator::{
-    simulate_frontier_navigation, FrontierChoice, FrontierNavConfig, FrontierNavReport,
+    simulate_frontier_navigation, simulate_frontier_navigation_with_trace, FrontierCandidate,
+    FrontierChoice, FrontierNavConfig, FrontierNavPhase, FrontierNavReport, FrontierNavStep,
     FrontierNavWorld, Knowledge,
 };
 pub use greedy_best_first_search::{GreedyBestFirstConfig, GreedyBestFirstPlanner};
