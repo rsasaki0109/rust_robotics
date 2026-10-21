@@ -202,6 +202,31 @@ impl DWAConfig {
 /// Dynamic window bounds: [v_min, v_max, yaw_rate_min, yaw_rate_max]
 pub type DynamicWindow = Vector4<f64>;
 
+/// One actually sampled constant-velocity arc, including rejected collisions.
+#[derive(Debug, Clone)]
+pub struct DWACandidate {
+    pub trajectory: Trajectory,
+    /// Weighted heading and speed costs, also available for rejected arcs.
+    pub goal_cost: f64,
+    pub speed_cost: f64,
+    /// `None` means the sampled robot footprint intersects an obstacle.
+    pub obstacle_cost: Option<f64>,
+}
+
+/// Diagnostics of one decision, in the planner's actual sampling order.
+///
+/// The stuck-robot rule can override the selected arc's angular command.
+/// `applied_control` exposes that distinction; the sampled trajectory is not
+/// rewritten to imply that it predicted the overridden command.
+#[derive(Debug, Clone)]
+pub struct DWAPlanTrace {
+    pub dynamic_window: DynamicWindow,
+    pub candidates: Vec<DWACandidate>,
+    pub selected: Option<usize>,
+    pub applied_control: DWAControl,
+    pub stuck_override: bool,
+}
+
 /// Predicted trajectory
 #[derive(Debug, Clone)]
 pub struct Trajectory {
@@ -457,6 +482,27 @@ impl DWAPlanner {
     }
 
     pub fn try_plan_step(&mut self) -> RoboticsResult<DWAControl> {
+        self.plan_step_internal(None)
+    }
+
+    /// Plan with the same costs, tie break, collision checks and stuck rule as
+    /// `try_plan_step`, retaining every sampled arc for inspection.
+    pub fn try_plan_step_with_trace(&mut self) -> RoboticsResult<DWAPlanTrace> {
+        let mut trace = DWAPlanTrace {
+            dynamic_window: self.calc_dynamic_window(),
+            candidates: Vec::new(),
+            selected: None,
+            applied_control: DWAControl::zeros(),
+            stuck_override: false,
+        };
+        self.plan_step_internal(Some(&mut trace))?;
+        Ok(trace)
+    }
+
+    fn plan_step_internal(
+        &mut self,
+        mut trace: Option<&mut DWAPlanTrace>,
+    ) -> RoboticsResult<DWAControl> {
         self.config.validate()?;
         Self::validate_state(&self.state)?;
         Self::validate_goal(&self.goal)?;
@@ -473,7 +519,7 @@ impl DWAPlanner {
 
         for v in arange_samples(dw[0], dw[1], config.v_resolution) {
             for omega in arange_samples(dw[2], dw[3], config.yaw_rate_resolution) {
-                let trajectory = self.predict_trajectory(v, omega);
+                let mut trajectory = self.predict_trajectory(v, omega);
                 // A colliding arc is never a candidate, whatever the gain
                 // (f64::MAX times a gain below 1 used to rank below other
                 // costs, and an all-colliding window returned an arc into
@@ -481,12 +527,33 @@ impl DWAPlanner {
                 // stop, with cost f64::MAX.
                 let raw_obstacle_cost = self.calc_obstacle_cost(&trajectory);
                 if raw_obstacle_cost == f64::MAX {
+                    if let Some(t) = trace.as_deref_mut() {
+                        let goal_cost =
+                            config.to_goal_cost_gain * self.calc_to_goal_cost(&trajectory);
+                        let speed_cost = config.speed_cost_gain * self.calc_speed_cost(&trajectory);
+                        trajectory.cost = f64::MAX;
+                        t.candidates.push(DWACandidate {
+                            trajectory,
+                            goal_cost,
+                            speed_cost,
+                            obstacle_cost: None,
+                        });
+                    }
                     continue;
                 }
                 let goal_cost = config.to_goal_cost_gain * self.calc_to_goal_cost(&trajectory);
                 let speed_cost = config.speed_cost_gain * self.calc_speed_cost(&trajectory);
                 let obstacle_cost = config.obstacle_cost_gain * raw_obstacle_cost;
                 let total_cost = goal_cost + speed_cost + obstacle_cost;
+                if let Some(t) = trace.as_deref_mut() {
+                    trajectory.cost = total_cost;
+                    t.candidates.push(DWACandidate {
+                        trajectory: trajectory.clone(),
+                        goal_cost,
+                        speed_cost,
+                        obstacle_cost: Some(obstacle_cost),
+                    });
+                }
                 if total_cost <= min_cost {
                     min_cost = total_cost;
                     let mut control = DWAControl::new(v, omega);
@@ -494,6 +561,10 @@ impl DWAPlanner {
                         && self.state[3].abs() < ROBOT_STUCK_FLAG_CONS
                     {
                         control[1] = -config.max_delta_yaw_rate;
+                    }
+                    if let Some(t) = trace.as_deref_mut() {
+                        t.selected = Some(t.candidates.len() - 1);
+                        t.stuck_override = control[1] != omega;
                     }
                     best_trajectory = Trajectory {
                         states: trajectory.states,
@@ -505,6 +576,9 @@ impl DWAPlanner {
         }
 
         self.best_trajectory = best_trajectory;
+        if let Some(t) = trace {
+            t.applied_control = self.best_trajectory.control;
+        }
         Ok(self.best_trajectory.control)
     }
 
@@ -870,6 +944,92 @@ mod tests {
             Point2D::new(-3.0, -2.0),
             Point2D::new(-13.0, -13.0),
         ]
+    }
+
+    #[test]
+    fn trace_preserves_decisions_including_ties_rejections_and_stuck_override() {
+        for config in [
+            DWAConfig::default(),
+            DWAConfig {
+                obstacle_cost_gain: 0.0,
+                ..DWAConfig::default()
+            },
+        ] {
+            for blocked in [false, true] {
+                for speed in [0.0, 0.6] {
+                    let mut a = DWAPlanner::new(config.clone());
+                    let mut b = DWAPlanner::new(config.clone());
+                    let state = DWAState::new(0., 0., 0., speed, 0.);
+                    for p in [&mut a, &mut b] {
+                        p.set_state(state);
+                        p.set_goal(Point2D::new(5., 0.));
+                        if blocked {
+                            p.set_obstacles(vec![Point2D::origin()]);
+                        }
+                    }
+                    let expected = a.plan_step();
+                    let trace = b.try_plan_step_with_trace().unwrap();
+                    assert_eq!(expected, trace.applied_control);
+                    assert_eq!(
+                        a.get_best_trajectory().states,
+                        b.get_best_trajectory().states
+                    );
+                    assert_eq!(a.get_best_trajectory().cost, b.get_best_trajectory().cost);
+                    assert!(!trace.candidates.is_empty());
+                    if blocked {
+                        assert!(trace.selected.is_none());
+                        assert!(trace.candidates.iter().all(|c| c.obstacle_cost.is_none()));
+                        assert_eq!(expected, DWAControl::zeros());
+                    } else {
+                        let i = trace.selected.unwrap();
+                        let cost = trace.candidates[i].trajectory.cost;
+                        assert!(trace.candidates.iter().all(|c| c.trajectory.cost >= cost));
+                        assert_eq!(
+                            trace
+                                .candidates
+                                .iter()
+                                .rposition(|c| c.trajectory.cost == cost),
+                            Some(i)
+                        );
+                    }
+                }
+            }
+        }
+        let mut p = DWAPlanner::new(DWAConfig {
+            min_speed: 0.,
+            max_speed: 0.01,
+            v_resolution: 1.,
+            ..DWAConfig::default()
+        });
+        p.set_goal(Point2D::new(5., 0.));
+        let t = p.try_plan_step_with_trace().unwrap();
+        assert!(t.stuck_override);
+        assert_eq!(t.applied_control[1], -p.config().max_delta_yaw_rate);
+        assert_ne!(
+            t.applied_control,
+            t.candidates[t.selected.unwrap()].trajectory.control
+        );
+        // The legacy stuck rule can put yaw velocity outside the physical
+        // cap. The following window is truly empty, not a reversed interval.
+        let mut p = DWAPlanner::new(DWAConfig {
+            min_speed: 0.,
+            max_speed: 0.01,
+            v_resolution: 1.,
+            max_yaw_rate: 1.2,
+            max_delta_yaw_rate: 2.,
+            dt: 0.2,
+            ..DWAConfig::default()
+        });
+        p.set_goal(Point2D::new(5., 0.));
+        let first = p.try_plan_step_with_trace().unwrap();
+        assert!(first.stuck_override);
+        p.set_state(motion(*p.get_state(), first.applied_control, 0.2));
+        let next = p.try_plan_step_with_trace().unwrap();
+        assert!(next.dynamic_window[2] > next.dynamic_window[3]);
+        assert!(next.candidates.is_empty());
+        assert!(next.selected.is_none());
+        assert_eq!(next.applied_control, DWAControl::zeros());
+        assert_eq!(p.plan_step(), next.applied_control);
     }
 
     #[test]

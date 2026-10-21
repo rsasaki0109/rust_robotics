@@ -131,7 +131,7 @@ pub use d_star_lite::DStarLite;
 pub use depth_first_search::{DFSConfig, DFSPlanner};
 pub use dijkstra::{DijkstraConfig, DijkstraPlanner};
 pub use dubins_path::{DubinsPath, DubinsPlanner};
-pub use dwa::{DWAConfig, DWAPlanner};
+pub use dwa::{DWACandidate, DWAConfig, DWAPlanTrace, DWAPlanner};
 pub use enhanced_lazy_theta_star::{EnhancedLazyThetaStarConfig, EnhancedLazyThetaStarPlanner};
 pub use flow_field::{FlowFieldConfig, FlowFieldPlanner};
 pub use fringe_search::{FringeSearchConfig, FringeSearchPlanner};

@@ -1,5 +1,6 @@
 //! Interactive replay front end for the deterministic Controller Arena engine.
 
+mod dwa;
 mod safety;
 
 use std::collections::BTreeMap;
@@ -30,6 +31,7 @@ const MAX_COURSE_LENGTH: f64 = 500.0;
 
 pub struct ControllerArenaDemo {
     safety: safety::SafetyLab,
+    dwa: dwa::DwaLab,
     preset: ArenaPreset,
     target_speed: f64,
     turn_rate_response_gain: f64,
@@ -83,6 +85,7 @@ impl ControllerArenaDemo {
         };
         Self {
             safety: safety::SafetyLab::default(),
+            dwa: dwa::DwaLab::default(),
             preset,
             target_speed,
             turn_rate_response_gain,
@@ -142,8 +145,9 @@ impl ControllerArenaDemo {
     }
 
     pub fn apply_share_query(&mut self, query: &str) {
+        self.dwa.apply_query(query);
         self.safety.apply_query(query);
-        if self.safety.active {
+        if self.safety.active || self.dwa.active {
             return;
         }
         if crate::share::value(query, "tab") != Some("arena") {
@@ -174,6 +178,9 @@ impl ControllerArenaDemo {
     }
 
     pub fn share_query(&self) -> String {
+        if self.dwa.active {
+            return self.dwa.share_query();
+        }
         if self.safety.active {
             return self.safety.share_query();
         }
@@ -364,14 +371,25 @@ impl ControllerArenaDemo {
     }
 
     pub fn begin_frame(&mut self, ctx: &egui::Context, active: bool) {
+        self.dwa.begin_frame(ctx, active);
         self.safety.begin_frame(ctx, active);
     }
     pub fn finish(&mut self, ctx: &egui::Context, active: bool) {
+        self.dwa.finish(ctx, active);
         self.safety.finish(ctx, active);
     }
     pub fn controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.dwa.active {
+            self.dwa.controls(ui);
+            return;
+        }
         if self.safety.active {
             self.safety.controls(ui);
+            return;
+        }
+        let r = ui.button("Open DWA velocity lab");
+        if self.dwa.button("inspect", &r) {
+            self.dwa.enter();
             return;
         }
         let r = ui.button("Open safety filter lab");
@@ -496,6 +514,10 @@ impl ControllerArenaDemo {
     }
 
     pub fn scene(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.dwa.active {
+            self.dwa.scene(ui);
+            return;
+        }
         if self.safety.active {
             self.safety.scene(ui);
             return;
