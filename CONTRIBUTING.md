@@ -45,7 +45,7 @@ script from `ros2_nodes/launch/` after sourcing the ROS2 environment.
 4. Register the module in `lib.rs` and add re-exports
 
 5. Add a description and source link to the [algorithm gallery](docs/algorithm_gallery.md).
-   Keep `README.md` focused on getting started.
+   Keep README descriptions brief and preserve its figures and animations.
 6. Add a runnable example or a focused comparison test when the behavior is
    easier to understand through output than through API docs alone
 
