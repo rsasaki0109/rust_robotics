@@ -44,7 +44,8 @@ script from `ros2_nodes/launch/` after sourcing the ROS2 environment.
 
 4. Register the module in `lib.rs` and add re-exports
 
-5. Add a section to `README.md` with description and source link
+5. Add a description and source link to the [algorithm gallery](docs/algorithm_gallery.md).
+   Keep `README.md` focused on getting started.
 6. Add a runnable example or a focused comparison test when the behavior is
    easier to understand through output than through API docs alone
 
@@ -69,8 +70,9 @@ cargo bench --bench jps_crossover_benchmark -p rust_robotics_planning
 ## Documentation And Showcase Updates
 
 When adding a visual example, include the generated image under `img/` or
-`docs/assets/`, link the source file from the README, and add the card to
-`docs/app.js` if it is a good public demo.
+`docs/assets/`, link the source file from the
+[algorithm gallery](docs/algorithm_gallery.md), and add the card to `docs/app.js`
+if it is a good public demo.
 
 ## License
 
