@@ -6,7 +6,7 @@ fonttools==4.61.1
 kiwisolver==1.4.9
 matplotlib==3.10.8
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 six==1.17.0
