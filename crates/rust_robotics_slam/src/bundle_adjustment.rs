@@ -289,6 +289,7 @@ mod tests {
         let analytic = factor.evaluate(&[&camera, &point]).unwrap();
         let epsilon = 1.0e-6;
 
+        #[allow(clippy::needless_range_loop)]
         for variable in 0..2 {
             let dimension = if variable == 0 { 6 } else { 3 };
             for column in 0..dimension {

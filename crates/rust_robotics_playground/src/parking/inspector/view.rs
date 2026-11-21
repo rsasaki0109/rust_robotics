@@ -376,6 +376,7 @@ impl ParkingDemo {
         if let Some(p) = &self.plan {
             let last = self.inspector_last().max(1);
             let x = |i: usize| plot.left() + i as f32 / last as f32 * plot.width();
+            #[allow(clippy::needless_range_loop)]
             for i in 1..p.poses.len() {
                 painter.rect_filled(
                     Rect::from_min_max(

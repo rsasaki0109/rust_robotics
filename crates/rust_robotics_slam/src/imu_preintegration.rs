@@ -1080,6 +1080,7 @@ mod tests {
         let between_values = vec![value_i.clone(), value_j.clone()];
         let between_refs = between_values.iter().collect::<Vec<_>>();
         let between_evaluation = between.evaluate(&between_refs).unwrap();
+        #[allow(clippy::needless_range_loop)]
         for variable in 0..2 {
             let numerical = numerical_factor_jacobian(&between, &between_values, variable, true);
             assert!(
@@ -1092,6 +1093,7 @@ mod tests {
             PositionVelocityFactor::new(VariableId(0), VariableId(1), 0.2, Matrix3::identity())
                 .unwrap();
         let pv_evaluation = position_velocity.evaluate(&between_refs).unwrap();
+        #[allow(clippy::needless_range_loop)]
         for variable in 0..2 {
             let numerical =
                 numerical_factor_jacobian(&position_velocity, &between_values, variable, true);
@@ -1123,6 +1125,7 @@ mod tests {
         let evaluation = between.evaluate(&[&value_i, &value_j]).unwrap();
         assert!((evaluation.residual - (bias_i.vector() - bias_j.vector())).norm() < 1.0e-12);
         let values = vec![value_i, value_j];
+        #[allow(clippy::needless_range_loop)]
         for variable in 0..2 {
             let numerical = numerical_factor_jacobian(&between, &values, variable, false);
             assert!(
@@ -1183,6 +1186,7 @@ mod tests {
         assert!(evaluation.residual.norm() < 1.0e-9);
         assert_eq!(evaluation.jacobians[0].shape(), (9, 9));
         assert_eq!(evaluation.jacobians[2].shape(), (9, 6));
+        #[allow(clippy::needless_range_loop)]
         for variable in 0..3 {
             let numerical = factor.numerical_jacobian(&values, variable);
             assert!(

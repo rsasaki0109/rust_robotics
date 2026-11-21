@@ -271,6 +271,7 @@ impl GridPlannerDemo {
     }
 
     fn set_border_obstacles(&mut self) {
+        #[allow(clippy::needless_range_loop)]
         for x in 0..GRID_W {
             self.obstacles[x][0] = true;
             self.obstacles[x][GRID_H - 1] = true;
@@ -282,6 +283,7 @@ impl GridPlannerDemo {
     }
 
     fn add_default_wall(&mut self) {
+        #[allow(clippy::needless_range_loop)]
         for y in 6..GRID_H - 6 {
             self.obstacles[15][y] = true;
         }
@@ -289,6 +291,7 @@ impl GridPlannerDemo {
     }
 
     fn clear_interior(&mut self) {
+        #[allow(clippy::needless_range_loop)]
         for x in 1..GRID_W - 1 {
             for y in 1..GRID_H - 1 {
                 self.obstacles[x][y] = false;
@@ -300,6 +303,7 @@ impl GridPlannerDemo {
 
     fn cell_obstacles(&self) -> Obstacles {
         let mut obstacles = Obstacles::new();
+        #[allow(clippy::needless_range_loop)]
         for x in 0..GRID_W {
             for y in 0..GRID_H {
                 if self.obstacles[x][y] {
@@ -397,6 +401,7 @@ impl GridPlannerDemo {
     fn preset(&mut self, blocked: bool) {
         self.obstacles = vec![vec![false; GRID_H]; GRID_W];
         self.set_border_obstacles();
+        #[allow(clippy::needless_range_loop)]
         for y in 1..GRID_H - 1 {
             self.obstacles[15][y] = blocked || y != 5;
         }
@@ -517,6 +522,7 @@ impl GridPlannerDemo {
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, Color32::from_gray(28));
 
+        #[allow(clippy::needless_range_loop)]
         for x in 0..GRID_W {
             for y in 0..GRID_H {
                 let min = rect.min + Vec2::new(x as f32 * cell, y as f32 * cell);

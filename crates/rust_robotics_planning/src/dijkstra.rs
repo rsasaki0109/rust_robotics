@@ -123,11 +123,7 @@ pub fn has_collision(obstacle_map: &grid_nalgebra::Map, ni: usize, nj: usize) ->
 
     let neighbors = get_neighbors(ni, nj);
 
-    if neighbors.iter().all(|&(i, j)| obstacle_map[(i, j)] != 1) && obstacle_map[(ni, nj)] != 1 {
-        return false;
-    }
-
-    true
+    obstacle_map[(ni, nj)] == 1 || neighbors.iter().any(|&(i, j)| obstacle_map[(i, j)] == 1)
 }
 
 /// Run Dijkstra's algorithm on a grid obstacle map.

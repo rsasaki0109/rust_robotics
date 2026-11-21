@@ -612,6 +612,7 @@ mod tests {
                                     1
                                 );
                                 assert!(w[1][2] > w[0][2]);
+                                #[allow(clippy::needless_range_loop)]
                                 for t in w[0][2]..w[1][2] {
                                     assert_eq!(r.positions[t], [w[0][0], w[0][1]]);
                                 }
