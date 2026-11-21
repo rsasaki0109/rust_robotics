@@ -1,17 +1,14 @@
 [advisories]
+# Fail when an ignore entry no longer matches anything in Cargo.lock, so stale
+# exceptions cannot silently mask a future regression.
+unused-ignored-advisory = "deny"
 ignore = [
-    # paste is a transitive dep via nalgebra, no action available
-    "RUSTSEC-2024-0436",
     # quick-xml is a build-time dependency of wayland-scanner 0.31.10, which
     # constrains it to 0.39. The affected XML parser is not used at runtime by
     # RustRobotics. Remove both exceptions when wayland-scanner accepts >=0.41.
     # Revisit by 2026-10-01.
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
-    # ttf-parser is pulled in by egui/eframe through ab_glyph. The advisory has
-    # no safe upgrade; replace/remove this exception when egui migrates its font
-    # parser. Revisit by 2026-10-01.
-    "RUSTSEC-2026-0192",
 ]
 
 [licenses]
