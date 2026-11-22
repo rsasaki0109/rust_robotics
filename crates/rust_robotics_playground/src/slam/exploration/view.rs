@@ -277,6 +277,7 @@ impl ExploreLab {
         let painter = ui.painter_at(r);
         let known = flat(&self.step().known);
         let truth = self.truth_visible();
+        #[allow(clippy::needless_range_loop)]
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 let c = (x as i32, y as i32);

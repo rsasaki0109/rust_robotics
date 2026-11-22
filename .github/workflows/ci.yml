@@ -294,6 +294,11 @@ jobs:
 
   deny:
     runs-on: ubuntu-latest
+    env:
+      # Pinned: deny.toml sets unused-ignored-advisory = "deny", and which
+      # advisories are reported (e.g. unmaintained transitive crates) depends on
+      # the cargo-deny version. Bump together with deny.toml.
+      CARGO_DENY_VERSION: 0.22.0
     steps:
     - uses: actions/checkout@v4
 
@@ -304,10 +309,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cargo/bin/cargo-deny
-        key: ${{ runner.os }}-cargo-deny-0.16
+        key: ${{ runner.os }}-cargo-deny-${{ env.CARGO_DENY_VERSION }}
 
     - name: Install cargo-deny
-      run: command -v cargo-deny || cargo install cargo-deny --locked
+      run: command -v cargo-deny || cargo install cargo-deny --locked --version "$CARGO_DENY_VERSION"
 
     - name: Dependency audit
       run: cargo deny check
