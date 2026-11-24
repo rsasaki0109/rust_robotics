@@ -3,18 +3,23 @@
 This workspace has several crates that depend on each other. Publish them in
 dependency order and wait for the crates.io index to update between layers.
 
-> **Release status (2026-06-17):** `0.1.0` is live on crates.io for all nine
-> crates. The next release is **`0.2.0`** (no_std localization stack + pure-Rust
-> GIF gallery + RRT `get_tree` fix). For subsequent releases the workflow is the
-> same as below, with two differences: the "confirm name is absent" preflight no
-> longer applies (the crates already exist), and `vendor/nearest_neighbor` only
-> needs re-publishing if it actually changed (it is unchanged for 0.2.0, so it
-> stays at `0.1.0` — skip step 1). Bump the version in `[workspace.package]` and
-> the internal dependency pins in `[workspace.dependencies]` together before
-> publishing, so a `0.2.0` crate resolves its siblings to `0.2.0` instead of the
-> already-published `0.1.0`. To ship as a backward-compatible `0.1.1` instead,
-> set both to `0.1.1` — but `0.2.0` is preferred because the no_std default-
-> feature restructuring is a semver-significant change for `0.x` consumers.
+> **Release status (2026-11-24):** `0.3.0` is live on crates.io for all nine
+> crates. (`0.2.0` was tagged on GitHub but never published to crates.io, so
+> crates.io went `0.1.0` -> `0.3.0`.) `vendor/nearest_neighbor` stays at
+> `0.1.0`; it only needs re-publishing if it actually changed (skip step 1). For
+> subsequent releases the "confirm name is absent" preflight does not apply (the
+> crates already exist). Bump the version in `[workspace.package]`, the internal
+> dependency pins in `[workspace.dependencies]`, and
+> `crates/rust_robotics_embedded_demo/Cargo.toml` together before publishing, so
+> a new crate resolves its siblings to the new version instead of the
+> already-published one.
+>
+> A crate that has never been published (e.g. `rust_robotics_optimization` in
+> 0.3.0) is subject to the crates.io new-crate rate limit (HTTP 429). Publish
+> the already-published crates first, then that crate on its own with
+> `cargo publish -p <crate>`, retrying after the time in the error message. If
+> `cargo publish` verification fails on the release machine, `--no-verify` is
+> acceptable after a separate `cargo build` and `cargo test`.
 
 ## Preflight
 
@@ -119,9 +124,9 @@ retry after the crates.io index catches up.
 ## After Publish
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
-gh release create v0.2.0 --title "v0.2.0" \
+git tag v0.3.0
+git push origin v0.3.0
+gh release create v0.3.0 --title "v0.3.0" \
   --generate-notes
 ```
 

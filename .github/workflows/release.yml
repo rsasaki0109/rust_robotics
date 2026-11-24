@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Exact workspace version to release (for example 0.2.0)"
+        description: "Exact workspace version to release (for example 0.3.0)"
         required: true
         type: string
       publish:
