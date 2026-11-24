@@ -8,9 +8,9 @@ publish = false
 description = "no_std reference demo: EKF localization + PID/Pure Pursuit control on a Cortex-M (QEMU)"
 
 [dependencies]
-rust_robotics_core = { path = "../rust_robotics_core", version = "0.2.0", default-features = false }
-rust_robotics_localization = { path = "../rust_robotics_localization", version = "0.2.0", default-features = false }
-rust_robotics_control = { path = "../rust_robotics_control", version = "0.2.0", default-features = false }
+rust_robotics_core = { path = "../rust_robotics_core", version = "0.3.0", default-features = false }
+rust_robotics_localization = { path = "../rust_robotics_localization", version = "0.3.0", default-features = false }
+rust_robotics_control = { path = "../rust_robotics_control", version = "0.3.0", default-features = false }
 nalgebra = { version = "0.33", default-features = false, features = ["alloc", "libm"] }
 num-traits = { version = "0.2", default-features = false, features = ["libm"] }
 embedded-alloc = "0.5"

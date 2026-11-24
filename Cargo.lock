@@ -3398,7 +3398,7 @@ checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
 
 [[package]]
 name = "rust_robotics"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dora-node-api",
  "eyre",
@@ -3421,7 +3421,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_control"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clarabel",
  "gnuplot",
@@ -3434,7 +3434,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nalgebra",
  "num-traits",
@@ -3442,7 +3442,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_localization"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nalgebra",
  "num-traits",
@@ -3454,7 +3454,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_mapping"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nalgebra",
  "rand",
@@ -3474,14 +3474,14 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_optimization"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "nalgebra",
 ]
 
 [[package]]
 name = "rust_robotics_planning"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "criterion",
  "itertools 0.13.0",
@@ -3494,7 +3494,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_playground"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "console_error_panic_hook",
  "eframe",
@@ -3519,7 +3519,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_slam"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "gnuplot",
  "nalgebra",
@@ -3532,7 +3532,7 @@ dependencies = [
 
 [[package]]
 name = "rust_robotics_viz"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "gif",
  "gnuplot",
